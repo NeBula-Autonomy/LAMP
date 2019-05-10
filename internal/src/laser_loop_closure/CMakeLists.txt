@@ -90,5 +90,8 @@ target_link_libraries(${PROJECT_NAME}
   minizip
   ${Boost_LIBRARIES}
   ${ZLIB_LIBRARIES}
+  graph_utils
+  pairwise_consistency
+  robot_measurements
   #SESync
 )

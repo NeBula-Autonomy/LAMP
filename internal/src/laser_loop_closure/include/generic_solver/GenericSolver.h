@@ -19,6 +19,8 @@ author: Yun Chang, Luca Carlone
 #include <gtsam/nonlinear/NonlinearConjugateGradientOptimizer.h>
 #include <gtsam/inference/Symbol.h>
 
+#include "graph_utils/graph_utils_functions.h" // from distriuted mapper
+
 class GenericSolver {
 public:
   GenericSolver();
