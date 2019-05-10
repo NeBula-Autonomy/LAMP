@@ -82,7 +82,7 @@ link_directories(
 #include_directories(${SESync_INCLUDE_DIR})
 #link_directories(${SESync_LIBRARY_DIRS})
 
-add_library(${PROJECT_NAME} src/LaserLoopClosure.cc)
+add_library(${PROJECT_NAME} src/LaserLoopClosure.cc src/GenericSolver.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}

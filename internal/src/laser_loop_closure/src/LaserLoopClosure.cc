@@ -184,9 +184,9 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("Using ISAM2 optimizer");
   #endif
   #ifdef SOLVER
-  isam_.reset(new GenericSolver());
+  isam_.reset(new GenericSolver(SOLVER));
   isam_->print();
-  ROS_INFO("Using generic solver (LM currently)");
+  ROS_INFO("Using generic solver");
   #endif
   std::cout << "after isam reset" << std::endl; 
 
@@ -1037,7 +1037,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     isam_.reset(new ISAM2(parameters));
     #endif
     #ifdef SOLVER
-    isam_.reset(new GenericSolver());
+    isam_.reset(new GenericSolver(SOLVER));
     #endif
     // Update with the new graph
     isam_->update(nfg_,result); 
@@ -1415,7 +1415,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   isam_.reset(new ISAM2(parameters));
   #endif
   #ifdef SOLVER
-  isam_.reset(new GenericSolver());
+  isam_.reset(new GenericSolver(SOLVER));
   #endif
 
   const LaserLoopClosure::Diagonal::shared_ptr covariance(

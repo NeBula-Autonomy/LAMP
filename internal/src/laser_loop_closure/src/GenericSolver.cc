@@ -5,15 +5,15 @@ author: Yun Chang, Luca Carlone
 
 #include <generic_solver/GenericSolver.h>
 
-GenericSolver::GenericSolver(): 
-  nfg_gs_(gtsam::NonlinearFactorGraph()),
-  values_gs_(gtsam::Values()) {
-  
+GenericSolver::GenericSolver(int solvertype): 
+  nfg_(gtsam::NonlinearFactorGraph()),
+  values_(gtsam::Values()),
+  solver_type_(solvertype) {
+
   std::cout << "instantiated generic solver." << std::endl; 
 }
 // robustUpdate 
 // TODOs: 
-// move Generic Solver to other file
 // 1. nfg_odom, 2. nfg_loop_closures, 3. values_odom 4. covariances_odom
 // -computation: populate 1, 2 with factors 
 // -update 3 and 4 whenever new odometry recieved + new artifact (redetection of artifact will be loop closure)
@@ -24,16 +24,16 @@ void GenericSolver::update(gtsam::NonlinearFactorGraph nfg,
                            gtsam::FactorIndices factorsToRemove) {
   // remove factors
   for (size_t index : factorsToRemove) {
-    nfg_gs_[index].reset();
+    nfg_[index].reset();
   }
 
   // add new values and factors
-  nfg_gs_.add(nfg);
-  values_gs_.insert(values);
+  nfg_.add(nfg);
+  values_.insert(values);
   bool do_optimize = true; 
 
   // print number of loop closures
-  // std::cout << "number of loop closures so far: " << nfg_gs_.size() - values_gs_.size() << std::endl; 
+  // std::cout << "number of loop closures so far: " << nfg_.size() - values_.size() << std::endl; 
 
   if (values.size() > 1) {ROS_WARN("Unexpected behavior: number of update poses greater than one.");}
 
@@ -57,19 +57,19 @@ void GenericSolver::update(gtsam::NonlinearFactorGraph nfg,
   if (do_optimize) {
     ROS_INFO(">>>>>>>>>>>> Run Optimizer <<<<<<<<<<<<");
     // optimize
-    #if SOLVER==1
-    gtsam::LevenbergMarquardtParams params;
-    params.setVerbosityLM("SUMMARY");
-    std::cout << "Running LM" << std::endl; 
-    params.diagonalDamping = true; 
-    values_gs_ = gtsam::LevenbergMarquardtOptimizer(nfg_gs_, values_gs_, params).optimize();
-    #elif SOLVER==2
-    gtsam::GaussNewtonParams params;
-    params.setVerbosity("ERROR");
-    std::cout << "Running GN" << std::endl; 
-    values_gs_ = gtsam::GaussNewtonOptimizer(nfg_gs_, values_gs_, params).optimize();
-    #elif SOLVER==3
-    // something
-    #endif
+    if (solver_type_ == 1) {
+      gtsam::LevenbergMarquardtParams params;
+      params.setVerbosityLM("SUMMARY");
+      std::cout << "Running LM" << std::endl; 
+      params.diagonalDamping = true; 
+      values_ = gtsam::LevenbergMarquardtOptimizer(nfg_, values_, params).optimize();
+    }else if (solver_type_ == 2) {
+      gtsam::GaussNewtonParams params;
+      params.setVerbosity("ERROR");
+      std::cout << "Running GN" << std::endl; 
+      values_ = gtsam::GaussNewtonOptimizer(nfg_, values_, params).optimize();
+    }else if (solver_type_ == 3) {
+      // something
+    }
   }
 }
