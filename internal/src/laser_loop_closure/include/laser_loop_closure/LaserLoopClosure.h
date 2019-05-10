@@ -42,6 +42,7 @@
 #include <geometry_utils/Transform3.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <laser_loop_closure/BetweenChordalFactor.h>
+#include <generic_solver/GenericSolver.h>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -76,7 +77,7 @@
 #include <vector>
 
 // default is isam, 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
-// #define SOLVER 1
+#define SOLVER 1
 
 class LaserLoopClosure {
  public:

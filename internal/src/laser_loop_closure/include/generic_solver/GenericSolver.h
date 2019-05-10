@@ -3,6 +3,8 @@ Generic solver class
 author: Yun Chang, Luca Carlone
 */
 
+#include <ros/ros.h>
+
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
@@ -23,22 +25,29 @@ author: Yun Chang, Luca Carlone
 
 class GenericSolver {
 public:
-  GenericSolver();
+  GenericSolver(int solvertype=1); 
+  // solvertype = 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
+
   void update(gtsam::NonlinearFactorGraph nfg=gtsam::NonlinearFactorGraph(), 
               gtsam::Values values=gtsam::Values(),
               gtsam::FactorIndices factorsToRemove=gtsam::FactorIndices());
 
-  gtsam::Values calculateEstimate() { return values_gs_; }
-  gtsam::Values calculateBestEstimate() { return values_gs_; }
-  gtsam::Values getLinearizationPoint() { return values_gs_; }
-  gtsam::NonlinearFactorGraph getFactorsUnsafe(){ return nfg_gs_; }
+  gtsam::Values calculateEstimate() { return values_; }
+  gtsam::Values calculateBestEstimate() { return values_; }
+  gtsam::Values getLinearizationPoint() { return values_; }
+  gtsam::NonlinearFactorGraph getFactorsUnsafe(){ return nfg_; }
 
   void print() {
-    nfg_gs_.print("");
-    values_gs_.print("");
+    nfg_.print("");
+    values_.print("");
   }
 
 private:
-  gtsam::Values values_gs_;
-  gtsam::NonlinearFactorGraph nfg_gs_;
+  gtsam::Values values_;
+  gtsam::NonlinearFactorGraph nfg_;
+  int solver_type_;
+  gtsam::Values values_odom_;
+  gtsam::NonlinearFactorGraph nfg_odom_;
+  gtsam::NonlinearFactorGraph nfg_lc_;
+  // covariances_odom (this will be a trajectory type)
 };
