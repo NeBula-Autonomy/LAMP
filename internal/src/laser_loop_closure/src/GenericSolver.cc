@@ -73,3 +73,7 @@ void GenericSolver::update(gtsam::NonlinearFactorGraph nfg,
     }
   }
 }
+
+void GenericSolver::robustUpdate(){
+
+}

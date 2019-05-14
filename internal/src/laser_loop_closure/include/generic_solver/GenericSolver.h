@@ -32,6 +32,8 @@ public:
               gtsam::Values values=gtsam::Values(),
               gtsam::FactorIndices factorsToRemove=gtsam::FactorIndices());
 
+  void robustUpdate();
+
   gtsam::Values calculateEstimate() { return values_; }
   gtsam::Values calculateBestEstimate() { return values_; }
   gtsam::Values getLinearizationPoint() { return values_; }
@@ -46,8 +48,8 @@ private:
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
   int solver_type_;
-  gtsam::Values values_odom_;
+
   gtsam::NonlinearFactorGraph nfg_odom_;
   gtsam::NonlinearFactorGraph nfg_lc_;
-  // covariances_odom (this will be a trajectory type)
+  graph_utils::Trajectory covariances_odom_; 
 };
