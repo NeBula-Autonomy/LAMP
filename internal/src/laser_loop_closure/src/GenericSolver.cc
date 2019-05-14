@@ -12,12 +12,7 @@ GenericSolver::GenericSolver(int solvertype):
 
   std::cout << "instantiated generic solver." << std::endl; 
 }
-// robustUpdate 
-// TODOs: 
-// 1. nfg_odom, 2. nfg_loop_closures, 3. values_odom 4. covariances_odom
-// -computation: populate 1, 2 with factors 
-// -update 3 and 4 whenever new odometry recieved + new artifact (redetection of artifact will be loop closure)
-// - 3.4 should be a trajectory_odom (set of poses with corresponding covariance key to pose/covaraice see PY code )
+
 
 void GenericSolver::update(gtsam::NonlinearFactorGraph nfg, 
                            gtsam::Values values, 
@@ -75,5 +70,33 @@ void GenericSolver::update(gtsam::NonlinearFactorGraph nfg,
 }
 
 void GenericSolver::robustUpdate(){
+  // robustUpdate 
+  // check if odometry (compare factor keys)
+// if odometry
+    // - update posesAndCovariances_odom_ (T(t-1).compose( T_odom ) -> added to trajectory to be T(t), together with covariance - for composition
+    // you can use PY code such that you also compute the covariance )
+    // - store factor in nfg_odom
+  // - store latest pose in values_ (note: values_ is the optimized estimate, while trajectory is the odom estimate)
 
+// if not odometry (loop closure) - in this case we should run the pairwise consistency check to see if loop closure is good
+  // * odometric consistency check (will only compare against odometry - if loop fails this, we can just drop it)
+  // -- assume loop is between pose i and j
+  // -- access (T_i,Cov_i) and (T_j, Cov_j) from trajectory_
+  // -- compute Tij_odom = T_i.between(T_j); compute Covij_odom = Cov_j - Cov_i (Yun: verify if true) 
+  // -- call pairwise check: isOdomConsistent = (Tij_odom,Cov_ij_odom, Tij_lc, Cov_ij_lc);
+  // if (isOdomConsistent)
+  // -- add factor to nfg_lc_
+  // else 
+  // -- return
+
+  // * pairwise consistency check (will also compare other loops - if loop fails we still store it, but not include in the optimization)
+  // -- add 1 row and 1 column to lc_adjacency_matrix_;
+  // -- populate extra row and column by testing pairwise consistency of new lc against all previous ones
+  // -- compute max clique
+  // -- add loops in max clique to a local variable nfg_good_lc
+
+  // * optimize and update values
+  // NOTE: this will require a map from rowId (size_t, in adjacency matrix) to slot id (size_t, id of that lc in nfg_lc)
 }
+
+// read book + preliminary on preintegration 

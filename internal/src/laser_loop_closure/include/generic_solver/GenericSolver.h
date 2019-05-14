@@ -51,5 +51,6 @@ private:
 
   gtsam::NonlinearFactorGraph nfg_odom_;
   gtsam::NonlinearFactorGraph nfg_lc_;
-  graph_utils::Trajectory covariances_odom_; 
+  gtsam::Matrix lc_adjacency_matrix_;
+  graph_utils::Trajectory posesAndCovariances_odom_; 
 };
