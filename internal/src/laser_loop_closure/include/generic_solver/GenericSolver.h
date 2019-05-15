@@ -28,11 +28,13 @@ public:
   GenericSolver(int solvertype=1); 
   // solvertype = 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
 
-  void update(gtsam::NonlinearFactorGraph nfg=gtsam::NonlinearFactorGraph(), 
+  void regularUpdate(gtsam::NonlinearFactorGraph nfg=gtsam::NonlinearFactorGraph(), 
               gtsam::Values values=gtsam::Values(),
               gtsam::FactorIndices factorsToRemove=gtsam::FactorIndices());
 
-  void robustUpdate();
+  void update(gtsam::NonlinearFactorGraph nfg=gtsam::NonlinearFactorGraph(), 
+                    gtsam::Values values=gtsam::Values(),
+                    gtsam::FactorIndices factorsToRemove=gtsam::FactorIndices());
 
   gtsam::Values calculateEstimate() { return values_; }
   gtsam::Values calculateBestEstimate() { return values_; }
@@ -53,4 +55,13 @@ private:
   gtsam::NonlinearFactorGraph nfg_lc_;
   gtsam::Matrix lc_adjacency_matrix_;
   graph_utils::Trajectory posesAndCovariances_odom_; 
+
+  void initializePrior(gtsam::PriorFactor<gtsam::Pose3> prior_factor);
+
+  void updateOdom(gtsam::BetweenFactor<gtsam::Pose3> odom_factor, 
+                  graph_utils::PoseWithCovariance &new_pose);
+
+  bool isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_factor);
+
+  void findInliers(gtsam::NonlinearFactorGraph &inliers);
 };
