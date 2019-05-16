@@ -73,9 +73,7 @@ void GenericSolver::regularUpdate(gtsam::NonlinearFactorGraph nfg,
 
 void GenericSolver::initializePrior(gtsam::PriorFactor<gtsam::Pose3> prior_factor) {
   gtsam::Pose3 initial_value = prior_factor.prior();
-  gtsam::Matrix covar =
-      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
-      (prior_factor.get_noiseModel())->R()); // return covariance matrix
+  gtsam::Matrix covar = Eigen::MatrixXd::Zero(6,6); // initialize as zero
   gtsam::Key initial_key = prior_factor.front(); // CHECK if correct 
 
   // construct initial pose with covar 
@@ -100,7 +98,7 @@ void GenericSolver::updateOdom(gtsam::BetweenFactor<gtsam::Pose3> odom_factor,
   // first get measurement and covariance and key from factor
   gtsam::Pose3 delta = odom_factor.measured(); 
   gtsam::Matrix covar =
-      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
+      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
       (odom_factor.get_noiseModel())->R()); // return covariance matrix
   gtsam::Key new_key = odom_factor.back();
 
@@ -140,23 +138,32 @@ bool GenericSolver::isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_facto
 
   // compute Tij_odom = T_i.between(T_j); compute Covij_odom = Cov_j - Cov_i (Yun: verify if true)  
   // compute pij_odom = (Tij_odom, Covij_odom)
+
   graph_utils::poseBetween(pi_odom, pj_odom, pij_odom);
 
   // get pij_lc = (Tij_lc, Covij_lc) from factor
   pij_lc.pose = lc_factor.measured(); 
   pij_lc.covariance_matrix =
-      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
+      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
       (lc_factor.get_noiseModel())->R()); // return covariance matrix
 
   // check consistency (Tij_odom,Cov_ij_odom, Tij_lc, Cov_ij_lc)
   graph_utils::poseBetween(pij_odom, pij_lc, result);
-
-  result.pose.print("odom consistency check ");
+  result.pose.print("odom consistency check: ");
+  std::cout << std::endl; 
   gtsam::Vector6 consistency_error = gtsam::Pose3::Logmap(result.pose);
-  ROS_INFO_STREAM("odometry consistency error: " << consistency_error); 
-
   // check with threshold
-  return true; // place holder
+  double threshold = 1.635; // hard coded for now 
+  // comput sqaure mahalanobis distance (the computation is wrong in robust mapper repo)
+  double distance = std::sqrt(consistency_error.transpose() 
+            * gtsam::inverse(result.covariance_matrix) * consistency_error);
+
+  ROS_INFO_STREAM("odometry consistency distance: " << distance); 
+  if (distance < threshold) {
+    return true;
+  }
+  
+  return false;
 }
 
 void GenericSolver::findInliers(gtsam::NonlinearFactorGraph &inliers) {
@@ -224,14 +231,16 @@ void GenericSolver::update(gtsam::NonlinearFactorGraph nfg,
 
     if (isOdomConsistent(nfg_factor)) {
       nfg_lc_.add(nfg); // add factor to nfg_lc_
+
     } else {
+      ROS_WARN("Discarded loop closure (inconsistent with odometry");
       return; // discontinue since loop closure not consistent with odometry 
     }
-
-    // // Find inliers with Pairwise consistent measurement set maximization
+    
+    // Find inliers with Pairwise consistent measurement set maximization
     gtsam::NonlinearFactorGraph nfg_good_lc; 
     findInliers(nfg_good_lc);
-
+    
     // * optimize and update values (for now just LM add others later)
     nfg_ = gtsam::NonlinearFactorGraph(); // reset 
     nfg_.add(nfg_odom_);

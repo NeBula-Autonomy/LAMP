@@ -1028,19 +1028,19 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     std::cout << "final error = " << nfg_.error(result) << std::endl;
 
     
-    // ----------------------------------------------
-    #ifndef SOLVER
-    // Create the ISAM2 solver.
-    ISAM2Params parameters;
-    parameters.relinearizeSkip = relinearize_skip_;
-    parameters.relinearizeThreshold = relinearize_threshold_;
-    isam_.reset(new ISAM2(parameters));
-    #endif
-    #ifdef SOLVER
-    isam_.reset(new GenericSolver(SOLVER));
-    #endif
-    // Update with the new graph
-    isam_->update(nfg_,result); 
+    // // ----------------------------------------------
+    // #ifndef SOLVER
+    // // Create the ISAM2 solver.
+    // ISAM2Params parameters;
+    // parameters.relinearizeSkip = relinearize_skip_;
+    // parameters.relinearizeThreshold = relinearize_threshold_;
+    // isam_.reset(new ISAM2(parameters));
+    // #endif
+    // #ifdef SOLVER
+    // isam_.reset(new GenericSolver(SOLVER));
+    // #endif
+    // // Update with the new graph
+    // isam_->update(nfg_,result); 
 
     if (is_manual_loop_closure) {
       // Store for visualization and output.
