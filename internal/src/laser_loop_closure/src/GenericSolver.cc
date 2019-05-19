@@ -166,6 +166,12 @@ bool GenericSolver::isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_facto
   return false;
 }
 
+bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_i, 
+                                     gtsam::BetweenFactor<gtsam::Pose3> lc_j) {
+  // check if two loop closures are consistent 
+  return true;
+}
+
 void GenericSolver::findInliers(gtsam::NonlinearFactorGraph &inliers) {
   // * pairwise consistency check (will also compare other loops - if loop fails we still store it, but not include in the optimization)
   // -- add 1 row and 1 column to lc_adjacency_matrix_;
@@ -173,6 +179,31 @@ void GenericSolver::findInliers(gtsam::NonlinearFactorGraph &inliers) {
   // -- compute max clique
   // -- add loops in max clique to a local variable nfg_good_lc
   // NOTE: this will require a map from rowId (size_t, in adjacency matrix) to slot id (size_t, id of that lc in nfg_lc)
+  size_t num_lc = nfg_lc_.size(); // number of loop closures so far
+  Eigen::MatrixXd new_adj_matrix = Eigen::MatrixXd::Zero(num_lc, num_lc);
+  if (num_lc > 1) {
+    // if = 1 then just initialized 
+    new_adj_matrix.topLeftCorner(num_lc - 1, num_lc - 1) = lc_adjacency_matrix_; 
+
+    // now iterate through the previous loop closures and fill in last row + col 
+    // of consistency matrix 
+    for (size_t i = 0; i < num_lc - 1; i++) {
+      gtsam::BetweenFactor<gtsam::Pose3> factor_i =
+            *boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3> >(nfg_lc_[i]);
+      gtsam::BetweenFactor<gtsam::Pose3> factor_j =
+            *boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3> >(nfg_lc_[num_lc-1]);
+
+      // check consistency 
+      bool consistent = areLoopsConsistent(factor_i, factor_j);
+      if (consistent) { 
+        new_adj_matrix(num_lc-1, i) = 1; 
+        new_adj_matrix(i, num_lc-1) = 1;
+      }
+    }
+  }
+  lc_adjacency_matrix_ = new_adj_matrix;
+  std::cout << "adjacency matrix: " << std::endl; 
+  std::cout << lc_adjacency_matrix_ << std::endl;
   inliers = nfg_lc_;
 }
 
