@@ -166,10 +166,57 @@ bool GenericSolver::isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_facto
   return false;
 }
 
-bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_i, 
-                                     gtsam::BetweenFactor<gtsam::Pose3> lc_j) {
+bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_1, 
+                                     gtsam::BetweenFactor<gtsam::Pose3> lc_2) {
   // check if two loop closures are consistent 
-  return true;
+  gtsam::Key key1a = lc_1.front();
+  gtsam::Key key1b = lc_1.back();
+  gtsam::Key key2a = lc_2.front();
+  gtsam::Key key2b = lc_2.back();
+
+  graph_utils::PoseWithCovariance p1_lc, p2_lc; 
+  p1_lc.pose = lc_1.measured();
+  p1_lc.covariance_matrix =
+      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
+      (lc_1.get_noiseModel())->R()); 
+
+  p2_lc.pose = lc_2.measured();
+  p2_lc.covariance_matrix =
+      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
+      (lc_2.get_noiseModel())->R()); 
+
+  // find odometry from 1a to 2a 
+  graph_utils::PoseWithCovariance p1a_odom, p2a_odom, p1a2a_odom; 
+  p1a_odom = posesAndCovariances_odom_.trajectory_poses[key1a].pose;
+  p2a_odom = posesAndCovariances_odom_.trajectory_poses[key2a].pose;
+  graph_utils::poseBetween(p1a_odom, p2a_odom, p1a2a_odom);
+
+  // find odometry from 2b to 1b 
+  graph_utils::PoseWithCovariance p1b_odom, p2b_odom, p2b1b_odom; 
+  p1b_odom = posesAndCovariances_odom_.trajectory_poses[key1b].pose;
+  p2b_odom = posesAndCovariances_odom_.trajectory_poses[key2b].pose;
+  graph_utils::poseBetween(p2b_odom, p1b_odom, p2b1b_odom);
+
+  // check that lc_1 pose is consistent with pose from 1a to 1b 
+  graph_utils::PoseWithCovariance p1a2b, p1a1b, result; 
+  graph_utils::poseCompose(p1a2a_odom, p2_lc, p1a2b);
+  graph_utils::poseCompose(p1a2b, p2b1b_odom, p1a1b);
+  graph_utils::poseCompose(p1a1b, p1_lc, result);
+  // Might need to inverse p1_lc CHECK 
+
+  gtsam::Vector6 consistency_error = gtsam::Pose3::Logmap(result.pose);
+  // check with threshold
+  double threshold = 1.635; // hard coded for now 
+  // comput sqaure mahalanobis distance 
+  double distance = std::sqrt(consistency_error.transpose() 
+            * gtsam::inverse(result.covariance_matrix) * consistency_error);
+
+  ROS_INFO_STREAM("odometry consistency distance: " << distance); 
+  if (distance < threshold) {
+    return true;
+  }
+
+  return false;
 }
 
 void GenericSolver::findInliers(gtsam::NonlinearFactorGraph &inliers) {
@@ -204,7 +251,7 @@ void GenericSolver::findInliers(gtsam::NonlinearFactorGraph &inliers) {
   lc_adjacency_matrix_ = new_adj_matrix;
   std::cout << "adjacency matrix: " << std::endl; 
   std::cout << lc_adjacency_matrix_ << std::endl;
-  inliers = nfg_lc_;
+  inliers = nfg_lc_; // change this to add good loop closures 
 }
 
 void GenericSolver::update(gtsam::NonlinearFactorGraph nfg, 

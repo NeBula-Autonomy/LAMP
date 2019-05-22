@@ -63,8 +63,8 @@ private:
 
   bool isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_factor);
 
-  bool areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_i, 
-                          gtsam::BetweenFactor<gtsam::Pose3> lc_j);
+  bool areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_1, 
+                          gtsam::BetweenFactor<gtsam::Pose3> lc_2);
 
   void findInliers(gtsam::NonlinearFactorGraph &inliers);
 };
