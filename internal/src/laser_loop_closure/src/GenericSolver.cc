@@ -206,12 +206,12 @@ bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_1,
 
   gtsam::Vector6 consistency_error = gtsam::Pose3::Logmap(result.pose);
   // check with threshold
-  double threshold = 1.635; // hard coded for now 
+  double threshold = 0.4; // hard coded for now 
   // comput sqaure mahalanobis distance 
   double distance = std::sqrt(consistency_error.transpose() 
             * gtsam::inverse(result.covariance_matrix) * consistency_error);
 
-  ROS_INFO_STREAM("odometry consistency distance: " << distance); 
+  ROS_INFO_STREAM("loop consistency distance: " << distance); 
   if (distance < threshold) {
     return true;
   }
@@ -251,7 +251,14 @@ void GenericSolver::findInliers(gtsam::NonlinearFactorGraph &inliers) {
   lc_adjacency_matrix_ = new_adj_matrix;
   std::cout << "adjacency matrix: " << std::endl; 
   std::cout << lc_adjacency_matrix_ << std::endl;
-  inliers = nfg_lc_; // change this to add good loop closures 
+
+  std::vector<int> max_clique_data;
+  int max_clique_size = graph_utils::findMaxClique(lc_adjacency_matrix_, max_clique_data);
+  std::cout << "max clique size: " << max_clique_size << std::endl; 
+  for (size_t i = 0; i < max_clique_size; i++) {
+    std::cout << max_clique_data[i] << " "; 
+    inliers.add(nfg_lc_[max_clique_data[i]]);
+  }
 }
 
 void GenericSolver::update(gtsam::NonlinearFactorGraph nfg, 
