@@ -142,7 +142,7 @@ bool GenericSolver::isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_facto
   graph_utils::poseBetween(pi_odom, pj_odom, pij_odom);
 
   // get pij_lc = (Tij_lc, Covij_lc) from factor
-  pij_lc.pose = lc_factor.measured(); 
+  pij_lc.pose = lc_factor.measured().inverse(); 
   pij_lc.covariance_matrix =
       gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
       (lc_factor.get_noiseModel())->R()); // return covariance matrix
@@ -174,9 +174,9 @@ bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_1,
   gtsam::Key key2a = lc_2.front();
   gtsam::Key key2b = lc_2.back();
 
-  graph_utils::PoseWithCovariance p1_lc, p2_lc; 
-  p1_lc.pose = lc_1.measured();
-  p1_lc.covariance_matrix =
+  graph_utils::PoseWithCovariance p1_lc_inv, p2_lc; 
+  p1_lc_inv.pose = lc_1.measured().inverse();
+  p1_lc_inv.covariance_matrix =
       gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
       (lc_1.get_noiseModel())->R()); 
 
@@ -201,12 +201,12 @@ bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_1,
   graph_utils::PoseWithCovariance p1a2b, p1a1b, result; 
   graph_utils::poseCompose(p1a2a_odom, p2_lc, p1a2b);
   graph_utils::poseCompose(p1a2b, p2b1b_odom, p1a1b);
-  graph_utils::poseCompose(p1a1b, p1_lc, result);
+  graph_utils::poseCompose(p1a1b, p1_lc_inv, result);
   // Might need to inverse p1_lc CHECK 
 
   gtsam::Vector6 consistency_error = gtsam::Pose3::Logmap(result.pose);
   // check with threshold
-  double threshold = 0.4; // hard coded for now 
+  double threshold = 1.635; // hard coded for now 
   // comput sqaure mahalanobis distance 
   double distance = std::sqrt(consistency_error.transpose() 
             * gtsam::inverse(result.covariance_matrix) * consistency_error);
