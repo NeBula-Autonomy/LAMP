@@ -129,26 +129,22 @@ bool GenericSolver::isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_facto
   gtsam::Key key_i = lc_factor.front();
   gtsam::Key key_j = lc_factor.back();
   
-  graph_utils::PoseWithCovariance pij_odom, pij_lc, result;
+  graph_utils::PoseWithCovariance pij_odom, pji_lc, result;
 
   // access (T_i,Cov_i) and (T_j, Cov_j) from trajectory_
   graph_utils::PoseWithCovariance pi_odom, pj_odom; 
   pi_odom = posesAndCovariances_odom_.trajectory_poses[key_i].pose;
   pj_odom = posesAndCovariances_odom_.trajectory_poses[key_j].pose;
 
-  // compute Tij_odom = T_i.between(T_j); compute Covij_odom = Cov_j - Cov_i (Yun: verify if true)  
-  // compute pij_odom = (Tij_odom, Covij_odom)
-
   graph_utils::poseBetween(pi_odom, pj_odom, pij_odom);
 
   // get pij_lc = (Tij_lc, Covij_lc) from factor
-  pij_lc.pose = lc_factor.measured().inverse(); 
-  pij_lc.covariance_matrix =
-      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
+  pji_lc.pose = lc_factor.measured().inverse(); 
+  pji_lc.covariance_matrix = gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
       (lc_factor.get_noiseModel())->R()); // return covariance matrix
-
+      
   // check consistency (Tij_odom,Cov_ij_odom, Tij_lc, Cov_ij_lc)
-  graph_utils::poseBetween(pij_odom, pij_lc, result);
+  graph_utils::poseCompose(pij_odom, pji_lc, result);
   result.pose.print("odom consistency check: ");
   std::cout << std::endl; 
   gtsam::Vector6 consistency_error = gtsam::Pose3::Logmap(result.pose);
