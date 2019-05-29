@@ -56,6 +56,11 @@
       <!-- Loop closure -->
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
     </node>
+
+    <node pkg="pose_graph_visualizer"
+          name="pose_graph_visualizer"
+          type="pose_graph_visualizer_node"
+          output="screen"/>
   </group>
 
   <!-- launch rviz  -->

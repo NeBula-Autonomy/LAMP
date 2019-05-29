@@ -144,9 +144,6 @@ class LaserLoopClosure {
   // Publish pose graph for visualization.
   void PublishPoseGraph();
 
-  // makeMenuMaker
-  void makeMenuMarker( geometry_utils::Transform3 position, const std::string id_number) ;
-
   // Add factor between the two keys to connect them. This function is
   // designed for a scenario where a human operator can manually perform
   // loop closures by adding these factors to the pose graph.
@@ -157,12 +154,6 @@ class LaserLoopClosure {
 
   // Removes the factor between the two keys from the pose graph.
   bool RemoveFactor(unsigned int key1, unsigned int key2);
-
-  // Visualizes an edge between the two nodes for the user to confirm.
-  bool VisualizeConfirmFactor(unsigned int key1, unsigned int key2);
-
-  // Removes the factor that was visualized for confirmation.
-  void RemoveConfirmFactorVisualization();
 
   // Saves pose graph and accompanying point clouds to a zip file.
   bool Save(const std::string &zipFilename) const;
@@ -256,8 +247,7 @@ class LaserLoopClosure {
   // ISAM2 optimizer object, and best guess pose values.
   #ifdef solver
   std::unique_ptr<GenericSolver> isam_;
-  #endif
-  #ifndef solver 
+  #else
   std::unique_ptr<gtsam::ISAM2> isam_;
   #endif
 
@@ -269,15 +259,9 @@ class LaserLoopClosure {
   std::string base_frame_id_;
 
   // Visualization publishers.
-  ros::Publisher odometry_edge_pub_;
-  ros::Publisher loop_edge_pub_;
-  ros::Publisher graph_node_pub_;
-  ros::Publisher graph_node_id_pub_;
-  ros::Publisher keyframe_node_pub_;
   ros::Publisher closure_area_pub_;
   ros::Publisher scan1_pub_;
   ros::Publisher scan2_pub_;
-  ros::Publisher confirm_edge_pub_;
 
   // ros::ServiceServer add_factor_srv_;
 

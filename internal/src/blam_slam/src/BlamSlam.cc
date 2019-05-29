@@ -189,16 +189,8 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
                                 blam_slam::AddFactorResponse &response) {
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
-    if (request.key_from == request.key_to) {
-      loop_closure_.RemoveConfirmFactorVisualization();
-      return true;
-    } else {
-      response.confirm = true;
-      response.success = loop_closure_.VisualizeConfirmFactor(
-        static_cast<unsigned int>(request.key_from),
-        static_cast<unsigned int>(request.key_to));
-      return true;
-    }
+    ROS_WARN("Cannot add factor because the request is not confirmed.");
+    return false;
   }
 
   response.success = loop_closure_.AddFactor(
@@ -238,6 +230,11 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                                    blam_slam::RemoveFactorResponse &response) {
   // TODO - bring the service creation into this node?
+  if (!request.confirmed) {
+    ROS_WARN("Cannot remove factor because the request is not confirmed.");
+    return false;
+  }
+
   response.success = loop_closure_.RemoveFactor(
     static_cast<unsigned int>(request.key_from),
     static_cast<unsigned int>(request.key_to));

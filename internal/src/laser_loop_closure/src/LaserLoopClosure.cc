@@ -102,6 +102,8 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
+  ROS_INFO("Finished LaserLoopClosure initialization");
+
   return true;
 }
 
@@ -219,6 +221,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
         "interactive_node", "", false));
   }
 
+  ROS_INFO("Finished LaserLoopClosure::LoadParameters");
+
   return true;
 }
 
@@ -239,31 +243,25 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  odometry_edge_pub_ =
-      nl.advertise<visualization_msgs::Marker>("odometry_edges", 10, false);
-  loop_edge_pub_ =
-      nl.advertise<visualization_msgs::Marker>("loop_edges", 10, false);
-  graph_node_pub_ =
-      nl.advertise<visualization_msgs::Marker>("graph_nodes", 10, false);
-  graph_node_id_pub_ =
-      nl.advertise<visualization_msgs::Marker>("graph_node_ids", 10, false);
-  keyframe_node_pub_ =
-      nl.advertise<visualization_msgs::Marker>("keyframe_nodes", 10, false);
   closure_area_pub_ =
       nl.advertise<visualization_msgs::Marker>("closure_area", 10, false);
-  confirm_edge_pub_ =
-  nl.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
+
+  ROS_INFO("LaserLoopClosure::RegisterCallbacks 1");
 
   scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
   scan2_pub_ = nl.advertise<PointCloud>("loop_closure_scan2", 10, false);
 
+  ROS_INFO("LaserLoopClosure::RegisterCallbacks 2");
+
   pose_graph_pub_ =
       nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
+  ROS_INFO("LaserLoopClosure::RegisterCallbacks 3");
   keyed_scan_pub_ =
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+  ROS_INFO("LaserLoopClosure::RegisterCallbacks 4");
   loop_closure_notifier_pub_ =
       nl.advertise<std_msgs::Empty>("loop_closure", 10, false);
-      
+  ROS_INFO("LaserLoopClosure::RegisterCallbacks 5");    
   return true;
 }
 
@@ -430,7 +428,7 @@ bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
     stamps_keyed_.insert(std::pair<double, unsigned int>(stamp.toSec(), key));
   }
 
-  // ROS_INFO_STREAM("AddKeyScanPair " << key);
+  ROS_INFO_STREAM("AddKeyScanPair " << key);
 
   // Add the key and scan.
   keyed_scans_.insert(std::pair<unsigned int, PointCloud::ConstPtr>(key, scan));
@@ -876,9 +874,6 @@ bool LaserLoopClosure::AddFactor(unsigned int key1, unsigned int key2, double qw
   // Thanks to Luca for providing the code
   ROS_INFO_STREAM("Adding factor between " << (int) key1 << " and " << (int) key2);
 
-  // Remove visualization of edge to be confirmed
-  RemoveConfirmFactorVisualization();
-
   // TODO - some check to see what the distance between the two poses are
   // Print that out for the operator to check - to see how large a change is being asked for
 
@@ -1161,9 +1156,6 @@ bool LaserLoopClosure::AddFactor(unsigned int key1, unsigned int key2, double qw
 bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2) {
   ROS_INFO("Removing factor between %i and %i from the pose graph...", key1, key2);
 
-  // Remove visualization of edge to be confirmed
-  RemoveConfirmFactorVisualization();
-
   // Prevent removing odometry edges 
   if ((key1 == key2 - 1) || (key2 == key1 - 1)) {
     ROS_WARN("RemoveFactor: Removing edges from consecutive poses (odometry) is currently forbidden (disable if condition to allow)");
@@ -1227,67 +1219,6 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2) {
   PublishPoseGraph();
 
   return true; //result.getVariablesReeliminated() > 0;
-}
-
-bool LaserLoopClosure::VisualizeConfirmFactor(unsigned int key1, unsigned int key2) {
-  ROS_INFO("Visualizing factor between %i and %i.", key1, key2);
-
-  if (!values_.exists(key1) || !values_.exists(key2)) {
-    ROS_WARN("Key %i or %i does not exist.", key1, key2);
-    return false;
-  }
-
-  if ((key1 == key2 - 1) || (key2 == key1 - 1)) {
-    ROS_WARN("Cannot add/remove factor between two consecutive keys.");
-    return false;
-  }
-
-  visualization_msgs::Marker m;
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_;
-  m.id = 0;
-  m.action = visualization_msgs::Marker::ADD;
-  m.type = visualization_msgs::Marker::LINE_LIST;
-  m.color.r = 1.0;
-  m.color.g = 1.0;
-  m.color.b = 0.0;
-  m.color.a = 1.0;
-  m.scale.x = 0.05;
-  const gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-  const gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-  m.points.push_back(gr::ToRosPoint(p1));
-  m.points.push_back(gr::ToRosPoint(p2));
-  confirm_edge_pub_.publish(m);
-  
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_;
-  m.action = visualization_msgs::Marker::ADD;
-  m.type = visualization_msgs::Marker::SPHERE;
-  m.color.r = 1.0;
-  m.color.g = 0.0;
-  m.color.b = 0.0;
-  m.color.a = 1.0;
-  m.scale.x = 0.27;
-  m.scale.y = 0.27;
-  m.scale.z = 0.27;
-  m.id = 1;
-  m.pose.position = gr::ToRosPoint(p1);
-  confirm_edge_pub_.publish(m);
-  m.id = 2;
-  m.pose.position = gr::ToRosPoint(p2);
-  confirm_edge_pub_.publish(m);
-
-  return true;
-}
-
-void LaserLoopClosure::RemoveConfirmFactorVisualization() {
-  visualization_msgs::Marker m;
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_;
-  m.id = 0;
-  m.action = visualization_msgs::Marker::DELETEALL;
-  confirm_edge_pub_.publish(m);
 }
 
 std::string absPath(const std::string &relPath) {
@@ -1597,184 +1528,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   return true;
 }
 
-//Interactive Marker Menu
-void LaserLoopClosure::makeMenuMarker( gu::Transform3 position, const std::string id_number )
-{
-  interactive_markers::MenuHandler menu_handler;
-
-  visualization_msgs::InteractiveMarker int_marker;
-  int_marker.header.frame_id = LaserLoopClosure::fixed_frame_id_;
-  int_marker.scale = 1.0;
-  int_marker.pose = gr::ToRosPose(position);
-  int_marker.name = id_number;
-
-  visualization_msgs::Marker marker;
-  marker.type = visualization_msgs::Marker::SPHERE;
-  marker.scale.x = 0.3;
-  marker.scale.y = 0.3;
-  marker.scale.z = 0.3;
-  marker.color.r = 0.0;
-  marker.color.g = 1.0;
-  marker.color.b = 1.0;
-  marker.color.a = 0.5;
-
-  visualization_msgs::InteractiveMarkerControl control;
-  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MENU;
-  control.name = id_number;
-  control.markers.push_back( marker );
-  control.always_visible = true;
-  int_marker.controls.push_back(control);
-
-  menu_handler.insert(id_number);
-  server->insert(int_marker);
-  menu_handler.apply(*server, int_marker.name );
-  server->applyChanges();
-}
-
 void LaserLoopClosure::PublishPoseGraph() {
-
-  // Publish odometry edges.
-  if (odometry_edge_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 0;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 1.0;
-    m.color.g = 0.0;
-    m.color.b = 0.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
-      unsigned int key1 = odometry_edges_[ii].first;
-      unsigned int key2 = odometry_edges_[ii].second;
-
-      gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-      gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-      m.points.push_back(gr::ToRosPoint(p1));
-      m.points.push_back(gr::ToRosPoint(p2));
-    }
-    odometry_edge_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
-
-  // Publish loop closure edges.
-  if (loop_edge_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 1;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 0.2;
-    m.color.b = 1.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
-      unsigned int key1 = loop_edges_[ii].first;
-      unsigned int key2 = loop_edges_[ii].second;
-
-      gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-      gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-      m.points.push_back(gr::ToRosPoint(p1));
-      m.points.push_back(gr::ToRosPoint(p2));
-    }
-    loop_edge_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
-
-  // Publish nodes in the pose graph.
-  if (graph_node_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 2;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::SPHERE_LIST;
-    m.color.r = 0.3;
-    m.color.g = 0.0;
-    m.color.b = 1.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.1;
-    m.scale.y = 0.1;
-    m.scale.z = 0.1;
-
-    for (const auto& keyed_pose : values_) {
-      gu::Vec3 p = ToGu(values_.at<Pose3>(keyed_pose.key)).translation;
-      m.points.push_back(gr::ToRosPoint(p));
-    }
-    graph_node_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
-
-  // Publish node IDs in the pose graph.
-  if (graph_node_id_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-    m.color.r = 1.0;
-    m.color.g = 1.0;
-    m.color.b = 0.2;
-    m.color.a = 0.8;
-    m.scale.z = 0.02; // Only Scale z is used - height of capital A in the text
-
-    int id_base = 100;
-    int counter = 0;
-    for (const auto& keyed_pose : values_) {
-      gu::Transform3 p = ToGu(values_.at<Pose3>(keyed_pose.key));
-      m.pose = gr::ToRosPose(p);
-      // Display text for the node
-      m.text = std::to_string(keyed_pose.key);
-      m.id = id_base + keyed_pose.key;
-      graph_node_id_pub_.publish(m);
-      // if (counter % 500 == 0) {
-        // throttle
-        // ros::spinOnce();
-        // ros::Duration(0.005).sleep();
-      // }
-    }
-    
-  }
-
-  // Publish keyframe nodes in the pose graph.
-  if (keyframe_node_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 3;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::SPHERE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 1.0;
-    m.color.b = 0.3;
-    m.color.a = 0.8;
-    m.scale.x = 0.25;
-    m.scale.y = 0.25;
-    m.scale.z = 0.25;
-
-    for (const auto& keyed_pose : values_) {
-      if (keyed_scans_.count(keyed_pose.key)) {
-        gu::Vec3 p = ToGu(values_.at<Pose3>(keyed_pose.key)).translation;
-        m.points.push_back(gr::ToRosPoint(p));
-      }
-    }
-    keyframe_node_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
-
   // Draw a sphere around the current sensor frame to show the area in which we
   // are checking for loop closures.
   if (closure_area_pub_.getNumSubscribers() > 0) {
@@ -1834,16 +1588,6 @@ void LaserLoopClosure::PublishPoseGraph() {
 
     // Publish.
     pose_graph_pub_.publish(g);
-  }
-  //Interactive Marker
-  if (publish_interactive_markers_) {
-    for (const auto& keyed_pose : values_) {
-      if (keyed_pose.key % 1 == 0) {
-        gu::Transform3 position = ToGu(values_.at<Pose3>(keyed_pose.key));
-        const std::string id_number = std::to_string(keyed_pose.key);
-        LaserLoopClosure::makeMenuMarker(position, id_number);
-      }
-    }
   }
 }
 
