@@ -165,7 +165,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   estimate_update_timer_ = nl.createTimer(
       estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
 
-  pcld_sub_ = nl.subscribe("pcld", 10, &BlamSlam::PointCloudCallback, this);
+  pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
 
   artifact_sub_ = nl.subscribe("artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
 
@@ -216,7 +216,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
 
-  // Visualize the pose graph and current loop closure radius.
+  // Sends pose graph to visualizer node, if graph has changed.
   loop_closure_.PublishPoseGraph();
 
   // Publish updated map
@@ -275,12 +275,14 @@ bool BlamSlam::SaveGraphService(blam_slam::SaveGraphRequest &request,
 }
 
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
+  // ROS_INFO_STREAM("Received Point Cloud " << msg->header.seq);
   synchronizer_.AddPCLPointCloudMessage(msg);
 }
 
 void BlamSlam::EstimateTimerCallback(const ros::TimerEvent& ev) {
   // Sort all messages accumulated since the last estimate update.
   synchronizer_.SortMessages();
+  
 
   // Iterate through sensor messages, passing to update functions.
   MeasurementSynchronizer::sensor_type type;
@@ -293,6 +295,7 @@ void BlamSlam::EstimateTimerCallback(const ros::TimerEvent& ev) {
         const MeasurementSynchronizer::Message<PointCloud>::ConstPtr& m =
             synchronizer_.GetPCLPointCloudMessage(index);
 
+        // ROS_INFO_STREAM("Processing Point Cloud " << m->msg->header.seq);
         ProcessPointCloudMessage(m->msg);
         break;
       }
@@ -546,8 +549,8 @@ void BlamSlam::PublishArtifact(const Eigen::Vector3d& W_artifact_position,
   // Publish Marker with new position
   visualization_msgs::Marker marker;
   // Set the frame ID and timestamp.  See the TF tutorials for information on these.
-  marker.header.frame_id = fixed_frame_id_;
-  std::cout << "Get marker fixed frame id: " << fixed_frame_id_ << std::endl;
+  marker.header.frame_id = "world";
+  // std::cout << "Get marker fixed frame id: " << fixed_frame_id_ << std::endl;
   marker.header.stamp = ros::Time::now();
 
   // Set the namespace and id for this marker.  This serves to create a unique ID

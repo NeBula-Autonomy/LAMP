@@ -4,6 +4,7 @@
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <std_msgs/Empty.h>
+#include <parameter_utils/ParameterUtils.h>
 #include <visualization_msgs/Marker.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include <interactive_markers/menu_handler.h>
@@ -14,6 +15,8 @@
 #include <fstream>
 
 #include <time.h>
+
+namespace pu = parameter_utils;
 
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
 
@@ -52,6 +55,13 @@ bool PoseGraphVisualizer::Initialize(const ros::NodeHandle &n)
 
 bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle &n)
 {
+  // Load frame ids.
+  if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
+  if (!pu::Get("frame_id/base", base_frame_id_)) return false;
+
+  // Load proximity threshold from LaserLoopClosure node
+  if (!pu::Get("proximity_threshold", proximity_threshold_)) return false;
+
   //Initialize interactive marker server
   if (publish_interactive_markers_)
   {
@@ -82,22 +92,24 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &n)
       nl.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
 
   keyed_scan_sub_ =
-      nl.subscribe<pose_graph_msgs::KeyedScan>("keyed_scans", 10,
+      nl.subscribe<pose_graph_msgs::KeyedScan>("/blam/blam_slam/keyed_scans", 10,
                                                &PoseGraphVisualizer::KeyedScanCallback, this);
   pose_graph_sub_ =
-      nl.subscribe<pose_graph_msgs::PoseGraph>("pose_graph", 10,
+      nl.subscribe<pose_graph_msgs::PoseGraph>("/blam/blam_slam/pose_graph", 10,
                                                &PoseGraphVisualizer::PoseGraphCallback, this);
   pose_graph_edge_sub_ =
-      nl.subscribe<pose_graph_msgs::PoseGraphEdge>("pose_graph_edge", 10,
+      nl.subscribe<pose_graph_msgs::PoseGraphEdge>("/blam/blam_slam/pose_graph_edge", 10,
                                                    &PoseGraphVisualizer::PoseGraphEdgeCallback, this);
   pose_graph_node_sub_ =
-      nl.subscribe<pose_graph_msgs::PoseGraphNode>("pose_graph_node", 10,
+      nl.subscribe<pose_graph_msgs::PoseGraphNode>("/blam/blam_slam/pose_graph_node", 10,
                                                &PoseGraphVisualizer::PoseGraphNodeCallback, this);
 
   return true;
 }
 
 void PoseGraphVisualizer::PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
+  keyed_poses_.clear();
+  odometry_edges_.clear();
   for (const auto &msg : msg->nodes) {
     tf::Pose pose;
     tf::poseMsgToTF(msg.pose, pose);
@@ -108,7 +120,7 @@ void PoseGraphVisualizer::PoseGraphCallback(const pose_graph_msgs::PoseGraph::Co
     odometry_edges_.emplace_back(std::make_pair(msg.key_from, msg.key_to));
   }
 
-  PublishPoseGraph();
+  VisualizePoseGraph();
 }
 
 void PoseGraphVisualizer::PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr &msg) {
@@ -154,7 +166,7 @@ std::string GenerateKey(unsigned int key1, unsigned int key2) {
 
 bool PoseGraphVisualizer::HighlightEdge(unsigned int key1, unsigned int key2)
 {
-  ROS_INFO("Visualizing factor between %i and %i.", key1, key2);
+  ROS_INFO("Highlighting factor between %i and %i.", key1, key2);
 
   if (!KeyExists(key1) || !KeyExists(key2))
   {
@@ -186,7 +198,7 @@ bool PoseGraphVisualizer::HighlightEdge(unsigned int key1, unsigned int key2)
 
 bool PoseGraphVisualizer::HighlightNode(unsigned int key)
 {
-  ROS_INFO("Visualizing node %i.", key);
+  ROS_INFO("Highlighting node %i.", key);
 
   if (!KeyExists(key))
   {
@@ -239,7 +251,7 @@ void PoseGraphVisualizer::UnhighlightNode(unsigned int key)
   highlight_pub_.publish(m);
 }
 
-//Interactive Marker Menu
+// Interactive Marker Menu
 void PoseGraphVisualizer::MakeMenuMarker(const tf::Pose &position, const std::string &id_number)
 {
   interactive_markers::MenuHandler menu_handler;
@@ -273,7 +285,7 @@ void PoseGraphVisualizer::MakeMenuMarker(const tf::Pose &position, const std::st
   server->applyChanges();
 }
 
-void PoseGraphVisualizer::PublishPoseGraph()
+void PoseGraphVisualizer::VisualizePoseGraph()
 {
   // Publish odometry edges.
   if (odometry_edge_pub_.getNumSubscribers() > 0)
@@ -299,8 +311,6 @@ void PoseGraphVisualizer::PublishPoseGraph()
       m.points.push_back(GetPositionMsg(key2));
     }
     odometry_edge_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
   }
 
   // Publish loop closure edges.
@@ -327,8 +337,6 @@ void PoseGraphVisualizer::PublishPoseGraph()
       m.points.push_back(GetPositionMsg(key2));
     }
     loop_edge_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
   }
 
   // Publish nodes in the pose graph.
@@ -353,8 +361,6 @@ void PoseGraphVisualizer::PublishPoseGraph()
       m.points.push_back(GetPositionMsg(keyedPose.first));
     }
     graph_node_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
   }
 
   // Publish node IDs in the pose graph.
@@ -381,11 +387,6 @@ void PoseGraphVisualizer::PublishPoseGraph()
       m.text = std::to_string(keyedPose.first);
       m.id = id_base + keyedPose.first;
       graph_node_id_pub_.publish(m);
-      // if (counter % 500 == 0) {
-      // throttle
-      // ros::spinOnce();
-      // ros::Duration(0.005).sleep();
-      // }
     }
   }
 
@@ -406,60 +407,34 @@ void PoseGraphVisualizer::PublishPoseGraph()
     m.scale.y = 0.25;
     m.scale.z = 0.25;
 
-    for (const auto &keyedScan : keyed_scans_)
-    {
+    for (const auto &keyedScan : keyed_scans_) {
       m.points.push_back(GetPositionMsg(keyedScan.first));
     }
     keyframe_node_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
   }
 
+  
   // Draw a sphere around the current sensor frame to show the area in which we
   // are checking for loop closures.
-  // if (closure_area_pub_.getNumSubscribers() > 0)
-  // {
-  //   visualization_msgs::Marker m;
-  //   m.header.frame_id = base_frame_id_;
-  //   m.ns = base_frame_id_;
-  //   m.id = 4;
-  //   m.action = visualization_msgs::Marker::ADD;
-  //   m.type = visualization_msgs::Marker::SPHERE;
-  //   m.color.r = 0.0;
-  //   m.color.g = 0.4;
-  //   m.color.b = 0.8;
-  //   m.color.a = 0.4;
-  //   m.scale.x = proximity_threshold_ * 2.0;
-  //   m.scale.y = proximity_threshold_ * 2.0;
-  //   m.scale.z = proximity_threshold_ * 2.0;
-
-
-
-
-
-
-  //   // TODO do we need to set this???
-  //   // m.pose = gr::ToRosPose(gu::Transform3::Identity());
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  //   closure_area_pub_.publish(m);
-  //   // ros::spinOnce();
-  //   // ros::Duration(0.005).sleep();
-  // }
+  if (closure_area_pub_.getNumSubscribers() > 0) {
+    visualization_msgs::Marker m;
+    m.header.frame_id = base_frame_id_;
+    m.ns = base_frame_id_;
+    m.id = 4;
+    m.action = visualization_msgs::Marker::ADD;
+    m.type = visualization_msgs::Marker::SPHERE;
+    m.color.r = 0.0;
+    m.color.g = 0.4;
+    m.color.b = 0.8;
+    m.color.a = 0.4;
+    m.scale.x = proximity_threshold_ * 2.0;
+    m.scale.y = proximity_threshold_ * 2.0;
+    m.scale.z = proximity_threshold_ * 2.0;
+    m.pose.position.x = 0;
+    m.pose.position.y = 0;
+    m.pose.position.z = 0;
+    closure_area_pub_.publish(m);
+  }
 
   //Interactive Marker
   if (publish_interactive_markers_)
@@ -470,6 +445,9 @@ void PoseGraphVisualizer::PublishPoseGraph()
       {
         MakeMenuMarker(keyed_pose.second, std::to_string(keyed_pose.first));
       }
+    }
+    if (server != nullptr){
+      server->applyChanges();
     }
   }
 }

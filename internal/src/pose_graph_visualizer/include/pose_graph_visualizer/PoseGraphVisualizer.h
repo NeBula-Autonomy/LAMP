@@ -25,11 +25,6 @@ class PoseGraphVisualizer {
   // Typedef for stored point clouds.
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
-  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
-  void PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr &msg);
-  void PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr &msg);
-
   void MakeMenuMarker(const tf::Pose &position, const std::string &id_number);
 
   // Visualizes an edge between the two keys.
@@ -44,11 +39,16 @@ class PoseGraphVisualizer {
   // Removes all highlighting visualizations if the key is zero.
   void UnhighlightNode(unsigned int key);
 
-  void PublishPoseGraph();
+  void VisualizePoseGraph();
 
  private:
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
+
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
+  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+  void PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr &msg);
+  void PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr &msg);
 
   geometry_msgs::Point GetPositionMsg(unsigned int key) const;
 
@@ -76,8 +76,6 @@ class PoseGraphVisualizer {
   ros::Publisher graph_node_id_pub_;
   ros::Publisher keyframe_node_pub_;
   ros::Publisher closure_area_pub_;
-  ros::Publisher scan1_pub_;
-  ros::Publisher scan2_pub_;
   ros::Publisher highlight_pub_;
 
   // Subscribers.
@@ -91,6 +89,9 @@ class PoseGraphVisualizer {
   std::vector<Edge> loop_edges_;
 
   bool publish_interactive_markers_{true};
+
+  // Proximity threshold used by LaserLoopClosureNode.
+  double proximity_threshold_{1};
 };
 
 #endif

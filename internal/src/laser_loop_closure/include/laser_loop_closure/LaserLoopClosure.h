@@ -70,7 +70,7 @@
 #include <vector>
 
 // default is isam, LM for LevenbergMarquardt
-#define solver LM 
+// #define solver LM 
 
 class GenericSolver {
 public:
@@ -142,7 +142,7 @@ class LaserLoopClosure {
   geometry_utils::Transform3 GetPoseAtTime(const ros::Time& stamp) const;
 
   // Publish pose graph for visualization.
-  void PublishPoseGraph();
+  void PublishPoseGraph(bool only_publish_if_changed = true);
 
   // Add factor between the two keys to connect them. This function is
   // designed for a scenario where a human operator can manually perform
@@ -244,6 +244,10 @@ class LaserLoopClosure {
   double icp_corr_dist_;
   unsigned int icp_iterations_;
 
+  // Indicates whether the pose graph has been updated
+  // since the last PublishPoseGraph() call.
+  bool has_changed_{false};
+
   // ISAM2 optimizer object, and best guess pose values.
   #ifdef solver
   std::unique_ptr<GenericSolver> isam_;
@@ -259,7 +263,6 @@ class LaserLoopClosure {
   std::string base_frame_id_;
 
   // Visualization publishers.
-  ros::Publisher closure_area_pub_;
   ros::Publisher scan1_pub_;
   ros::Publisher scan2_pub_;
 

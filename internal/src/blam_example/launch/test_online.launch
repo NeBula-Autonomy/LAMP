@@ -36,7 +36,7 @@
       <rosparam file="$(find blam_example)/config/blam_rates.yaml"/>
 
       <!-- Frames -->
-      <rosparam file="$(find blam_example)/config/blam_frames.yaml"/>
+      <rosparam file="$(find blam_example)/config/blam_old_frames.yaml"/>
 
       <!-- Point cloud filter -->
       <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
@@ -57,13 +57,20 @@
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
     </node>
 
+    <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"
           name="pose_graph_visualizer"
           type="pose_graph_visualizer_node"
-          output="screen"/>
+          output="screen">
+      <!-- Frames -->
+      <rosparam file="$(find blam_example)/config/blam_old_frames.yaml"/>
+      
+      <!-- Loop closure -->
+      <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+    </node>
   </group>
 
   <!-- launch rviz  -->
-  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find blam_example)/rviz/lidar_slam_husky.rviz" />
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find blam_example)/rviz/lidar_slam.rviz" />
 
 </launch>

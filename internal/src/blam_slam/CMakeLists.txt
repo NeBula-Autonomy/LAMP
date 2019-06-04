@@ -1,16 +1,18 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(blam_slam)
 
-IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE Release)
-ENDIF()
+#IF(NOT CMAKE_BUILD_TYPE)
+#  SET(CMAKE_BUILD_TYPE Release)
+#ENDIF()
+
+SET(CMAKE_BUILD_TYPE Release)
 
 find_package(GTSAM REQUIRED)
 if (NOT GTSAM_FOUND)
   message(FATAL_ERROR "This program requires the GTSAM library.")
 endif(NOT GTSAM_FOUND)
 
-FIND_PACKAGE(Boost 1.58 REQUIRED COMPONENTS
+FIND_PACKAGE(Boost REQUIRED
   date_time
   serialization
   thread
@@ -61,6 +63,8 @@ catkin_package(
     pcl_conversions
     core_msgs
     geometry_msgs
+  DEPENDS
+    Boost
 )
 
 include(CheckCXXCompilerFlag)

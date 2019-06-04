@@ -1,8 +1,4 @@
-# B(erkeley) L(ocalization) A(nd) M(apping)!
-
-![alt text](https://github.com/erik-nelson/blam/raw/master/blam_mosaic.png)
-
-***BLAM!*** is an open-source software package for LiDAR-based real-time 3D localization and mapping. ***BLAM!*** is developed by Erik Nelson from the Berkeley AI Research Laboratory ([BAIR](http://bair.berkeley.edu)). See https://youtu.be/08GTGfNneCI for a video example.
+![LAMP-logo](https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_blam/raw/master/LAMP-logo.png)
 
 ## Build Instructions
 Build this package in a catkin workspace 
@@ -98,6 +94,14 @@ Also, when running on a bagfile, a static transform publisher is needed, to take
 static_transform_publisher 0 0 0 0 0 0 1 /husky/base_link /velodyne
 ```
 
+In addition, a static transform publisher is needed to take place of the tf from world to blam:
+
+```bash
+static_transform_publisher 0 0 0 0 0 0 1 /world /husky/blam
+```
+**Note:** 
+If you are using the ``run_blam.sh`` script, there is no need to run the static transform publisher from `/world` to `/husky/blam` as this is already captured in the script.
+
 To visualize in RViz, use the husky rviz file:
 ```bash
 rviz -d {filepath}/localizer_blam/internal/src/blam_example/rviz/lidar_slam_husky.rviz
@@ -107,6 +111,55 @@ Alternatively, just run the tmux script (after modifying the parameters at the t
 ```bash
 ./run_blam.sh
 ```
+
+## (Optional) Running TBB and MKL:
+Follow these steps for downloading MKL package:
+
+Downloading the GnuPG key first and add it to the keyring:
+```
+cd /tmp
+wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
+apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
+sh -c 'echo deb https://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'
+```
+
+After this step for avoiding any error update your repository once more.
+```
+apt-get update
+```
+
+And then:
+```
+apt-get install intel-mkl-64bit-2018.2-046
+```
+This is the 64-bit of the MKL.
+
+**Note:**
+MKL package at least requires 500MB packages. If you are running out of space, it is not required to risk it.
+
+
+
+For the purpose of enabling the TBB package follow these commands:
+```
+sudo apt-get install libtbb-dev
+```
+
+and then
+
+```
+cd ~/ws/gtsam/cmake
+```
+
+Add these two commands to the CMakeLists.txt of gtsam and then rebuild your gtsam.
+```
+FindMKL.cmake
+FindTBB.cmake 
+```
+
+**Note:** By applying both the packages, there are still crashes you will be seeing. It is provided by the developer that these two packages are still under the development.
+
+**Note:** There are not consistancy in TBB package. %70 cases used the MKL and TBB and perfectly working with enhancement in lowering the computation. There are cases of software crashing.
+
 
 # OLD
 To run in online mode (e.g. by replaying a bag file from another terminal or
