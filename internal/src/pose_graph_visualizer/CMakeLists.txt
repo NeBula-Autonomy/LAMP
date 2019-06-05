@@ -20,22 +20,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   pcl_ros
   interactive_markers
+  message_generation
 )
 
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS
-    roscpp
-    geometry_utils
-    parameter_utils
-    point_cloud_filter
-    pose_graph_msgs
-    visualization_msgs
-    std_msgs
-    pcl_ros
-    interactive_markers
-)
+add_service_files(FILES HighlightEdge.srv HighlightNode.srv)
+generate_messages()
 
 find_package(PCL 1.7 REQUIRED)
 link_directories(${PCL_LIBRARY_DIRS})

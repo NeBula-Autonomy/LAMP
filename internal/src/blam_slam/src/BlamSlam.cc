@@ -190,7 +190,8 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
     ROS_WARN("Cannot add factor because the request is not confirmed.");
-    return false;
+    response.success = false;
+    return true;
   }
 
   response.success = loop_closure_.AddFactor(
@@ -232,7 +233,8 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
     ROS_WARN("Cannot remove factor because the request is not confirmed.");
-    return false;
+    response.success = false;
+    return true;
   }
 
   response.success = loop_closure_.RemoveFactor(

@@ -1,26 +1,27 @@
 #!/usr/bin/env python
 import rospy, sys
 from blam_slam.srv import RemoveFactor
+from pose_graph_visualizer.srv import HighlightEdge
 from add_factor import yes_or_no
 
 def connect(key_from, key_to):
     rospy.init_node('remove_factor_client')
     remove_factor = rospy.ServiceProxy('/blam/blam_slam/remove_factor', RemoveFactor)
-    response = remove_factor(key_from, key_to, False)
-    if response.confirm:
-        if response.success:
-            if yes_or_no('The factor to be removed from the factor graph is now visualized in RViz.\nDo you confirm the removal?'):
-                response = remove_factor(key_from, key_to, True)
-                if response.success:
-                    print('Successfully removed a factor between %i and %i from the graph.' % (key_from, key_to))
-                else:
-                    print('An error occurred while trying to remove a factor between %i and %i.' % (key_from, key_to))
+    highlight_edge = rospy.ServiceProxy('/blam/pose_graph_visualizer/highlight_edge', HighlightEdge)
+    response = highlight_edge(key_from, key_to, True)
+    if response.success:
+        if yes_or_no('The factor to be removed from the factor graph is now visualized in RViz.\nDo you confirm the removal?'):
+            response = remove_factor(key_from, key_to, True)
+            highlight_edge(key_from, key_to, False)  # remove edge visualization
+            if response.success:
+                print('Successfully removed a factor between %i and %i from the graph.' % (key_from, key_to))
             else:
-                print('Aborted manual loop closure.')
-                remove_factor(0, 0, False)  # remove edge visualization
+                sys.exit('An error occurred while trying to remove a factor between %i and %i.' % (key_from, key_to))
         else:
-            print('Error: One or more of the keys %i and %i do not exist, or they are adjacent.' % (key_from, key_to))
-            remove_factor(0, 0, False)  # remove edge visualization
+            print('Aborted.')
+            highlight_edge(key_from, key_to, False)  # remove edge visualization
+    else:
+        sys.exit('Error: The factor between keys %i and %i could not be visualized. Make sure the keys exist.' % (key_from, key_to))
 
 if __name__ == '__main__':
     try:

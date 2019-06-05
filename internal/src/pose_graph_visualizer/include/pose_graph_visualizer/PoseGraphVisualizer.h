@@ -8,6 +8,9 @@
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 
+#include <pose_graph_visualizer/HighlightNode.h>
+#include <pose_graph_visualizer/HighlightEdge.h>
+
 #include <pcl_ros/point_cloud.h>
 
 #include <tf/transform_datatypes.h>
@@ -50,10 +53,15 @@ class PoseGraphVisualizer {
   void PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr &msg);
   void PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr &msg);
 
+  bool HighlightNodeService(pose_graph_visualizer::HighlightNodeRequest &request,
+                            pose_graph_visualizer::HighlightNodeResponse &response);
+  bool HighlightEdgeService(pose_graph_visualizer::HighlightEdgeRequest &request,
+                            pose_graph_visualizer::HighlightEdgeResponse &response);
+
   geometry_msgs::Point GetPositionMsg(unsigned int key) const;
 
   inline bool KeyExists(unsigned int key) const {
-    return keyed_stamps_.find(key) != keyed_stamps_.end();
+    return keyed_poses_.find(key) != keyed_poses_.end();
   }
 
   // Node name.
@@ -83,6 +91,10 @@ class PoseGraphVisualizer {
   ros::Subscriber pose_graph_sub_;
   ros::Subscriber pose_graph_node_sub_;
   ros::Subscriber pose_graph_edge_sub_;
+
+  // Services.
+  ros::ServiceServer highlight_node_srv_;
+  ros::ServiceServer highlight_edge_srv_;
 
   typedef std::pair<unsigned int, unsigned int> Edge;
   std::vector<Edge> odometry_edges_;

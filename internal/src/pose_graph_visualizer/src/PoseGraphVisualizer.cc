@@ -76,6 +76,11 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &n)
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
+  highlight_node_srv_ = nl.advertiseService("highlight_node",
+                                            &PoseGraphVisualizer::HighlightNodeService, this);
+  highlight_edge_srv_ = nl.advertiseService("highlight_edge",
+                                            &PoseGraphVisualizer::HighlightEdgeService, this);
+
   odometry_edge_pub_ =
       nl.advertise<visualization_msgs::Marker>("odometry_edges", 10, false);
   loop_edge_pub_ =
@@ -236,6 +241,9 @@ void PoseGraphVisualizer::UnhighlightEdge(unsigned int key1, unsigned int key2)
   else
     m.action = visualization_msgs::Marker::DELETE;
   highlight_pub_.publish(m);
+
+  UnhighlightNode(key1);
+  UnhighlightNode(key2);
 }
 
 void PoseGraphVisualizer::UnhighlightNode(unsigned int key)
@@ -249,6 +257,30 @@ void PoseGraphVisualizer::UnhighlightNode(unsigned int key)
   else
     m.action = visualization_msgs::Marker::DELETE;
   highlight_pub_.publish(m);
+}
+
+bool PoseGraphVisualizer::HighlightNodeService(
+  pose_graph_visualizer::HighlightNodeRequest &request,
+  pose_graph_visualizer::HighlightNodeResponse &response) {
+  if (request.highlight) {
+    response.success = HighlightNode(request.key);
+  } else {
+    UnhighlightNode(request.key);
+    response.success = true;
+  }
+  return true;
+}
+
+bool PoseGraphVisualizer::HighlightEdgeService(
+  pose_graph_visualizer::HighlightEdgeRequest &request,
+  pose_graph_visualizer::HighlightEdgeResponse &response) {
+  if (request.highlight) {
+    response.success = HighlightEdge(request.key_from, request.key_to);
+  } else {
+    UnhighlightEdge(request.key_from, request.key_to);
+    response.success = true;
+  }
+  return true;
 }
 
 // Interactive Marker Menu

@@ -1,38 +1,40 @@
 #!/usr/bin/env python
 import rospy, sys
 from blam_slam.srv import AddFactor
+from pose_graph_visualizer.srv import HighlightEdge
 
 def yes_or_no(question):
     answer = raw_input(question + " (y/n): ").lower().strip()
     print("")
-    while not(answer == "y" or answer == "yes" or \
-    answer == "n" or answer == "no"):
-        print("Input yes or no")
+    while answer.lower() not in ("y", "yes", "n", "no"):
+        print("Input yes or no.")
         answer = raw_input(question + " (y/n):").lower().strip()
         print("")
-    if answer[0] == "y":
+    if answer[0].lower() == "y":
         return True
     else:
         return False
 
 def connect(key_from, key_to, quat):
     rospy.init_node('add_factor_client')
-    add_factor = rospy.ServiceProxy('/husky/blam_slam/add_factor', AddFactor)
-    response = add_factor(key_from, key_to, quat[0], quat[1], quat[2], quat[3], False)
-    if response.confirm:
-        if response.success:
-            if yes_or_no('The factor to be added to the factor graph is now visualized in RViz.\nDo you confirm this loop closure?'):
-                response = add_factor(key_from, key_to, quat[0], quat[1], quat[2], quat[3], True)
-                if response.success:
-                    print('Successfully added a factor between %i and %i to the graph.' % (key_from, key_to))
-                else:
-                    print('An error occurred while trying to add a factor between %i and %i.' % (key_from, key_to))
+    # TODO revert namespace
+    # add_factor = rospy.ServiceProxy('/husky/blam_slam/add_factor', AddFactor)
+    add_factor = rospy.ServiceProxy('/blam/blam_slam/add_factor', AddFactor)
+    highlight_edge = rospy.ServiceProxy('/blam/pose_graph_visualizer/highlight_edge', HighlightEdge)
+    response = highlight_edge(key_from, key_to, True)
+    if response.success:
+        if yes_or_no('The factor to be added to the factor graph is now visualized in RViz.\nDo you confirm this loop closure?'):
+            response = add_factor(key_from, key_to, quat[0], quat[1], quat[2], quat[3], True)
+            highlight_edge(key_from, key_to, False)  # remove edge visualization
+            if response.success:
+                print('Successfully added a factor between %i and %i to the graph.' % (key_from, key_to))
             else:
-                print('Aborted manual loop closure.')
-                add_factor(0, 0, 0, 0, 0, 0, False)  # remove edge visualization
+                sys.exit('An error occurred while trying to add a factor between %i and %i.' % (key_from, key_to))
         else:
-            print('Error: One or more of the keys %i and %i do not exist.' % (key_from, key_to))
-            add_factor(0, 0, 0, 0, 0, 0, False)  # remove edge visualization
+            print('Aborted.')
+            highlight_edge(key_from, key_to, False)  # remove edge visualization
+    else:
+        sys.exit('Error: The factor between keys %i and %i could not be visualized. Make sure the keys exist.' % (key_from, key_to))
 
 if __name__ == '__main__':
     try:
@@ -85,6 +87,6 @@ if __name__ == '__main__':
                 quat = transforms3d.euler.euler2quat(yaw, pitch, roll, sys.argv[7])
                 connect(int(sys.argv[1]), int(sys.argv[2]), quat)
             else:
-                print("Unknown argument: \"%s\"" % sys.argv[3])
+                sys.exit("Unknown argument: \"%s\"" % sys.argv[3])
 
     except rospy.ROSInterruptException: pass
