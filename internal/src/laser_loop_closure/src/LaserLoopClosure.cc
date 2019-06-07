@@ -2317,7 +2317,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       edge.key_from = odometry_edges_[ii].first;
       edge.key_to = odometry_edges_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::ODOM;
-      // Get edge transform 
+      // Get edge transform and covariance
+      // TODO
       g.edges.push_back(edge);
     }
 
@@ -2325,6 +2326,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       edge.key_from = loop_edges_[ii].first;
       edge.key_to = loop_edges_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+      // Get edge transform and covariance
+      // TODO
       g.edges.push_back(edge);
     }
 
@@ -2332,6 +2335,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       edge.key_from = artifact_edges_[ii].first;
       edge.key_to = artifact_edges_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+      // Get edge transform and covariance
+      // TODO
       g.edges.push_back(edge);
     }
 
@@ -2339,6 +2344,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       edge.key_from = uwb_edges_[ii].first;
       edge.key_to = uwb_edges_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::UWB;
+      // Get edge transform and covariance
+      // TODO
       g.edges.push_back(edge);
     }
 
