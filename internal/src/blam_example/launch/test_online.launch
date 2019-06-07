@@ -72,7 +72,7 @@
           type="pose_graph_visualizer_node"
           output="screen">
       <!-- Frames -->
-      <rosparam file="$(find blam_example)/config/blam_old_frames.yaml"/>
+      <rosparam file="$(find blam_example)/config/blam_frames.yaml" subst_value="true"/>
       
       <!-- Loop closure -->
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>

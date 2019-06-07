@@ -32,18 +32,18 @@ geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(unsigned int key) const
   return tfpoint2msg(keyed_poses_.at(key).getOrigin());
 }
 
-bool PoseGraphVisualizer::Initialize(const ros::NodeHandle &n)
+bool PoseGraphVisualizer::Initialize(const ros::NodeHandle &nh, const ros::NodeHandle &pnh)
 {
   ROS_INFO("PoseGraphVisualizer: Initializing");
-  name_ = ros::names::append(n.getNamespace(), "PoseGraphVisualizer");
+  name_ = ros::names::append(pnh.getNamespace(), "PoseGraphVisualizer");
 
-  if (!LoadParameters(n))
+  if (!LoadParameters(pnh))
   {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
     return false;
   }
 
-  if (!RegisterCallbacks(n))
+  if (!RegisterCallbacks(nh, pnh))
   {
     ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
     return false;
@@ -71,42 +71,44 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle &n)
   return true;
 }
 
-bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &n)
+bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_, const ros::NodeHandle &pnh_)
 {
   // Create a local nodehandle to manage callback subscriptions.
-  ros::NodeHandle nl(n);
+  ros::NodeHandle pnh(pnh_);
 
-  highlight_node_srv_ = nl.advertiseService("highlight_node",
+  ros::NodeHandle nh(nh_);
+
+  highlight_node_srv_ = pnh.advertiseService("highlight_node",
                                             &PoseGraphVisualizer::HighlightNodeService, this);
-  highlight_edge_srv_ = nl.advertiseService("highlight_edge",
+  highlight_edge_srv_ = pnh.advertiseService("highlight_edge",
                                             &PoseGraphVisualizer::HighlightEdgeService, this);
 
   odometry_edge_pub_ =
-      nl.advertise<visualization_msgs::Marker>("odometry_edges", 10, false);
+      pnh.advertise<visualization_msgs::Marker>("odometry_edges", 10, false);
   loop_edge_pub_ =
-      nl.advertise<visualization_msgs::Marker>("loop_edges", 10, false);
+      pnh.advertise<visualization_msgs::Marker>("loop_edges", 10, false);
   graph_node_pub_ =
-      nl.advertise<visualization_msgs::Marker>("graph_nodes", 10, false);
+      pnh.advertise<visualization_msgs::Marker>("graph_nodes", 10, false);
   graph_node_id_pub_ =
-      nl.advertise<visualization_msgs::Marker>("graph_node_ids", 10, false);
+      pnh.advertise<visualization_msgs::Marker>("graph_node_ids", 10, false);
   keyframe_node_pub_ =
-      nl.advertise<visualization_msgs::Marker>("keyframe_nodes", 10, false);
+      pnh.advertise<visualization_msgs::Marker>("keyframe_nodes", 10, false);
   closure_area_pub_ =
-      nl.advertise<visualization_msgs::Marker>("closure_area", 10, false);
+      pnh.advertise<visualization_msgs::Marker>("closure_area", 10, false);
   highlight_pub_ =
-      nl.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
+      pnh.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
 
   keyed_scan_sub_ =
-      nl.subscribe<pose_graph_msgs::KeyedScan>("/blam/blam_slam/keyed_scans", 10,
+      nh.subscribe<pose_graph_msgs::KeyedScan>("blam_slam/keyed_scans", 10,
                                                &PoseGraphVisualizer::KeyedScanCallback, this);
   pose_graph_sub_ =
-      nl.subscribe<pose_graph_msgs::PoseGraph>("/blam/blam_slam/pose_graph", 10,
+      nh.subscribe<pose_graph_msgs::PoseGraph>("blam_slam/pose_graph", 10,
                                                &PoseGraphVisualizer::PoseGraphCallback, this);
   pose_graph_edge_sub_ =
-      nl.subscribe<pose_graph_msgs::PoseGraphEdge>("/blam/blam_slam/pose_graph_edge", 10,
+      nh.subscribe<pose_graph_msgs::PoseGraphEdge>("blam_slam/pose_graph_edge", 10,
                                                    &PoseGraphVisualizer::PoseGraphEdgeCallback, this);
   pose_graph_node_sub_ =
-      nl.subscribe<pose_graph_msgs::PoseGraphNode>("/blam/blam_slam/pose_graph_node", 10,
+      nh.subscribe<pose_graph_msgs::PoseGraphNode>("blam_slam/pose_graph_node", 10,
                                                &PoseGraphVisualizer::PoseGraphNodeCallback, this);
 
   return true;

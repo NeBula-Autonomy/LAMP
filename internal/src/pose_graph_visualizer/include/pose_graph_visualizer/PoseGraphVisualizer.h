@@ -23,7 +23,7 @@ class PoseGraphVisualizer {
   PoseGraphVisualizer() = default;
   ~PoseGraphVisualizer() = default;
 
-  bool Initialize(const ros::NodeHandle& n);
+  bool Initialize(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
   // Typedef for stored point clouds.
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -46,7 +46,7 @@ class PoseGraphVisualizer {
 
  private:
   bool LoadParameters(const ros::NodeHandle& n);
-  bool RegisterCallbacks(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);

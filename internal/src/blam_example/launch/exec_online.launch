@@ -82,7 +82,7 @@
  
 
     <!-- Republish node with different frame_id -->
-    <!-- <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
+    <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
           args="standalone pcl/PassThrough">
       <remap from="~input" to="velodyne_points"/>
       <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
@@ -93,7 +93,7 @@
         filter_limit_max: 100
         output_frame: $(arg robot_namespace)/base_link
       </rosparam>
-    </node> -->
+    </node>
 
 
     <!-- PC throttling and filtering -->
@@ -127,7 +127,13 @@
     <node pkg="pose_graph_visualizer"
           name="pose_graph_visualizer"
           type="pose_graph_visualizer_node"
-          output="screen"/>
+          output="screen">
+      <!-- Frames -->
+      <rosparam file="$(find blam_example)/config/blam_frames.yaml" subst_value="true"/>
+      
+      <!-- Loop closure -->
+      <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+    </node>
 
   </group>
 
