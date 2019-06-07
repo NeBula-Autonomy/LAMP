@@ -1,0 +1,5 @@
+frame_id:
+  fixed: world
+  base: base_link
+  odometry: base_link_blam_odometry
+  artifacts_in_global: true

@@ -11,7 +11,7 @@
   <arg name="map_topic_output" default="blam_slam/octree_map_downsampled"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
-  <arg name="load_pose_graph_file" default="" /> 
+  <arg name="load_pose_graph_file" default=""/> 
 
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->
@@ -82,7 +82,7 @@
  
 
     <!-- Republish node with different frame_id -->
-    <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
+    <!-- <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
           args="standalone pcl/PassThrough">
       <remap from="~input" to="velodyne_points"/>
       <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
@@ -93,7 +93,7 @@
         filter_limit_max: 100
         output_frame: $(arg robot_namespace)/base_link
       </rosparam>
-    </node>
+    </node> -->
 
 
     <!-- PC throttling and filtering -->
@@ -122,6 +122,12 @@
       <param name="map_frame" value="$(arg robot_namespace)/map"/>
       <param name="blam_frame" value="$(arg robot_namespace)/blam"/>
     </node>
+
+    <!-- Pose graph visualization -->
+    <node pkg="pose_graph_visualizer"
+          name="pose_graph_visualizer"
+          type="pose_graph_visualizer_node"
+          output="screen"/>
 
   </group>
 
