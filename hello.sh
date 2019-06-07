@@ -1,7 +1,7 @@
 
 #!/bin/bash
 SESSION=BLAM
-WORKSPACE=~/lamp_ws
+WORKSPACE=~/blam_ws
 BAGFILE=~/bags/Eagle_mine_standard/Eagle_standard.bag
 #BAGFILE=/home/costar/alex/198_multi_level/198_multi_level_3*
 
