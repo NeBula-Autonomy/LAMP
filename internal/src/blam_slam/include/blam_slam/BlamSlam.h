@@ -44,6 +44,8 @@
 #include <blam_slam/SaveGraph.h>
 #include <blam_slam/Restart.h>
 #include <blam_slam/LoadGraph.h>
+#include <blam_slam/BatchLoopClosure.h>
+
 
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -100,9 +102,14 @@ class BlamSlam {
   bool RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                            blam_slam::RemoveFactorResponse &response);
 
-  // Generic restart service - for restarting from last saved posegraph
+  // Service for restarting from last saved posegraph
   bool RestartService(blam_slam::RestartRequest &request,
                         blam_slam::RestartResponse &response);
+
+  // Service for rinning lazer loop closure again
+  bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
+                        blam_slam::BatchLoopClosureResponse &response);
+
 
   bool use_chordal_factor_;
 
@@ -144,6 +151,8 @@ class BlamSlam {
   ros::ServiceServer save_graph_srv_;
   ros::ServiceServer restart_srv_;
   ros::ServiceServer load_graph_srv_;
+  ros::ServiceServer batch_loop_closure_srv_;
+
 
   // Names of coordinate frames.
   std::string fixed_frame_id_;

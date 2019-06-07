@@ -177,7 +177,12 @@ class LaserLoopClosure {
   // Publish artifacts for visualization. 
   void PublishArtifacts(gtsam::Key artifact_key = gtsam::Key(gtsam::Symbol('z',0)));
 
+  // Changes the keynumber of key_
   bool ChangeKeyNumber();
+
+  // Function to search for loopclosures over the whole posegraph
+  bool BatchLoopClosure();
+
   
   // makeMenuMaker
   void makeMenuMarker( geometry_utils::Transform3 position, const std::string id_number) ;
@@ -207,6 +212,9 @@ class LaserLoopClosure {
 
   //Erase the posegraph
   bool ErasePosegraph();
+
+  //Test to not add lazerloopclosures close to a manual loop closure
+  bool BatchLoopClosingTest(unsigned int key, unsigned int other_key);
 
   // Saves pose graph and accompanying point clouds to a zip file.
   bool Save(const std::string &zipFilename) const;
@@ -299,6 +307,8 @@ class LaserLoopClosure {
   double relinearize_threshold_;
   bool use_chordal_factor_;
   bool publish_interactive_markers_;
+  std::vector<unsigned int> manual_loop_keys_;
+
 
   // Sanity check parameters
   bool b_check_deltas_; 
