@@ -476,7 +476,7 @@ bool LaserLoopClosure::AddBetweenFactor(
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
     key_ = 10000;
-}
+} 
 
 bool LaserLoopClosure::AddBetweenChordalFactor(
     const gu::Transform3& delta, const LaserLoopClosure::Mat1212& covariance,
@@ -992,8 +992,17 @@ bool LaserLoopClosure::FindLoopClosures(
       continue;
 
     // Don't compare against poses that were recently collected.
-    if (std::fabs(key - other_key) < skip_recent_poses_)
-      continue;
+    if (key > other_key){
+      // Don't compare against poses that were recently collected.
+      if (std::fabs(key - other_key) < skip_recent_poses_)
+        continue;
+    }
+
+    if (key < other_key){
+      //loopclosure can only occur from high to low value
+        continue;
+    }
+
 
     // Don't check for loop closures against poses that are not keyframes.
     if (!keyed_scans_.count(other_key))
@@ -1004,6 +1013,18 @@ bool LaserLoopClosure::FindLoopClosures(
       ROS_WARN("Key %u does not exist in loop closure search (other key)", other_key);
       return false;
     }
+    
+    // This only occurs if you add any manual loop closures
+    if (manual_loop_keys_.size() >= 1)
+    {
+      if (!BatchLoopClosingTest(key, other_key))
+      {
+        continue;
+      }
+    }
+
+
+
     const gu::Transform3 pose2 = ToGu(values_.at<Pose3>(other_key));
     const gu::Transform3 difference = gu::PoseDelta(pose1, pose2);
     if (difference.translation.Norm() < proximity_threshold_) {
@@ -1115,7 +1136,6 @@ bool LaserLoopClosure::FindLoopClosures(
       values_backup_ = values_;
     } // end of if statement 
   } // end of for loop
-  
   return closed_loop;
 }
 
@@ -1755,6 +1775,11 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       // Send an empty message notifying any subscribers that we found a loop
       // closure.
       loop_closure_notifier_pub_.publish(std_msgs::Empty());
+
+      // Store manual loop keys to not interfere with batch loop closure.
+      manual_loop_keys_.push_back(key1);
+      manual_loop_keys_.push_back(key2);
+
     }
     else{
       // Placeholder visualization for artifacts
@@ -2189,6 +2214,45 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   PublishPoseGraph();
   return true;
 }
+
+bool LaserLoopClosure::BatchLoopClosure() {
+
+  save_posegraph_backup_ = false;
+  check_for_loop_closures_ = true;
+  bool found_loop = false;
+  for (const auto& keyed_pose : values_) {
+    std::vector<unsigned int> closure_keys;
+    if (FindLoopClosures(keyed_pose.key, &closure_keys)){
+      found_loop = true;
+    }
+  }
+
+  // Update the posegraph after looking for loop closures and performing optimization
+  PublishPoseGraph();
+  if (found_loop == true)
+    return true;
+  else
+    return false;
+}
+
+bool LaserLoopClosure::BatchLoopClosingTest(unsigned int key, unsigned int other_key){
+  for (int i = 0; i <= manual_loop_keys_.size(); i++){
+    if ((key > manual_loop_keys_[i]) && ((std::fabs(key - manual_loop_keys_[i]) < poses_before_reclosing_))){
+      return false;
+    }
+    if ((other_key > manual_loop_keys_[i]) && ((std::fabs(other_key - manual_loop_keys_[i]) < poses_before_reclosing_))){
+      return false;
+    }
+    if ((key < manual_loop_keys_[i]) && ((std::fabs(manual_loop_keys_[i] - key) < poses_before_reclosing_))){
+      return false;
+    }
+    if ((other_key < manual_loop_keys_[i]) && ((std::fabs(manual_loop_keys_[i] - other_key) < poses_before_reclosing_))){
+      return false;
+    }
+  }
+    return true;
+}
+
 
 bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
   if (only_publish_if_changed && !has_changed_)

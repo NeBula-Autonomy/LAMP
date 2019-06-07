@@ -43,7 +43,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-add_service_files(FILES AddFactor.srv RemoveFactor.srv SaveGraph.srv Restart.srv LoadGraph.srv)
+add_service_files(FILES AddFactor.srv RemoveFactor.srv SaveGraph.srv Restart.srv LoadGraph.srv BatchLoopClosure.srv)
 generate_messages()
 
 catkin_package(

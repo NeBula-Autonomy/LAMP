@@ -44,6 +44,8 @@
 #include <blam_slam/SaveGraph.h>
 #include <blam_slam/Restart.h>
 #include <blam_slam/LoadGraph.h>
+#include <blam_slam/BatchLoopClosure.h>
+
 
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -107,12 +109,16 @@ class BlamSlam {
   bool RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                            blam_slam::RemoveFactorResponse &response);
 
-  // Generic restart service - for restarting from last saved posegraph
+  // Service for restarting from last saved posegraph
   bool RestartService(blam_slam::RestartRequest &request,
                         blam_slam::RestartResponse &response);
   // Drop UWB from a robot
   bool DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
                       mesh_msgs::ProcessCommNodeResponse &response);
+
+  // Service for rinning lazer loop closure again
+  bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
+                        blam_slam::BatchLoopClosureResponse &response);
 
   bool use_chordal_factor_;
 
@@ -158,12 +164,14 @@ class BlamSlam {
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
   
+
   // Services
   ros::ServiceServer add_factor_srv_;
   ros::ServiceServer remove_factor_srv_;
   ros::ServiceServer save_graph_srv_;
   ros::ServiceServer restart_srv_;
   ros::ServiceServer load_graph_srv_;
+  ros::ServiceServer batch_loop_closure_srv_;
   ros::ServiceServer drop_uwb_srv_;
 
   // Names of coordinate frames.
