@@ -560,6 +560,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
   else {
     uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size()+1);
     uwb_id2key_hash_[uwb_id] = uwb_key;
+    uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
@@ -803,6 +804,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   else {
     uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size()+1);
     uwb_id2key_hash_[uwb_id] = uwb_key;
+    uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
   gtsam::Values linPoint = isam_->getLinearizationPoint();
@@ -2269,6 +2271,11 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
   if (pose_graph_pub_.getNumSubscribers() > 0) {
     pose_graph_msgs::PoseGraph g;
     g.header.frame_id = fixed_frame_id_;
+    g.header.stamp = ros::Time::now ();
+
+    // Flag on whether it is incremental or not
+    // TODO make incremental Pose Graph publishing
+    g.incremental = false;
 
     for (const auto& keyed_pose : values_) {
       if (!values_.exists(keyed_pose.key)) {
@@ -2276,6 +2283,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
         return false;
       }
       gu::Transform3 t = ToGu(values_.at<Pose3>(keyed_pose.key));
+
+      gtsam::Symbol sym_key = gtsam::Symbol(keyed_pose.key);
 
       // Populate the message with the pose's data.
       pose_graph_msgs::PoseGraphNode node;
@@ -2288,6 +2297,17 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
         ROS_WARN("%s: Couldn't find timestamp for key %lu", name_.c_str(),
                  keyed_pose.key);
       }
+
+      // Add UUID if an artifact or uwb node
+      if (sym_key.chr() == 'l'){
+        // Artifact
+        node.ID = artifact_key2info_hash[keyed_pose.key].msg.id;
+      }
+      if (sym_key.chr() == 'u'){
+        // UWB
+        node.ID = uwb_key2id_hash_[keyed_pose.key];
+      }
+
       g.nodes.push_back(node);
     }
 
@@ -2295,12 +2315,36 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
     for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
       edge.key_from = odometry_edges_[ii].first;
       edge.key_to = odometry_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::ODOM;
+      // Get edge transform and covariance
+      // TODO
       g.edges.push_back(edge);
     }
 
     for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
       edge.key_from = loop_edges_[ii].first;
       edge.key_to = loop_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+      // Get edge transform and covariance
+      // TODO
+      g.edges.push_back(edge);
+    }
+
+    for (size_t ii = 0; ii < artifact_edges_.size(); ++ii) {
+      edge.key_from = artifact_edges_[ii].first;
+      edge.key_to = artifact_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+      // Get edge transform and covariance
+      // TODO
+      g.edges.push_back(edge);
+    }
+
+    for (size_t ii = 0; ii < uwb_edges_.size(); ++ii) {
+      edge.key_from = uwb_edges_[ii].first;
+      edge.key_to = uwb_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB;
+      // Get edge transform and covariance
+      // TODO
       g.edges.push_back(edge);
     }
 
