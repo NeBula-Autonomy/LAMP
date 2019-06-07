@@ -260,7 +260,6 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
       nl.advertise<std_msgs::Empty>("loop_closure", 10, false);
 
   artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
-  marker_pub_ = nl.advertise<visualization_msgs::Marker>("artifact_markers", 10);
   
   uwb_node_pub_ = nl.advertise<visualization_msgs::Marker>("uwb_nodes", 10, false);
   uwb_edge_pub_ = nl.advertise<visualization_msgs::Marker>("uwb_edges", 10, false);
@@ -2421,68 +2420,6 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
     std::cout << "Frame ID is: " << new_msg.point.header.frame_id << std::endl;
 
     artifact_pub_.publish(new_msg);
-
-    // Publish Marker with new position
-    visualization_msgs::Marker marker;
-
-    marker.header.frame_id = "world";
-    marker.header.stamp = ros::Time::now();
-
-    // Set the namespace and id for this marker.  This serves to create a unique ID
-    // Any marker sent with the same namespace and id will overwrite the old one
-    marker.ns = "artifact";
-    marker.id = it->first;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.pose.position = new_msg.point.point;
-
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
-    marker.scale.x = 0.35f;
-    marker.scale.y = 0.35f;
-    marker.scale.z = 0.35f;
-    marker.color.a = 1.0f;
-
-    if (artifact_label == "backpack")
-    {
-      std::cout << "backpack marker" << std::endl;
-      marker.color.r = 1.0f;
-      marker.color.g = 0.0f;
-      marker.color.b = 0.0f;
-      marker.type = visualization_msgs::Marker::CUBE;
-    }
-    if (artifact_label == "fire extinguisher")
-    {
-      std::cout << "fire extinguisher marker" << std::endl;
-      marker.color.r = 1.0f;
-      marker.color.g = 0.5f;
-      marker.color.b = 0.75f;
-      marker.type = visualization_msgs::Marker::SPHERE;
-    }
-    if (artifact_label == "drill")
-    {
-      std::cout << "drill marker" << std::endl;
-      marker.color.r = 0.0f;
-      marker.color.g = 1.0f;
-      marker.color.b = 0.0f;
-      marker.type = visualization_msgs::Marker::CYLINDER;
-    }
-    if (artifact_label == "survivor")
-    {
-      std::cout << "survivor marker" << std::endl;
-      // return;
-      marker.color.r = 1.0f;
-      marker.color.g = 1.0f;
-      marker.color.b = 1.0f;
-      marker.scale.x = 1.0f;
-      marker.scale.y = 1.0f;
-      marker.scale.z = 1.0f;
-      marker.type = visualization_msgs::Marker::CYLINDER;
-    }
-    // marker.lifetime = ros::Duration();
-
-    marker_pub_.publish(marker);
 
     if (artifact_key != '-1'){
       // Only a single artifact - exit the loop 
