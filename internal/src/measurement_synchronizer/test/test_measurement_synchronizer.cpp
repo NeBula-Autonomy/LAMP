@@ -1,9 +1,7 @@
 /**
- *  @brief Test cases for talker class
+ *  @Author Abhishek Thakur
+ *  @brief Test cases for measurement_synchronizer class
  *
- *  This shows an example usage of gtest.
- *  The fixture pattern is used to execute the common operations
- *  before and after each test case.
  */
 
 #include <gtest/gtest.h>

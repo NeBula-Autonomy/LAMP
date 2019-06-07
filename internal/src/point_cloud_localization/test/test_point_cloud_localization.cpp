@@ -1,9 +1,6 @@
 /**
- *  @brief Test cases for talker class
- *
- *  This shows an example usage of gtest.
- *  The fixture pattern is used to execute the common operations
- *  before and after each test case.
+ *  @Author Abhishek Thakur
+ *  @brief Test cases for point_cloud_localization class
  */
 
 #include <gtest/gtest.h>

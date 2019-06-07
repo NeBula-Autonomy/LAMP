@@ -1,15 +1,16 @@
 /**
- *  @brief Test cases for talker class
+ *  @Author Abhishek Thakur
+ *  @brief Test cases for blam_slam class
  *
- *  This shows an example usage of gtest.
- *  The fixture pattern is used to execute the common operations
- *  before and after each test case.
  */
 
 #include <gtest/gtest.h>
 
 #include "blam_slam/BlamSlam.h"
 
+/**
+ * Test setup
+ */
 class BlamSlamTest : public ::testing::Test {
 protected:
   virtual void SetUp() {
@@ -22,6 +23,9 @@ protected:
   BlamSlam* test_variable;
 };
 
+/**
+ * Dummy unit test for now
+ */
 TEST_F(BlamSlamTest, RegisterLogCallbacks) {
   bool log_var = test_variable->Initialize(nh, true);
   EXPECT_EQ(log_var, true);
