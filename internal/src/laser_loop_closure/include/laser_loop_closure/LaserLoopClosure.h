@@ -331,6 +331,7 @@ class LaserLoopClosure {
 
   // UWB parameters
   std::unordered_map<std::string, gtsam::Key> uwb_id2key_hash_;
+  std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
   unsigned int uwb_factor_optimizer_;
@@ -378,7 +379,7 @@ class LaserLoopClosure {
   ros::Publisher keyed_scan_pub_;
   ros::Publisher loop_closure_notifier_pub_;
 
-  typedef std::pair<unsigned int, unsigned int> Edge;
+  typedef std::pair<gtsam::Key, gtsam::Key>  Edge;
   typedef std::pair<gtsam::Key, gtsam::Key> ArtifactEdge;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
