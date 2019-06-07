@@ -108,3 +108,7 @@ target_link_libraries(${PROJECT_NAME}_offline
   ${Boost_LIBRARIES}
   gtsam
 )
+
+if (CATKIN_ENABLE_TESTING)
+  add_subdirectory(test)
+endif()

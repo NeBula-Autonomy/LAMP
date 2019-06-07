@@ -188,3 +188,14 @@ roslaunch blam_example test_offline.launch
 
 An example .rviz configuration file is provided under
 `blam_example/rviz/lidar_slam.rviz`.
+
+To compile and run unit tests:
+```bash
+roscore & catkin build --catkin-make-args run_tests
+``` 
+
+To view the results of a package:
+```bash
+catkin_test_results build/<package_name>
+``` 
+Results for unit tests of packages are stored in the build/<package_name>/test_results folder.
