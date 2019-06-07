@@ -456,7 +456,6 @@ void PoseGraphVisualizer::MakeMenuMarker(const tf::Pose &position,
   menu_handler.insert(id_number);
   server->insert(int_marker);
   menu_handler.apply(*server, int_marker.name);
-  server->applyChanges();
 }
 
 void PoseGraphVisualizer::VisualizePoseGraph() {
