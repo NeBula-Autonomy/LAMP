@@ -157,7 +157,7 @@ class LaserLoopClosure {
 
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.
-  bool AddKeyScanPair(unsigned int key, const PointCloud::ConstPtr& scan);
+  bool AddKeyScanPair(unsigned int key, const PointCloud::ConstPtr& scan, bool initial_pose);
 
   // After receiving an output key from 'AddBetweenFactor', call this to check
   // for loop closures with other poses in the pose graph.

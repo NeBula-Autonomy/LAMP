@@ -670,7 +670,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     // First update ever.
     PointCloud::Ptr unused(new PointCloud);
     mapper_.InsertPoints(msg_filtered, unused.get());
-    loop_closure_.AddKeyScanPair(initial_key_, msg);
+    loop_closure_.AddKeyScanPair(initial_key_, msg, true);
     return;
   }
 
@@ -772,7 +772,7 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
 
 
   // This will add a between factor after obtaining the delta between poses.
-  double init_x = 8.0, init_y = 0.0, init_z = 0.0;
+  double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
   delta_after_restart_.translation = gu::Vec3(init_x, init_y, init_z);
   delta_after_restart_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);
@@ -828,7 +828,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
 
   *new_keyframe = true;
 
-  if (!loop_closure_.AddKeyScanPair(pose_key, scan)) {
+  if (!loop_closure_.AddKeyScanPair(pose_key, scan, false)) {
     return false;
   }
 
