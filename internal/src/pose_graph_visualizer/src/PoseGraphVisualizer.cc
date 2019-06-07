@@ -117,14 +117,14 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_, const ro
 void PoseGraphVisualizer::PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
   keyed_poses_.clear();
   odometry_edges_.clear();
-  for (const auto &msg : msg->nodes) {
+  for (const auto &msg_node : msg->nodes) {
     tf::Pose pose;
-    tf::poseMsgToTF(msg.pose, pose);
-    keyed_poses_[msg.key] = pose;
+    tf::poseMsgToTF(msg_node.pose, pose);
+    keyed_poses_[msg_node.key] = pose;
   }
 
-  for (const auto &msg : msg->edges) {
-    odometry_edges_.emplace_back(std::make_pair(msg.key_from, msg.key_to));
+  for (const auto &msg_edge : msg->edges) {
+    odometry_edges_.emplace_back(std::make_pair(msg_edge.key_from, msg_edge.key_to));
   }
 
   VisualizePoseGraph();
