@@ -162,8 +162,8 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   save_graph_srv_ = nl.advertiseService("save_graph", &BlamSlam::SaveGraphService, this);
   restart_srv_ = nl.advertiseService("restart", &BlamSlam::RestartService, this);
   load_graph_srv_ = nl.advertiseService("load_graph", &BlamSlam::LoadGraphService, this);
+  batch_loop_closure_srv_ = nl.advertiseService("batch_loop_closure", &BlamSlam::BatchLoopClosureService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
-
   if (from_log)
     return RegisterLogCallbacks(n);
   else
@@ -209,16 +209,9 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
                                 blam_slam::AddFactorResponse &response) {
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
-    if (request.key_from == request.key_to) {
-      loop_closure_.RemoveConfirmFactorVisualization();
-      return true;
-    } else {
-      response.confirm = true;
-      response.success = loop_closure_.VisualizeConfirmFactor(
-        static_cast<unsigned int>(request.key_from),
-        static_cast<unsigned int>(request.key_to));
-      return true;
-    }
+    ROS_WARN("Cannot add factor because the request is not confirmed.");
+    response.success = false;
+    return true;
   }
 
   // Get last node pose before doing artifact loop closure 
@@ -263,7 +256,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(new_pose);
 
-  // Visualize the pose graph and current loop closure radius.
+  // Sends pose graph to visualizer node, if graph has changed.
   loop_closure_.PublishPoseGraph();
 
   // Publish artifacts - should be updated from the pose-graph 
@@ -280,6 +273,12 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                                    blam_slam::RemoveFactorResponse &response) {
   // TODO - bring the service creation into this node?
+  if (!request.confirmed) {
+    ROS_WARN("Cannot remove factor because the request is not confirmed.");
+    response.success = false;
+    return true;
+  }
+
   response.success = loop_closure_.RemoveFactor(
     static_cast<unsigned int>(request.key_from),
     static_cast<unsigned int>(request.key_to));
@@ -358,6 +357,29 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   return true;
+}
+
+bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
+                                blam_slam::BatchLoopClosureResponse &response) {
+ 
+  std::cout << "Looking for any loop closures..." << std::endl;
+
+  response.success = loop_closure_.BatchLoopClosure();
+
+  if (response.success = true) {
+    // We found one - regenerate the 3D map.
+    PointCloud::Ptr regenerated_map(new PointCloud);
+    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+    mapper_.Reset();
+    PointCloud::Ptr unused(new PointCloud);
+    mapper_.InsertPoints(regenerated_map, unused.get());
+    
+    return true;
+  } 
+  else {
+    return false;
+  }
 }
 
 
@@ -695,6 +717,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     // No new loop closures - but was there a new key frame? If so, add new
     // points to the map.
     if (new_keyframe) {
+      // ROS_INFO("Updating with a new key frame");
       localization_.MotionUpdate(gu::Transform3::Identity());
       localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);
@@ -770,6 +793,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   unsigned int pose_key;
   if (!use_chordal_factor_) {
     // Add the new pose to the pose graph (BetweenFactor)
+    // TODO rename to attitude and position sigma 
     gu::MatrixNxNBase<double, 6> covariance;
     covariance.Zeros();
     for (int i = 0; i < 3; ++i)

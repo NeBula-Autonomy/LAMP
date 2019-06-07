@@ -140,6 +140,11 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("max_tolerable_fitness", max_tolerable_fitness_)) return false;
   if (!pu::Get("distance_to_skip_recent_poses", distance_to_skip_recent_poses_)) return false;
   if (!pu::Get("distance_before_reclosing", distance_before_reclosing_)) return false;
+  
+  // Compute Skip recent poses
+  skip_recent_poses_ = (int)(distance_to_skip_recent_poses_/translation_threshold_nodes_);
+  poses_before_reclosing_ = (int)(distance_before_reclosing_/translation_threshold_nodes_);
+
   if (!pu::Get("manual_lc_rot_precision", manual_lc_rot_precision_)) return false;
   if (!pu::Get("manual_lc_trans_precision", manual_lc_trans_precision_)) return false;
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;
@@ -222,7 +227,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   Values new_value;
   new_factor.add(MakePriorFactor(pose, covariance));
   new_value.insert(key_, pose);
-  
+
   isam_->update(new_factor, new_value);
   values_ = isam_->calculateEstimate();
   nfg_ = isam_->getFactorsUnsafe();
@@ -231,7 +236,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Set the initial odometry.
   odometry_ = Pose3::identity();
 
-	//Initilize interactive marker server
+  // Initilize interactive marker server
   if (publish_interactive_markers_) {
     server.reset(new interactive_markers::InteractiveMarkerServer(
         "interactive_node", "", false));
@@ -243,23 +248,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
-
-  odometry_edge_pub_ =
-      nl.advertise<visualization_msgs::Marker>("odometry_edges", 10, false);
-  loop_edge_pub_ =
-      nl.advertise<visualization_msgs::Marker>("loop_edges", 10, false);
-  artifact_edge_pub_ =
-      nl.advertise<visualization_msgs::Marker>("artifact_edges", 10, false);
-  graph_node_pub_ =
-      nl.advertise<visualization_msgs::Marker>("graph_nodes", 10, false);
-  graph_node_id_pub_ =
-      nl.advertise<visualization_msgs::Marker>("graph_node_ids", 10, false);
-  keyframe_node_pub_ =
-      nl.advertise<visualization_msgs::Marker>("keyframe_nodes", 10, false);
-  closure_area_pub_ =
-      nl.advertise<visualization_msgs::Marker>("closure_area", 10, false);
-  confirm_edge_pub_ =
-  nl.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
 
   scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
   scan2_pub_ = nl.advertise<PointCloud>("loop_closure_scan2", 10, false);
@@ -414,9 +402,10 @@ bool LaserLoopClosure::AddBetweenFactor(
   //ROS_INFO("Cost before optimization is: %f", cost_old);
 
   // Update ISAM2.
-  try{
-    isam_->update(new_factor, new_value); 
-  } catch (...){
+  try {
+    isam_->update(new_factor, new_value);
+    has_changed_ = true;
+  } catch (...) {
     // redirect cout to file
     std::ofstream nfgFile;
     std::string home_folder(getenv("HOME"));
@@ -435,11 +424,11 @@ bool LaserLoopClosure::AddBetweenFactor(
     throw;
   }
   
-  ROS_INFO("Pre calculateEtimate");
+  ROS_INFO("Pre calculateEstimate");
   // Update class variables
   values_ = isam_->calculateEstimate();
 
-  ROS_INFO("Pre getFacrorsUnsafe");
+  ROS_INFO("Pre getFactorsUnsafe");
   nfg_ = isam_->getFactorsUnsafe();
 
   // Get updated cost
@@ -489,10 +478,10 @@ bool LaserLoopClosure::AddBetweenFactor(
   return false;
 }
 
-//function to change keynumber for multiple robots
+// Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
     key_ = 10000;
-}
+} 
 
 bool LaserLoopClosure::AddBetweenChordalFactor(
     const gu::Transform3& delta, const LaserLoopClosure::Mat1212& covariance,
@@ -516,9 +505,10 @@ bool LaserLoopClosure::AddBetweenChordalFactor(
   keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, stamp));
 
   // Update ISAM2.
-  try{
-    isam_->update(new_factor, new_value); 
-  } catch (...){
+  try {
+    isam_->update(new_factor, new_value);
+    has_changed_ = true;
+  } catch (...) {
     // redirect cout to file
     std::ofstream nfgFile;
     std::string home_folder(getenv("HOME"));
@@ -689,7 +679,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       cost = nfg_.error(linPoint);
       ROS_INFO_STREAM("Error at linearization point (after adding UWB RangeFactor): " << cost);
 
-      PublishPoseGraph();
+      PublishPoseGraph(false);
 
       return true;
     }
@@ -790,7 +780,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       cost = nfg_.error(linPoint);
       ROS_INFO_STREAM("Error at linearization point (after adding UWB RangeFactor): " << cost);
 
-      PublishPoseGraph();
+      PublishPoseGraph(false);
 
       return true;
     }
@@ -983,8 +973,8 @@ bool LaserLoopClosure::FindLoopClosures(
   double cost_old;
 
   // Check that the key exists
-  if (!values_.exists(key)){
-    ROS_WARN("Key %u does not exist in find loop closures",key);
+  if (!values_.exists(key)) {
+    ROS_WARN("Key %u does not exist in find loop closures", key);
     return false;
   }
 
@@ -993,8 +983,9 @@ bool LaserLoopClosure::FindLoopClosures(
   const PointCloud::ConstPtr scan1 = keyed_scans_[key];
 
   // If a loop has already been closed recently, don't try to close a new one.
-  if (std::fabs(key - last_closure_key_) * translation_threshold_kf_  < distance_before_reclosing_)
+  if (std::fabs(key - last_closure_key_) * translation_threshold_nodes_ < distance_before_reclosing_)
     return false;
+
   // Iterate through past poses and find those that lie close to the most
   // recently added one.
   bool closed_loop = false;
@@ -1006,19 +997,38 @@ bool LaserLoopClosure::FindLoopClosures(
       continue;
 
     // Don't compare against poses that were recently collected.
-    unsigned int skip_recent_poses = distance_to_skip_recent_poses_/translation_threshold_kf_; 
-    if (std::fabs(key - other_key) < skip_recent_poses)   
-      continue;
+    if (key > other_key){
+      // Don't compare against poses that were recently collected.
+      if (std::fabs(key - other_key) < skip_recent_poses_)
+        continue;
+    }
+
+    if (key < other_key){
+      //loopclosure can only occur from high to low value
+        continue;
+    }
+
 
     // Don't check for loop closures against poses that are not keyframes.
     if (!keyed_scans_.count(other_key))
       continue;
 
     // Check that the key exists
-    if (!values_.exists(other_key)){
-      ROS_WARN("Key %u does not exist in loop closure search (other key)",other_key);
+    if (!values_.exists(other_key)) {
+      ROS_WARN("Key %u does not exist in loop closure search (other key)", other_key);
       return false;
     }
+    
+    // This only occurs if you add any manual loop closures
+    if (manual_loop_keys_.size() >= 1)
+    {
+      if (!BatchLoopClosingTest(key, other_key))
+      {
+        continue;
+      }
+    }
+
+
     // Get pose for the other key.
     const gu::Transform3 pose2 = ToGu(values_.at<Pose3>(other_key));
     const gu::Transform3 difference = gu::PoseDelta(pose1, pose2);
@@ -1031,8 +1041,8 @@ bool LaserLoopClosure::FindLoopClosures(
         gu::Transform3 delta; // (Using BetweenFactor)
         LaserLoopClosure::Mat66 covariance;
         if (PerformICP(scan1, scan2, pose1, pose2, &delta, &covariance)) {
-            // Function to save the posegraph regularly
-          if (save_posegraph_backup_){
+          // Function to save the posegraph regularly
+          if (save_posegraph_backup_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
           } 
           // We found a loop closure. Add it to the pose graph.
@@ -1072,7 +1082,7 @@ bool LaserLoopClosure::FindLoopClosures(
         gu::Transform3 delta; // (Using BetweenChordalFactor)
         LaserLoopClosure::Mat1212 covariance;
         if (PerformICP(scan1, scan2, pose1, pose2, &delta, &covariance)) {
-          if (save_posegraph_backup_){
+          if (save_posegraph_backup_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
           } 
           // We found a loop closure. Add it to the pose graph.
@@ -1112,7 +1122,7 @@ bool LaserLoopClosure::FindLoopClosures(
       nfg_ = isam_->getFactorsUnsafe();
 
       // Check the change in pose to see if it exceeds criteria
-      if (b_check_deltas_ && closed_loop){
+      if (b_check_deltas_ && closed_loop) {
         ROS_INFO("Sanity checking output");
         closed_loop = SanityCheckForLoopClosure(translational_sanity_check_lc_, cost_old, cost);
         // TODO - remove vizualization keys if it is rejected 
@@ -1131,7 +1141,7 @@ bool LaserLoopClosure::FindLoopClosures(
       values_backup_ = values_;
     } // end of if statement 
   } // end of for loop
-  
+
   return closed_loop;
 }
 
@@ -1221,7 +1231,7 @@ bool LaserLoopClosure::GetMaximumLikelihoodPoints(PointCloud* points) {
       continue;
 
     // Check that the key exists
-    if (!values_.exists(key)){
+    if (!values_.exists(key)) {
       ROS_WARN("Key %u does not exist in GetMaximumLikelihoodPoints",key);
       return false;
     }
@@ -1589,7 +1599,6 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
   // Remove visualization of edge to be confirmed
   if (is_manual_loop_closure) {
-    RemoveConfirmFactorVisualization();
     // check keys are already in factor graph 
     if (!linPoint.exists(key1) || !linPoint.exists(key2)) { 
       ROS_WARN("AddFactor: Trying to add manual loop closure involving at least one nonexisting key");
@@ -1605,7 +1614,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
   if (!is_manual_loop_closure && !linPoint.exists(key2)) {
 
-    if(!linPoint.exists(key1)){
+    if(!linPoint.exists(key1)) {
       ROS_WARN("AddFactor: Trying to add artifact factor, but key1 does not exist");
       return false;    
     }
@@ -1644,13 +1653,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
     gtsam::BetweenFactor<gtsam::Pose3> factor(key1, key2, pose12, noise);
 
-    if (is_manual_loop_closure){
+    if (is_manual_loop_closure) {
       factor.print("manual loop closure factor \n");
       cost = factor.error(linPoint);
       ROS_INFO_STREAM("Cost of loop closure: " << cost); // 10^6 - 10^9 is ok (re-adjust covariances)  // cost = ( error )’ Omega ( error ), where the Omega = diag([0 0 0 1/25 1/25 1/25]). Error = [3 3 3] get an estimate for cost.
       // TODO get the positions of each of the poses and compute the distance between them - see what the error should be - maybe a bug there
     }
-    else{
+    else {
       factor.print("Artifact loop closure factor \n");
       cost = factor.error(linPoint);
       ROS_INFO_STREAM("Cost of artifact factor is: " << cost); 
@@ -1673,13 +1682,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
  
     gtsam::BetweenChordalFactor<gtsam::Pose3> factor(key1, key2, pose12, noise);
 
-    if (is_manual_loop_closure){
+    if (is_manual_loop_closure) {
       factor.print("manual loop closure factor \n");
       cost = factor.error(linPoint);
       ROS_INFO_STREAM("Cost of loop closure: " << cost); // 10^6 - 10^9 is ok (re-adjust covariances)  // cost = ( error )’ Omega ( error ), where the Omega = diag([0 0 0 1/25 1/25 1/25]). Error = [3 3 3] get an estimate for cost.
       // TODO get the positions of each of the poses and compute the distance between them - see what the error should be - maybe a bug there
     }
-    else{
+    else {
       factor.print("Artifact loop closure factor \n");
       cost = factor.error(linPoint);
       ROS_INFO_STREAM("Cost of artifact factor is: " << cost); 
@@ -1694,13 +1703,15 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
   // optimize
   try {
-    if (is_manual_loop_closure){
+    if (is_manual_loop_closure) {
       std::cout << "Optimizing manual loop closure, iteration" << std::endl;
-    }else{
+    } else {
       std::cout << "Optimizing artifact factor addition" << std::endl;
     }
     gtsam::Values result;
 
+    // TODO - loop over optimizers?
+    // TODO using strings or enum rather than ints
     // Switch based on optimizer input
     switch (loop_closure_optimizer_){
       case 0 : // only do the above isam update 
@@ -1730,7 +1741,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       }
         break;
       case 3 : 
-      { 
+      {
         // Gauss Newton Optimizer
         nfg_.add(new_factor); // add new factor (new values already inserted above)
         std::cout << "Running Gauss Newton optimization" << std::endl;
@@ -1770,6 +1781,11 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       // Send an empty message notifying any subscribers that we found a loop
       // closure.
       loop_closure_notifier_pub_.publish(std_msgs::Empty());
+
+      // Store manual loop keys to not interfere with batch loop closure.
+      manual_loop_keys_.push_back(key1);
+      manual_loop_keys_.push_back(key2);
+
     }
     else{
       // Placeholder visualization for artifacts
@@ -1802,9 +1818,6 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
 bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2) {
   ROS_INFO("Removing factor between %i and %i from the pose graph...", key1, key2);
-
-  // Remove visualization of edge to be confirmed
-  RemoveConfirmFactorVisualization();
 
   // Prevent removing odometry edges 
   if ((key1 == key2 - 1) || (key2 == key1 - 1)) {
@@ -1865,80 +1878,10 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2) {
   // Update values
   values_ = isam_->calculateEstimate();
 
-  // // Publish
-  // PublishPoseGraph();
+  // Publish
+  PublishPoseGraph();
 
   return true; //result.getVariablesReeliminated() > 0;
-}
-
-bool LaserLoopClosure::VisualizeConfirmFactor(unsigned int key1, unsigned int key2) {
-  ROS_INFO("Visualizing factor between %i and %i.", key1, key2);
-
-  if (!values_.exists(key1) || !values_.exists(key2)) {
-    ROS_WARN("Key %i or %i does not exist.", key1, key2);
-    return false;
-  }
-
-  if ((key1 == key2 - 1) || (key2 == key1 - 1)) {
-    ROS_WARN("Cannot add/remove factor between two consecutive keys.");
-    return false;
-  }
-
-  visualization_msgs::Marker m;
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_;
-  m.id = 0;
-  m.action = visualization_msgs::Marker::ADD;
-  m.type = visualization_msgs::Marker::LINE_LIST;
-  m.color.r = 1.0;
-  m.color.g = 1.0;
-  m.color.b = 0.0;
-  m.color.a = 1.0;
-  m.scale.x = 0.05;
-  // Check that the key exists
-  if (!values_.exists(key1)){
-    ROS_WARN("Key1,  %u, does not exist in VisualizeConfirmFactor",key1);
-    return false;
-  }
-  if (!values_.exists(key2)){
-    ROS_WARN("Key2,  %u, does not exist in VisualizeConfirmFactor",key2);
-    return false;
-  }
-  const gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-  const gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-  m.points.push_back(gr::ToRosPoint(p1));
-  m.points.push_back(gr::ToRosPoint(p2));
-  confirm_edge_pub_.publish(m);
-  
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_;
-  m.action = visualization_msgs::Marker::ADD;
-  m.type = visualization_msgs::Marker::SPHERE;
-  m.color.r = 1.0;
-  m.color.g = 0.0;
-  m.color.b = 0.0;
-  m.color.a = 1.0;
-  m.scale.x = 0.27;
-  m.scale.y = 0.27;
-  m.scale.z = 0.27;
-  m.id = 1;
-  m.pose.position = gr::ToRosPoint(p1);
-  confirm_edge_pub_.publish(m);
-  m.id = 2;
-  m.pose.position = gr::ToRosPoint(p2);
-  confirm_edge_pub_.publish(m);
-
-  return true;
-}
-
-void LaserLoopClosure::RemoveConfirmFactorVisualization() {
-  visualization_msgs::Marker m;
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_;
-  m.id = 0;
-  m.action = visualization_msgs::Marker::DELETEALL;
-  confirm_edge_pub_.publish(m);
 }
 
 std::string absPath(const std::string &relPath) {
@@ -2035,8 +1978,8 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
 
     ROS_INFO("Saved point cloud %d/%d.", i+1, (int) keyed_scans_.size());
     keys_file << pcd_filename << ",";
-    if (!values_.exists(entry.first)){
-      ROS_WARN("Key,  %u, does not exist in Save",entry.first);
+    if (!values_.exists(entry.first)) {
+      ROS_WARN("Key,  %u, does not exist in Save", entry.first);
       return false;
     }
     keys_file << keyed_stamps_.at(entry.first).toNSec() << "\n";
@@ -2185,7 +2128,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   const gtsam::Key key0 = *nfg_.keys().begin();
 
   if (!values_.exists(key0)){
-    ROS_WARN("Key0, %s, does not exist in Load",key0);
+    ROS_WARN("Key0, %s, does not exist in Load", key0);
     return false;
   }
   nfg_.add(gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
@@ -2278,279 +2221,50 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   return true;
 }
 
-//Interactive Marker Menu
-void LaserLoopClosure::makeMenuMarker( gu::Transform3 position, const std::string id_number )
-{
-  interactive_markers::MenuHandler menu_handler;
+bool LaserLoopClosure::BatchLoopClosure() {
 
-  visualization_msgs::InteractiveMarker int_marker;
-  int_marker.header.frame_id = LaserLoopClosure::fixed_frame_id_;
-  int_marker.scale = 1.0;
-  int_marker.pose = gr::ToRosPose(position);
-  int_marker.name = id_number;
+  save_posegraph_backup_ = false;
+  check_for_loop_closures_ = true;
+  bool found_loop = false;
+  for (const auto& keyed_pose : values_) {
+    std::vector<unsigned int> closure_keys;
+    if (FindLoopClosures(keyed_pose.key, &closure_keys)){
+      found_loop = true;
+    }
+  }
 
-  visualization_msgs::Marker marker;
-  marker.type = visualization_msgs::Marker::SPHERE;
-  marker.scale.x = 0.3;
-  marker.scale.y = 0.3;
-  marker.scale.z = 0.3;
-  marker.color.r = 0.0;
-  marker.color.g = 1.0;
-  marker.color.b = 1.0;
-  marker.color.a = 0.5;
-
-  visualization_msgs::InteractiveMarkerControl control;
-  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MENU;
-  control.name = id_number;
-  control.markers.push_back( marker );
-  control.always_visible = true;
-  int_marker.controls.push_back(control);
-
-  menu_handler.insert(id_number);
-  server->insert(int_marker);
-  menu_handler.apply(*server, int_marker.name );
-  //server->applyChanges();
+  // Update the posegraph after looking for loop closures and performing optimization
+  PublishPoseGraph();
+  if (found_loop == true)
+    return true;
+  else
+    return false;
 }
 
-bool LaserLoopClosure::PublishPoseGraph() {
-
-  // Publish odometry edges.
-  if (odometry_edge_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 0;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 1.0;
-    m.color.g = 0.0;
-    m.color.b = 0.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
-      gtsam::Key key1 = odometry_edges_[ii].first;
-      gtsam::Key key2 = odometry_edges_[ii].second;
-
-      if (!values_.exists(key1)){
-        ROS_WARN("Key1,  %u, does not exist in PublishPoseGraph",key1);
-        return false;
-      }
-      if (!values_.exists(key2)){
-        ROS_WARN("Key2,  %u, does not exist in PublishPoseGraph",key2);
-        return false;
-      }
-
-      gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-      gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-      m.points.push_back(gr::ToRosPoint(p1));
-      m.points.push_back(gr::ToRosPoint(p2));
+bool LaserLoopClosure::BatchLoopClosingTest(unsigned int key, unsigned int other_key){
+  for (int i = 0; i <= manual_loop_keys_.size(); i++){
+    if ((key > manual_loop_keys_[i]) && ((std::fabs(key - manual_loop_keys_[i]) < poses_before_reclosing_))){
+      return false;
     }
-    odometry_edge_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
-
-  // Publish loop closure edges.
-  if (loop_edge_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 1;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 0.2;
-    m.color.b = 1.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
-      gtsam::Key key1 = loop_edges_[ii].first;
-      gtsam::Key key2 = loop_edges_[ii].second;
-
-      if (!values_.exists(key1)){
-        ROS_WARN("Key1,  %u, does not exist in PublishPoseGraph",key1);
-        return false;
-      }
-      if (!values_.exists(key2)){
-        ROS_WARN("Key2,  %u, does not exist in PublishPoseGraph",key2);
-        return false;
-      }
-
-      gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-      gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-      m.points.push_back(gr::ToRosPoint(p1));
-      m.points.push_back(gr::ToRosPoint(p2));
+    if ((other_key > manual_loop_keys_[i]) && ((std::fabs(other_key - manual_loop_keys_[i]) < poses_before_reclosing_))){
+      return false;
     }
-    loop_edge_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
-
-  // Publish Artifact link messages
-  if (artifact_edge_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 1;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 0.2;
-    m.color.g = 1.0;
-    m.color.b = 0.0;
-    m.color.a = 0.6;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < artifact_edges_.size(); ++ii) {
-      gtsam::Key key1 = artifact_edges_[ii].first;
-      gtsam::Key key2 = artifact_edges_[ii].second;
-
-      if (!values_.exists(key1)){
-        ROS_WARN("Key1,  %u, does not exist in PublishPoseGraph artifact edges",key1);
-        return false;
-      }
-      if (!values_.exists(key2)){
-        ROS_WARN("Key2,  %u, does not exist in PublishPoseGraph artifact edges",key2);
-        return false;
-      }
-
-      gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-      gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-      m.points.push_back(gr::ToRosPoint(p1));
-      m.points.push_back(gr::ToRosPoint(p2));
+    if ((key < manual_loop_keys_[i]) && ((std::fabs(manual_loop_keys_[i] - key) < poses_before_reclosing_))){
+      return false;
     }
-    artifact_edge_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
-
-  // Publish nodes in the pose graph.
-  if (graph_node_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 2;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::SPHERE_LIST;
-    m.color.r = 0.3;
-    m.color.g = 0.0;
-    m.color.b = 1.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.1;
-    m.scale.y = 0.1;
-    m.scale.z = 0.1;
-
-    for (const auto& keyed_pose : values_) {
-      std::string label = "l";
-      if ((std::string(gtsam::Symbol(keyed_pose.key)).compare(0,1,label)) != 0){
-        // If it is not a landmark keypose 
-
-        if (!values_.exists(keyed_pose.key)){
-          ROS_WARN("Key,  %u, does not exist in PublishPoseGraph pose nodes",keyed_pose.key);
-          return false;
-        }
-
-        gu::Vec3 p = ToGu(values_.at<Pose3>(keyed_pose.key)).translation;
-        m.points.push_back(gr::ToRosPoint(p));
-      }
+    if ((other_key < manual_loop_keys_[i]) && ((std::fabs(manual_loop_keys_[i] - other_key) < poses_before_reclosing_))){
+      return false;
     }
-    graph_node_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
   }
+    return true;
+}
 
-  // Publish node IDs in the pose graph.
-  if (graph_node_id_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-    m.color.r = 1.0;
-    m.color.g = 1.0;
-    m.color.b = 0.2;
-    m.color.a = 0.8;
-    m.scale.z = 0.02; // Only Scale z is used - height of capital A in the text
 
-    int id_base = 100;
-    int counter = 0;
-    for (const auto& keyed_pose : values_) {
-      if (!values_.exists(keyed_pose.key)){
-        ROS_WARN("Key, %u, does not exist in PublishPoseGraph pose ids",keyed_pose.key);
-        return false;
-      }
-      gu::Transform3 p = ToGu(values_.at<Pose3>(keyed_pose.key));
-      m.pose = gr::ToRosPose(p);
-      // Display text for the node
-      m.text = std::to_string(keyed_pose.key);
-      m.id = id_base + keyed_pose.key;
-      graph_node_id_pub_.publish(m);
-      // if (counter % 500 == 0) {
-        // throttle
-        // ros::spinOnce();
-        // ros::Duration(0.005).sleep();
-      // }
-    }
-    
-  }
-
-  // Publish keyframe nodes in the pose graph.
-  if (keyframe_node_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 3;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::SPHERE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 1.0;
-    m.color.b = 0.3;
-    m.color.a = 0.8;
-    m.scale.x = 0.25;
-    m.scale.y = 0.25;
-    m.scale.z = 0.25;
-
-    for (const auto& keyed_pose : values_) {
-      if (keyed_scans_.count(keyed_pose.key)) {
-        if (!values_.exists(keyed_pose.key)){
-          ROS_WARN("Key, %u, does not exist in PublishPoseGraph keyframe nodes",keyed_pose.key);
-          return false;
-        }
-        gu::Vec3 p = ToGu(values_.at<Pose3>(keyed_pose.key)).translation;
-        m.points.push_back(gr::ToRosPoint(p));
-      }
-    }
-    keyframe_node_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
-
-  // Draw a sphere around the current sensor frame to show the area in which we
-  // are checking for loop closures.
-  if (closure_area_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = base_frame_id_;
-    m.ns = base_frame_id_;
-    m.id = 4;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::SPHERE;
-    m.color.r = 0.0;
-    m.color.g = 0.4;
-    m.color.b = 0.8;
-    m.color.a = 0.4;
-    m.scale.x = proximity_threshold_ * 2.0;
-    m.scale.y = proximity_threshold_ * 2.0;
-    m.scale.z = proximity_threshold_ * 2.0;
-    m.pose = gr::ToRosPose(gu::Transform3::Identity());
-    closure_area_pub_.publish(m);
-    // ros::spinOnce();
-    // ros::Duration(0.005).sleep();
-  }
+bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
+  if (only_publish_if_changed && !has_changed_)
+    return false;
+  
+  has_changed_ = false;
 
   // Construct and send the pose graph.
   if (pose_graph_pub_.getNumSubscribers() > 0) {
@@ -2558,8 +2272,8 @@ bool LaserLoopClosure::PublishPoseGraph() {
     g.header.frame_id = fixed_frame_id_;
 
     for (const auto& keyed_pose : values_) {
-      if (!values_.exists(keyed_pose.key)){
-        ROS_WARN("Key, %u, does not exist in PublishPoseGraph pose graph pub",keyed_pose.key);
+      if (!values_.exists(keyed_pose.key)) {
+        ROS_WARN("Key, %u, does not exist in PublishPoseGraph pose graph pub", keyed_pose.key);
         return false;
       }
       gu::Transform3 t = ToGu(values_.at<Pose3>(keyed_pose.key));
@@ -2594,28 +2308,10 @@ bool LaserLoopClosure::PublishPoseGraph() {
     // Publish.
     pose_graph_pub_.publish(g);
   }
-  //Interactive Marker
-  if (publish_interactive_markers_) {
-    for (const auto& keyed_pose : values_) {
-      if (keyed_pose.key % 1 == 0) {
-        if (!values_.exists(keyed_pose.key)){
-          ROS_WARN("Key, %u, does not exist in PublishPoseGraph interactive marker",keyed_pose.key);
-          return false;
-        }
-        gu::Transform3 position = ToGu(values_.at<Pose3>(keyed_pose.key));
-        const std::string id_number = std::to_string(keyed_pose.key);
-        LaserLoopClosure::makeMenuMarker(position, id_number);
-      }
-    }
-    if (server != NULL){
-      server->applyChanges();
-    }
-  }
 
   PublishUwb();
   
   return true;
-
 }
 
 void LaserLoopClosure::PublishUwb() {
@@ -2873,7 +2569,7 @@ gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
 
   unsigned int key;
 
-  if (t2-stamp.toSec() < stamp.toSec() - t1) { 
+  if (t2-stamp.toSec() < stamp.toSec() - t1) {
     // t2 is closer - use that key
     // std::cout << "Selecting later time: " << t2 << std::endl;
     key = iterTime->second;
@@ -2889,7 +2585,7 @@ gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
     iterTime++;
     // iterTime = stamps_keyed_.begin();
     key = iterTime->second;
-  } else if(iterTime == stamps_keyed_.end()){
+  } else if(iterTime == stamps_keyed_.end()) {
     ROS_WARN("Invalid time for graph (past end of graph range). take latest pose");
     key = key_ -1;
   }
@@ -2899,8 +2595,8 @@ gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
 
 gu::Transform3 LaserLoopClosure::GetPoseAtKey(const gtsam::Key& key) const {
   // Get the pose at that key
-  if (!values_.exists(key)){
-    ROS_WARN("Key, %u, does not exist in GetPoseAtKey",key);
+  if (!values_.exists(key)) {
+    ROS_WARN("Key, %u, does not exist in GetPoseAtKey", key);
     return gu::Transform3();
   }
   return ToGu(values_.at<Pose3>(key));
