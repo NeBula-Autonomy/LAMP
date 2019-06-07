@@ -209,16 +209,9 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
                                 blam_slam::AddFactorResponse &response) {
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
-    if (request.key_from == request.key_to) {
-      loop_closure_.RemoveConfirmFactorVisualization();
-      return true;
-    } else {
-      response.confirm = true;
-      response.success = loop_closure_.VisualizeConfirmFactor(
-        static_cast<unsigned int>(request.key_from),
-        static_cast<unsigned int>(request.key_to));
-      return true;
-    }
+    ROS_WARN("Cannot add factor because the request is not confirmed.");
+    response.success = false;
+    return true;
   }
 
   // Get last node pose before doing artifact loop closure 
@@ -263,7 +256,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(new_pose);
 
-  // Visualize the pose graph and current loop closure radius.
+  // Sends pose graph to visualizer node, if graph has changed.
   loop_closure_.PublishPoseGraph();
 
   // Publish artifacts - should be updated from the pose-graph 
@@ -280,6 +273,12 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                                    blam_slam::RemoveFactorResponse &response) {
   // TODO - bring the service creation into this node?
+  if (!request.confirmed) {
+    ROS_WARN("Cannot remove factor because the request is not confirmed.");
+    response.success = false;
+    return true;
+  }
+
   response.success = loop_closure_.RemoveFactor(
     static_cast<unsigned int>(request.key_from),
     static_cast<unsigned int>(request.key_to));
