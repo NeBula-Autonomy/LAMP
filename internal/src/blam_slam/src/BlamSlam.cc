@@ -365,21 +365,17 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   std::cout << "Looking for any loop closures..." << std::endl;
 
   response.success = loop_closure_.BatchLoopClosure();
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  if (response.success = true) {
-    // We found one - regenerate the 3D map.
-    PointCloud::Ptr regenerated_map(new PointCloud);
-    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+  mapper_.Reset();
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
 
-    mapper_.Reset();
-    PointCloud::Ptr unused(new PointCloud);
-    mapper_.InsertPoints(regenerated_map, unused.get());
-    
-    return true;
-  } 
-  else {
-    return false;
-  }
+  // Also reset the robot's estimated position.
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  return true; 
 }
 
 
@@ -772,7 +768,7 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
 
 
   // This will add a between factor after obtaining the delta between poses.
-  double init_x = 8.0, init_y = 0.0, init_z = 0.0;
+  double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
   delta_after_restart_.translation = gu::Vec3(init_x, init_y, init_z);
   delta_after_restart_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);

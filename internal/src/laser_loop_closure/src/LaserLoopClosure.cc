@@ -957,6 +957,12 @@ bool LaserLoopClosure::FindLoopClosures(
   if (!check_for_loop_closures_)
     return false;
 
+  // Don't check for loop closures against poses that are missing scans.
+  if (!keyed_scans_.count(key)){
+    ROS_WARN("Key %u does not have a scan", key);
+    return false;
+  }
+
   // Check arguments.
   if (closure_keys == NULL) {
     ROS_ERROR("%s: Output pointer is null.", name_.c_str());
@@ -1807,7 +1813,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     }
 
     // // Publish
-    // PublishPoseGraph();
+    PublishPoseGraph();
 
     return true; //result.getVariablesReeliminated() > 0;
   } catch (...) {
@@ -2232,7 +2238,7 @@ bool LaserLoopClosure::BatchLoopClosure() {
       found_loop = true;
     }
   }
-
+  
   // Update the posegraph after looking for loop closures and performing optimization
   PublishPoseGraph();
   if (found_loop == true)
@@ -2243,16 +2249,11 @@ bool LaserLoopClosure::BatchLoopClosure() {
 
 bool LaserLoopClosure::BatchLoopClosingTest(unsigned int key, unsigned int other_key){
   for (int i = 0; i <= manual_loop_keys_.size(); i++){
-    if ((key > manual_loop_keys_[i]) && ((std::fabs(key - manual_loop_keys_[i]) < poses_before_reclosing_))){
+    if (key == manual_loop_keys_[i]){
       return false;
     }
-    if ((other_key > manual_loop_keys_[i]) && ((std::fabs(other_key - manual_loop_keys_[i]) < poses_before_reclosing_))){
-      return false;
-    }
-    if ((key < manual_loop_keys_[i]) && ((std::fabs(manual_loop_keys_[i] - key) < poses_before_reclosing_))){
-      return false;
-    }
-    if ((other_key < manual_loop_keys_[i]) && ((std::fabs(manual_loop_keys_[i] - other_key) < poses_before_reclosing_))){
+
+    if (other_key == manual_loop_keys_[i]){
       return false;
     }
   }
