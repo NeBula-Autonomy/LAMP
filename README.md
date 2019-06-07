@@ -189,6 +189,7 @@ roslaunch blam_example test_offline.launch
 An example .rviz configuration file is provided under
 `blam_example/rviz/lidar_slam.rviz`.
 
+## Unit tests
 To compile and run unit tests:
 ```bash
 roscore & catkin build --catkin-make-args run_tests
