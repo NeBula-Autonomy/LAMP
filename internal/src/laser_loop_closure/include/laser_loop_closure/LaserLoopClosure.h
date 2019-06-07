@@ -298,8 +298,8 @@ class LaserLoopClosure {
   unsigned int key_;
   unsigned int last_closure_key_;
   unsigned int relinearize_interval_;
-  unsigned int skip_recent_poses_;
-  unsigned int poses_before_reclosing_;
+  unsigned int distance_to_skip_recent_poses_;
+  unsigned int distance_before_reclosing_;
   unsigned int n_iterations_manual_loop_close_;
   double translation_threshold_nodes_;
   double translation_threshold_kf_;

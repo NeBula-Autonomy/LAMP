@@ -138,8 +138,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("proximity_threshold", proximity_threshold_)) return false;
   if (!pu::Get("max_tolerable_fitness", max_tolerable_fitness_)) return false;
-  if (!pu::Get("skip_recent_poses", skip_recent_poses_)) return false;
-  if (!pu::Get("poses_before_reclosing", poses_before_reclosing_)) return false;
+  if (!pu::Get("distance_to_skip_recent_poses", distance_to_skip_recent_poses_)) return false;
+  if (!pu::Get("distance_before_reclosing", distance_before_reclosing_)) return false;
   if (!pu::Get("manual_lc_rot_precision", manual_lc_rot_precision_)) return false;
   if (!pu::Get("manual_lc_trans_precision", manual_lc_trans_precision_)) return false;
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;
@@ -982,10 +982,6 @@ bool LaserLoopClosure::FindLoopClosures(
   double cost;
   double cost_old;
 
-  // If a loop has already been closed recently, don't try to close a new one.
-  if (std::fabs(key - last_closure_key_) < poses_before_reclosing_)
-    return false;
-
   // Check that the key exists
   if (!values_.exists(key)){
     ROS_WARN("Key %u does not exist in find loop closures",key);
@@ -996,6 +992,9 @@ bool LaserLoopClosure::FindLoopClosures(
   const gu::Transform3 pose1 = ToGu(values_.at<Pose3>(key));
   const PointCloud::ConstPtr scan1 = keyed_scans_[key];
 
+  // If a loop has already been closed recently, don't try to close a new one.
+  if (std::fabs(key - last_closure_key_) * translation_threshold_kf_  < distance_before_reclosing_)
+    return false;
   // Iterate through past poses and find those that lie close to the most
   // recently added one.
   bool closed_loop = false;
@@ -1007,7 +1006,8 @@ bool LaserLoopClosure::FindLoopClosures(
       continue;
 
     // Don't compare against poses that were recently collected.
-    if (std::fabs(key - other_key) < skip_recent_poses_)
+    unsigned int skip_recent_poses = distance_to_skip_recent_poses_/translation_threshold_kf_; 
+    if (std::fabs(key - other_key) < skip_recent_poses)   
       continue;
 
     // Don't check for loop closures against poses that are not keyframes.
@@ -1019,6 +1019,7 @@ bool LaserLoopClosure::FindLoopClosures(
       ROS_WARN("Key %u does not exist in loop closure search (other key)",other_key);
       return false;
     }
+    // Get pose for the other key.
     const gu::Transform3 pose2 = ToGu(values_.at<Pose3>(other_key));
     const gu::Transform3 difference = gu::PoseDelta(pose1, pose2);
     if (difference.translation.Norm() < proximity_threshold_) {
