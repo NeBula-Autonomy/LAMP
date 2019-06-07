@@ -37,6 +37,8 @@ find_package(PCL 1.7 REQUIRED)
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
+find_package(Boost 1.58 COMPONENTS filesystem program_options timer REQUIRED)
+
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
 check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
@@ -53,6 +55,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
   ${GTSAM_INCLUDE_DIR}
+  ${Boost_INCLUDE_DIR}
 )
 
 link_directories(
@@ -65,7 +68,8 @@ add_library(${PROJECT_NAME} src/PoseGraphVisualizer.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-  ${GTSAM_LIBRARY_DIRS}
+  gtsam
+  ${Boost_LIBRARIES}
 )
 
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc src/PoseGraphVisualizer.cc)
@@ -73,5 +77,6 @@ target_link_libraries(${PROJECT_NAME}_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-  ${GTSAM_LIBRARY_DIRS}
+  gtsam
+  ${Boost_LIBRARIES}
 )

@@ -138,7 +138,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
     key_ = msg_node.key;
 
-    gtsam::Symbol sym_key = gtsam::Symbol(gtsam::Key(msg_node.key));
+    gtsam::Symbol sym_key(gtsam::Key(msg_node.key));
     // Add UUID if an artifact or uwb node
     if (sym_key.chr() == 'l') {
       // Artifact
