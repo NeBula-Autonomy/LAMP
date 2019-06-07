@@ -187,7 +187,7 @@ class LaserLoopClosure {
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
 
   // Publish pose graph for visualization.
-  bool PublishPoseGraph();
+  bool PublishPoseGraph(bool only_publish_if_changed = true);
 
   // Publish artifacts for visualization. 
   void PublishArtifacts(gtsam::Key artifact_key = gtsam::Key(gtsam::Symbol('z',0)));
@@ -197,10 +197,6 @@ class LaserLoopClosure {
 
   // Function to search for loopclosures over the whole posegraph
   bool BatchLoopClosure();
-
-  
-  // makeMenuMaker
-  void makeMenuMarker( geometry_utils::Transform3 position, const std::string id_number) ;
 
   // AddManualLoopClosure between the two keys to connect them. This function is
   // designed for a scenario where a human operator can manually perform
@@ -219,13 +215,7 @@ class LaserLoopClosure {
   // Removes the factor between the two keys from the pose graph.
   bool RemoveFactor(unsigned int key1, unsigned int key2);
 
-  // Visualizes an edge between the two nodes for the user to confirm.
-  bool VisualizeConfirmFactor(unsigned int key1, unsigned int key2);
-
-  // Removes the factor that was visualized for confirmation.
-  void RemoveConfirmFactorVisualization();
-
-  //Erase the posegraph
+  // Erase the posegraph
   bool ErasePosegraph();
 
   //Test to not add lazerloopclosures close to a manual loop closure
@@ -366,20 +356,15 @@ class LaserLoopClosure {
   std::unordered_map<gtsam::Key, ArtifactInfo> artifact_key2info_hash;
 
   // Visualization publishers.
-  ros::Publisher odometry_edge_pub_;
-  ros::Publisher loop_edge_pub_;
-  ros::Publisher artifact_edge_pub_;
-  ros::Publisher graph_node_pub_;
-  ros::Publisher graph_node_id_pub_;
-  ros::Publisher keyframe_node_pub_;
-  ros::Publisher closure_area_pub_;
   ros::Publisher scan1_pub_;
   ros::Publisher scan2_pub_;
-  ros::Publisher confirm_edge_pub_;
   ros::Publisher artifact_pub_;
   ros::Publisher marker_pub_;
   ros::Publisher uwb_node_pub_;
   ros::Publisher uwb_edge_pub_;
+
+  // Used for publishing pose graph only if it hasn't changed.
+  bool has_changed_{true};
 
   // ros::ServiceServer add_factor_srv_;
 
