@@ -104,6 +104,7 @@ private:
   // Keep a list of keyed laser scans, poses and timestamps.
   std::map<unsigned int, PointCloud::ConstPtr> keyed_scans_;
   std::map<unsigned int, tf::Pose> keyed_poses_;
+  std::map<unsigned int, tf::Pose> keyed_artifact_poses_;
   std::map<unsigned int, tf::Pose> keyed_uwb_poses_;
   std::map<unsigned int, ros::Time> keyed_stamps_;
   std::map<double, unsigned int> stamps_keyed_;

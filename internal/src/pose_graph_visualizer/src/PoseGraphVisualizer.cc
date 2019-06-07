@@ -137,11 +137,14 @@ void PoseGraphVisualizer::PoseGraphCallback(
   }
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
     key_ = msg_node.key;
+    tf::Pose pose;
+    tf::poseMsgToTF(msg_node.pose, pose);
 
     gtsam::Symbol sym_key(gtsam::Key(msg_node.key));
     // Add UUID if an artifact or uwb node
     if (sym_key.chr() == 'l') {
       // Artifact
+      keyed_artifact_poses_[msg_node.key] = pose;
 
       // node.ID = artifacts_[keyed_pose.key].msg.id;
       artifact_id2key_hash_[msg_node.ID] = msg_node.key;
@@ -151,12 +154,11 @@ void PoseGraphVisualizer::PoseGraphCallback(
     if (sym_key.chr() == 'u') {
       // UWB
       // TODO implement UWB logic
-
+      keyed_uwb_poses_[msg_node.key] = pose;
       // node.ID = uwb_key2id_hash_[keyed_pose.key];
       continue;
     }
-    tf::Pose pose;
-    tf::poseMsgToTF(msg_node.pose, pose);
+
     keyed_poses_[msg_node.key] = pose;
 
     keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(
@@ -525,8 +527,8 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       const auto key1 = artifact_edges_[ii].first;
       const auto key2 = artifact_edges_[ii].second;
 
-      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
-      m.points.push_back(GetPositionMsg(key2, keyed_poses_));
+      m.points.push_back(GetPositionMsg(key1, keyed_artifact_poses_));
+      m.points.push_back(GetPositionMsg(key2, keyed_artifact_poses_));
     }
     artifact_edge_pub_.publish(m);
   }
