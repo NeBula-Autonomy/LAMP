@@ -527,7 +527,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       const auto key1 = artifact_edges_[ii].first;
       const auto key2 = artifact_edges_[ii].second;
 
-      m.points.push_back(GetPositionMsg(key1, keyed_artifact_poses_));
+      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
       m.points.push_back(GetPositionMsg(key2, keyed_artifact_poses_));
     }
     artifact_edge_pub_.publish(m);
@@ -551,7 +551,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       const auto key1 = uwb_edges_[ii].first;
       const auto key2 = uwb_edges_[ii].second;
 
-      m.points.push_back(GetPositionMsg(key1, keyed_uwb_poses_));
+      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
       m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));
     }
     uwb_edge_pub_.publish(m);
