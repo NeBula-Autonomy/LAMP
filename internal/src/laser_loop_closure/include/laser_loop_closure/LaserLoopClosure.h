@@ -67,6 +67,10 @@
 
 #include <core_msgs/Artifact.h>
 
+// for UWB
+#include <gtsam/sam/RangeFactor.h>
+#include <gtsam/inference/Symbol.h>
+
 // #include "SESync/SESync.h"
 // #include "SESync/SESync_utils.h"
 
@@ -139,6 +143,17 @@ class LaserLoopClosure {
   bool AddBetweenChordalFactor(const geometry_utils::Transform3& delta,
                         const Mat1212& covariance, const ros::Time& stamp,
                         unsigned int* key);
+  
+  bool AddUwbFactor(const std::string uwb_id,
+                    const ros::Time& stamp,
+                    const double range,
+                    const Eigen::Vector3d robot_position);
+  
+  bool DropUwbAnchor(const std::string uwb_id,
+                     const ros::Time& stamp,
+                     const Eigen::Vector3d robot_position);
+
+  void PublishUwb();
 
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.
@@ -149,16 +164,16 @@ class LaserLoopClosure {
   bool FindLoopClosures(unsigned int key,
                         std::vector<unsigned int>* closure_keys);
 
-  //Function to add factor between robots
-  bool AddFactorBetweenRobots(const geometry_utils::Transform3& delta, const LaserLoopClosure::Mat66& covariance,
-    const ros::Time& stamp, unsigned int* key);
-
   // Build a 3D point cloud by concatenating all point clouds from poses along
   // the pose graph.
   bool GetMaximumLikelihoodPoints(PointCloud* map);
 
   // Get the most recent pose in the pose graph.
   geometry_utils::Transform3 GetLastPose() const;
+  unsigned int GetKey() const;
+
+  bool AddFactorAtRestart(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);
+  bool AddFactorAtLoad(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);
 
   // Get the most initial pose in the pose graph.
   geometry_utils::Transform3 GetInitialPose() const;
@@ -248,7 +263,7 @@ class LaserLoopClosure {
       const gtsam::Pose3& pose, const Diagonal::shared_ptr& covariance);
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactor(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
-  gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenRobotFactor(
+  gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactorAtLoad(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
   gtsam::BetweenChordalFactor<gtsam::Pose3> MakeBetweenChordalFactor(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
@@ -285,6 +300,7 @@ class LaserLoopClosure {
   // Pose graph and ISAM2 parameters.
   bool check_for_loop_closures_;
   bool save_posegraph_backup_;
+  bool LAMP_recovery_;
   unsigned int keys_between_each_posegraph_backup_;
   unsigned int loop_closure_optimizer_;
   unsigned int key_;
@@ -321,6 +337,12 @@ class LaserLoopClosure {
   double icp_corr_dist_;
   unsigned int icp_iterations_;
 
+  // UWB parameters
+  std::unordered_map<std::string, gtsam::Key> uwb_id2key_hash_;
+  double uwb_range_measurement_error_;
+  unsigned int uwb_range_compensation_;
+  unsigned int uwb_factor_optimizer_;
+
   // ISAM2 optimizer object, and best guess pose values.
   #ifdef SOLVER
   std::unique_ptr<GenericSolver> isam_;
@@ -356,6 +378,8 @@ class LaserLoopClosure {
   ros::Publisher confirm_edge_pub_;
   ros::Publisher artifact_pub_;
   ros::Publisher marker_pub_;
+  ros::Publisher uwb_node_pub_;
+  ros::Publisher uwb_edge_pub_;
 
   // ros::ServiceServer add_factor_srv_;
 
@@ -372,6 +396,7 @@ class LaserLoopClosure {
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
+  std::vector<std::pair<unsigned int, gtsam::Key>> uwb_edges_;
 
   // For filtering laser scans prior to ICP.
   PointCloudFilter filter_;

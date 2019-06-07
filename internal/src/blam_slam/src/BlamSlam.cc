@@ -47,6 +47,7 @@ namespace gu = geometry_utils;
 BlamSlam::BlamSlam()
   : estimate_update_rate_(0.0),
     visualization_update_rate_(0.0),
+    uwb_update_rate_(0.0),
     position_sigma_(0.01),
     attitude_sigma_(0.04),
     marker_id_(0),
@@ -59,6 +60,8 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   name_ = ros::names::append(n.getNamespace(), "BlamSlam");
   //TODO: Move this to a better location.
   map_loaded_ = false;
+
+  initial_key_ = 0;
 
   if (!filter_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud filter.", name_.c_str());
@@ -102,6 +105,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   // Load update rates.
   if (!pu::Get("rate/estimate", estimate_update_rate_)) return false;
   if (!pu::Get("rate/visualization", visualization_update_rate_)) return false;
+  if (!pu::Get("rate/uwb_update", uwb_update_rate_)) return false;
 
   // Load frame ids.
   if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
@@ -112,6 +116,12 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   // Covariance for odom factors
   if (!pu::Get("noise/odom_position_sigma", position_sigma_)) return false;
   if (!pu::Get("noise/odom_attitude_sigma", attitude_sigma_)) return false;
+
+  // Load dropped item ids
+  if (!pu::Get("items/uwb_id", uwb_id_list_)) return false;
+  for (int i = 0; i < uwb_id_list_.size(); i++) {
+    uwb_drop_status_[uwb_id_list_[i]] = false;
+  }
 
   if (!pu::Get("use_chordal_factor", use_chordal_factor_))
     return false;
@@ -153,7 +163,7 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   restart_srv_ = nl.advertiseService("restart", &BlamSlam::RestartService, this);
   load_graph_srv_ = nl.advertiseService("load_graph", &BlamSlam::LoadGraphService, this);
   batch_loop_closure_srv_ = nl.advertiseService("batch_loop_closure", &BlamSlam::BatchLoopClosureService, this);
-
+  drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
   if (from_log)
     return RegisterLogCallbacks(n);
   else
@@ -173,10 +183,14 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 
   estimate_update_timer_ = nl.createTimer(
       estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
+  
+  uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
 
   pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
 
   artifact_sub_ = nl.subscribe("artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
+
+  uwb_sub_ = nl.subscribe("uwb_signal", 10, &BlamSlam::UwbSignalCallback, this);
 
   return CreatePublishers(n);
 }
@@ -321,10 +335,28 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   mapper_.Reset();
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(regenerated_map, unused.get());
+  // change the key number for the second robot to 10000
   loop_closure_.ChangeKeyNumber();
 
+  initial_key_ = loop_closure_.GetKey();
+  gu::MatrixNxNBase<double, 6> covariance;
+  covariance.Zeros();
+  for (int i = 0; i < 3; ++i)
+    covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
+  for (int i = 3; i < 6; ++i)
+    covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
+
+  // Obtain the second robot's initial pose from the tf
+  //TODO: Kamak: write a callback function to get the tf
+  // compute the delta and put it in this format.
+  double init_x = 0.0, init_y = 0.0, init_z = 0.0;
+  double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
+  delta_after_load_.translation = gu::Vec3(init_x, init_y, init_z);
+  delta_after_load_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);
+  loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
+
   // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetInitialPose());
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   return true;
 }
 
@@ -349,6 +381,20 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   else {
     return false;
   }
+}
+
+
+bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
+                              mesh_msgs::ProcessCommNodeResponse &response) {
+  ROS_INFO_STREAM("Dropped UWB anchor is " + request.node.AnchorID);
+
+  Eigen::Vector3d aug_robot_position = localization_.GetIntegratedEstimate().translation.Eigen();
+
+  loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, aug_robot_position);
+
+  uwb_drop_status_[request.node.AnchorID] = true;
+  
+  return true;
 }
 
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
@@ -525,6 +571,92 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   }
 }
 
+void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
+
+  // Show range data for debug
+  for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
+    ROS_DEBUG_STREAM("UWB-ID: " + itr->first);
+    for (auto itr_child = (itr->second).begin(); itr_child != (itr->second).end(); itr_child++) {
+      ROS_DEBUG_STREAM("time = " << itr_child->first << ", range = " << itr_child->second.first);
+    }
+  }
+
+  for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
+    if (!itr->second.empty()) {
+      auto itr_end = (itr->second).end();
+      itr_end--;
+      auto time_diff = ros::Time::now() - itr_end->first;
+      if (time_diff.toSec() > 20.0) {
+        if (itr->second.size() > 4) {
+
+          ProcessUwbRangeData(itr->first);
+
+          itr->second.clear();
+        }
+        else {
+          ROS_INFO("Number of range measurement is NOT enough");
+          itr->second.clear();
+        }
+        
+      }
+    }
+  }
+}
+
+void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
+  ROS_INFO_STREAM("Start to process UWB range measurement data of " << uwb_id);
+
+  std::map<double, ros::Time> map_range_time_;
+
+  for (auto itr = map_uwbid_time_data_[uwb_id].begin(); itr != map_uwbid_time_data_[uwb_id].end(); itr++) {
+    map_range_time_[itr->second.first] = itr->first;
+  }
+
+  auto minItr = std::min_element(map_range_time_.begin(), map_range_time_.end());
+
+  ros::Time aug_time = minItr->second;
+  double aug_range = minItr->first;
+  Eigen::Vector3d aug_robot_position = map_uwbid_time_data_[uwb_id][aug_time].second;
+
+  if (loop_closure_.AddUwbFactor(uwb_id, aug_time, aug_range, aug_robot_position)) {
+    ROS_INFO("Updating the map by UWB data");
+    PointCloud::Ptr regenerated_map(new PointCloud);
+    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+    mapper_.Reset();
+    PointCloud::Ptr unused(new PointCloud);
+    mapper_.InsertPoints(regenerated_map, unused.get());
+
+    // Also reset the robot's estimated position.
+    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+
+    // Visualize the pose graph and current loop closure radius.
+    loop_closure_.PublishPoseGraph();
+
+    // Publish updated map
+    mapper_.PublishMap();
+
+    ROS_INFO("Updated the map by UWB Range Factors");
+  }
+}
+
+void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
+  // TODO: Screening before entering into this subscriber
+  auto itr = uwb_drop_status_.find(msg.id);
+  if (itr != end(uwb_drop_status_)) {
+    if (itr->second == true) {
+      map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
+      map_uwbid_time_data_[msg.id][msg.header.stamp].second
+      = localization_.GetIntegratedEstimate().translation.Eigen();
+    }
+  }
+  else {
+    map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
+    map_uwbid_time_data_[msg.id][msg.header.stamp].second
+    = localization_.GetIntegratedEstimate().translation.Eigen();
+  }
+}
+
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
 }
@@ -539,7 +671,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     // First update ever.
     PointCloud::Ptr unused(new PointCloud);
     mapper_.InsertPoints(msg_filtered, unused.get());
-    loop_closure_.AddKeyScanPair(0, msg);
+    loop_closure_.AddKeyScanPair(initial_key_, msg);
     return;
   }
 
@@ -631,6 +763,22 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(regenerated_map, unused.get());
 
+  initial_key_ = loop_closure_.GetKey();
+  gu::MatrixNxNBase<double, 6> covariance;
+  covariance.Zeros();
+  for (int i = 0; i < 3; ++i)
+    covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
+  for (int i = 3; i < 6; ++i)
+    covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
+
+
+  // This will add a between factor after obtaining the delta between poses.
+  double init_x = 8.0, init_y = 0.0, init_z = 0.0;
+  double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
+  delta_after_restart_.translation = gu::Vec3(init_x, init_y, init_z);
+  delta_after_restart_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);
+  loop_closure_.AddFactorAtRestart(delta_after_restart_, covariance);
+
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   return true;
@@ -644,8 +792,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   }
 
   unsigned int pose_key;
-  if(map_loaded_) {
-    ROS_INFO("Map is loaded, adding factors between robots");
+  if (!use_chordal_factor_) {
     // Add the new pose to the pose graph (BetweenFactor)
     // TODO rename to attitude and position sigma 
     gu::MatrixNxNBase<double, 6> covariance;
@@ -654,50 +801,32 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
       covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
     for (int i = 3; i < 6; ++i)
       covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
+
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
 
-    // Add factor between robots
-    loop_closure_.AddFactorBetweenRobots(localization_.GetIncrementalEstimate(),
-                                        covariance, stamp, &pose_key);
-    
-    // Reset flag
-    map_loaded_= false;
-   } else {
+    // Add between factor
+    if (!loop_closure_.AddBetweenFactor(localization_.GetIncrementalEstimate(),
+                                        covariance, stamp, &pose_key)) {
+      return false;
+    }
+  } else {
+    // Add the new pose to the pose graph (BetweenChordalFactor)
+    gu::MatrixNxNBase<double, 12> covariance;
+    covariance.Zeros();
+    for (int i = 0; i < 9; ++i)
+      covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
+    for (int i = 9; i < 12; ++i)
+      covariance(i, i) = position_sigma_*position_sigma_; //0.4, 0.004; 0.2 m sd
 
-      if (!use_chordal_factor_) {
-        // Add the new pose to the pose graph (BetweenFactor)
-        // TODO rename to attitude and position sigma 
-        gu::MatrixNxNBase<double, 6> covariance;
-        covariance.Zeros();
-        for (int i = 0; i < 3; ++i)
-          covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
-        for (int i = 3; i < 6; ++i)
-          covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
+    const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
 
-        const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-        if (!loop_closure_.AddBetweenFactor(localization_.GetIncrementalEstimate(),
-                                            covariance, stamp, &pose_key)) {
-          // ROS_INFO("No new pose from add between factor. Pose key is %f",pose_key);
-          return false;
-        }
-
-      } else {
-        // Add the new pose to the pose graph (BetweenChordalFactor)
-        gu::MatrixNxNBase<double, 12> covariance;
-        covariance.Zeros();
-        for (int i = 0; i < 9; ++i)
-          covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
-        for (int i = 9; i < 12; ++i)
-          covariance(i, i) = position_sigma_*position_sigma_; //0.4, 0.004; 0.2 m sd
-
-        const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-        if (!loop_closure_.AddBetweenChordalFactor(localization_.GetIncrementalEstimate(),
-                                                  covariance, stamp, &pose_key)) {
-          return false;
-        }
+    // Add between factor
+    if (!loop_closure_.AddBetweenChordalFactor(localization_.GetIncrementalEstimate(),
+                                                covariance, stamp, &pose_key)) {
+      return false;
     }
   }
-  
+
   *new_keyframe = true;
 
   if (!loop_closure_.AddKeyScanPair(pose_key, scan)) {
