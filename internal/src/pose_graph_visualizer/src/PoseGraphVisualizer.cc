@@ -123,8 +123,10 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_,
       "blam_slam/pose_graph_node", 10,
       &PoseGraphVisualizer::PoseGraphNodeCallback, this);
 
-  artifact_sub_ = nh.subscribe("blam_slam/artifact_global", 10,
-                               &PoseGraphVisualizer::ArtifactCallback, this);
+  artifact_sub_ = nh.subscribe("blam_slam/artifact_global",
+                               10,
+                               &PoseGraphVisualizer::ArtifactCallback,
+                               this);
 
   return true;
 }
