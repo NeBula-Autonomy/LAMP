@@ -260,9 +260,6 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
       nl.advertise<std_msgs::Empty>("loop_closure", 10, false);
 
   artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
-  
-  uwb_node_pub_ = nl.advertise<visualization_msgs::Marker>("uwb_nodes", 10, false);
-  uwb_edge_pub_ = nl.advertise<visualization_msgs::Marker>("uwb_edges", 10, false);
       
   return true;
 }
