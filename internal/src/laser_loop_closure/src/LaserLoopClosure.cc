@@ -558,7 +558,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
     uwb_key = uwb_id2key_hash_[uwb_id];
   }
   else {
-    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size()+1);
+    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
@@ -802,7 +802,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     uwb_key = uwb_id2key_hash_[uwb_id];
   }
   else {
-    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size()+1);
+    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
@@ -837,9 +837,6 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   gtsam::noiseModel::Diagonal::Precisions(precisions);
   // TODO
   new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
-
-  uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-
 
   try {
     ROS_INFO_STREAM("Optimizing uwb-based loop closure, iteration");
@@ -2351,57 +2348,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
     // Publish.
     pose_graph_pub_.publish(g);
   }
-
-  PublishUwb();
   
   return true;
-}
-
-void LaserLoopClosure::PublishUwb() {
-  for (auto itr = uwb_id2key_hash_.begin(); itr != uwb_id2key_hash_.end(); itr++) {
-    visualization_msgs::Marker m;
-    gu::Transform3 uwb_pose_pub = ToGu(values_.at<Pose3>(itr->second));
-    m.id = itr->second;
-    m.header.frame_id = fixed_frame_id_;
-    m.pose = gr::ToRosPose(uwb_pose_pub);
-    m.scale.x = 0.5f;
-    m.scale.y = 0.5f;
-    m.scale.z = 0.5f;
-    m.color.r = 0.0f;
-    m.color.g = 1.0f;
-    m.color.b = 0.0f;
-    m.color.a = 0.4f;
-    m.type = visualization_msgs::Marker::CUBE;
-
-    uwb_node_pub_.publish(m);
-  }
-
-  if (uwb_edge_pub_.getNumSubscribers() > 0){
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 5;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 1.0;
-    m.color.b = 0.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < uwb_edges_.size(); ++ii) {
-      unsigned int key1 = uwb_edges_[ii].first;
-      gtsam::Key key2 = uwb_edges_[ii].second;
-
-      gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-      gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-      m.points.push_back(gr::ToRosPoint(p1));
-      m.points.push_back(gr::ToRosPoint(p2));
-    }
-    uwb_edge_pub_.publish(m);
-  }
-
 }
 
 void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
