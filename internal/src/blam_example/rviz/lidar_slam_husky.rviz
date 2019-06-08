@@ -11,7 +11,7 @@ Panels:
         - /UWB Edges1
         - /UWB Nodes1
       Splitter Ratio: 0.588235319
-    Tree Height: 486
+    Tree Height: 418
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -30,7 +30,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: BLAM_Map_Downsampled
+    SyncSource: ""
 Toolbars:
   toolButtonStyle: 2
 Visualization Manager:
@@ -375,7 +375,7 @@ Visualization Manager:
       Marker Topic: /husky/pose_graph_visualizer/loop_edges
       Name: LoopEdges
       Namespaces:
-        husky/blam: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -383,7 +383,7 @@ Visualization Manager:
       Marker Topic: /husky/pose_graph_visualizer/odometry_edges
       Name: odom_edges
       Namespaces:
-        husky/blam: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -399,11 +399,11 @@ Visualization Manager:
       Marker Topic: /husky/pose_graph_visualizer/artifact_edges
       Name: ArtifactEdges
       Namespaces:
-        husky/blam: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Image
-      Enabled: false
+      Enabled: true
       Image Topic: /husky/camera_front/color/image_raw
       Max Value: 1
       Median window: 5
@@ -413,7 +413,7 @@ Visualization Manager:
       Queue Size: 2
       Transport Hint: raw
       Unreliable: false
-      Value: false
+      Value: true
     - Class: rviz/Image
       Enabled: true
       Image Topic: /husky/camera_left/color/image_raw
@@ -427,7 +427,7 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Class: rviz/Image
-      Enabled: true
+      Enabled: false
       Image Topic: /husky/camera_right/color/image_raw
       Max Value: 1
       Median window: 5
@@ -437,7 +437,7 @@ Visualization Manager:
       Queue Size: 2
       Transport Hint: raw
       Unreliable: false
-      Value: true
+      Value: false
     - Class: rviz/Image
       Enabled: true
       Image Topic: /husky/camera_front/color/image_raw
@@ -455,7 +455,7 @@ Visualization Manager:
       Marker Topic: /husky/pose_graph_visualizer/uwb_edges
       Name: UWB Edges
       Namespaces:
-        husky/blam: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -463,7 +463,7 @@ Visualization Manager:
       Marker Topic: /husky/pose_graph_visualizer/uwb_nodes
       Name: UWB Nodes
       Namespaces:
-        husky/blam: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -506,10 +506,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.47479641
+      Pitch: 1.56979632
       Target Frame: husky/base_link
       Value: Orbit (rviz)
-      Yaw: 1.66178226
+      Yaw: 1.57678235
     Saved: ~
 Window Geometry:
   Displays:

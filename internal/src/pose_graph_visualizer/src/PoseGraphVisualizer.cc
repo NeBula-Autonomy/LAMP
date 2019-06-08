@@ -123,7 +123,7 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_,
       "blam_slam/pose_graph_node", 10,
       &PoseGraphVisualizer::PoseGraphNodeCallback, this);
 
-  artifact_sub_ = nh.subscribe("artifact_global", 10,
+  artifact_sub_ = nh.subscribe("blam_slam/artifact_global", 10,
                                &PoseGraphVisualizer::ArtifactCallback, this);
 
   return true;
@@ -180,8 +180,16 @@ void PoseGraphVisualizer::PoseGraphCallback(
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
       // TODO send only incremental UWB edges (if msg.incremental is true)
       // uwb_edges_.clear();
-      uwb_edges_.emplace_back(
+      bool found = false;
+      for (const auto& edge : uwb_edges_) {
+        if (edge.first == msg_edge.key_from && edge.second == msg_edge.key_to)
+          found = true;
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
+      }
     }
   }
 
