@@ -123,7 +123,7 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_,
       "blam_slam/pose_graph_node", 10,
       &PoseGraphVisualizer::PoseGraphNodeCallback, this);
 
-  artifact_sub_ = nh.subscribe("artifact_global", 10,
+  artifact_sub_ = nh.subscribe("blam_slam/artifact_global", 10,
                                &PoseGraphVisualizer::ArtifactCallback, this);
 
   return true;
@@ -314,6 +314,8 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact &msg) {
 
   ArtifactInfo artifactinfo;
   artifactinfo.msg = msg;
+  ROS_INFO_STREAM("Artifact UUID is " << msg.id);
+  ROS_INFO_STREAM("Artifact key is " << artifact_id2key_hash_[msg.id]);
   artifacts_[artifact_id2key_hash_[msg.id]] = artifactinfo;
   VisualizeArtifacts();
 }
@@ -698,6 +700,8 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     marker.ns = "artifact";
     marker.id = it->first;
     marker.action = visualization_msgs::Marker::ADD;
+
+    ROS_INFO_STREAM("Iterator first is: " << it->first);
 
     gtsam::Key key(it->first);
     ROS_INFO_STREAM("Artifact hash key is "
