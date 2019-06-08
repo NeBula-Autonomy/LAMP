@@ -177,6 +177,11 @@ void PoseGraphVisualizer::PoseGraphCallback(
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
       artifact_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      uwb_edges_.emplace_back(
+          std::make_pair(msg_edge.key_from, msg_edge.key_to));
     }
   }
 
@@ -514,7 +519,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
-    m.id = 6;
+    m.id = 2;
     m.action = visualization_msgs::Marker::ADD;
     m.type = visualization_msgs::Marker::LINE_LIST;
     m.color.r = 0.2;
@@ -538,7 +543,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
-    m.id = 7;
+    m.id = 3;
     m.action = visualization_msgs::Marker::ADD;
     m.type = visualization_msgs::Marker::LINE_LIST;
     m.color.r = 0.0;
@@ -553,6 +558,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       m.points.push_back(GetPositionMsg(key1, keyed_poses_));
       m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));
+      ROS_INFO("PGV sends UWB edge %u", ii);
     }
     uwb_edge_pub_.publish(m);
   }
@@ -562,7 +568,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
-    m.id = 2;
+    m.id = 4;
     m.action = visualization_msgs::Marker::ADD;
     m.type = visualization_msgs::Marker::SPHERE_LIST;
     m.color.r = 0.3;
@@ -609,7 +615,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
-    m.id = 3;
+    m.id = 4;
     m.action = visualization_msgs::Marker::ADD;
     m.type = visualization_msgs::Marker::SPHERE_LIST;
     m.color.r = 0.0;
@@ -632,7 +638,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     visualization_msgs::Marker m;
     m.header.frame_id = base_frame_id_;
     m.ns = base_frame_id_;
-    m.id = 4;
+    m.id = 5;
     m.action = visualization_msgs::Marker::ADD;
     m.type = visualization_msgs::Marker::SPHERE;
     m.color.r = 0.0;
@@ -652,7 +658,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
-    m.id = 5;
+    m.id = 6;
     m.action = visualization_msgs::Marker::ADD;
     m.type = visualization_msgs::Marker::CUBE_LIST;
     m.color.r = 0.0;
