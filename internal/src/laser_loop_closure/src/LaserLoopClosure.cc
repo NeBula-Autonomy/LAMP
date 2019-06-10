@@ -1024,16 +1024,6 @@ bool LaserLoopClosure::FindLoopClosures(
       ROS_WARN("Key %u does not exist in loop closure search (other key)", other_key);
       return false;
     }
-    
-    // This only occurs if you add any manual loop closures
-    if (manual_loop_keys_.size() >= 1)
-    {
-      if (!BatchLoopClosingTest(key, other_key))
-      {
-        continue;
-      }
-    }
-
 
     // Get pose for the other key.
     const gu::Transform3 pose2 = ToGu(values_.at<Pose3>(other_key));
@@ -1569,6 +1559,7 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
 bool LaserLoopClosure::AddManualLoopClosure(gtsam::Key key1, gtsam::Key key2, 
                                             gtsam::Pose3 pose12){
 
+  
   bool is_manual_loop_closure = true;
   return AddFactor(key1, key2, pose12, is_manual_loop_closure,
                    manual_lc_rot_precision_, manual_lc_trans_precision_); 
@@ -1789,8 +1780,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       loop_closure_notifier_pub_.publish(std_msgs::Empty());
 
       // Store manual loop keys to not interfere with batch loop closure.
-      manual_loop_keys_.push_back(key1);
-      manual_loop_keys_.push_back(key2);
+      manual_loop_keys_.push_back(std::make_pair(key1, key2));
 
     }
     else{
@@ -1822,7 +1812,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
   }
 }
 
-bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2) {
+bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool is_batch_loop_closure) {
   ROS_INFO("Removing factor between %i and %i from the pose graph...", key1, key2);
 
   // Prevent removing odometry edges 
@@ -1873,6 +1863,13 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2) {
     return false; 
   }
   
+  if(is_batch_loop_closure){
+  // Publish
+  PublishPoseGraph();
+
+  return true;
+  }
+
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl; 
   isam_->update(gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove);
@@ -1946,6 +1943,7 @@ bool LaserLoopClosure::ErasePosegraph(){
   stamps_keyed_.clear();
 
   loop_edges_.clear();
+  manual_loop_keys_.clear();
   odometry_ = Pose3::identity();
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
@@ -2229,15 +2227,35 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
 
 bool LaserLoopClosure::BatchLoopClosure() {
 
+  //Store parameter values as initalized in parameters.yaml
+  save_posegraph = save_posegraph_backup_;
+  loop_closure_checks = check_for_loop_closures_;
+
+
+  //Disable save flag before doing optimization
   save_posegraph_backup_ = false;
+
+  //Enable loop-closure before running search
   check_for_loop_closures_ = true;
+  
+  //Remove all manual factors to not make the system underdetermined
+  for (int i = 0; i <= manual_loop_keys_.size(); i++){
+    bool is_batch_loop_closure = true;
+    RemoveFactor(manual_loop_keys_[i].first, manual_loop_keys_[i].second, is_batch_loop_closure);
+  }
+
   bool found_loop = false;
+  //Loop through all keyed scans and look for loop closures
   for (const auto& keyed_pose : values_) {
     std::vector<unsigned int> closure_keys;
     if (FindLoopClosures(keyed_pose.key, &closure_keys)){
       found_loop = true;
     }
   }
+
+  //Restore parameter values as initalized in parameters.yaml
+  save_posegraph_backup_ = save_posegraph;
+  check_for_loop_closures_ = loop_closure_checks;
   
   // Update the posegraph after looking for loop closures and performing optimization
   PublishPoseGraph();
@@ -2245,19 +2263,6 @@ bool LaserLoopClosure::BatchLoopClosure() {
     return true;
   else
     return false;
-}
-
-bool LaserLoopClosure::BatchLoopClosingTest(unsigned int key, unsigned int other_key){
-  for (int i = 0; i <= manual_loop_keys_.size(); i++){
-    if (key == manual_loop_keys_[i]){
-      return false;
-    }
-
-    if (other_key == manual_loop_keys_[i]){
-      return false;
-    }
-  }
-    return true;
 }
 
 

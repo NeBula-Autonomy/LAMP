@@ -278,10 +278,11 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
     response.success = false;
     return true;
   }
-
+  bool is_batch_loop_closure = false;
   response.success = loop_closure_.RemoveFactor(
     static_cast<unsigned int>(request.key_from),
-    static_cast<unsigned int>(request.key_to));
+    static_cast<unsigned int>(request.key_to),
+    is_batch_loop_closure);
   if (response.success){
     std::cout << "removing factor from pose graph succeeded" << std::endl;
   }else{
