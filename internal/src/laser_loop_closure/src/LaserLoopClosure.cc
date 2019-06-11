@@ -2298,6 +2298,12 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
                  keyed_pose.key);
       }
 
+      ROS_INFO_STREAM("Symbol key is " << gtsam::DefaultKeyFormatter(sym_key));
+      ROS_INFO_STREAM("Symbol key (drirectly) is "
+                      << gtsam::DefaultKeyFormatter(keyed_pose.key));
+
+      ROS_INFO_STREAM("Symbol key (int) is " << keyed_pose.key);
+
       // Add UUID if an artifact or uwb node
       if (sym_key.chr() == 'l'){
         // Artifact
@@ -2416,7 +2422,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
     artifact_pub_.publish(new_msg);
 
-    if (artifact_key != '-1'){
+    if (gtsam::Symbol(artifact_key).chr() == 'z') {
       // Only a single artifact - exit the loop 
       return;
     }
