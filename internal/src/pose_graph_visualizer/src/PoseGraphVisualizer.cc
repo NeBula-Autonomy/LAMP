@@ -156,7 +156,9 @@ void PoseGraphVisualizer::PoseGraphCallback(
     if (sym_key.chr() == 'u') {
       // UWB
       // TODO implement UWB logic
-      keyed_uwb_poses_[msg_node.key] = pose;
+      // cast uint64_t from the message to an unsigned int to ensure
+      // comparisons are correct (do this explicitly here)
+      keyed_uwb_poses_[static_cast<unsigned int>(msg_node.key)] = pose;
       // node.ID = uwb_key2id_hash_[keyed_pose.key];
       continue;
     }
@@ -182,6 +184,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
       bool found = false;
       for (const auto& edge : uwb_edges_) {
+        // cast to unsigned int to ensure comparisons are correct
         if (edge.first == static_cast<unsigned int>(msg_edge.key_from)
             && edge.second == static_cast<unsigned int>(msg_edge.key_to)) {
           found = true;

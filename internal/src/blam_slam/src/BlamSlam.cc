@@ -190,7 +190,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 
   artifact_sub_ = nl.subscribe("artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
 
-  uwb_sub_ = nl.subscribe("uwb_signal", 10, &BlamSlam::UwbSignalCallback, this);
+  uwb_sub_ = nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
 
   return CreatePublishers(n);
 }
