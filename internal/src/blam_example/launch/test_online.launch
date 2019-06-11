@@ -65,6 +65,7 @@
 
       <!-- Loop closure -->
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+    </node>
 
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"
