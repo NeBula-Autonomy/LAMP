@@ -34,8 +34,8 @@ artifact_trans_precision: 1.0
 # Amount of translational distance the sensor must travel before adding a new
 # pose to the pose graph. This helps keep the graph sparse so that loop closures
 # are fast.
-translation_threshold_kf: 0.5 # For adding keyframes 
-translation_threshold_nodes: 0.5  # For adding nodes to pose graph 
+translation_threshold_kf: 1.0 # For adding keyframes 
+translation_threshold_nodes: 1.0  # For adding nodes to pose graph 
 
 # When searching through old poses for loop closures, only consider old poses
 # that are within this distance of the current pose.
@@ -44,7 +44,7 @@ proximity_threshold: 4
 # To compute a loop closure we perform ICP between the current scan and laser
 # scans captured from nearby poses. In order to be considered a loop closure,
 # the ICP "fitness score" must be less than this number.
-max_tolerable_fitness: 1.0
+max_tolerable_fitness: 5.0
 
 # Don't attempt loop closures with poses in the graph that were collected within
 # the last 'skip_recent_poses' poses.
@@ -53,9 +53,9 @@ skip_recent_poses: 20 #10 # 200
 # If a loop has recently been closed, don't close a new one for at least this
 # many poses (i.e. the sensor would have to move translation_threshold *
 # poses_before_reclosing meters in order to close a new loop).
-poses_before_reclosing: 5 #10
+poses_before_reclosing: 20 #10
 
 # outlier rejection thresholds 
-odometry_check_threshold: 0.1
+odometry_check_threshold: 0.05
 pairwise_check_threshold: 0.05
 # TODO make these dynamic with the translation threshold for nodes

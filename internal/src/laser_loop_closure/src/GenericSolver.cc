@@ -146,19 +146,35 @@ bool GenericSolver::isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_facto
 
   // get pij_lc = (Tij_lc, Covij_lc) from factor
   pji_lc.pose = lc_factor.measured().inverse(); 
-  pji_lc.covariance_matrix = gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
-      (lc_factor.get_noiseModel())->R()); // return covariance matrix
-      
+  gtsam::Matrix R_lc = boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
+      (lc_factor.get_noiseModel())->R();
+  
+  // Check if includes rotation info 
+  bool rotation_info = true; 
+  if (R_lc.block<3,3>(0,0) == Eigen::MatrixXd::Zero(3,3)) {
+    rotation_info = false; 
+    R_lc.block<3,3>(0,0) = Eigen::MatrixXd::Identity(3,3) * 0.0001;
+  }
+
+  pji_lc.covariance_matrix = gtsam::inverse(R_lc); // return covariance matrix
+
   // check consistency (Tij_odom,Cov_ij_odom, Tij_lc, Cov_ij_lc)
   graph_utils::poseCompose(pij_odom, pji_lc, result);
   result.pose.print("odom consistency check: ");
   std::cout << std::endl; 
   gtsam::Vector6 consistency_error = gtsam::Pose3::Logmap(result.pose);
   // check with threshold
-  double threshold = odom_threshold_; // hard coded for now 
+  double threshold = odom_threshold_;
   // comput sqaure mahalanobis distance (the computation is wrong in robust mapper repo)
-  double distance = std::sqrt(consistency_error.transpose() 
-            * gtsam::inverse(result.covariance_matrix) * consistency_error);
+  double distance; 
+  if (rotation_info) {
+    distance = std::sqrt(consistency_error.transpose() 
+        * gtsam::inverse(result.covariance_matrix) * consistency_error);
+  } else {
+    distance = std::sqrt(consistency_error.tail(3).transpose() 
+        * gtsam::inverse(result.covariance_matrix.block<3,3>(3,3)) 
+        * consistency_error.tail(3));
+  }
 
   ROS_INFO_STREAM("odometry consistency distance: " << distance); 
   if (distance < threshold) {
@@ -176,16 +192,30 @@ bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_1,
   gtsam::Key key2a = lc_2.front();
   gtsam::Key key2b = lc_2.back();
 
+  bool rotation_info = true; 
+
   graph_utils::PoseWithCovariance p1_lc_inv, p2_lc; 
   p1_lc_inv.pose = lc_1.measured().inverse();
-  p1_lc_inv.covariance_matrix =
-      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
-      (lc_1.get_noiseModel())->R()); 
+  gtsam::Matrix R1_lc = boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
+      (lc_1.get_noiseModel())->R();
+
+  if (R1_lc.block<3,3>(0,0) == Eigen::MatrixXd::Zero(3,3)) {
+    rotation_info = false; 
+    R1_lc.block<3,3>(0,0) = Eigen::MatrixXd::Identity(3,3) * 0.0001;
+  }
+
+  p1_lc_inv.covariance_matrix = gtsam::inverse(R1_lc); 
 
   p2_lc.pose = lc_2.measured();
-  p2_lc.covariance_matrix =
-      gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
-      (lc_2.get_noiseModel())->R()); 
+  gtsam::Matrix R2_lc = boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>
+      (lc_2.get_noiseModel())->R();
+
+  if (R2_lc.block<3,3>(0,0) == Eigen::MatrixXd::Zero(3,3)) {
+    rotation_info = false; 
+    R2_lc.block<3,3>(0,0) = Eigen::MatrixXd::Identity(3,3) * 0.0001;
+  }
+
+  p2_lc.covariance_matrix = gtsam::inverse(R2_lc); 
 
   // find odometry from 1a to 2a 
   graph_utils::PoseWithCovariance p1a_odom, p2a_odom, p1a2a_odom; 
@@ -210,8 +240,15 @@ bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_1,
   // check with threshold
   double threshold = pw_threshold_; // hard coded for now 
   // comput sqaure mahalanobis distance 
-  double distance = std::sqrt(consistency_error.transpose() 
-            * gtsam::inverse(result.covariance_matrix) * consistency_error);
+  double distance; 
+  if (rotation_info) {
+    distance = std::sqrt(consistency_error.transpose() 
+        * gtsam::inverse(result.covariance_matrix) * consistency_error);
+  } else {
+    distance = std::sqrt(consistency_error.tail(3).transpose() 
+        * gtsam::inverse(result.covariance_matrix.block<3,3>(3,3)) 
+        * consistency_error.tail(3));
+  }
 
   ROS_INFO_STREAM("loop consistency distance: " << distance); 
   if (distance < threshold) {
@@ -251,8 +288,8 @@ void GenericSolver::findInliers(gtsam::NonlinearFactorGraph &inliers) {
     }
   }
   lc_adjacency_matrix_ = new_adj_matrix;
-  std::cout << "adjacency matrix: " << std::endl; 
-  std::cout << lc_adjacency_matrix_ << std::endl;
+  std::cout << "adjacency matrix size: " 
+      << lc_adjacency_matrix_.rows() << "," << lc_adjacency_matrix_.cols() << std::endl;
 
   std::vector<int> max_clique_data;
   int max_clique_size = graph_utils::findMaxClique(lc_adjacency_matrix_, max_clique_data);
