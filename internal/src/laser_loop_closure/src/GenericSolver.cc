@@ -175,7 +175,7 @@ bool GenericSolver::isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_facto
         * gtsam::inverse(result.covariance_matrix.block<3,3>(3,3)) 
         * consistency_error.tail(3));
   }
-
+  // TODO: print the mahalanobis dist of the loops in matrix
   ROS_INFO_STREAM("odometry consistency distance: " << distance); 
   if (distance < threshold) {
     return true;
