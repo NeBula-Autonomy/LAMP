@@ -328,6 +328,7 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
    // Update ISAM2.
   try{
     isam_->update(new_factor, new_value); 
+    has_changed_ = true;
   } catch (...){
     // redirect cout to file
     std::ofstream nfgFile;
@@ -989,8 +990,15 @@ bool LaserLoopClosure::FindLoopClosures(
   const PointCloud::ConstPtr scan1 = keyed_scans_[key];
 
   // If a loop has already been closed recently, don't try to close a new one.
-  if (std::fabs(key - last_closure_key_) * translation_threshold_nodes_ < distance_before_reclosing_)
-    return false;
+  if (key > last_closure_key_){
+    if (std::fabs(key - last_closure_key_) * translation_threshold_nodes_ < distance_before_reclosing_)
+      return false;
+  }
+
+  if (last_closure_key_ > key){
+    if (std::fabs(last_closure_key_ - key) * translation_threshold_nodes_ < distance_before_reclosing_)
+      return false;
+  }
 
   // Iterate through past poses and find those that lie close to the most
   // recently added one.
@@ -1041,6 +1049,10 @@ bool LaserLoopClosure::FindLoopClosures(
           if (save_posegraph_backup_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
           } 
+
+          //Tell posegraph to update
+          has_changed_ = true;
+
           // We found a loop closure. Add it to the pose graph.
           NonlinearFactorGraph new_factor;
           new_factor.add(BetweenFactor<Pose3>(key, other_key, ToGtsam(delta),
@@ -1081,6 +1093,10 @@ bool LaserLoopClosure::FindLoopClosures(
           if (save_posegraph_backup_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
           } 
+
+          //Tell posegraph to update
+          has_changed_ = true;
+
           // We found a loop closure. Add it to the pose graph.
           NonlinearFactorGraph new_factor;
           new_factor.add(gtsam::BetweenChordalFactor<Pose3>(key, other_key, ToGtsam(delta),
@@ -1771,7 +1787,6 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     #endif
     // Update with the new graph
     isam_->update(nfg_,result); 
-
     if (is_manual_loop_closure) {
       // Store for visualization and output.
       loop_edges_.push_back(std::make_pair(key1, key2));
@@ -1802,14 +1817,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       bool check_result = SanityCheckForLoopClosure(translational_sanity_check_lc_, cost_old, cost);
     }
 
-    // // Publish
-    PublishPoseGraph();
-
     return true; //result.getVariablesReeliminated() > 0;
   } catch (...) {
     ROS_ERROR("An error occurred while manually adding a factor to iSAM2.");
     throw;
   }
+    // Publish
+    PublishPoseGraph();
 }
 
 bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool is_batch_loop_closure) {
@@ -2228,8 +2242,8 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
 bool LaserLoopClosure::BatchLoopClosure() {
 
   //Store parameter values as initalized in parameters.yaml
-  save_posegraph = save_posegraph_backup_;
-  loop_closure_checks = check_for_loop_closures_;
+  bool save_posegraph = save_posegraph_backup_;
+  bool loop_closure_checks = check_for_loop_closures_;
 
 
   //Disable save flag before doing optimization
@@ -2253,11 +2267,12 @@ bool LaserLoopClosure::BatchLoopClosure() {
     }
   }
 
-  //Restore parameter values as initalized in parameters.yaml
+  //Restore the flags as initalized in parameters.yaml
   save_posegraph_backup_ = save_posegraph;
   check_for_loop_closures_ = loop_closure_checks;
   
   // Update the posegraph after looking for loop closures and performing optimization
+  has_changed_ = true;
   PublishPoseGraph();
   if (found_loop == true)
     return true;
@@ -2267,6 +2282,8 @@ bool LaserLoopClosure::BatchLoopClosure() {
 
 
 bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
+
+  //has_changed must be true to update the posegraph
   if (only_publish_if_changed && !has_changed_)
     return false;
   
