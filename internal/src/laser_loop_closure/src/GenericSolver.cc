@@ -4,6 +4,8 @@ author: Yun Chang, Luca Carlone
 */
 
 #include <generic_solver/GenericSolver.h>
+#include <parameter_utils/ParameterUtils.h>
+namespace pu = parameter_utils;
 
 GenericSolver::GenericSolver(int solvertype): 
   nfg_(gtsam::NonlinearFactorGraph()),
@@ -11,8 +13,12 @@ GenericSolver::GenericSolver(int solvertype):
   solver_type_(solvertype),
   nfg_odom_(gtsam::NonlinearFactorGraph()),
   nfg_lc_(gtsam::NonlinearFactorGraph()) {
-
   std::cout << "instantiated generic solver." << std::endl; 
+}
+
+bool GenericSolver::LoadParameters() {
+  if (!pu::Get("odometry_check_threshold", odom_threshold_)) return false;
+  if (!pu::Get("pairwise_check_threshold", pw_threshold_)) return false;
 }
 
 
@@ -149,7 +155,7 @@ bool GenericSolver::isOdomConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_facto
   std::cout << std::endl; 
   gtsam::Vector6 consistency_error = gtsam::Pose3::Logmap(result.pose);
   // check with threshold
-  double threshold = 1.635; // hard coded for now 
+  double threshold = odom_threshold_; // hard coded for now 
   // comput sqaure mahalanobis distance (the computation is wrong in robust mapper repo)
   double distance = std::sqrt(consistency_error.transpose() 
             * gtsam::inverse(result.covariance_matrix) * consistency_error);
@@ -202,7 +208,7 @@ bool GenericSolver::areLoopsConsistent(gtsam::BetweenFactor<gtsam::Pose3> lc_1,
 
   gtsam::Vector6 consistency_error = gtsam::Pose3::Logmap(result.pose);
   // check with threshold
-  double threshold = 1.635; // hard coded for now 
+  double threshold = pw_threshold_; // hard coded for now 
   // comput sqaure mahalanobis distance 
   double distance = std::sqrt(consistency_error.transpose() 
             * gtsam::inverse(result.covariance_matrix) * consistency_error);

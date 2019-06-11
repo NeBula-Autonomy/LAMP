@@ -185,6 +185,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   #endif
   #ifdef SOLVER
   isam_.reset(new GenericSolver(SOLVER));
+  isam_->LoadParameters();
   isam_->print();
   ROS_INFO("Using generic solver");
   #endif

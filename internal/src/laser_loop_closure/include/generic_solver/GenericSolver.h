@@ -43,6 +43,7 @@ public:
   gtsam::Values calculateBestEstimate() { return values_; }
   gtsam::Values getLinearizationPoint() { return values_; }
   gtsam::NonlinearFactorGraph getFactorsUnsafe(){ return nfg_; }
+  bool LoadParameters();
 
   void print() {
     nfg_.print("");
@@ -53,6 +54,9 @@ private:
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
   int solver_type_;
+
+  double odom_threshold_;
+  double pw_threshold_;
 
   gtsam::NonlinearFactorGraph nfg_odom_;
   gtsam::NonlinearFactorGraph nfg_lc_;
