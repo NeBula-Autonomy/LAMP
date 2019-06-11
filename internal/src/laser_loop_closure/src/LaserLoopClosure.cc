@@ -558,6 +558,11 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
     uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
+
+    ROS_INFO("Creating new UWB Factor");
+    ROS_INFO("UWB key: %u", uwb_key);
+    ROS_INFO("UWB ID:  %s", uwb_id.c_str());
+    ROS_INFO_STREAM("Robot position: " << robot_position.transpose());
   }
 
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
@@ -596,6 +601,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
         // Add a RangeFactor between the nearest pose key and the UWB key
         new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
         uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+        ROS_INFO("LaserLoopClosure adds new UWB edge between %u and %u.", pose_key, uwb_key);
       }
         break;
       case 1 :

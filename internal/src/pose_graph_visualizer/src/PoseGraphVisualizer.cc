@@ -180,17 +180,22 @@ void PoseGraphVisualizer::PoseGraphCallback(
       artifact_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
-      // TODO send only incremental UWB edges (if msg.incremental is true)
-      // uwb_edges_.clear();
       bool found = false;
       for (const auto& edge : uwb_edges_) {
-        if (edge.first == msg_edge.key_from && edge.second == msg_edge.key_to)
+        if (edge.first == static_cast<unsigned int>(msg_edge.key_from)
+            && edge.second == static_cast<unsigned int>(msg_edge.key_to)) {
           found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from, msg_edge.key_to);
+          break;
+        }
       }
       // avoid duplicate UWB edges
       if (!found) {
         uwb_edges_.emplace_back(
-          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+          std::make_pair(static_cast<unsigned int>(msg_edge.key_from),
+                         static_cast<unsigned int>(msg_edge.key_to)));
+          ROS_INFO("PGV: Adding new UWB edge from %u to %u.", msg_edge.key_from, msg_edge.key_to);
       }
     }
   }
@@ -289,7 +294,7 @@ gtsam::Key PoseGraphVisualizer::GetKeyAtTime(const ros::Time &stamp) const {
 gu::Transform3 PoseGraphVisualizer::GetPoseAtKey(const gtsam::Key &key) const {
   // Get the pose at that key
   if (keyed_poses_.find(key) == keyed_poses_.end()) {
-    ROS_WARN("Key, %u, does not exist in GetPoseAtKey", key);
+    ROS_WARN("PGV: Key %u does not exist in GetPoseAtKey", key);
     return gu::Transform3();
   }
   const tf::Pose &pose = keyed_poses_.at(key);
@@ -570,7 +575,6 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       m.points.push_back(GetPositionMsg(key1, keyed_poses_));
       m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));
-      ROS_INFO("PGV sends UWB edge %u", ii);
     }
     uwb_edge_pub_.publish(m);
   }
@@ -666,6 +670,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     closure_area_pub_.publish(m);
   }
 
+  // Publish UWB nodes.
   if (uwb_node_pub_.getNumSubscribers() > 0) {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
