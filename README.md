@@ -57,10 +57,13 @@ Build
 cd gtsam 
 mkdir build
 cd build
-cmake ..
-$ optional: sudo make check
+cmake .. -DGTSAM_POSE3_EXPMAP=ON -DGTSAM_ROT3_EXPMAP=ON
+$ optional: sudo make check # (this would fail because of the EXMAP args)
 sudo make install
 ```
+**Note:** 
+The reason why we need EXPMAP is for the correct calculation of Jacobians. 
+Enabling this and the `#define SLOW_BUT_CORRECT_BETWEENFACTOR` in LaserLoopCLosure.h are both important. Otherwise the default are some identity approximations for rotations, which works for some cases but fails for cases with manual loop closures, or artifacts. 
 
 `OLD ADVICE ON BLAM`:
 
@@ -108,6 +111,14 @@ Also, when running on a bagfile, a static transform publisher is needed, to take
 ```bash
 static_transform_publisher 0 0 0 0 0 0 1 /husky/base_link /velodyne
 ```
+
+In addition, a static transform publisher is needed to take place of the tf from world to blam:
+
+```bash
+static_transform_publisher 0 0 0 0 0 0 1 /world /husky/blam
+```
+**Note:** 
+If you are using the ``run_blam.sh`` script, there is no need to run the static transform publisher from `/world` to `/husky/blam` as this is already captured in the script.
 
 To visualize in RViz, use the husky rviz file:
 ```bash
@@ -157,7 +168,7 @@ and then
 cd ~/ws/gtsam/cmake
 ```
 
-Add these two commands to the CMakeLists.txt and then rebuild your gtsam.
+Add these two commands to the CMakeLists.txt of gtsam and then rebuild your gtsam.
 ```
 FindMKL.cmake
 FindTBB.cmake 

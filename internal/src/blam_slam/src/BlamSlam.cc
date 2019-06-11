@@ -39,6 +39,7 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/Marker.h>
+#include <math.h>
 
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
@@ -49,7 +50,8 @@ BlamSlam::BlamSlam()
     position_sigma_(0.01),
     attitude_sigma_(0.04),
     marker_id_(0),
-    largest_artifact_id_(0) {}
+    largest_artifact_id_(0),
+    use_artifact_loop_closure_(false) {}
 
 BlamSlam::~BlamSlam() {}
 
@@ -111,6 +113,8 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("use_chordal_factor", use_chordal_factor_))
     return false;
+
+  if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
@@ -198,6 +202,10 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
     }
   }
 
+  // Get last node pose before doing artifact loop closure 
+  gu::Transform3 last_key_pose;
+  last_key_pose = loop_closure_.GetLastPose();
+
   const gtsam::Pose3 pose_from_to 
       = gtsam::Pose3(gtsam::Rot3(request.qw, request.qx, request.qy, request.qz), gtsam::Point3());
   pose_from_to.print("Between pose is ");
@@ -222,11 +230,25 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(regenerated_map, unused.get());
 
+  // Get new pose
+  // New key pose of last pose key
+  gu::Transform3 new_key_pose = loop_closure_.GetLastPose();
+  // Update to the pose of the last key
+  // Current estimate
+  gu::Transform3 new_pose = localization_.GetIntegratedEstimate();
+  // Delta translation
+  new_pose.translation = new_pose.translation + (new_key_pose.translation - last_key_pose.translation);
+  // Delta rotation
+  new_pose.rotation = new_pose.rotation*(new_key_pose.rotation*last_key_pose.rotation.Trans());
+
   // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  localization_.SetIntegratedEstimate(new_pose);
 
   // Visualize the pose graph and current loop closure radius.
   loop_closure_.PublishPoseGraph();
+
+  // Publish artifacts - should be updated from the pose-graph 
+  loop_closure_.PublishArtifacts();
 
   // Publish updated map
   mapper_.PublishMap();
@@ -262,6 +284,9 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
 
   // Visualize the pose graph and current loop closure radius.
   loop_closure_.PublishPoseGraph();
+
+  // Publish artifacts - should be updated from the pose-graph 
+  loop_closure_.PublishArtifacts();
 
   // Publish updated map
   mapper_.PublishMap();
@@ -317,15 +342,19 @@ void BlamSlam::EstimateTimerCallback(const ros::TimerEvent& ev) {
 void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Subscribe to artifact messages, include in pose graph, publish global position 
 
-  // TODO: don't accept if confidence too low
-  // TODO: if we have seen object before within the past n seconds, don't add?
-
   std::cout << "Artifact message received is for id " << msg.id << std::endl;
+  std::cout << "\t Parent id: " << msg.parent_id << std::endl;
   std::cout << "\t Confidence: " << msg.confidence << std::endl;
   std::cout << "\t Position:\n[" << msg.point.point.x << ", "
             << msg.point.point.y << ", " << msg.point.point.z << "]"
             << std::endl;
   std::cout << "\t Label: " << msg.label << std::endl;
+
+  // Check for NaNs and reject 
+  if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) || std::isnan(msg.point.point.z)){
+    ROS_WARN("NAN positions input from artifact message - ignoring");
+    return;
+  }
 
   // Get artifact position 
   Eigen::Vector3d artifact_position;
@@ -358,18 +387,23 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
             << R_artifact_position[1] << ", " << R_artifact_position[2]
             << std::endl;
 
-  std::string artifact_id = msg.id; 
+  std::string artifact_id = msg.parent_id; // Note that we are looking at the parent id here
   gtsam::Key cur_artifact_key; 
+  bool b_is_new_artifact = false;
+  gu::Transform3 last_key_pose;
   // get artifact id / key -----------------------------------------------
   // Check if the ID of the object already exists in the object hash
-  if (artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end()) {
+  if (use_artifact_loop_closure_ && artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end()) {
     // Take the ID for that object
     cur_artifact_key = artifact_id2key_hash[artifact_id];
     std::cout << "artifact previously observed, artifact id " << artifact_id 
               << " with key in pose graph " 
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
+    // Get last node pose before doing artifact loop closure 
+    last_key_pose = loop_closure_.GetLastPose();
   } else {
     // New artifact - increment the id counters
+    b_is_new_artifact = true;
     ++largest_artifact_id_;
     cur_artifact_key = gtsam::Symbol('l', largest_artifact_id_);
     std::cout << "new artifact observed, artifact id " << artifact_id 
@@ -386,13 +420,59 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
                                                   R_artifact_position[2]));
   R_pose_A.print("Between pose is ");
 
-  loop_closure_.AddArtifact(
+  ArtifactInfo artifactinfo(msg.parent_id, msg.label);
+
+  bool result = loop_closure_.AddArtifact(
     pose_key,
     cur_artifact_key,
     R_pose_A, 
-    msg.label); 
+    artifactinfo);
 
-  loop_closure_.PublishPoseGraph();
+  if (result){
+    std::cout << "adding artifact observation succeeded" << std::endl;
+  } else {
+    std::cout << "adding artifact observation failed" << std::endl;
+  }
+
+  if (b_is_new_artifact){
+    // Don't need to update the map at all - just publish artifacts
+    // Publish artifacts - from pose-graph positions
+    loop_closure_.PublishArtifacts(cur_artifact_key);
+  }else{
+    // Loop closure has been performed - update the graph
+    // Update the map from the loop closures
+    std::cout << "Updating the map" << std::endl;
+    PointCloud::Ptr regenerated_map(new PointCloud);
+    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+    mapper_.Reset();
+    PointCloud::Ptr unused(new PointCloud);
+    mapper_.InsertPoints(regenerated_map, unused.get());
+
+    // Get new pose
+    // New key pose of last pose key
+    gu::Transform3 new_key_pose = loop_closure_.GetLastPose();
+    // Update to the pose of the last key
+    // Current estimate
+    gu::Transform3 new_pose = localization_.GetIntegratedEstimate();
+    // Delta translation
+    new_pose.translation = new_pose.translation + (new_key_pose.translation - last_key_pose.translation);
+    // Delta rotation
+    new_pose.rotation = new_pose.rotation*(new_key_pose.rotation*last_key_pose.rotation.Trans());
+
+    // Update localization
+    // Also reset the robot's estimated position.
+    localization_.SetIntegratedEstimate(new_key_pose);
+
+    // Visualize the pose graph updates
+    loop_closure_.PublishPoseGraph();
+
+    // Publish artifacts - from pose-graph positions
+    loop_closure_.PublishArtifacts();
+
+    // Publish updated map // TODO have criteria of change for when to publish the map?
+    mapper_.PublishMap();
+  }
 }
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
@@ -435,7 +515,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
 
   // Check for new loop closures.
-  bool new_keyframe;
+  bool new_keyframe = false;
   if (HandleLoopClosures(msg, &new_keyframe)) {
     // We found one - regenerate the 3D map.
     PointCloud::Ptr regenerated_map(new PointCloud);
@@ -447,19 +527,34 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
 
     // Also reset the robot's estimated position.
     localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+
+    // Publish artifacts - should be updated from the pose-graph 
+    loop_closure_.PublishArtifacts();
+
   } else {
     // No new loop closures - but was there a new key frame? If so, add new
     // points to the map.
     if (new_keyframe) {
+      ROS_INFO("Updating with a new key frame");
       localization_.MotionUpdate(gu::Transform3::Identity());
       localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);
       mapper_.InsertPoints(msg_fixed, unused.get());
+
+      // Also reset the robot's estimated position.
+      localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+
+      // Publish artifacts - should be updated from the pose-graph 
+      loop_closure_.PublishArtifacts();
     }
   }
 
-  // Visualize the pose graph and current loop closure radius.
-  loop_closure_.PublishPoseGraph();
+  // Only publish the pose-graph if there is a new keyframe TODO consider changing to publishing for each new node 
+  if (new_keyframe){
+    // Visualize the pose graph and current loop closure radius.
+    loop_closure_.PublishPoseGraph();
+  }   
+  
 
   // Publish the incoming point cloud message from the base frame.
   if (base_frame_pcld_pub_.getNumSubscribers() != 0) {
