@@ -7,7 +7,6 @@
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <std_msgs/Empty.h>
-#include <visualization_msgs/Marker.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -150,6 +149,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
 
       // node.ID = artifacts_[keyed_pose.key].msg.id;
       artifact_id2key_hash_[msg_node.ID] = msg_node.key;
+      artifact_key2id_hash_[msg_node.key] = msg_node.ID;
       continue;
     }
 
@@ -161,6 +161,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
       continue;
     }
 
+    // Fille pose nodes (representing the robot position)
     keyed_poses_[msg_node.key] = pose;
 
     keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(
@@ -329,10 +330,13 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact &msg) {
 
   ArtifactInfo artifactinfo;
   artifactinfo.msg = msg;
-  ROS_INFO_STREAM("Artifact UUID is " << msg.id);
-  ROS_INFO_STREAM("Artifact key is " << artifact_id2key_hash_[msg.id]);
-  artifacts_[artifact_id2key_hash_[msg.id]] = artifactinfo;
-  VisualizeArtifacts();
+  ROS_INFO_STREAM("Artifact parent UUID is " << msg.parent_id);
+  artifacts_[msg.parent_id] = artifactinfo;
+
+  // // Delay getting graph key until we have it.
+  // ROS_INFO_STREAM("Artifact key is " << artifact_id2key_hash_[msg.id]);
+  // artifacts_[artifact_id2key_hash_[msg.id]] = artifactinfo;
+  // VisualizeArtifacts();
 }
 
 bool PoseGraphVisualizer::HighlightEdge(unsigned int key1, unsigned int key2) {
@@ -666,6 +670,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     closure_area_pub_.publish(m);
   }
 
+  // Publish the UWB node
   if (uwb_node_pub_.getNumSubscribers() > 0) {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
@@ -687,6 +692,48 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     uwb_node_pub_.publish(m);
   }
 
+  // Publish Artifacts
+  if (artifact_marker_pub_.getNumSubscribers() > 0) {
+    visualization_msgs::Marker m;
+    m.header.frame_id = fixed_frame_id_;
+    m.ns = "artifact";
+    ROS_INFO("Publishing artifacts!");
+    for (const auto& keyedPose : keyed_artifact_poses_) {
+      ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
+      m.header.stamp = ros::Time::now();
+
+      // get the gtsam key
+      gtsam::Key key(keyedPose.first);
+      m.id = key;
+
+      ROS_INFO_STREAM("Artifact key (raw) is: " << keyedPose.first);
+      ROS_INFO_STREAM("Artifact key is " << key);
+      ROS_INFO_STREAM("Artifact hash key is "
+                      << gtsam::DefaultKeyFormatter(key));
+      if (gtsam::Symbol(key).chr() != 'l') {
+        ROS_WARN("ERROR - have a non-landmark ID");
+        ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
+        continue;
+      }
+
+      // TODO only publish what has changed
+      ROS_INFO_STREAM("Artifact key to publish is "
+                      << gtsam::DefaultKeyFormatter(key));
+
+      ROS_INFO_STREAM(
+          "ID from key for the artifact is: " << artifact_key2id_hash_[key]);
+
+      // Get the artifact information
+      ArtifactInfo art = artifacts_[artifact_key2id_hash_[key]];
+
+      // Populate the artifact marker
+      VisualizeSingleArtifact(m, art);
+
+      // Publish
+      artifact_marker_pub_.publish(m);
+    }
+  }
+
   // Interactive markers.
   if (publish_interactive_markers_) {
     for (const auto &keyed_pose : keyed_poses_) {
@@ -695,6 +742,61 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     if (server != nullptr) {
       server->applyChanges();
     }
+  }
+}
+
+void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
+                                                  const ArtifactInfo& art) {
+  // Get class of artifact
+  std::string artifact_label = art.msg.label;
+
+  // TODO consider whether we should get the position from the graph
+  // artifact_position = GetArtifactPosition(key);
+  geometry_msgs::Point pos = art.msg.point.point;
+  // pos.x = artifact_position[0];
+  // pos.y = artifact_position[1];
+  // pos.z = artifact_position[2];
+  m.points.emplace_back((pos));
+  m.header.frame_id = fixed_frame_id_;
+  m.pose.orientation.x = 0.0;
+  m.pose.orientation.y = 0.0;
+  m.pose.orientation.z = 0.0;
+  m.pose.orientation.w = 1.0;
+  m.scale.x = 0.35f;
+  m.scale.y = 0.35f;
+  m.scale.z = 0.35f;
+  m.color.a = 1.0f;
+
+  if (artifact_label == "backpack") {
+    std::cout << "backpack marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::CUBE;
+  }
+  if (artifact_label == "fire extinguisher") {
+    std::cout << "fire extinguisher marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.5f;
+    m.color.b = 0.75f;
+    m.type = visualization_msgs::Marker::SPHERE;
+  }
+  if (artifact_label == "drill") {
+    std::cout << "drill marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::CYLINDER;
+  }
+  if (artifact_label == "survivor") {
+    std::cout << "survivor marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.scale.x = 1.0f;
+    m.scale.y = 1.0f;
+    m.scale.z = 1.0f;
+    m.type = visualization_msgs::Marker::CYLINDER;
   }
 }
 
@@ -714,12 +816,12 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     // ID
     // Any marker sent with the same namespace and id will overwrite the old one
     marker.ns = "artifact";
-    marker.id = it->first;
+    marker.id = artifact_id2key_hash_[it->first];
     marker.action = visualization_msgs::Marker::ADD;
 
     ROS_INFO_STREAM("Iterator first is: " << it->first);
 
-    gtsam::Key key(it->first);
+    gtsam::Key key(artifact_id2key_hash_[it->first]);
     ROS_INFO_STREAM("Artifact hash key is "
                     << gtsam::DefaultKeyFormatter(key));
     if (gtsam::Symbol(key).chr() != 'l') {

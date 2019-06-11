@@ -515,6 +515,9 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
+  artifactinfo.msg.label = msg.label;
+  artifactinfo.msg.id = msg.id;
+  // artifactinfo.msg.id = msg.parent_id;
 
   bool result = loop_closure_.AddArtifact(
     pose_key,

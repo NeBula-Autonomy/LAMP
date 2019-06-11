@@ -14,6 +14,7 @@
 
 #include <pose_graph_visualizer/HighlightEdge.h>
 #include <pose_graph_visualizer/HighlightNode.h>
+#include <visualization_msgs/Marker.h>
 
 #include <core_msgs/Artifact.h>
 
@@ -70,6 +71,15 @@ public:
   void VisualizePoseGraph();
   void VisualizeArtifacts();
 
+  // Artifacts and labels.
+  struct ArtifactInfo {
+    // gtsam::Key pose_key;
+    core_msgs::Artifact msg;
+  };
+
+  void VisualizeSingleArtifact(visualization_msgs::Marker& m,
+                               const ArtifactInfo& art);
+
 private:
   bool LoadParameters(const ros::NodeHandle &n);
   bool RegisterCallbacks(const ros::NodeHandle &nh, const ros::NodeHandle &pnh);
@@ -114,14 +124,12 @@ private:
   std::string base_frame_id_;
   bool artifacts_in_global_;
 
-  // Artifacts and labels.
-  struct ArtifactInfo {
-    // gtsam::Key pose_key;
-    core_msgs::Artifact msg;
-  };
-  std::unordered_map<gtsam::Key, ArtifactInfo> artifacts_;
+  std::unordered_map<std::string, ArtifactInfo>
+      artifacts_; // Keyed with UUID so can build this when we get artifact
+                  // messages
   int largest_artifact_id_{0};
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash_;
+  std::unordered_map<gtsam::Key, std::string> artifact_key2id_hash_;
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
 
   // Visualization publishers.

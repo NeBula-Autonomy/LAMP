@@ -2301,7 +2301,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       // Add UUID if an artifact or uwb node
       if (sym_key.chr() == 'l'){
         // Artifact
-        node.ID = artifact_key2info_hash[keyed_pose.key].msg.id;
+        node.ID = artifact_key2info_hash[keyed_pose.key].msg.parent_id;
       }
       if (sym_key.chr() == 'u'){
         // UWB
@@ -2413,6 +2413,13 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
               << ", " << new_msg.point.point.y << ", " << new_msg.point.point.z
               << std::endl;
     std::cout << "Frame ID is: " << new_msg.point.header.frame_id << std::endl;
+
+    std::cout << "\t Parent id: " << new_msg.parent_id << std::endl;
+    std::cout << "\t Confidence: " << new_msg.confidence << std::endl;
+    std::cout << "\t Position:\n[" << new_msg.point.point.x << ", "
+              << new_msg.point.point.y << ", " << new_msg.point.point.z << "]"
+              << std::endl;
+    std::cout << "\t Label: " << new_msg.label << std::endl;
 
     artifact_pub_.publish(new_msg);
 
