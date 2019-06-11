@@ -314,7 +314,7 @@ void GenericSolver::update(gtsam::NonlinearFactorGraph nfg,
       nfg_lc_.add(nfg); // add factor to nfg_lc_
 
     } else {
-      ROS_WARN("Discarded loop closure (inconsistent with odometry");
+      ROS_WARN("Discarded loop closure (inconsistent with odometry)");
       return; // discontinue since loop closure not consistent with odometry 
     }
     

@@ -25,6 +25,17 @@ This package requires `minizip` to be available globally. It can be installed fr
 apt install libminizip-dev
 ```
 
+This package also requires [robust distributed mapper](https://github.com/yunzc/robust_distributed_mapper/tree/yun_devel), specifically the `yun_devel` branch. 
+```bash
+cd robust_distributed_mapper
+git checkout yun_devel
+cd cpp
+mkdir build 
+cd build
+cmake ..
+sudo make install
+```
+
 ***BLAM!*** relies on system installations of the following packages:
 
 * [ROS](http://wiki.ros.org/ROS/Installation)
