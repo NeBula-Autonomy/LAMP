@@ -1075,6 +1075,7 @@ bool LaserLoopClosure::FindLoopClosures(
           pose_graph_msgs::PoseGraphEdge edge;
           edge.key_from = key;
           edge.key_to = other_key;
+          edge.pose =  gr::ToRosPose(delta_icp_);
           loop_closure_notifier_pub_.publish(edge);
 
           // break if a successful loop closure 
@@ -1117,6 +1118,7 @@ bool LaserLoopClosure::FindLoopClosures(
           pose_graph_msgs::PoseGraphEdge edge;
           edge.key_from = key;
           edge.key_to = other_key;
+          edge.pose =  gr::ToRosPose(delta_icp_);
           loop_closure_notifier_pub_.publish(edge);
 
           // break if a successful loop closure 
@@ -1418,9 +1420,9 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
 
   // Get resulting transform.
   const Eigen::Matrix4f T = icp.getFinalTransformation();
-  gu::Transform3 delta_icp;
-  delta_icp.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  delta_icp.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
+  // gu::Transform3 delta_icp;
+  delta_icp_.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
+  delta_icp_.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
                                 T(1, 0), T(1, 1), T(1, 2),
                                 T(2, 0), T(2, 1), T(2, 2));
 
@@ -1445,7 +1447,7 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
   // Update the pose-to-pose odometry estimate using the output of ICP.
   const gu::Transform3 update =
       gu::PoseUpdate(gu::PoseInverse(pose1),
-                     gu::PoseUpdate(gu::PoseInverse(delta_icp), pose1));
+                     gu::PoseUpdate(gu::PoseInverse(delta_icp_), pose1));
 
   *delta = gu::PoseUpdate(update, gu::PoseDelta(pose1, pose2));
 
@@ -1519,9 +1521,9 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
 
   // Get resulting transform.
   const Eigen::Matrix4f T = icp.getFinalTransformation();
-  gu::Transform3 delta_icp;
-  delta_icp.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  delta_icp.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
+  //gu::Transform3 delta_icp;
+  delta_icp_.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
+  delta_icp_.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
                                 T(1, 0), T(1, 1), T(1, 2),
                                 T(2, 0), T(2, 1), T(2, 2));
 
@@ -1546,7 +1548,7 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
   // Update the pose-to-pose odometry estimate using the output of ICP.
   const gu::Transform3 update =
       gu::PoseUpdate(gu::PoseInverse(pose1),
-                     gu::PoseUpdate(gu::PoseInverse(delta_icp), pose1));
+                     gu::PoseUpdate(gu::PoseInverse(delta_icp_), pose1));
 
   *delta = gu::PoseUpdate(update, gu::PoseDelta(pose1, pose2));
 
@@ -1790,6 +1792,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       pose_graph_msgs::PoseGraphEdge edge;
       edge.key_from = key1;
       edge.key_to = key2;
+      //edge.pose =  gr::ToRosPose(delta_icp_);
       loop_closure_notifier_pub_.publish(edge);
 
       // Store manual loop keys to not interfere with batch loop closure.
