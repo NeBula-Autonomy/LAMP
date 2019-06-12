@@ -30,7 +30,7 @@ inline geometry_msgs::Point tfpoint2msg(const tf::Vector3 &v) {
 }
 
 geometry_msgs::Point
-PoseGraphVisualizer::GetPositionMsg(unsigned int key, const std::map<unsigned int, tf::Pose> &poses) const {
+PoseGraphVisualizer::GetPositionMsg(long unsigned int key, const std::map<long unsigned int, tf::Pose> &poses) const {
   return tfpoint2msg(poses.at(key).getOrigin());
 }
 
@@ -137,11 +137,17 @@ void PoseGraphVisualizer::PoseGraphCallback(
     odometry_edges_.clear();
   }
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
-    key_ = msg_node.key;
     tf::Pose pose;
     tf::poseMsgToTF(msg_node.pose, pose);
 
     gtsam::Symbol sym_key(gtsam::Key(msg_node.key));
+
+    ROS_INFO_STREAM("Symbol key is " << gtsam::DefaultKeyFormatter(sym_key));
+    ROS_INFO_STREAM("Symbol key (directly) is "
+                    << gtsam::DefaultKeyFormatter(msg_node.key));
+
+    ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
+
     // Add UUID if an artifact or uwb node
     if (sym_key.chr() == 'l') {
       // Artifact
@@ -156,9 +162,9 @@ void PoseGraphVisualizer::PoseGraphCallback(
     if (sym_key.chr() == 'u') {
       // UWB
       // TODO implement UWB logic
-      // cast uint64_t from the message to an unsigned int to ensure
+      // cast uint64_t from the message to an long unsigned int to ensure
       // comparisons are correct (do this explicitly here)
-      keyed_uwb_poses_[static_cast<unsigned int>(msg_node.key)] = pose;
+      keyed_uwb_poses_[static_cast<long unsigned int>(msg_node.key)] = pose;
       // node.ID = uwb_key2id_hash_[keyed_pose.key];
       continue;
     }
@@ -166,9 +172,9 @@ void PoseGraphVisualizer::PoseGraphCallback(
     // Fill pose nodes (representing the robot position)
     keyed_poses_[msg_node.key] = pose;
 
-    keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(
+    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(
         msg_node.key, msg_node.header.stamp));
-    stamps_keyed_.insert(std::pair<double, unsigned int>(
+    stamps_keyed_.insert(std::pair<double, long unsigned int>(
         msg_node.header.stamp.toSec(), msg_node.key));
   }
 
@@ -187,9 +193,9 @@ void PoseGraphVisualizer::PoseGraphCallback(
       // uwb_edges_.clear();
       bool found = false;
       for (const auto& edge : uwb_edges_) {
-        // cast to unsigned int to ensure comparisons are correct
-        if (edge.first == static_cast<unsigned int>(msg_edge.key_from) &&
-            edge.second == static_cast<unsigned int>(msg_edge.key_to)) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<long unsigned int>(msg_edge.key_from) &&
+            edge.second == static_cast<long unsigned int>(msg_edge.key_to)) {
           found = true;
           ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
                     msg_edge.key_from,
@@ -200,8 +206,8 @@ void PoseGraphVisualizer::PoseGraphCallback(
       // avoid duplicate UWB edges
       if (!found) {
         uwb_edges_.emplace_back(
-            std::make_pair(static_cast<unsigned int>(msg_edge.key_from),
-                           static_cast<unsigned int>(msg_edge.key_to)));
+            std::make_pair(static_cast<long unsigned int>(msg_edge.key_from),
+                           static_cast<long unsigned int>(msg_edge.key_to)));
         ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
                  msg_edge.key_from,
                  msg_edge.key_to);
@@ -218,9 +224,9 @@ void PoseGraphVisualizer::PoseGraphNodeCallback(
   tf::poseMsgToTF(msg->pose, pose);
   keyed_poses_[msg->key] = pose;
   keyed_stamps_.insert(
-      std::pair<unsigned int, ros::Time>(msg->key, msg->header.stamp));
+      std::pair<long unsigned int, ros::Time>(msg->key, msg->header.stamp));
   stamps_keyed_.insert(
-      std::pair<double, unsigned int>(msg->header.stamp.toSec(), msg->key));
+      std::pair<double, long unsigned int>(msg->header.stamp.toSec(), msg->key));
 }
 
 void PoseGraphVisualizer::PoseGraphEdgeCallback(
@@ -230,7 +236,7 @@ void PoseGraphVisualizer::PoseGraphEdgeCallback(
 
 void PoseGraphVisualizer::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
-  const unsigned int key = msg->key;
+  const long unsigned int key = msg->key;
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
     ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
     return;
@@ -243,17 +249,17 @@ void PoseGraphVisualizer::KeyedScanCallback(
   // scan's timestamp for pose zero.
   if (key == 0) {
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-    keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key, stamp));
-    stamps_keyed_.insert(std::pair<double, unsigned int>(stamp.toSec(), key));
+    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(key, stamp));
+    stamps_keyed_.insert(std::pair<double, long unsigned int>(stamp.toSec(), key));
   }
 
   // ROS_INFO_STREAM("AddKeyScanPair " << key);
 
   // Add the key and scan.
-  keyed_scans_.insert(std::pair<unsigned int, PointCloud::ConstPtr>(key, scan));
+  keyed_scans_.insert(std::pair<long unsigned int, PointCloud::ConstPtr>(key, scan));
 }
 
-std::string GenerateKey(unsigned int key1, unsigned int key2) {
+std::string GenerateKey(long unsigned int key1, long unsigned int key2) {
   return std::to_string(key1) + '|' + std::to_string(key2);
 }
 
@@ -272,7 +278,7 @@ gtsam::Key PoseGraphVisualizer::GetKeyAtTime(const ros::Time &stamp) const {
 
   // std::cout << "Time 1 is: " << t1 << ", Time 2 is: " << t2 << std::endl;
 
-  unsigned int key;
+  long unsigned int key;
 
   if (t2 - stamp.toSec() < stamp.toSec() - t1) {
     // t2 is closer - use that key
@@ -294,7 +300,6 @@ gtsam::Key PoseGraphVisualizer::GetKeyAtTime(const ros::Time &stamp) const {
   } else if (iterTime == stamps_keyed_.end()) {
     ROS_WARN(
         "Invalid time for graph (past end of graph range). take latest pose");
-    key = key_ - 1;
   }
 
   return key;
@@ -352,7 +357,7 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact &msg) {
   // VisualizeArtifacts();
 }
 
-bool PoseGraphVisualizer::HighlightEdge(unsigned int key1, unsigned int key2) {
+bool PoseGraphVisualizer::HighlightEdge(long unsigned int key1, long unsigned int key2) {
   ROS_INFO("Highlighting factor between %i and %i.", key1, key2);
 
   if (!KeyExists(key1) || !KeyExists(key2)) {
@@ -382,7 +387,7 @@ bool PoseGraphVisualizer::HighlightEdge(unsigned int key1, unsigned int key2) {
   return true;
 }
 
-bool PoseGraphVisualizer::HighlightNode(unsigned int key) {
+bool PoseGraphVisualizer::HighlightNode(long unsigned int key) {
   ROS_INFO("Highlighting node %i.", key);
 
   if (!KeyExists(key)) {
@@ -409,8 +414,8 @@ bool PoseGraphVisualizer::HighlightNode(unsigned int key) {
   return true;
 }
 
-void PoseGraphVisualizer::UnhighlightEdge(unsigned int key1,
-                                          unsigned int key2) {
+void PoseGraphVisualizer::UnhighlightEdge(long unsigned int key1,
+                                          long unsigned int key2) {
   visualization_msgs::Marker m;
   m.header.frame_id = fixed_frame_id_;
   m.ns = fixed_frame_id_ + "edge" + GenerateKey(key1, key2);
@@ -425,7 +430,7 @@ void PoseGraphVisualizer::UnhighlightEdge(unsigned int key1,
   UnhighlightNode(key2);
 }
 
-void PoseGraphVisualizer::UnhighlightNode(unsigned int key) {
+void PoseGraphVisualizer::UnhighlightNode(long unsigned int key) {
   visualization_msgs::Marker m;
   m.header.frame_id = fixed_frame_id_;
   m.ns = fixed_frame_id_ + "node" + std::to_string(key);
@@ -765,11 +770,15 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
 
   // TODO consider whether we should get the position from the graph
   // artifact_position = GetArtifactPosition(key);
-  geometry_msgs::Point pos = art.msg.point.point;
+  // geometry_msgs::Point pos = art.msg.point.point;
+  // std::cout << "\t Position:\n[" << art.msg.point.point.x << ", "
+  //           << art.msg.point.point.y << ", " << art.msg.point.point.z << "]"
+  //           << std::endl;
   // pos.x = artifact_position[0];
   // pos.y = artifact_position[1];
   // pos.z = artifact_position[2];
-  m.points.emplace_back((pos));
+  m.pose.position = art.msg.point.point;
+
   m.header.frame_id = fixed_frame_id_;
   m.pose.orientation.x = 0.0;
   m.pose.orientation.y = 0.0;
@@ -849,11 +858,11 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     // artifact_position = GetArtifactPosition(key);
     artifact_label = it->second.msg.label;
 
-    geometry_msgs::Point pos = it->second.msg.point.point;
+    // geometry_msgs::Point pos = it->second.msg.point.point;
     // pos.x = artifact_position[0];
     // pos.y = artifact_position[1];
     // pos.z = artifact_position[2];
-    marker.points.emplace_back((pos));
+    marker.pose.position = it->second.msg.point.point;
     marker.header.frame_id = fixed_frame_id_;
     marker.pose.orientation.x = 0.0;
     marker.pose.orientation.y = 0.0;

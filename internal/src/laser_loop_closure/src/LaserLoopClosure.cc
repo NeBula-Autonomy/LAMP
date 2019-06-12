@@ -2301,7 +2301,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       }
 
       ROS_INFO_STREAM("Symbol key is " << gtsam::DefaultKeyFormatter(sym_key));
-      ROS_INFO_STREAM("Symbol key (drirectly) is "
+      ROS_INFO_STREAM("Symbol key (directly) is "
                       << gtsam::DefaultKeyFormatter(keyed_pose.key));
 
       ROS_INFO_STREAM("Symbol key (int) is " << keyed_pose.key);
@@ -2369,6 +2369,12 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
   Eigen::Vector3d artifact_position;
   std::string artifact_label;
+  bool b_publish_all = false;
+
+  // Default input key is 'z0' if this is the case, publish all artifacts
+  if (gtsam::Symbol(artifact_key).chr() == 'z') {
+    b_publish_all = true;
+  }
 
   // loop through values 
   for (auto it = artifact_key2info_hash.begin();
@@ -2382,33 +2388,58 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
       continue;
     }
 
-    if (gtsam::Symbol(artifact_key).chr() == 'z'){ // The default value
+    if (b_publish_all) { // The default value
       // Update all artifacts - loop through all - the default
       // Get position and label 
       ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(it->first));
       artifact_position = GetArtifactPosition(it->first);
       artifact_label = it->second.msg.label;
+      // Get the artifact key
+      artifact_key = it->first;
 
       // Increment update count
       it->second.num_updates++;
-        
+
+      std::cout << "Number of updates of artifact is: "
+                << it->second.num_updates << std::endl;
+
     }
     else{
       // Updating a single artifact - will return at the end of this first loop
       // Using the artifact key to publish that artifact
       ROS_INFO("Publishing only the new artifact");
       ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(artifact_key));
+
+      // Check that the key exists
+      if (artifact_key2info_hash.count(artifact_key) == 0) {
+        ROS_WARN("Artifact key is not in hash, nothing to publish");
+        return;
+      }
+      
       // Get position and label 
       artifact_position = GetArtifactPosition(artifact_key);
       artifact_label = artifact_key2info_hash[artifact_key].msg.label;
+      // Keep the input artifact key
 
       // Increment update count
-      artifact_key2info_hash[artifact_key].num_updates++; 
+      artifact_key2info_hash[artifact_key].num_updates++;
+
+      std::cout << "Number of updates of artifact is: "
+                << artifact_key2info_hash[artifact_key].num_updates
+                << std::endl;
     }
 
-    // Create new artifact msg 
-    core_msgs::Artifact new_msg = artifact_key2info_hash[artifact_key].msg;
+    // Check that the key exists
+    if (artifact_key2info_hash.count(artifact_key) == 0) {
+      ROS_WARN("Artifact key is not in hash, nothing to publish");
+      return;
+    }
 
+    // Fill artifact message
+    core_msgs::Artifact new_msg =
+        artifact_key2info_hash[artifact_key].msg;
+
+    // Fill the new message positions
     new_msg.point.point.x = artifact_position[0];
     new_msg.point.point.y = artifact_position[1];
     new_msg.point.point.z = artifact_position[2];
@@ -2416,6 +2447,8 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
     // Transform to world frame from map frame
     new_msg.point = tf_buffer_.transform(
         new_msg.point, "world", new_msg.point.header.stamp, "world");
+
+    // Print out
     // Transform at time of message
     std::cout << "Artifact position in world is: " << new_msg.point.point.x
               << ", " << new_msg.point.point.y << ", " << new_msg.point.point.z
@@ -2429,9 +2462,11 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
               << std::endl;
     std::cout << "\t Label: " << new_msg.label << std::endl;
 
+    // Publish
     artifact_pub_.publish(new_msg);
 
-    if (gtsam::Symbol(artifact_key).chr() == 'z') {
+    if (!b_publish_all) {
+      ROS_INFO("Single artifact - exiting artifact pub loop");
       // Only a single artifact - exit the loop 
       return;
     }
