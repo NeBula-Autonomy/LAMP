@@ -143,11 +143,11 @@ void PoseGraphVisualizer::PoseGraphCallback(
 
     gtsam::Symbol sym_key(gtsam::Key(msg_node.key));
 
-    ROS_INFO_STREAM("Symbol key is " << gtsam::DefaultKeyFormatter(sym_key));
-    ROS_INFO_STREAM("Symbol key (directly) is "
-                    << gtsam::DefaultKeyFormatter(msg_node.key));
+    // ROS_INFO_STREAM("Symbol key is " << gtsam::DefaultKeyFormatter(sym_key));
+    // ROS_INFO_STREAM("Symbol key (directly) is "
+    //                 << gtsam::DefaultKeyFormatter(msg_node.key));
 
-    ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
+    // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
 
     // Add UUID if an artifact or uwb node
     if (sym_key.chr() == 'l') {
@@ -719,7 +719,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = "artifact";
-    ROS_INFO("Publishing artifacts!");
+    // ROS_INFO("Publishing artifacts!");
     for (const auto& keyedPose : keyed_artifact_poses_) {
       ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
       m.header.stamp = ros::Time::now();

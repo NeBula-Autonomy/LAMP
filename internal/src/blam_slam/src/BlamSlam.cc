@@ -128,6 +128,9 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
+  if (!pu::Get("b_use_uwb", b_use_uwb_))
+    return false;
+
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
     if (loop_closure_.Load(graph_filename)) {
@@ -572,6 +575,9 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 }
 
 void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
+  if (!b_use_uwb_) {
+    return;
+  }
 
   // Show range data for debug
   for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
@@ -641,6 +647,10 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
 }
 
 void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
+  if (!b_use_uwb_) {
+    return;
+  }
+
   // TODO: Screening before entering into this subscriber
   auto itr = uwb_drop_status_.find(msg.id);
   if (itr != end(uwb_drop_status_)) {
