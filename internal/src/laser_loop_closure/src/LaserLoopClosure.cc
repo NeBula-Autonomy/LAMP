@@ -204,9 +204,10 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("Using ISAM2 optimizer");
   #endif
   #ifdef SOLVER
-  isam_.reset(new GenericSolver());
+  isam_.reset(new GenericSolver(SOLVER));
+  isam_->LoadParameters();
   isam_->print();
-  ROS_INFO("Using generic solver (LM currently)");
+  ROS_INFO("Using generic solver");
   #endif
   std::cout << "after isam reset" << std::endl; 
 
@@ -1761,19 +1762,19 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     std::cout << "final error = " << nfg_.error(result) << std::endl;
 
     
-    // ----------------------------------------------
-    #ifndef SOLVER
-    // Create the ISAM2 solver.
-    ISAM2Params parameters;
-    parameters.relinearizeSkip = relinearize_skip_;
-    parameters.relinearizeThreshold = relinearize_threshold_;
-    isam_.reset(new ISAM2(parameters));
-    #endif
-    #ifdef SOLVER
-    isam_.reset(new GenericSolver());
-    #endif
-    // Update with the new graph
-    isam_->update(nfg_,result); 
+    // // ----------------------------------------------
+    // #ifndef SOLVER
+    // // Create the ISAM2 solver.
+    // ISAM2Params parameters;
+    // parameters.relinearizeSkip = relinearize_skip_;
+    // parameters.relinearizeThreshold = relinearize_threshold_;
+    // isam_.reset(new ISAM2(parameters));
+    // #endif
+    // #ifdef SOLVER
+    // isam_.reset(new GenericSolver(SOLVER));
+    // #endif
+    // // Update with the new graph
+    // isam_->update(nfg_,result); 
 
     if (is_manual_loop_closure) {
       // Store for visualization and output.
@@ -2120,7 +2121,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   isam_.reset(new ISAM2(parameters));
   #endif
   #ifdef SOLVER
-  isam_.reset(new GenericSolver());
+  isam_.reset(new GenericSolver(SOLVER));
   #endif
 
   const LaserLoopClosure::Diagonal::shared_ptr covariance(
@@ -2491,69 +2492,6 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
   }
 }
 
-GenericSolver::GenericSolver(): 
-  nfg_gs_(gtsam::NonlinearFactorGraph()),
-  values_gs_(gtsam::Values()) {
-  
-  std::cout << "instantiated generic solver." << std::endl; 
-}
-
-void GenericSolver::update(gtsam::NonlinearFactorGraph nfg, 
-                           gtsam::Values values, 
-                           gtsam::FactorIndices factorsToRemove) {
-  // remove factors
-  for (size_t index : factorsToRemove) {
-    nfg_gs_[index].reset();
-  }
-
-  // add new values and factors
-  nfg_gs_.add(nfg);
-  values_gs_.insert(values);
-  bool do_optimize = true; 
-
-  // print number of loop closures
-  // std::cout << "number of loop closures so far: " << nfg_gs_.size() - values_gs_.size() << std::endl; 
-
-  if (values.size() > 1) {ROS_WARN("Unexpected behavior: number of update poses greater than one.");}
-
-  if (nfg.size() > 1) {ROS_WARN("Unexpected behavior: number of update factors greater than one.");}
-
-  if (nfg.size() == 0 && values.size() > 0) {ROS_ERROR("Unexpected behavior: added values but no factors.");}
-
-  // Do not optimize for just odometry additions 
-  // odometry values would not have prefix 'l' unlike artifact values
-  // TODO change this for handling more node types (i.e. uwbs)
-  if (nfg.size() == 1 && values.size() == 1) {
-    const gtsam::Symbol symb(values.keys()[0]); 
-    if (symb.chr() != 'l') {do_optimize = false;}
-  }
-
-  // nothing added so no optimization 
-  if (nfg.size() == 0 && values.size() == 0) {do_optimize = false;}
-
-  if (factorsToRemove.size() > 0) 
-    do_optimize = true;
-
-  if (do_optimize) {
-    ROS_INFO(">>>>>>>>>>>> Run Optimizer <<<<<<<<<<<<");
-    // optimize
-    #if SOLVER==1
-    gtsam::LevenbergMarquardtParams params;
-    params.setVerbosityLM("SUMMARY");
-    std::cout << "Running LM" << std::endl; 
-    params.diagonalDamping = true; 
-    values_gs_ = gtsam::LevenbergMarquardtOptimizer(nfg_gs_, values_gs_, params).optimize();
-    #elif SOLVER==2
-    gtsam::GaussNewtonParams params;
-    params.setVerbosity("ERROR");
-    std::cout << "Running GN" << std::endl; 
-    values_gs_ = gtsam::GaussNewtonOptimizer(nfg_gs_, values_gs_, params).optimize();
-    #elif SOLVER==3
-    // something
-    #endif
-  }
-}
-
 gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
   ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
 
@@ -2610,11 +2548,3 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_
   return values_.at<Pose3>(artifact_key).translation().vector();
 }
 
-/* TODO: 
--> AddBetweenFactor (and Chordal): rename to AddBetweenFactorOdometry 
--> AddBetweenChordalFactor: use ifdef to avoid copy paste 
--> move conversion functions to Utils.h
--> ideally laserLoopClosure should be split into LSLAMFrontEnd (icp), LSLAMBacknd (gtsam + posegraph)
--> AddFactor should be AddFactorManual (this will need a lot of cleaning after STIX) 
--> move all visualization functions to a Visualizer.h 
-*/ 

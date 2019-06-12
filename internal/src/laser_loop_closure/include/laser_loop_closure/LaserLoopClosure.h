@@ -45,6 +45,7 @@
 #include <geometry_utils/Transform3.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <laser_loop_closure/BetweenChordalFactor.h>
+#include <generic_solver/GenericSolver.h>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -84,28 +85,6 @@
 
 // default is isam, 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
 #define SOLVER 1
-
-class GenericSolver {
-public:
-  GenericSolver();
-  void update(gtsam::NonlinearFactorGraph nfg=gtsam::NonlinearFactorGraph(), 
-              gtsam::Values values=gtsam::Values(),
-              gtsam::FactorIndices factorsToRemove=gtsam::FactorIndices());
-
-  gtsam::Values calculateEstimate() { return values_gs_; }
-  gtsam::Values calculateBestEstimate() { return values_gs_; }
-  gtsam::Values getLinearizationPoint() { return values_gs_; }
-  gtsam::NonlinearFactorGraph getFactorsUnsafe(){ return nfg_gs_; }
-
-  void print() {
-    nfg_gs_.print("");
-    values_gs_.print("");
-  }
-
-private:
-  gtsam::Values values_gs_;
-  gtsam::NonlinearFactorGraph nfg_gs_;
-};
 
 struct ArtifactInfo {
   std::string id; // this corresponds to parent_id

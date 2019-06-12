@@ -110,10 +110,10 @@
       <param name="blam_frame" value="$(arg robot_namespace)/blam"/>
     </node>
 
-    <node pkg="tf" 
-        type="static_transform_publisher" 
-        name="map2world" 
-        args="0 0 0 0 0 0 world $(arg robot_namespace)/map 100" />
+    <!-- <node pkg="tf"  -->
+        <!-- type="static_transform_publisher"  -->
+        <!-- name="map2world"  -->
+        <!-- args="0 0 0 0 0 0 world $(arg robot_namespace)/map 100" /> -->
 
   </group>
 
