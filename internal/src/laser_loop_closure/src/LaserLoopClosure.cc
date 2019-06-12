@@ -256,8 +256,8 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
       nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   keyed_scan_pub_ =
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
-  loop_closure_notifier_pub_ =
-      nl.advertise<pose_graph_msgs::PoseGraphEdge>("loop_closure_edge", 10, false);
+  loop_closure_notifier_pub_ = nl.advertise<pose_graph_msgs::PoseGraphEdge>(
+      "loop_closure_edge", 10, false);
 
   artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
   marker_pub_ = nl.advertise<visualization_msgs::Marker>("artifact_markers", 10);
@@ -1784,7 +1784,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     if (is_manual_loop_closure) {
       // Store for visualization and output.
       loop_edges_.push_back(std::make_pair(key1, key2));
-      
+
       // Send an message notifying any subscribers that we found a loop
       // closure and having the keys of the loop edge.
       pose_graph_msgs::PoseGraphEdge edge;
