@@ -2415,7 +2415,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
         ROS_WARN("Artifact key is not in hash, nothing to publish");
         return;
       }
-      
+
       // Get position and label 
       artifact_position = GetArtifactPosition(artifact_key);
       artifact_label = artifact_key2info_hash[artifact_key].msg.label;
@@ -2436,8 +2436,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
     }
 
     // Fill artifact message
-    core_msgs::Artifact new_msg =
-        artifact_key2info_hash[artifact_key].msg;
+    core_msgs::Artifact new_msg = artifact_key2info_hash[artifact_key].msg;
 
     // Fill the new message positions
     new_msg.point.point.x = artifact_position[0];

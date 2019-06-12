@@ -29,8 +29,9 @@ inline geometry_msgs::Point tfpoint2msg(const tf::Vector3 &v) {
   return p;
 }
 
-geometry_msgs::Point
-PoseGraphVisualizer::GetPositionMsg(long unsigned int key, const std::map<long unsigned int, tf::Pose> &poses) const {
+geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(
+    long unsigned int key,
+    const std::map<long unsigned int, tf::Pose>& poses) const {
   return tfpoint2msg(poses.at(key).getOrigin());
 }
 
@@ -225,8 +226,8 @@ void PoseGraphVisualizer::PoseGraphNodeCallback(
   keyed_poses_[msg->key] = pose;
   keyed_stamps_.insert(
       std::pair<long unsigned int, ros::Time>(msg->key, msg->header.stamp));
-  stamps_keyed_.insert(
-      std::pair<double, long unsigned int>(msg->header.stamp.toSec(), msg->key));
+  stamps_keyed_.insert(std::pair<double, long unsigned int>(
+      msg->header.stamp.toSec(), msg->key));
 }
 
 void PoseGraphVisualizer::PoseGraphEdgeCallback(
@@ -250,13 +251,15 @@ void PoseGraphVisualizer::KeyedScanCallback(
   if (key == 0) {
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
     keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(key, stamp));
-    stamps_keyed_.insert(std::pair<double, long unsigned int>(stamp.toSec(), key));
+    stamps_keyed_.insert(
+        std::pair<double, long unsigned int>(stamp.toSec(), key));
   }
 
   // ROS_INFO_STREAM("AddKeyScanPair " << key);
 
   // Add the key and scan.
-  keyed_scans_.insert(std::pair<long unsigned int, PointCloud::ConstPtr>(key, scan));
+  keyed_scans_.insert(
+      std::pair<long unsigned int, PointCloud::ConstPtr>(key, scan));
 }
 
 std::string GenerateKey(long unsigned int key1, long unsigned int key2) {
@@ -357,7 +360,8 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact &msg) {
   // VisualizeArtifacts();
 }
 
-bool PoseGraphVisualizer::HighlightEdge(long unsigned int key1, long unsigned int key2) {
+bool PoseGraphVisualizer::HighlightEdge(long unsigned int key1,
+                                        long unsigned int key2) {
   ROS_INFO("Highlighting factor between %i and %i.", key1, key2);
 
   if (!KeyExists(key1) || !KeyExists(key2)) {

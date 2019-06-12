@@ -99,7 +99,9 @@ private:
   HighlightEdgeService(pose_graph_visualizer::HighlightEdgeRequest &request,
                        pose_graph_visualizer::HighlightEdgeResponse &response);
 
-  geometry_msgs::Point GetPositionMsg(long unsigned int key, const std::map<long unsigned int, tf::Pose> &poses) const;
+  geometry_msgs::Point
+  GetPositionMsg(long unsigned int key,
+                 const std::map<long unsigned int, tf::Pose>& poses) const;
 
   inline bool KeyExists(long unsigned int key) const {
     return keyed_poses_.find(key) != keyed_poses_.end();
