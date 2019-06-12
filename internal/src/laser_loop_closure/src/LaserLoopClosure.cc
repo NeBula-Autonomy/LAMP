@@ -916,7 +916,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
 }
 
 bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
-                                      const PointCloud::ConstPtr& scan) {
+                                      const PointCloud::ConstPtr& scan, bool initial_pose) {
   if (keyed_scans_.count(key)) {
     ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
     return false;
@@ -924,7 +924,7 @@ bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
 
   // The first key should be treated differently; we need to use the laser
   // scan's timestamp for pose zero.
-  if (key == 0) {
+  if (initial_pose) {
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
     keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key, stamp));
     stamps_keyed_.insert(std::pair<double, unsigned int>(stamp.toSec(), key));
