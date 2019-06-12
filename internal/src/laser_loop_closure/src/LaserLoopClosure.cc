@@ -257,7 +257,7 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   keyed_scan_pub_ =
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
   loop_closure_notifier_pub_ =
-      nl.advertise<std_msgs::Empty>("loop_closure", 10, false);
+      nl.advertise<pose_graph_msgs::PoseGraphEdge>("loop_closure_edge", 10, false);
 
   artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
   marker_pub_ = nl.advertise<visualization_msgs::Marker>("artifact_markers", 10);
@@ -1070,9 +1070,12 @@ bool LaserLoopClosure::FindLoopClosures(
           loop_edges_.push_back(std::make_pair(key, other_key));
           closure_keys->push_back(other_key);
 
-          // Send an empty message notifying any subscribers that we found a loop
-          // closure.
-          loop_closure_notifier_pub_.publish(std_msgs::Empty());
+          // Send an message notifying any subscribers that we found a loop
+          // closure and having the keys of the loop edge.
+          pose_graph_msgs::PoseGraphEdge edge;
+          edge.key_from = key;
+          edge.key_to = other_key;
+          loop_closure_notifier_pub_.publish(edge);
 
           // break if a successful loop closure 
           // break;
@@ -1109,9 +1112,12 @@ bool LaserLoopClosure::FindLoopClosures(
           loop_edges_.push_back(std::make_pair(key, other_key));
           closure_keys->push_back(other_key);
 
-          // Send an empty message notifying any subscribers that we found a loop
-          // closure.
-          loop_closure_notifier_pub_.publish(std_msgs::Empty());
+          // Send an message notifying any subscribers that we found a loop
+          // closure and having the keys of the loop edge.
+          pose_graph_msgs::PoseGraphEdge edge;
+          edge.key_from = key;
+          edge.key_to = other_key;
+          loop_closure_notifier_pub_.publish(edge);
 
           // break if a successful loop closure 
           // break;
@@ -1778,9 +1784,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     if (is_manual_loop_closure) {
       // Store for visualization and output.
       loop_edges_.push_back(std::make_pair(key1, key2));
-      // Send an empty message notifying any subscribers that we found a loop
-      // closure.
-      loop_closure_notifier_pub_.publish(std_msgs::Empty());
+      
+      // Send an message notifying any subscribers that we found a loop
+      // closure and having the keys of the loop edge.
+      pose_graph_msgs::PoseGraphEdge edge;
+      edge.key_from = key1;
+      edge.key_to = key2;
+      loop_closure_notifier_pub_.publish(edge);
 
       // Store manual loop keys to not interfere with batch loop closure.
       manual_loop_keys_.push_back(key1);
@@ -1870,10 +1880,6 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2) {
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl; 
   isam_->update(gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove);
-
-  // Send an empty message notifying any subscribers that we found a loop
-  // closure.
-  loop_closure_notifier_pub_.publish(std_msgs::Empty());
 
   // Update values
   values_ = isam_->calculateEstimate();
