@@ -601,9 +601,9 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
         // Add a RangeFactor between the nearest pose key and the UWB key
         new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
         uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-        ROS_INFO("LaserLoopClosure adds new UWB edge between %u and %u.",
-                 pose_key,
-                 uwb_key);
+        ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+                        << gtsam::DefaultKeyFormatter(pose_key) << " and "
+                        << gtsam::DefaultKeyFormatter(uwb_key));
       }
         break;
       case 1 :
