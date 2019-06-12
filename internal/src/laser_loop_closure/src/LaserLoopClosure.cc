@@ -1018,7 +1018,7 @@ bool LaserLoopClosure::FindLoopClosures(
     }
 
     if (key < other_key){
-      //loopclosure can only occur from high to low value
+      //loopclosure can only occur from high to low value to prevent outliers
         continue;
     }
 
@@ -1795,7 +1795,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       loop_closure_notifier_pub_.publish(std_msgs::Empty());
 
       // Store manual loop keys to not interfere with batch loop closure.
-      manual_loop_keys_.push_back(std::make_pair(key1, key2));
+      manual_loop_edges_.push_back(std::make_pair(key1, key2));
 
     }
     else{
@@ -1873,20 +1873,13 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
   }
 
   if (factorsToRemove.size() == 0) {
-    ROS_WARN("RemoveFactor: Factor not found between given keys");
+    ROS_WARN("RemoveFactor: Factor not found between giRemoveFaven keys");
     return false; 
-  }
-  
-  if(is_batch_loop_closure){
-  // Publish
-  PublishPoseGraph();
-
-  return true;
   }
 
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl; 
-  isam_->update(gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove);
+  isam_->update(gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove, is_batch_loop_closure);
 
   // Send an empty message notifying any subscribers that we found a loop
   // closure.
@@ -1957,7 +1950,7 @@ bool LaserLoopClosure::ErasePosegraph(){
   stamps_keyed_.clear();
 
   loop_edges_.clear();
-  manual_loop_keys_.clear();
+  manual_loop_edges_.clear();
   odometry_ = Pose3::identity();
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
@@ -2253,20 +2246,21 @@ bool LaserLoopClosure::BatchLoopClosure() {
   check_for_loop_closures_ = true;
   
   //Remove all manual factors to not make the system underdetermined
-  for (int i = 0; i <= manual_loop_keys_.size(); i++){
+  for (int i = 0; i < manual_loop_edges_.size(); i++){
+    ROS_INFO_STREAM(manual_loop_edges_[i].first);
+    ROS_INFO_STREAM(manual_loop_edges_[i].second);
     bool is_batch_loop_closure = true;
-    RemoveFactor(manual_loop_keys_[i].first, manual_loop_keys_[i].second, is_batch_loop_closure);
+    RemoveFactor(manual_loop_edges_[i].first, manual_loop_edges_[i].second, is_batch_loop_closure);
   }
 
   bool found_loop = false;
   //Loop through all keyed scans and look for loop closures
-  for (const auto& keyed_pose : values_) {
+   for (const auto& keyed_pose : values_) {
     std::vector<unsigned int> closure_keys;
     if (FindLoopClosures(keyed_pose.key, &closure_keys)){
       found_loop = true;
     }
-  }
-
+  } 
   //Restore the flags as initalized in parameters.yaml
   save_posegraph_backup_ = save_posegraph;
   check_for_loop_closures_ = loop_closure_checks;
@@ -2523,10 +2517,14 @@ GenericSolver::GenericSolver():
 
 void GenericSolver::update(gtsam::NonlinearFactorGraph nfg, 
                            gtsam::Values values, 
-                           gtsam::FactorIndices factorsToRemove) {
+                           gtsam::FactorIndices factorsToRemove,
+                           bool is_batch_loop) {
   // remove factors
   for (size_t index : factorsToRemove) {
     nfg_gs_[index].reset();
+  }
+  if (is_batch_loop){
+    return;
   }
 
   // add new values and factors
