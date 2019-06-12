@@ -304,6 +304,22 @@ Visualization Manager:
         {}
       Queue Size: 100
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /husky/blam_slam/uwb_edges
+      Name: UWB Edges
+      Namespaces:
+        husky/blam: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /husky/blam_slam/uwb_nodes
+      Name: UWB Nodes
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
     - Class: rviz/InteractiveMarkers
       Enable Transparency: true
       Enabled: true
