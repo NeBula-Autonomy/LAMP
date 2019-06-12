@@ -3,10 +3,10 @@
 #include <interactive_markers/interactive_marker_server.h>
 #include <interactive_markers/menu_handler.h>
 #include <parameter_utils/ParameterUtils.h>
-#include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <std_msgs/Empty.h>
+#include <visualization_msgs/Marker.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -156,12 +156,14 @@ void PoseGraphVisualizer::PoseGraphCallback(
     if (sym_key.chr() == 'u') {
       // UWB
       // TODO implement UWB logic
-      keyed_uwb_poses_[msg_node.key] = pose;
+      // cast uint64_t from the message to an unsigned int to ensure
+      // comparisons are correct (do this explicitly here)
+      keyed_uwb_poses_[static_cast<unsigned int>(msg_node.key)] = pose;
       // node.ID = uwb_key2id_hash_[keyed_pose.key];
       continue;
     }
 
-    // Fille pose nodes (representing the robot position)
+    // Fill pose nodes (representing the robot position)
     keyed_poses_[msg_node.key] = pose;
 
     keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(
@@ -185,13 +187,24 @@ void PoseGraphVisualizer::PoseGraphCallback(
       // uwb_edges_.clear();
       bool found = false;
       for (const auto& edge : uwb_edges_) {
-        if (edge.first == msg_edge.key_from && edge.second == msg_edge.key_to)
+        // cast to unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<unsigned int>(msg_edge.key_from) &&
+            edge.second == static_cast<unsigned int>(msg_edge.key_to)) {
           found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
       }
       // avoid duplicate UWB edges
       if (!found) {
         uwb_edges_.emplace_back(
-          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+            std::make_pair(static_cast<unsigned int>(msg_edge.key_from),
+                           static_cast<unsigned int>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
       }
     }
   }
@@ -290,7 +303,7 @@ gtsam::Key PoseGraphVisualizer::GetKeyAtTime(const ros::Time &stamp) const {
 gu::Transform3 PoseGraphVisualizer::GetPoseAtKey(const gtsam::Key &key) const {
   // Get the pose at that key
   if (keyed_poses_.find(key) == keyed_poses_.end()) {
-    ROS_WARN("Key, %u, does not exist in GetPoseAtKey", key);
+    ROS_WARN("PGV: Key %u does not exist in GetPoseAtKey", key);
     return gu::Transform3();
   }
   const tf::Pose &pose = keyed_poses_.at(key);
@@ -670,7 +683,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     closure_area_pub_.publish(m);
   }
 
-  // Publish the UWB node
+  // Publish UWB nodes.
   if (uwb_node_pub_.getNumSubscribers() > 0) {
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
