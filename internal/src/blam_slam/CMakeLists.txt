@@ -59,6 +59,8 @@ catkin_package(
     laser_loop_closure
     point_cloud_localization
     point_cloud_mapper
+    pose_graph_visualizer
+    point_cloud_visualizer
     geometry_utils
     parameter_utils
     pcl_ros
