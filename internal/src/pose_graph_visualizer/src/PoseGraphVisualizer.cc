@@ -3,7 +3,6 @@
 #include <interactive_markers/interactive_marker_server.h>
 #include <interactive_markers/menu_handler.h>
 #include <parameter_utils/ParameterUtils.h>
-#include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <std_msgs/Empty.h>
@@ -30,8 +29,9 @@ inline geometry_msgs::Point tfpoint2msg(const tf::Vector3 &v) {
   return p;
 }
 
-geometry_msgs::Point
-PoseGraphVisualizer::GetPositionMsg(unsigned int key, const std::map<unsigned int, tf::Pose> &poses) const {
+geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(
+    long unsigned int key,
+    const std::map<long unsigned int, tf::Pose>& poses) const {
   return tfpoint2msg(poses.at(key).getOrigin());
 }
 
@@ -138,11 +138,17 @@ void PoseGraphVisualizer::PoseGraphCallback(
     odometry_edges_.clear();
   }
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
-    key_ = msg_node.key;
     tf::Pose pose;
     tf::poseMsgToTF(msg_node.pose, pose);
 
     gtsam::Symbol sym_key(gtsam::Key(msg_node.key));
+
+    ROS_INFO_STREAM("Symbol key is " << gtsam::DefaultKeyFormatter(sym_key));
+    ROS_INFO_STREAM("Symbol key (directly) is "
+                    << gtsam::DefaultKeyFormatter(msg_node.key));
+
+    ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
+
     // Add UUID if an artifact or uwb node
     if (sym_key.chr() == 'l') {
       // Artifact
@@ -150,24 +156,26 @@ void PoseGraphVisualizer::PoseGraphCallback(
 
       // node.ID = artifacts_[keyed_pose.key].msg.id;
       artifact_id2key_hash_[msg_node.ID] = msg_node.key;
+      artifact_key2id_hash_[msg_node.key] = msg_node.ID;
       continue;
     }
 
     if (sym_key.chr() == 'u') {
       // UWB
       // TODO implement UWB logic
-      // cast uint64_t from the message to an unsigned int to ensure
+      // cast uint64_t from the message to an long unsigned int to ensure
       // comparisons are correct (do this explicitly here)
-      keyed_uwb_poses_[static_cast<unsigned int>(msg_node.key)] = pose;
+      keyed_uwb_poses_[static_cast<long unsigned int>(msg_node.key)] = pose;
       // node.ID = uwb_key2id_hash_[keyed_pose.key];
       continue;
     }
 
+    // Fill pose nodes (representing the robot position)
     keyed_poses_[msg_node.key] = pose;
 
-    keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(
+    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(
         msg_node.key, msg_node.header.stamp));
-    stamps_keyed_.insert(std::pair<double, unsigned int>(
+    stamps_keyed_.insert(std::pair<double, long unsigned int>(
         msg_node.header.stamp.toSec(), msg_node.key));
   }
 
@@ -182,23 +190,28 @@ void PoseGraphVisualizer::PoseGraphCallback(
       artifact_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
       bool found = false;
       for (const auto& edge : uwb_edges_) {
-        // cast to unsigned int to ensure comparisons are correct
-        if (edge.first == static_cast<unsigned int>(msg_edge.key_from)
-            && edge.second == static_cast<unsigned int>(msg_edge.key_to)) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<long unsigned int>(msg_edge.key_from) &&
+            edge.second == static_cast<long unsigned int>(msg_edge.key_to)) {
           found = true;
           ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
-                    msg_edge.key_from, msg_edge.key_to);
+                    msg_edge.key_from,
+                    msg_edge.key_to);
           break;
         }
       }
       // avoid duplicate UWB edges
       if (!found) {
         uwb_edges_.emplace_back(
-          std::make_pair(static_cast<unsigned int>(msg_edge.key_from),
-                         static_cast<unsigned int>(msg_edge.key_to)));
-          ROS_INFO("PGV: Adding new UWB edge from %u to %u.", msg_edge.key_from, msg_edge.key_to);
+            std::make_pair(static_cast<long unsigned int>(msg_edge.key_from),
+                           static_cast<long unsigned int>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
       }
     }
   }
@@ -212,9 +225,9 @@ void PoseGraphVisualizer::PoseGraphNodeCallback(
   tf::poseMsgToTF(msg->pose, pose);
   keyed_poses_[msg->key] = pose;
   keyed_stamps_.insert(
-      std::pair<unsigned int, ros::Time>(msg->key, msg->header.stamp));
-  stamps_keyed_.insert(
-      std::pair<double, unsigned int>(msg->header.stamp.toSec(), msg->key));
+      std::pair<long unsigned int, ros::Time>(msg->key, msg->header.stamp));
+  stamps_keyed_.insert(std::pair<double, long unsigned int>(
+      msg->header.stamp.toSec(), msg->key));
 }
 
 void PoseGraphVisualizer::PoseGraphEdgeCallback(
@@ -224,7 +237,7 @@ void PoseGraphVisualizer::PoseGraphEdgeCallback(
 
 void PoseGraphVisualizer::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
-  const unsigned int key = msg->key;
+  const long unsigned int key = msg->key;
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
     ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
     return;
@@ -237,17 +250,19 @@ void PoseGraphVisualizer::KeyedScanCallback(
   // scan's timestamp for pose zero.
   if (key == 0) {
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-    keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key, stamp));
-    stamps_keyed_.insert(std::pair<double, unsigned int>(stamp.toSec(), key));
+    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(key, stamp));
+    stamps_keyed_.insert(
+        std::pair<double, long unsigned int>(stamp.toSec(), key));
   }
 
   // ROS_INFO_STREAM("AddKeyScanPair " << key);
 
   // Add the key and scan.
-  keyed_scans_.insert(std::pair<unsigned int, PointCloud::ConstPtr>(key, scan));
+  keyed_scans_.insert(
+      std::pair<long unsigned int, PointCloud::ConstPtr>(key, scan));
 }
 
-std::string GenerateKey(unsigned int key1, unsigned int key2) {
+std::string GenerateKey(long unsigned int key1, long unsigned int key2) {
   return std::to_string(key1) + '|' + std::to_string(key2);
 }
 
@@ -266,7 +281,7 @@ gtsam::Key PoseGraphVisualizer::GetKeyAtTime(const ros::Time &stamp) const {
 
   // std::cout << "Time 1 is: " << t1 << ", Time 2 is: " << t2 << std::endl;
 
-  unsigned int key;
+  long unsigned int key;
 
   if (t2 - stamp.toSec() < stamp.toSec() - t1) {
     // t2 is closer - use that key
@@ -288,7 +303,6 @@ gtsam::Key PoseGraphVisualizer::GetKeyAtTime(const ros::Time &stamp) const {
   } else if (iterTime == stamps_keyed_.end()) {
     ROS_WARN(
         "Invalid time for graph (past end of graph range). take latest pose");
-    key = key_ - 1;
   }
 
   return key;
@@ -337,13 +351,17 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact &msg) {
 
   ArtifactInfo artifactinfo;
   artifactinfo.msg = msg;
-  ROS_INFO_STREAM("Artifact UUID is " << msg.id);
-  ROS_INFO_STREAM("Artifact key is " << artifact_id2key_hash_[msg.id]);
-  artifacts_[artifact_id2key_hash_[msg.id]] = artifactinfo;
-  VisualizeArtifacts();
+  ROS_INFO_STREAM("Artifact parent UUID is " << msg.parent_id);
+  artifacts_[msg.parent_id] = artifactinfo;
+
+  // // Delay getting graph key until we have it.
+  // ROS_INFO_STREAM("Artifact key is " << artifact_id2key_hash_[msg.id]);
+  // artifacts_[artifact_id2key_hash_[msg.id]] = artifactinfo;
+  // VisualizeArtifacts();
 }
 
-bool PoseGraphVisualizer::HighlightEdge(unsigned int key1, unsigned int key2) {
+bool PoseGraphVisualizer::HighlightEdge(long unsigned int key1,
+                                        long unsigned int key2) {
   ROS_INFO("Highlighting factor between %i and %i.", key1, key2);
 
   if (!KeyExists(key1) || !KeyExists(key2)) {
@@ -373,7 +391,7 @@ bool PoseGraphVisualizer::HighlightEdge(unsigned int key1, unsigned int key2) {
   return true;
 }
 
-bool PoseGraphVisualizer::HighlightNode(unsigned int key) {
+bool PoseGraphVisualizer::HighlightNode(long unsigned int key) {
   ROS_INFO("Highlighting node %i.", key);
 
   if (!KeyExists(key)) {
@@ -400,8 +418,8 @@ bool PoseGraphVisualizer::HighlightNode(unsigned int key) {
   return true;
 }
 
-void PoseGraphVisualizer::UnhighlightEdge(unsigned int key1,
-                                          unsigned int key2) {
+void PoseGraphVisualizer::UnhighlightEdge(long unsigned int key1,
+                                          long unsigned int key2) {
   visualization_msgs::Marker m;
   m.header.frame_id = fixed_frame_id_;
   m.ns = fixed_frame_id_ + "edge" + GenerateKey(key1, key2);
@@ -416,7 +434,7 @@ void PoseGraphVisualizer::UnhighlightEdge(unsigned int key1,
   UnhighlightNode(key2);
 }
 
-void PoseGraphVisualizer::UnhighlightNode(unsigned int key) {
+void PoseGraphVisualizer::UnhighlightNode(long unsigned int key) {
   visualization_msgs::Marker m;
   m.header.frame_id = fixed_frame_id_;
   m.ns = fixed_frame_id_ + "node" + std::to_string(key);
@@ -578,6 +596,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       m.points.push_back(GetPositionMsg(key1, keyed_poses_));
       m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));
+      ROS_INFO("PGV sends UWB edge %u", ii);
     }
     uwb_edge_pub_.publish(m);
   }
@@ -695,6 +714,48 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     uwb_node_pub_.publish(m);
   }
 
+  // Publish Artifacts
+  if (artifact_marker_pub_.getNumSubscribers() > 0) {
+    visualization_msgs::Marker m;
+    m.header.frame_id = fixed_frame_id_;
+    m.ns = "artifact";
+    ROS_INFO("Publishing artifacts!");
+    for (const auto& keyedPose : keyed_artifact_poses_) {
+      ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
+      m.header.stamp = ros::Time::now();
+
+      // get the gtsam key
+      gtsam::Key key(keyedPose.first);
+      m.id = key;
+
+      ROS_INFO_STREAM("Artifact key (raw) is: " << keyedPose.first);
+      ROS_INFO_STREAM("Artifact key is " << key);
+      ROS_INFO_STREAM("Artifact hash key is "
+                      << gtsam::DefaultKeyFormatter(key));
+      if (gtsam::Symbol(key).chr() != 'l') {
+        ROS_WARN("ERROR - have a non-landmark ID");
+        ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
+        continue;
+      }
+
+      // TODO only publish what has changed
+      ROS_INFO_STREAM("Artifact key to publish is "
+                      << gtsam::DefaultKeyFormatter(key));
+
+      ROS_INFO_STREAM(
+          "ID from key for the artifact is: " << artifact_key2id_hash_[key]);
+
+      // Get the artifact information
+      ArtifactInfo art = artifacts_[artifact_key2id_hash_[key]];
+
+      // Populate the artifact marker
+      VisualizeSingleArtifact(m, art);
+
+      // Publish
+      artifact_marker_pub_.publish(m);
+    }
+  }
+
   // Interactive markers.
   if (publish_interactive_markers_) {
     for (const auto &keyed_pose : keyed_poses_) {
@@ -703,6 +764,65 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     if (server != nullptr) {
       server->applyChanges();
     }
+  }
+}
+
+void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
+                                                  const ArtifactInfo& art) {
+  // Get class of artifact
+  std::string artifact_label = art.msg.label;
+
+  // TODO consider whether we should get the position from the graph
+  // artifact_position = GetArtifactPosition(key);
+  // geometry_msgs::Point pos = art.msg.point.point;
+  // std::cout << "\t Position:\n[" << art.msg.point.point.x << ", "
+  //           << art.msg.point.point.y << ", " << art.msg.point.point.z << "]"
+  //           << std::endl;
+  // pos.x = artifact_position[0];
+  // pos.y = artifact_position[1];
+  // pos.z = artifact_position[2];
+  m.pose.position = art.msg.point.point;
+
+  m.header.frame_id = fixed_frame_id_;
+  m.pose.orientation.x = 0.0;
+  m.pose.orientation.y = 0.0;
+  m.pose.orientation.z = 0.0;
+  m.pose.orientation.w = 1.0;
+  m.scale.x = 0.35f;
+  m.scale.y = 0.35f;
+  m.scale.z = 0.35f;
+  m.color.a = 1.0f;
+
+  if (artifact_label == "backpack") {
+    std::cout << "backpack marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::CUBE;
+  }
+  if (artifact_label == "fire extinguisher") {
+    std::cout << "fire extinguisher marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.5f;
+    m.color.b = 0.75f;
+    m.type = visualization_msgs::Marker::SPHERE;
+  }
+  if (artifact_label == "drill") {
+    std::cout << "drill marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::CYLINDER;
+  }
+  if (artifact_label == "survivor") {
+    std::cout << "survivor marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.scale.x = 1.0f;
+    m.scale.y = 1.0f;
+    m.scale.z = 1.0f;
+    m.type = visualization_msgs::Marker::CYLINDER;
   }
 }
 
@@ -722,12 +842,12 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     // ID
     // Any marker sent with the same namespace and id will overwrite the old one
     marker.ns = "artifact";
-    marker.id = it->first;
+    marker.id = artifact_id2key_hash_[it->first];
     marker.action = visualization_msgs::Marker::ADD;
 
     ROS_INFO_STREAM("Iterator first is: " << it->first);
 
-    gtsam::Key key(it->first);
+    gtsam::Key key(artifact_id2key_hash_[it->first]);
     ROS_INFO_STREAM("Artifact hash key is "
                     << gtsam::DefaultKeyFormatter(key));
     if (gtsam::Symbol(key).chr() != 'l') {
@@ -742,11 +862,11 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     // artifact_position = GetArtifactPosition(key);
     artifact_label = it->second.msg.label;
 
-    geometry_msgs::Point pos = it->second.msg.point.point;
+    // geometry_msgs::Point pos = it->second.msg.point.point;
     // pos.x = artifact_position[0];
     // pos.y = artifact_position[1];
     // pos.z = artifact_position[2];
-    marker.points.emplace_back((pos));
+    marker.pose.position = it->second.msg.point.point;
     marker.header.frame_id = fixed_frame_id_;
     marker.pose.orientation.x = 0.0;
     marker.pose.orientation.y = 0.0;
