@@ -189,6 +189,10 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_range_measurement_error", uwb_range_measurement_error_)) return false;
   if (!pu::Get("uwb_range_compensation", uwb_range_compensation_)) return false;
   if (!pu::Get("uwb_factor_optimizer", uwb_factor_optimizer_)) return false;
+  // Robust Optimizer 
+  double odom_threshold, pw_threshold;
+  if (!pu::Get("odometry_check_threshold", odom_threshold)) return false;
+  if (!pu::Get("pairwise_check_threshold", pw_threshold)) return false;
 
   std::cout << "before isam reset" << std::endl; 
   #ifndef SOLVER
@@ -204,8 +208,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("Using ISAM2 optimizer");
   #endif
   #ifdef SOLVER
-  isam_.reset(new GenericSolver(SOLVER));
-  isam_->LoadParameters();
+  isam_.reset(new RobustPGO(SOLVER));
+  isam_->LoadParameters(odom_threshold, pw_threshold);
   isam_->print();
   ROS_INFO("Using generic solver");
   #endif
@@ -664,7 +668,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       isam_.reset(new ISAM2(parameters));
       #endif
       #ifdef SOLVER
-      isam_.reset(new GenericSolver());
+      isam_.reset(new RobustPGO());
       #endif
       // Update with the new graph
       isam_->update(nfg_,result); 
@@ -768,7 +772,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       isam_.reset(new ISAM2(parameters));
       #endif
       #ifdef SOLVER
-      isam_.reset(new GenericSolver());
+      isam_.reset(new RobustPGO());
       #endif
       // Update with the new graph
       isam_->update(nfg_,result); 
@@ -885,7 +889,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     isam_.reset(new ISAM2(parameters));
     #endif
     #ifdef SOLVER
-    isam_.reset(new GenericSolver());
+    isam_.reset(new RobustPGO());
     #endif
     // Update with the new graph
     isam_->update(nfg_,result); 
@@ -1196,7 +1200,7 @@ bool LaserLoopClosure::SanityCheckForLoopClosure(double translational_sanity_che
     isam_.reset(new ISAM2(parameters));
     #endif
     #ifdef SOLVER
-    isam_.reset(new GenericSolver());
+    isam_.reset(new RobustPGO());
     #endif
     ROS_INFO("Reset isam");
     isam_->update(nfg_, values_);
@@ -1771,7 +1775,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     // isam_.reset(new ISAM2(parameters));
     // #endif
     // #ifdef SOLVER
-    // isam_.reset(new GenericSolver(SOLVER));
+    // isam_.reset(new RobustPGO(SOLVER));
     // #endif
     // // Update with the new graph
     // isam_->update(nfg_,result); 
@@ -2121,7 +2125,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   isam_.reset(new ISAM2(parameters));
   #endif
   #ifdef SOLVER
-  isam_.reset(new GenericSolver(SOLVER));
+  isam_.reset(new RobustPGO(SOLVER));
   #endif
 
   const LaserLoopClosure::Diagonal::shared_ptr covariance(

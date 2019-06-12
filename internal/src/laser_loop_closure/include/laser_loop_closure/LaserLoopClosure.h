@@ -45,7 +45,6 @@
 #include <geometry_utils/Transform3.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <laser_loop_closure/BetweenChordalFactor.h>
-#include <generic_solver/GenericSolver.h>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -82,6 +81,8 @@
 
 #include <map>
 #include <vector>
+
+#include "RobustPGO/robust_pgo.h" // RobustPGO (backend solver)
 
 // default is isam, 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
 #define SOLVER 1
@@ -316,7 +317,7 @@ class LaserLoopClosure {
 
   // ISAM2 optimizer object, and best guess pose values.
   #ifdef SOLVER
-  std::unique_ptr<GenericSolver> isam_;
+  std::unique_ptr<RobustPGO> isam_;
   #endif
   #ifndef SOLVER
   std::unique_ptr<gtsam::ISAM2> isam_;

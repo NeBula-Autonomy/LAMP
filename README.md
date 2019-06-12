@@ -21,11 +21,10 @@ This package requires `minizip` to be available globally. It can be installed fr
 apt install libminizip-dev
 ```
 
-This package also requires [robust distributed mapper](https://github.com/yunzc/robust_distributed_mapper/tree/yun_devel), specifically the `yun_devel` branch. 
+This package also requires [RobustPGO](https://github.com/MIT-SPARK/RobustPGO), specifically the `LAMP` branch. 
 ```bash
-cd robust_distributed_mapper
-git checkout yun_devel
-cd cpp
+cd RobustPGO
+git checkout LAMP
 mkdir build 
 cd build
 cmake ..
