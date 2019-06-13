@@ -420,15 +420,12 @@ bool LaserLoopClosure::AddBetweenFactor(
     throw;
   }
   
-  ROS_INFO("Pre calculateEstimate");
   // Update class variables
   values_ = isam_->calculateEstimate();
 
-  ROS_INFO("Pre getFactorsUnsafe");
   nfg_ = isam_->getFactorsUnsafe();
 
   // Get updated cost
-  ROS_INFO("Getting cost");
   double cost = nfg_.error(values_);
 
   //ROS_INFO("Cost after optimization is: %f", cost);
@@ -967,6 +964,8 @@ bool LaserLoopClosure::FindLoopClosures(
   }
   closure_keys->clear();
 
+  ROS_INFO("STARTING FindLoopCLosures...");
+
   // Update backups
   nfg_backup_ = isam_->getFactorsUnsafe();
   values_backup_ = isam_->getLinearizationPoint();
@@ -981,13 +980,32 @@ bool LaserLoopClosure::FindLoopClosures(
     return false;
   }
 
+  // If a loop has already been closed recently, don't try to close a new one.
+  if (std::fabs(key - last_closure_key_) * translation_threshold_nodes_ <
+      distance_before_reclosing_)
+    return false;
+
   // Get pose and scan for the provided key.
   const gu::Transform3 pose1 = ToGu(values_.at<Pose3>(key));
   const PointCloud::ConstPtr scan1 = keyed_scans_[key];
 
-  // If a loop has already been closed recently, don't try to close a new one.
-  if (std::fabs(key - last_closure_key_) * translation_threshold_nodes_ < distance_before_reclosing_)
-    return false;
+  // Filter the input point cloud once
+  PointCloud::Ptr scan1_filtered(new PointCloud);
+  filter_.Filter(scan1, scan1_filtered);
+
+  // Transform the input point cloud once. For now its here, can be moved to
+  // another function
+  const Eigen::Matrix<double, 3, 3> R1 = pose1.rotation.Eigen();
+  const Eigen::Matrix<double, 3, 1> t1 = pose1.translation.Eigen();
+  Eigen::Matrix4d body1_to_world;
+  body1_to_world.block(0, 0, 3, 3) = R1;
+  body1_to_world.block(0, 3, 3, 1) = t1;
+  PointCloud::Ptr transformedPointCloud(new PointCloud);
+  pcl::transformPointCloud(
+      *scan1_filtered, *transformedPointCloud, body1_to_world);
+  std::string inputCoordinateFrame = "World";
+
+  bool pose_graph_saved_ = false;
 
   // Iterate through past poses and find those that lie close to the most
   // recently added one.
@@ -1039,30 +1057,18 @@ bool LaserLoopClosure::FindLoopClosures(
       // Found a potential loop closure! Perform ICP between the two scans to
       // determine if there really is a loop to close.
       const PointCloud::ConstPtr scan2 = keyed_scans_[other_key];
-
-      // Filter the input point cloud once
-      PointCloud::Ptr scan1_filtered(new PointCloud);
-      filter_.Filter(scan1, scan1_filtered);
-
-      // Transform the input point cloud once. For now its here, can be moved to another function
-      const Eigen::Matrix<double, 3, 3> R1 = pose1.rotation.Eigen();
-      const Eigen::Matrix<double, 3, 1> t1 = pose1.translation.Eigen();
-      Eigen::Matrix4d body1_to_world;
-      body1_to_world.block(0, 0, 3, 3) = R1;
-      body1_to_world.block(0, 3, 3, 1) = t1;
-      PointCloud::Ptr transformedPointCloud(new PointCloud);
-      pcl::transformPointCloud(*scan1_filtered, *transformedPointCloud, body1_to_world);
-      std::string inputCoordinateFrame = "World";
       
       if (!use_chordal_factor_) {
         gu::Transform3 delta; // (Using BetweenFactor)
         LaserLoopClosure::Mat66 covariance;
 
         if (PerformICP(transformedPointCloud, scan2, pose1, pose2, &delta, &covariance, true, inputCoordinateFrame)) {
-            // Function to save the posegraph regularly
-          if (save_posegraph_backup_){
+          // Save the backup pose graph
+          if (save_posegraph_backup_ && !pose_graph_saved_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
-          } 
+            pose_graph_saved_ = true;
+          }
+
           // We found a loop closure. Add it to the pose graph.
           NonlinearFactorGraph new_factor;
           new_factor.add(BetweenFactor<Pose3>(key, other_key, ToGtsam(delta),
@@ -1103,9 +1109,12 @@ bool LaserLoopClosure::FindLoopClosures(
         gu::Transform3 delta; // (Using BetweenChordalFactor)
         LaserLoopClosure::Mat1212 covariance;
         if (PerformICP(transformedPointCloud, scan2, pose1, pose2, &delta, &covariance, true, inputCoordinateFrame)) {
-          if (save_posegraph_backup_){
+          // Save the backup pose graph
+          if (save_posegraph_backup_ && !pose_graph_saved_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
-          } 
+            pose_graph_saved_ = true;
+          }
+
           // We found a loop closure. Add it to the pose graph.
           NonlinearFactorGraph new_factor;
           new_factor.add(gtsam::BetweenChordalFactor<Pose3>(key, other_key, ToGtsam(delta),
@@ -1159,7 +1168,7 @@ bool LaserLoopClosure::FindLoopClosures(
           LaserLoopClosure::Load("posegraph_backup.zip");
           return false;
         }
-    }
+      }
       // Update backups
       nfg_backup_ = nfg_;
       values_backup_ = values_;
