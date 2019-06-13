@@ -340,6 +340,7 @@ class LaserLoopClosure {
   double icp_tf_epsilon_;
   double icp_corr_dist_;
   unsigned int icp_iterations_;
+  geometry_utils::Transform3 delta_icp_;
 
   // UWB parameters
   std::unordered_map<std::string, gtsam::Key> uwb_id2key_hash_;
