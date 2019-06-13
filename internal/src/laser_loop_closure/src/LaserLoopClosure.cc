@@ -420,15 +420,12 @@ bool LaserLoopClosure::AddBetweenFactor(
     throw;
   }
   
-  ROS_INFO("Pre calculateEstimate");
   // Update class variables
   values_ = isam_->calculateEstimate();
 
-  ROS_INFO("Pre getFactorsUnsafe");
   nfg_ = isam_->getFactorsUnsafe();
 
   // Get updated cost
-  ROS_INFO("Getting cost");
   double cost = nfg_.error(values_);
 
   //ROS_INFO("Cost after optimization is: %f", cost);
@@ -967,6 +964,8 @@ bool LaserLoopClosure::FindLoopClosures(
   }
   closure_keys->clear();
 
+  ROS_INFO("STARTING FindLoopCLosures...");
+
   // Update backups
   nfg_backup_ = isam_->getFactorsUnsafe();
   values_backup_ = isam_->getLinearizationPoint();
@@ -981,19 +980,45 @@ bool LaserLoopClosure::FindLoopClosures(
     return false;
   }
 
+  // If a loop has already been closed recently, don't try to close a new one.
+  if (std::fabs(key - last_closure_key_) * translation_threshold_nodes_ <
+      distance_before_reclosing_)
+    return false;
+
   // Get pose and scan for the provided key.
   const gu::Transform3 pose1 = ToGu(values_.at<Pose3>(key));
   const PointCloud::ConstPtr scan1 = keyed_scans_[key];
 
-  // If a loop has already been closed recently, don't try to close a new one.
-  if (std::fabs(key - last_closure_key_) * translation_threshold_nodes_ < distance_before_reclosing_)
-    return false;
+  // Filter the input point cloud once
+  PointCloud::Ptr scan1_filtered(new PointCloud);
+  filter_.Filter(scan1, scan1_filtered);
+
+  // Transform the input point cloud once. For now its here, can be moved to
+  // another function
+  const Eigen::Matrix<double, 3, 3> R1 = pose1.rotation.Eigen();
+  const Eigen::Matrix<double, 3, 1> t1 = pose1.translation.Eigen();
+  Eigen::Matrix4d body1_to_world;
+  body1_to_world.block(0, 0, 3, 3) = R1;
+  body1_to_world.block(0, 3, 3, 1) = t1;
+  PointCloud::Ptr transformedPointCloud(new PointCloud);
+  pcl::transformPointCloud(
+      *scan1_filtered, *transformedPointCloud, body1_to_world);
+  std::string inputCoordinateFrame = "World";
+
+  bool pose_graph_saved_ = false;
 
   // Iterate through past poses and find those that lie close to the most
   // recently added one.
   bool closed_loop = false;
+  bool b_only_allow_one_loop = false; // TODO make this a parameter
+
   for (const auto& keyed_pose : values_) {
     const unsigned int other_key = keyed_pose.key;
+
+    if (closed_loop && b_only_allow_one_loop) {
+      ROS_INFO("Found one loop with current scan, now exiting...");
+      break;
+    }
 
     // Don't self-check.
     if (other_key == key)
@@ -1039,15 +1064,18 @@ bool LaserLoopClosure::FindLoopClosures(
       // Found a potential loop closure! Perform ICP between the two scans to
       // determine if there really is a loop to close.
       const PointCloud::ConstPtr scan2 = keyed_scans_[other_key];
-
+      
       if (!use_chordal_factor_) {
         gu::Transform3 delta; // (Using BetweenFactor)
         LaserLoopClosure::Mat66 covariance;
-        if (PerformICP(scan1, scan2, pose1, pose2, &delta, &covariance)) {
-          // Function to save the posegraph regularly
-          if (save_posegraph_backup_) {
+
+        if (PerformICP(transformedPointCloud, scan2, pose1, pose2, &delta, &covariance, true, inputCoordinateFrame)) {
+          // Save the backup pose graph
+          if (save_posegraph_backup_ && !pose_graph_saved_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
-          } 
+            pose_graph_saved_ = true;
+          }
+
           // We found a loop closure. Add it to the pose graph.
           NonlinearFactorGraph new_factor;
           new_factor.add(BetweenFactor<Pose3>(key, other_key, ToGtsam(delta),
@@ -1088,10 +1116,13 @@ bool LaserLoopClosure::FindLoopClosures(
 
         gu::Transform3 delta; // (Using BetweenChordalFactor)
         LaserLoopClosure::Mat1212 covariance;
-        if (PerformICP(scan1, scan2, pose1, pose2, &delta, &covariance)) {
-          if (save_posegraph_backup_) {
+        if (PerformICP(transformedPointCloud, scan2, pose1, pose2, &delta, &covariance, true, inputCoordinateFrame)) {
+          // Save the backup pose graph
+          if (save_posegraph_backup_ && !pose_graph_saved_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
-          } 
+            pose_graph_saved_ = true;
+          }
+
           // We found a loop closure. Add it to the pose graph.
           NonlinearFactorGraph new_factor;
           new_factor.add(gtsam::BetweenChordalFactor<Pose3>(key, other_key, ToGtsam(delta),
@@ -1126,10 +1157,13 @@ bool LaserLoopClosure::FindLoopClosures(
 
           // break if a successful loop closure 
           // break;
-        }
-      }
+        } // end of if ICP
+      }   // end of if use chordial
+
+      // Get values
       values_ = isam_->calculateEstimate();
 
+      // Update factors
       nfg_ = isam_->getFactorsUnsafe();
 
       // Check the change in pose to see if it exceeds criteria
@@ -1146,7 +1180,7 @@ bool LaserLoopClosure::FindLoopClosures(
           LaserLoopClosure::Load("posegraph_backup.zip");
           return false;
         }
-    }
+      }
       // Update backups
       nfg_backup_ = nfg_;
       values_backup_ = values_;
@@ -1369,12 +1403,14 @@ gtsam::BetweenChordalFactor<Pose3> LaserLoopClosure::MakeBetweenChordalFactor(
   return gtsam::BetweenChordalFactor<Pose3>(key_-1, key_, delta, covariance);
 }
 
-bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
+bool LaserLoopClosure::PerformICP(PointCloud::Ptr& scan1,
                                   const PointCloud::ConstPtr& scan2,
                                   const gu::Transform3& pose1,
                                   const gu::Transform3& pose2,
                                   gu::Transform3* delta,
-                                  LaserLoopClosure::Mat66* covariance) {
+                                  LaserLoopClosure::Mat66* covariance,
+                                  const bool is_filtered,
+                                  const std::string frame_id) {
   if (delta == NULL || covariance == NULL) {
     ROS_ERROR("%s: Output pointers are null.", name_.c_str());
     return false;
@@ -1389,28 +1425,41 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
   icp.setRANSACIterations(0);
 
   // Filter the two scans. They are stored in the pose graph as dense scans for
-  // visualization.
-  PointCloud::Ptr scan1_filtered(new PointCloud);
+  // visualization. Filter the first scan only when it is not filtered already. Can be extended to the other scan if all
+  // the key scan pairs store the filtered results. 
+  PointCloud::Ptr scan1_filtered;
+  if (!is_filtered) {
+    scan1_filtered = boost::make_shared<PointCloud>();
+    filter_.Filter(scan1, scan1_filtered);
+  } else {
+    scan1_filtered = scan1;
+  }
+
   PointCloud::Ptr scan2_filtered(new PointCloud);
-  filter_.Filter(scan1, scan1_filtered);
   filter_.Filter(scan2, scan2_filtered);
 
   // Set source point cloud. Transform it to pose 2 frame to get a delta.
-  const Eigen::Matrix<double, 3, 3> R1 = pose1.rotation.Eigen();
-  const Eigen::Matrix<double, 3, 1> t1 = pose1.translation.Eigen();
-  Eigen::Matrix4d body1_to_world;
-  body1_to_world.block(0, 0, 3, 3) = R1;
-  body1_to_world.block(0, 3, 3, 1) = t1;
+  PointCloud::Ptr source;
+  if (frame_id != "World") {
+    const Eigen::Matrix<double, 3, 3> R1 = pose1.rotation.Eigen();
+    const Eigen::Matrix<double, 3, 1> t1 = pose1.translation.Eigen();
+    Eigen::Matrix4d body1_to_world;
+    body1_to_world.block(0, 0, 3, 3) = R1;
+    body1_to_world.block(0, 3, 3, 1) = t1;
 
+    source = boost::make_shared<PointCloud>();
+    pcl::transformPointCloud(*scan1_filtered, *source, body1_to_world);
+  } else {
+    source = scan1_filtered;
+  }
+  icp.setInputSource(source);
+
+  // Transform the target point cloud 
   const Eigen::Matrix<double, 3, 3> R2 = pose2.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> t2 = pose2.translation.Eigen();
   Eigen::Matrix4d body2_to_world;
   body2_to_world.block(0, 0, 3, 3) = R2;
   body2_to_world.block(0, 3, 3, 1) = t2;
-
-  PointCloud::Ptr source(new PointCloud);
-  pcl::transformPointCloud(*scan1_filtered, *source, body1_to_world);
-  icp.setInputSource(source);
 
   // Set target point cloud in its own frame.
   PointCloud::Ptr target(new PointCloud);
@@ -1436,14 +1485,7 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
   }
 
   if (icp.getFitnessScore() > max_tolerable_fitness_) { 
-      // std::cout<<"Trans: "<<delta_icp.translation<<std::endl;
-      // std::cout<<"Rot: "<<delta_icp.rotation<<std::endl;
-      // If the loop closure was a success, publish the two scans.
        std::cout<<"Converged, score is: "<<icp.getFitnessScore() << std::endl;
-      // source->header.frame_id = fixed_frame_id_;
-      // target->header.frame_id = fixed_frame_id_;
-      // scan1_pub_.publish(*source);
-      // scan2_pub_.publish(*target);
     return false;
   }
 
@@ -1470,12 +1512,14 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
   return true;
 }
 
-bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
+bool LaserLoopClosure::PerformICP(PointCloud::Ptr& scan1,
                                   const PointCloud::ConstPtr& scan2,
                                   const gu::Transform3& pose1,
                                   const gu::Transform3& pose2,
                                   gu::Transform3* delta,
-                                  LaserLoopClosure::Mat1212* covariance) {
+                                  LaserLoopClosure::Mat1212* covariance,
+                                  const bool is_filtered,
+                                  const std::string frame_id) {
   if (delta == NULL || covariance == NULL) {
     ROS_ERROR("%s: Output pointers are null.", name_.c_str());
     return false;
@@ -1490,28 +1534,40 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
   icp.setRANSACIterations(0);
 
   // Filter the two scans. They are stored in the pose graph as dense scans for
-  // visualization.
-  PointCloud::Ptr scan1_filtered(new PointCloud);
+  // visualization. Filter the first scan only when it is not filtered already. Can be extended to the other scan if all
+  // the key scan pairs store the filtered results. 
+  PointCloud::Ptr scan1_filtered;
+  if (!is_filtered) {
+    scan1_filtered = boost::make_shared<PointCloud>();
+    filter_.Filter(scan1, scan1_filtered);
+  } else {
+    scan1_filtered = scan1;
+  }
+  
   PointCloud::Ptr scan2_filtered(new PointCloud);
-  filter_.Filter(scan1, scan1_filtered);
   filter_.Filter(scan2, scan2_filtered);
 
   // Set source point cloud. Transform it to pose 2 frame to get a delta.
-  const Eigen::Matrix<double, 3, 3> R1 = pose1.rotation.Eigen();
-  const Eigen::Matrix<double, 3, 1> t1 = pose1.translation.Eigen();
-  Eigen::Matrix4d body1_to_world;
-  body1_to_world.block(0, 0, 3, 3) = R1;
-  body1_to_world.block(0, 3, 3, 1) = t1;
+  PointCloud::Ptr source;
+  if (frame_id != "World") {
+    const Eigen::Matrix<double, 3, 3> R1 = pose1.rotation.Eigen();
+    const Eigen::Matrix<double, 3, 1> t1 = pose1.translation.Eigen();
+    Eigen::Matrix4d body1_to_world;
+    body1_to_world.block(0, 0, 3, 3) = R1;
+    body1_to_world.block(0, 3, 3, 1) = t1;
+    source = boost::make_shared<PointCloud>();
+    pcl::transformPointCloud(*scan1_filtered, *source, body1_to_world);
+  } else {
+    source = scan1_filtered;
+  }
+  icp.setInputSource(source);
 
+  // Transform target point cloud
   const Eigen::Matrix<double, 3, 3> R2 = pose2.rotation.Eigen();
   const Eigen::Matrix<double, 3, 1> t2 = pose2.translation.Eigen();
   Eigen::Matrix4d body2_to_world;
   body2_to_world.block(0, 0, 3, 3) = R2;
   body2_to_world.block(0, 3, 3, 1) = t2;
-
-  PointCloud::Ptr source(new PointCloud);
-  pcl::transformPointCloud(*scan1_filtered, *source, body1_to_world);
-  icp.setInputSource(source);
 
   // Set target point cloud in its own frame.
   PointCloud::Ptr target(new PointCloud);
@@ -1536,15 +1592,8 @@ bool LaserLoopClosure::PerformICP(const PointCloud::ConstPtr& scan1,
     return false;
   }
 
-  if (icp.getFitnessScore() > max_tolerable_fitness_) { 
-      // std::cout<<"Trans: "<<delta_icp.translation<<std::endl;
-      // std::cout<<"Rot: "<<delta_icp.rotation<<std::endl;
-      // If the loop closure was a success, publish the two scans.
+  if (icp.getFitnessScore() > max_tolerable_fitness_) {
        std::cout<<"Converged, score is: "<<icp.getFitnessScore() << std::endl;
-      // source->header.frame_id = fixed_frame_id_;
-      // target->header.frame_id = fixed_frame_id_;
-      // scan1_pub_.publish(*source);
-      // scan2_pub_.publish(*target);
     return false;
   }
 

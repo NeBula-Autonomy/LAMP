@@ -257,18 +257,32 @@ class LaserLoopClosure {
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
 
   // Perform ICP between two laser scans.
-  bool PerformICP(const PointCloud::ConstPtr& scan1,
+  /**
+   *  Is the query scan filtered and transformed. Decreases computation of filtering the same query scan
+   *multiple times when matching to different scans. 
+   *
+   * @param[in]: is_filtered -->  is the scan already filtered
+   * @param[in]: frame_id  -->    Coordinate frame of the scan. ICP converts the frame to world, so currently would be just focussing on making changes for world.
+   */  
+  bool PerformICP(PointCloud::Ptr& scan1,
                   const PointCloud::ConstPtr& scan2,
                   const geometry_utils::Transform3& pose1,
                   const geometry_utils::Transform3& pose2,
-                  geometry_utils::Transform3* delta, Mat66* covariance);
+                  geometry_utils::Transform3* delta, Mat66* covariance, const bool is_filtered, const std::string frame_id);
 
   // Perform ICP between two laser scans.
-  bool PerformICP(const PointCloud::ConstPtr& scan1,
+  /**
+   *  Is the query scan filtered and transformed. Decreases computation of filtering the same query scan
+   *multiple times when matching to different scans. 
+   *
+   * @param[in]: is_filtered -->  is the scan already filtered
+   * @param[in]: frame_id  -->    Coordinate frame of the scan. ICP converts the frame to world, so currently would be just focussing on making changes for world.
+   */
+  bool PerformICP(PointCloud::Ptr& scan1,
                   const PointCloud::ConstPtr& scan2,
                   const geometry_utils::Transform3& pose1,
                   const geometry_utils::Transform3& pose2,
-                  geometry_utils::Transform3* delta, Mat1212* covariance);
+                  geometry_utils::Transform3* delta, Mat1212* covarianc, const bool is_filtered, const std::string frame_id);
 
   // bool AddFactorService(laser_loop_closure::ManualLoopClosureRequest &request,
   //                       laser_loop_closure::ManualLoopClosureResponse &response);
