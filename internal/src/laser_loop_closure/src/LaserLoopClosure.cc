@@ -2247,8 +2247,6 @@ bool LaserLoopClosure::BatchLoopClosure() {
   
   //Remove all manual factors to not make the system underdetermined
   for (int i = 0; i < manual_loop_edges_.size(); i++){
-    ROS_INFO_STREAM(manual_loop_edges_[i].first);
-    ROS_INFO_STREAM(manual_loop_edges_[i].second);
     bool is_batch_loop_closure = true;
     RemoveFactor(manual_loop_edges_[i].first, manual_loop_edges_[i].second, is_batch_loop_closure);
   }
