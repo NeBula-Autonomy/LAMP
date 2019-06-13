@@ -11,7 +11,7 @@
   <arg name="map_topic_output" default="blam_slam/octree_map_downsampled"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
-  <arg name="load_pose_graph_file" default="" /> 
+  <arg name="load_pose_graph_file" default=""/> 
 
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->
@@ -26,7 +26,11 @@
       <!-- Topics -->
       <remap from="~pcld" to="velodyne_points/transformed"/>
       <remap from="~artifact" to="~artifact_global" />
-      <remap from="~artifact_relative" to="object_localizer/artifact_relative" />
+      <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" />
+      <remap from="~uwb_signal" to="comm/uwb/anchor" />
+
+      <!-- Serives -->
+      <remap from="~drop_uwb_anchor" to="drop_uwb_anchor"/>
 
       <!-- Initial pose -->
       <rosparam param="init">
@@ -40,13 +44,16 @@
       <rosparam param="noise">
         odom_position_sigma: 0.6324
         odom_attitude_sigma: 0.316
-      </rosparam>     
+      </rosparam>      
 
       <!-- Rates -->
       <rosparam file="$(find blam_example)/config/blam_rates.yaml"/>
 
       <!-- Frames -->
       <rosparam file="$(find blam_example)/config/blam_frames.yaml" subst_value="true"/>
+
+      <!-- List of UWB anchors -->
+      <rosparam file="$(find blam_example)/config/dropped_items_list.yaml"/>
 
       <!-- Point cloud filter -->
       <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
@@ -77,7 +84,8 @@
     <!-- Republish node with different frame_id -->
     <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
           args="standalone pcl/PassThrough">
-      <remap from="~input" to="velodyne_points_throttle"/>
+      <remap from="~input" to="velodyne_points"/>
+      <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
       <remap from="~output" to="velodyne_points/transformed"/>
       <rosparam subst_value="true">
         filter_field_name: z
@@ -100,7 +108,7 @@
 
     <!-- Convert output PoseStamped message to Odometry -->
     <node pkg="topic_tools" type="transform" name="pose_to_odom"
-          respawn="true"
+          respawn="true" output="screen"
           args="/$(arg robot_namespace)/blam_slam/localization_integrated_estimate
                 /$(arg robot_namespace)/blam_slam/odometry
                 nav_msgs/Odometry
@@ -113,6 +121,18 @@
           type="reinit_blam.py">
       <param name="map_frame" value="$(arg robot_namespace)/map"/>
       <param name="blam_frame" value="$(arg robot_namespace)/blam"/>
+    </node>
+
+    <!-- Pose graph visualization -->
+    <node pkg="pose_graph_visualizer"
+          name="pose_graph_visualizer"
+          type="pose_graph_visualizer_node"
+          output="screen">
+      <!-- Frames -->
+      <rosparam file="$(find blam_example)/config/blam_frames.yaml" subst_value="true"/>
+      
+      <!-- Loop closure -->
+      <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
     </node>
 
   </group>

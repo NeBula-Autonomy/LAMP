@@ -42,10 +42,13 @@ Build
 cd gtsam 
 mkdir build
 cd build
-cmake ..
-$ optional: sudo make check
+cmake .. -DGTSAM_POSE3_EXPMAP=ON -DGTSAM_ROT3_EXPMAP=ON
+$ optional: sudo make check # (this would fail because of the EXMAP args)
 sudo make install
 ```
+**Note:** 
+The reason why we need EXPMAP is for the correct calculation of Jacobians. 
+Enabling this and the `#define SLOW_BUT_CORRECT_BETWEENFACTOR` in LaserLoopCLosure.h are both important. Otherwise the default are some identity approximations for rotations, which works for some cases but fails for cases with manual loop closures, or artifacts. 
 
 `OLD ADVICE ON BLAM`:
 
@@ -97,7 +100,7 @@ static_transform_publisher 0 0 0 0 0 0 1 /husky/base_link /velodyne
 In addition, a static transform publisher is needed to take place of the tf from world to blam:
 
 ```bash
-static_transform_publisher 0 0 0 0 0 0 1 /world /husky/blam
+static_transform_publisher 0 0 0 0 0 0 /husky/blam /world
 ```
 **Note:** 
 If you are using the ``run_blam.sh`` script, there is no need to run the static transform publisher from `/world` to `/husky/blam` as this is already captured in the script.
@@ -185,3 +188,15 @@ roslaunch blam_example test_offline.launch
 
 An example .rviz configuration file is provided under
 `blam_example/rviz/lidar_slam.rviz`.
+
+## Unit tests
+To compile and run unit tests:
+```bash
+roscore & catkin build --catkin-make-args run_tests
+``` 
+
+To view the results of a package:
+```bash
+catkin_test_results build/<package_name>
+``` 
+Results for unit tests of packages are stored in the build/<package_name>/test_results folder.
