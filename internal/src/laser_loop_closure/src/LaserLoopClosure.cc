@@ -260,10 +260,6 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
       "loop_closure_edge", 10, false);
 
   artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
-  marker_pub_ = nl.advertise<visualization_msgs::Marker>("artifact_markers", 10);
-  
-  uwb_node_pub_ = nl.advertise<visualization_msgs::Marker>("uwb_nodes", 10, false);
-  uwb_edge_pub_ = nl.advertise<visualization_msgs::Marker>("uwb_edges", 10, false);
       
   return true;
 }
@@ -559,8 +555,14 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
     uwb_key = uwb_id2key_hash_[uwb_id];
   }
   else {
-    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size()+1);
+    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
     uwb_id2key_hash_[uwb_id] = uwb_key;
+    uwb_key2id_hash_[uwb_key] = uwb_id;
+
+    ROS_INFO("Creating new UWB Factor");
+    ROS_INFO("UWB key: %u", uwb_key);
+    ROS_INFO("UWB ID:  %s", uwb_id.c_str());
+    ROS_INFO_STREAM("Robot position: " << robot_position.transpose());
   }
 
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
@@ -599,6 +601,9 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
         // Add a RangeFactor between the nearest pose key and the UWB key
         new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
         uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+        ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+                        << gtsam::DefaultKeyFormatter(pose_key) << " and "
+                        << gtsam::DefaultKeyFormatter(uwb_key));
       }
         break;
       case 1 :
@@ -802,8 +807,9 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     uwb_key = uwb_id2key_hash_[uwb_id];
   }
   else {
-    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size()+1);
+    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
     uwb_id2key_hash_[uwb_id] = uwb_key;
+    uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
   gtsam::Values linPoint = isam_->getLinearizationPoint();
@@ -836,9 +842,6 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   gtsam::noiseModel::Diagonal::Precisions(precisions);
   // TODO
   new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
-
-  uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-
 
   try {
     ROS_INFO_STREAM("Optimizing uwb-based loop closure, iteration");
@@ -913,7 +916,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
 }
 
 bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
-                                      const PointCloud::ConstPtr& scan) {
+                                      const PointCloud::ConstPtr& scan, bool initial_pose) {
   if (keyed_scans_.count(key)) {
     ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
     return false;
@@ -921,7 +924,7 @@ bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
 
   // The first key should be treated differently; we need to use the laser
   // scan's timestamp for pose zero.
-  if (key == 0) {
+  if (initial_pose) {
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
     keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key, stamp));
     stamps_keyed_.insert(std::pair<double, unsigned int>(stamp.toSec(), key));
@@ -2279,6 +2282,11 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
   if (pose_graph_pub_.getNumSubscribers() > 0) {
     pose_graph_msgs::PoseGraph g;
     g.header.frame_id = fixed_frame_id_;
+    g.header.stamp = ros::Time::now ();
+
+    // Flag on whether it is incremental or not
+    // TODO make incremental Pose Graph publishing
+    g.incremental = false;
 
     for (const auto& keyed_pose : values_) {
       if (!values_.exists(keyed_pose.key)) {
@@ -2286,6 +2294,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
         return false;
       }
       gu::Transform3 t = ToGu(values_.at<Pose3>(keyed_pose.key));
+
+      gtsam::Symbol sym_key = gtsam::Symbol(keyed_pose.key);
 
       // Populate the message with the pose's data.
       pose_graph_msgs::PoseGraphNode node;
@@ -2298,6 +2308,24 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
         ROS_WARN("%s: Couldn't find timestamp for key %lu", name_.c_str(),
                  keyed_pose.key);
       }
+
+      // ROS_INFO_STREAM("Symbol key is " <<
+      // gtsam::DefaultKeyFormatter(sym_key)); ROS_INFO_STREAM("Symbol key
+      // (directly) is "
+      //                 << gtsam::DefaultKeyFormatter(keyed_pose.key));
+
+      // ROS_INFO_STREAM("Symbol key (int) is " << keyed_pose.key);
+
+      // Add UUID if an artifact or uwb node
+      if (sym_key.chr() == 'l'){
+        // Artifact
+        node.ID = artifact_key2info_hash[keyed_pose.key].msg.parent_id;
+      }
+      if (sym_key.chr() == 'u'){
+        // UWB
+        node.ID = uwb_key2id_hash_[keyed_pose.key];
+      }
+
       g.nodes.push_back(node);
     }
 
@@ -2305,69 +2333,44 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
     for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
       edge.key_from = odometry_edges_[ii].first;
       edge.key_to = odometry_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::ODOM;
+      // Get edge transform and covariance
+      // TODO
       g.edges.push_back(edge);
     }
 
     for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
       edge.key_from = loop_edges_[ii].first;
       edge.key_to = loop_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+      // Get edge transform and covariance
+      // TODO
+      g.edges.push_back(edge);
+    }
+
+    for (size_t ii = 0; ii < artifact_edges_.size(); ++ii) {
+      edge.key_from = artifact_edges_[ii].first;
+      edge.key_to = artifact_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+      // Get edge transform and covariance
+      // TODO
+      g.edges.push_back(edge);
+    }
+
+    for (size_t ii = 0; ii < uwb_edges_.size(); ++ii) {
+      edge.key_from = uwb_edges_[ii].first;
+      edge.key_to = uwb_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB;
+      // Get edge transform and covariance
+      // TODO
       g.edges.push_back(edge);
     }
 
     // Publish.
     pose_graph_pub_.publish(g);
   }
-
-  PublishUwb();
   
   return true;
-}
-
-void LaserLoopClosure::PublishUwb() {
-  for (auto itr = uwb_id2key_hash_.begin(); itr != uwb_id2key_hash_.end(); itr++) {
-    visualization_msgs::Marker m;
-    gu::Transform3 uwb_pose_pub = ToGu(values_.at<Pose3>(itr->second));
-    m.id = itr->second;
-    m.header.frame_id = fixed_frame_id_;
-    m.pose = gr::ToRosPose(uwb_pose_pub);
-    m.scale.x = 0.5f;
-    m.scale.y = 0.5f;
-    m.scale.z = 0.5f;
-    m.color.r = 0.0f;
-    m.color.g = 1.0f;
-    m.color.b = 0.0f;
-    m.color.a = 0.4f;
-    m.type = visualization_msgs::Marker::CUBE;
-
-    uwb_node_pub_.publish(m);
-  }
-
-  if (uwb_edge_pub_.getNumSubscribers() > 0){
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 5;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 1.0;
-    m.color.b = 0.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < uwb_edges_.size(); ++ii) {
-      unsigned int key1 = uwb_edges_[ii].first;
-      gtsam::Key key2 = uwb_edges_[ii].second;
-
-      gu::Vec3 p1 = ToGu(values_.at<Pose3>(key1)).translation;
-      gu::Vec3 p2 = ToGu(values_.at<Pose3>(key2)).translation;
-
-      m.points.push_back(gr::ToRosPoint(p1));
-      m.points.push_back(gr::ToRosPoint(p2));
-    }
-    uwb_edge_pub_.publish(m);
-  }
-
 }
 
 void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
@@ -2376,6 +2379,12 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
   Eigen::Vector3d artifact_position;
   std::string artifact_label;
+  bool b_publish_all = false;
+
+  // Default input key is 'z0' if this is the case, publish all artifacts
+  if (gtsam::Symbol(artifact_key).chr() == 'z') {
+    b_publish_all = true;
+  }
 
   // loop through values 
   for (auto it = artifact_key2info_hash.begin();
@@ -2389,33 +2398,57 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
       continue;
     }
 
-    if (gtsam::Symbol(artifact_key).chr() == 'z'){ // The default value
+    if (b_publish_all) { // The default value
       // Update all artifacts - loop through all - the default
       // Get position and label 
       ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(it->first));
       artifact_position = GetArtifactPosition(it->first);
       artifact_label = it->second.msg.label;
+      // Get the artifact key
+      artifact_key = it->first;
 
       // Increment update count
       it->second.num_updates++;
-        
+
+      std::cout << "Number of updates of artifact is: "
+                << it->second.num_updates << std::endl;
+
     }
     else{
       // Updating a single artifact - will return at the end of this first loop
       // Using the artifact key to publish that artifact
       ROS_INFO("Publishing only the new artifact");
       ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(artifact_key));
+
+      // Check that the key exists
+      if (artifact_key2info_hash.count(artifact_key) == 0) {
+        ROS_WARN("Artifact key is not in hash, nothing to publish");
+        return;
+      }
+
       // Get position and label 
       artifact_position = GetArtifactPosition(artifact_key);
       artifact_label = artifact_key2info_hash[artifact_key].msg.label;
+      // Keep the input artifact key
 
       // Increment update count
-      artifact_key2info_hash[artifact_key].num_updates++; 
+      artifact_key2info_hash[artifact_key].num_updates++;
+
+      std::cout << "Number of updates of artifact is: "
+                << artifact_key2info_hash[artifact_key].num_updates
+                << std::endl;
     }
 
-    // Create new artifact msg 
+    // Check that the key exists
+    if (artifact_key2info_hash.count(artifact_key) == 0) {
+      ROS_WARN("Artifact key is not in hash, nothing to publish");
+      return;
+    }
+
+    // Fill artifact message
     core_msgs::Artifact new_msg = artifact_key2info_hash[artifact_key].msg;
 
+    // Fill the new message positions
     new_msg.point.point.x = artifact_position[0];
     new_msg.point.point.y = artifact_position[1];
     new_msg.point.point.z = artifact_position[2];
@@ -2423,77 +2456,26 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
     // Transform to world frame from map frame
     new_msg.point = tf_buffer_.transform(
         new_msg.point, "world", new_msg.point.header.stamp, "world");
+
+    // Print out
     // Transform at time of message
     std::cout << "Artifact position in world is: " << new_msg.point.point.x
               << ", " << new_msg.point.point.y << ", " << new_msg.point.point.z
               << std::endl;
     std::cout << "Frame ID is: " << new_msg.point.header.frame_id << std::endl;
 
+    std::cout << "\t Parent id: " << new_msg.parent_id << std::endl;
+    std::cout << "\t Confidence: " << new_msg.confidence << std::endl;
+    std::cout << "\t Position:\n[" << new_msg.point.point.x << ", "
+              << new_msg.point.point.y << ", " << new_msg.point.point.z << "]"
+              << std::endl;
+    std::cout << "\t Label: " << new_msg.label << std::endl;
+
+    // Publish
     artifact_pub_.publish(new_msg);
 
-    // Publish Marker with new position
-    visualization_msgs::Marker marker;
-
-    marker.header.frame_id = "world";
-    marker.header.stamp = ros::Time::now();
-
-    // Set the namespace and id for this marker.  This serves to create a unique ID
-    // Any marker sent with the same namespace and id will overwrite the old one
-    marker.ns = "artifact";
-    marker.id = it->first;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.pose.position = new_msg.point.point;
-
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
-    marker.scale.x = 0.35f;
-    marker.scale.y = 0.35f;
-    marker.scale.z = 0.35f;
-    marker.color.a = 1.0f;
-
-    if (artifact_label == "backpack")
-    {
-      std::cout << "backpack marker" << std::endl;
-      marker.color.r = 1.0f;
-      marker.color.g = 0.0f;
-      marker.color.b = 0.0f;
-      marker.type = visualization_msgs::Marker::CUBE;
-    }
-    if (artifact_label == "fire extinguisher")
-    {
-      std::cout << "fire extinguisher marker" << std::endl;
-      marker.color.r = 1.0f;
-      marker.color.g = 0.5f;
-      marker.color.b = 0.75f;
-      marker.type = visualization_msgs::Marker::SPHERE;
-    }
-    if (artifact_label == "drill")
-    {
-      std::cout << "drill marker" << std::endl;
-      marker.color.r = 0.0f;
-      marker.color.g = 1.0f;
-      marker.color.b = 0.0f;
-      marker.type = visualization_msgs::Marker::CYLINDER;
-    }
-    if (artifact_label == "survivor")
-    {
-      std::cout << "survivor marker" << std::endl;
-      // return;
-      marker.color.r = 1.0f;
-      marker.color.g = 1.0f;
-      marker.color.b = 1.0f;
-      marker.scale.x = 1.0f;
-      marker.scale.y = 1.0f;
-      marker.scale.z = 1.0f;
-      marker.type = visualization_msgs::Marker::CYLINDER;
-    }
-    // marker.lifetime = ros::Duration();
-
-    marker_pub_.publish(marker);
-
-    if (artifact_key != '-1'){
+    if (!b_publish_all) {
+      ROS_INFO("Single artifact - exiting artifact pub loop");
       // Only a single artifact - exit the loop 
       return;
     }

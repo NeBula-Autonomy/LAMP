@@ -255,7 +255,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /husky/blam_slam/artifact_markers
+      Marker Topic: /husky/pose_graph_visualizer/artifact_markers
       Name: Artifact
       Namespaces:
         {}
@@ -295,6 +295,22 @@ Visualization Manager:
       Enabled: true
       Marker Topic: /husky/pose_graph_visualizer/confirm_edge
       Name: NodeChecks
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /husky/blam_slam/uwb_edges
+      Name: UWB Edges
+      Namespaces:
+        husky/blam: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /husky/blam_slam/uwb_nodes
+      Name: UWB Nodes
       Namespaces:
         {}
       Queue Size: 100
@@ -370,7 +386,7 @@ Visualization Manager:
       Marker Topic: /husky/pose_graph_visualizer/loop_edges
       Name: LoopEdges
       Namespaces:
-        husky/blam: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -378,12 +394,12 @@ Visualization Manager:
       Marker Topic: /husky/pose_graph_visualizer/odometry_edges
       Name: odom_edges
       Namespaces:
-        husky/blam: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
       Enabled: false
-      Marker Topic: /husky/blam_slam/graph_nodes
+      Marker Topic: /husky/pose_graph_visualizer/graph_nodes
       Name: graph_nodes
       Namespaces:
         {}
@@ -391,7 +407,7 @@ Visualization Manager:
       Value: false
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /husky/blam_slam/artifact_edges
+      Marker Topic: /husky/pose_graph_visualizer/artifact_edges
       Name: ArtifactEdges
       Namespaces:
         {}
@@ -434,7 +450,7 @@ Visualization Manager:
       Unreliable: false
       Value: false
     - Class: rviz/Image
-      Enabled: false
+      Enabled: true
       Image Topic: /husky/camera_front/color/image_raw
       Max Value: 1
       Median window: 5
@@ -444,7 +460,23 @@ Visualization Manager:
       Queue Size: 2
       Transport Hint: raw
       Unreliable: false
-      Value: false
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /husky/pose_graph_visualizer/uwb_edges
+      Name: UWB Edges
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /husky/pose_graph_visualizer/uwb_nodes
+      Name: UWB Nodes
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -508,5 +540,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 2493
-  X: 67
-  Y: 27
+  X: 454
+  Y: 351

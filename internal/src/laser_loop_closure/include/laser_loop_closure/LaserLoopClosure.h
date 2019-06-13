@@ -153,11 +153,9 @@ class LaserLoopClosure {
                      const ros::Time& stamp,
                      const Eigen::Vector3d robot_position);
 
-  void PublishUwb();
-
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.
-  bool AddKeyScanPair(unsigned int key, const PointCloud::ConstPtr& scan);
+  bool AddKeyScanPair(unsigned int key, const PointCloud::ConstPtr& scan, bool initial_pose);
 
   // After receiving an output key from 'AddBetweenFactor', call this to check
   // for loop closures with other poses in the pose graph.
@@ -332,6 +330,7 @@ class LaserLoopClosure {
 
   // UWB parameters
   std::unordered_map<std::string, gtsam::Key> uwb_id2key_hash_;
+  std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
   unsigned int uwb_factor_optimizer_;
@@ -362,9 +361,6 @@ class LaserLoopClosure {
   ros::Publisher scan1_pub_;
   ros::Publisher scan2_pub_;
   ros::Publisher artifact_pub_;
-  ros::Publisher marker_pub_;
-  ros::Publisher uwb_node_pub_;
-  ros::Publisher uwb_edge_pub_;
 
   // Used for publishing pose graph only if it hasn't changed.
   bool has_changed_{true};
@@ -379,7 +375,7 @@ class LaserLoopClosure {
   ros::Publisher keyed_scan_pub_;
   ros::Publisher loop_closure_notifier_pub_;
 
-  typedef std::pair<unsigned int, unsigned int> Edge;
+  typedef std::pair<gtsam::Key, gtsam::Key>  Edge;
   typedef std::pair<gtsam::Key, gtsam::Key> ArtifactEdge;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;

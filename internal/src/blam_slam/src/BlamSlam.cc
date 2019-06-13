@@ -128,6 +128,9 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
+  if (!pu::Get("b_use_uwb", b_use_uwb_))
+    return false;
+
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
     if (loop_closure_.Load(graph_filename)) {
@@ -190,7 +193,8 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 
   artifact_sub_ = nl.subscribe("artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
 
-  uwb_sub_ = nl.subscribe("uwb_signal", 10, &BlamSlam::UwbSignalCallback, this);
+  uwb_sub_ =
+      nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
 
   return CreatePublishers(n);
 }
@@ -571,6 +575,9 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 }
 
 void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
+  if (!b_use_uwb_) {
+    return;
+  }
 
   // Show range data for debug
   for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
@@ -640,6 +647,10 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
 }
 
 void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
+  if (!b_use_uwb_) {
+    return;
+  }
+
   // TODO: Screening before entering into this subscriber
   auto itr = uwb_drop_status_.find(msg.id);
   if (itr != end(uwb_drop_status_)) {
@@ -670,7 +681,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     // First update ever.
     PointCloud::Ptr unused(new PointCloud);
     mapper_.InsertPoints(msg_filtered, unused.get());
-    loop_closure_.AddKeyScanPair(initial_key_, msg);
+    loop_closure_.AddKeyScanPair(initial_key_, msg, true);
     return;
   }
 
@@ -772,7 +783,7 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
 
 
   // This will add a between factor after obtaining the delta between poses.
-  double init_x = 8.0, init_y = 0.0, init_z = 0.0;
+  double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
   delta_after_restart_.translation = gu::Vec3(init_x, init_y, init_z);
   delta_after_restart_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);
@@ -828,7 +839,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
 
   *new_keyframe = true;
 
-  if (!loop_closure_.AddKeyScanPair(pose_key, scan)) {
+  if (!loop_closure_.AddKeyScanPair(pose_key, scan, false)) {
     return false;
   }
 
