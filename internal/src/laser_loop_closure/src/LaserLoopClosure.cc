@@ -1010,8 +1010,15 @@ bool LaserLoopClosure::FindLoopClosures(
   // Iterate through past poses and find those that lie close to the most
   // recently added one.
   bool closed_loop = false;
+  bool b_only_allow_one_loop = false; // TODO make this a parameter
+
   for (const auto& keyed_pose : values_) {
     const unsigned int other_key = keyed_pose.key;
+
+    if (closed_loop && b_only_allow_one_loop) {
+      ROS_INFO("Found one loop with current scan, now exiting...");
+      break;
+    }
 
     // Don't self-check.
     if (other_key == key)
@@ -1150,10 +1157,13 @@ bool LaserLoopClosure::FindLoopClosures(
 
           // break if a successful loop closure 
           // break;
-        }
-      }
+        } // end of if ICP
+      }   // end of if use chordial
+
+      // Get values
       values_ = isam_->calculateEstimate();
 
+      // Update factors
       nfg_ = isam_->getFactorsUnsafe();
 
       // Check the change in pose to see if it exceeds criteria
