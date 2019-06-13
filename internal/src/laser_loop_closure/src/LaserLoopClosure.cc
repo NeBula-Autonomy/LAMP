@@ -1792,7 +1792,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       pose_graph_msgs::PoseGraphEdge edge;
       edge.key_from = key1;
       edge.key_to = key2;
-      //edge.pose =  gr::ToRosPose(delta_icp_);
+      edge.pose =  gr::ToRosPose(gu::Transform3::Identity());
       loop_closure_notifier_pub_.publish(edge);
 
       // Store manual loop keys to not interfere with batch loop closure.
