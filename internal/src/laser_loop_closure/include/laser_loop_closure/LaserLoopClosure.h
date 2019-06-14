@@ -90,7 +90,8 @@ public:
   GenericSolver();
   void update(gtsam::NonlinearFactorGraph nfg=gtsam::NonlinearFactorGraph(), 
               gtsam::Values values=gtsam::Values(),
-              gtsam::FactorIndices factorsToRemove=gtsam::FactorIndices());
+              gtsam::FactorIndices factorsToRemove=gtsam::FactorIndices(),
+              bool is_batch_loop=false);
 
   gtsam::Values calculateEstimate() { return values_gs_; }
   gtsam::Values calculateBestEstimate() { return values_gs_; }
@@ -211,7 +212,7 @@ class LaserLoopClosure {
                  double trans_precision);
 
   // Removes the factor between the two keys from the pose graph.
-  bool RemoveFactor(unsigned int key1, unsigned int key2);
+  bool RemoveFactor(unsigned int key1, unsigned int key2, bool is_batch_loop_closure);
 
   // Erase the posegraph
   bool ErasePosegraph();
@@ -327,7 +328,6 @@ class LaserLoopClosure {
   double relinearize_threshold_;
   bool use_chordal_factor_;
   bool publish_interactive_markers_;
-  std::vector<unsigned int> manual_loop_keys_;
 
 
   // Sanity check parameters
@@ -393,6 +393,7 @@ class LaserLoopClosure {
   typedef std::pair<gtsam::Key, gtsam::Key> ArtifactEdge;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
+  std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
   std::vector<std::pair<unsigned int, gtsam::Key>> uwb_edges_;
 

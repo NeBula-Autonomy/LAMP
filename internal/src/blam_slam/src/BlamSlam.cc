@@ -282,10 +282,11 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
     response.success = false;
     return true;
   }
-
+  bool is_batch_loop_closure = false;
   response.success = loop_closure_.RemoveFactor(
     static_cast<unsigned int>(request.key_from),
-    static_cast<unsigned int>(request.key_to));
+    static_cast<unsigned int>(request.key_to),
+    is_batch_loop_closure);
   if (response.success){
     std::cout << "removing factor from pose graph succeeded" << std::endl;
   }else{
@@ -369,21 +370,17 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   std::cout << "Looking for any loop closures..." << std::endl;
 
   response.success = loop_closure_.BatchLoopClosure();
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  if (response.success = true) {
-    // We found one - regenerate the 3D map.
-    PointCloud::Ptr regenerated_map(new PointCloud);
-    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+  mapper_.Reset();
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
 
-    mapper_.Reset();
-    PointCloud::Ptr unused(new PointCloud);
-    mapper_.InsertPoints(regenerated_map, unused.get());
-    
-    return true;
-  } 
-  else {
-    return false;
-  }
+  // Also reset the robot's estimated position.
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  return true; 
 }
 
 
