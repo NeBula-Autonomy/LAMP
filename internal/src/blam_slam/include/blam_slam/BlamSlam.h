@@ -180,6 +180,7 @@ class BlamSlam {
   bool artifacts_in_global_;
   int largest_artifact_id_; 
   bool use_artifact_loop_closure_;
+  bool b_use_uwb_;
 
   // Object IDs
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
