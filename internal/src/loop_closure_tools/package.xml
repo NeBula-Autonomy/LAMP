@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>loop_closure_tools</name>
+  <version>0.0.0</version>
+  <description>The loop_closure_tools package</description>
+
+  <maintainer email="bmorrell@jpl.nasa.gov">Benjamin Morrell</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <export>
+    <metapackage/>
+  </export>
+</package>
