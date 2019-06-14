@@ -603,7 +603,7 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
       itr_end--;
       auto time_diff = ros::Time::now() - itr_end->first;
       if (time_diff.toSec() > 20.0) {
-        if (itr->second.size() > 4) {
+        if (itr->second.size() > 2) {
 
           ProcessUwbRangeData(itr->first);
 
