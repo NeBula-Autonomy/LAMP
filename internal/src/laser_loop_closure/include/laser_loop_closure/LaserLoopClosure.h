@@ -82,7 +82,8 @@
 #include <map>
 #include <vector>
 
-#include "RobustPGO/robust_pgo.h" // RobustPGO (backend solver)
+#include "RobustPGO/RobustPGO.h" // RobustPGO (backend solver)
+#include "RobustPGO/pcm/pcm.h"
 
 // default is isam, 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
 #define SOLVER 1
@@ -296,6 +297,8 @@ class LaserLoopClosure {
   bool use_chordal_factor_;
   bool publish_interactive_markers_;
   std::vector<unsigned int> manual_loop_keys_;
+  double odom_threshold_;
+  double pw_threshold_;
 
 
   // Sanity check parameters
