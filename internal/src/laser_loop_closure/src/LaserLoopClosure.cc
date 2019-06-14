@@ -841,9 +841,6 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   // TODO
   new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
 
-  uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-
-
   try {
     ROS_INFO_STREAM("Optimizing uwb-based loop closure, iteration");
     gtsam::Values result;
@@ -1074,6 +1071,7 @@ bool LaserLoopClosure::FindLoopClosures(
           // Save the backup pose graph
           if (save_posegraph_backup_ && !pose_graph_saved_) {
             LaserLoopClosure::Save("posegraph_backup.zip");
+            pose_graph_saved_ = true;
           } 
 
           //Tell posegraph to update
