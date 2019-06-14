@@ -117,6 +117,21 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("noise/odom_position_sigma", position_sigma_)) return false;
   if (!pu::Get("noise/odom_attitude_sigma", attitude_sigma_)) return false;
 
+  //Load and restart deltas
+  if (!pu::Get("load_graph_x", load_graph_x_)) return false;
+  if (!pu::Get("load_graph_y", load_graph_y_)) return false;
+  if (!pu::Get("load_graph_z", load_graph_z_)) return false;
+  if (!pu::Get("load_graph_roll", load_graph_roll_)) return false;
+  if (!pu::Get("load_graph_pitch", load_graph_pitch_)) return false;
+  if (!pu::Get("load_graph_yaw", load_graph_yaw_)) return false;
+
+  if (!pu::Get("restart_x", restart_x_)) return false;
+  if (!pu::Get("restart_y", restart_y_)) return false;
+  if (!pu::Get("restart_z", restart_z_)) return false;
+  if (!pu::Get("restart_roll", restart_roll_)) return false;
+  if (!pu::Get("restart_pitch", restart_pitch_)) return false;
+  if (!pu::Get("restart_yaw", restart_yaw_)) return false;
+
   // Load dropped item ids
   if (!pu::Get("items/uwb_id", uwb_id_list_)) return false;
   for (int i = 0; i < uwb_id_list_.size(); i++) {
@@ -353,10 +368,8 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   // Obtain the second robot's initial pose from the tf
   //TODO: Kamak: write a callback function to get the tf
   // compute the delta and put it in this format.
-  double init_x = 0.0, init_y = 0.0, init_z = 0.0;
-  double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
-  delta_after_load_.translation = gu::Vec3(init_x, init_y, init_z);
-  delta_after_load_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);
+  delta_after_load_.translation = gu::Vec3(load_graph_x_, load_graph_y_, load_graph_z_);
+  delta_after_load_.rotation = gu::Rot3(load_graph_roll_, load_graph_pitch_, load_graph_yaw_);
   loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
 
   // Also reset the robot's estimated position.
@@ -780,10 +793,8 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
 
 
   // This will add a between factor after obtaining the delta between poses.
-  double init_x = 0.0, init_y = 0.0, init_z = 0.0;
-  double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
-  delta_after_restart_.translation = gu::Vec3(init_x, init_y, init_z);
-  delta_after_restart_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);
+  delta_after_restart_.translation = gu::Vec3(restart_x_, restart_y_, restart_z_);
+  delta_after_restart_.rotation = gu::Rot3(restart_roll_, restart_pitch_, restart_yaw_);
   loop_closure_.AddFactorAtRestart(delta_after_restart_, covariance);
 
   // Also reset the robot's estimated position.

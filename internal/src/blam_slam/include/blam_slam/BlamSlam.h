@@ -163,6 +163,21 @@ class BlamSlam {
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
+
+  // Load and restart delta
+  double load_graph_x_;
+  double load_graph_y_;
+  double load_graph_z_;
+  double load_graph_roll_;
+  double load_graph_pitch_;
+  double load_graph_yaw_;
+
+  double restart_x_;
+  double restart_y_;
+  double restart_z_;
+  double restart_roll_;
+  double restart_pitch_;
+  double restart_yaw_;
   
 
   // Services
