@@ -55,6 +55,10 @@
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
+
 #include <core_msgs/Artifact.h>
 #include <uwb_msgs/Anchor.h>
 #include <mesh_msgs/ProcessCommNode.h>
@@ -78,7 +82,9 @@ class BlamSlam {
   void ProcessUwbRangeData(const std::string uwb_id);
 
   int marker_id_;
-  bool map_loaded_;
+  
+  //listener for tf published by fiducials
+  tf::TransformListener listener;
 
  private:
   // Node initialization.
@@ -133,8 +139,16 @@ class BlamSlam {
   void PublishArtifact(const Eigen::Vector3d& W_artifact_position,
                        const core_msgs::Artifact& msg);
 
+  bool getTransformEigenFromTF(const std::string& parent_frame,
+                               const std::string& child_frame,
+                               const ros::Time& time,
+                               Eigen::Affine3d& T);
+
   // The node's name.
   std::string name_;
+
+  std::string map_frame_;
+  std::string world_frame_;
 
   // The intial key in the pose graph
   unsigned int initial_key_;

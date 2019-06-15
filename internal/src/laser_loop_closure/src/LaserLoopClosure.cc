@@ -642,6 +642,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
           nfg_.add(new_factor); // add new factor (new values already inserted above)
           ROS_INFO("Running LM optimization");
           gtsam::LevenbergMarquardtParams params;
+          ROS_INFO("Kamak!");
           params.setVerbosityLM("SUMMARY");
           result = gtsam::LevenbergMarquardtOptimizer(nfg_, linPoint, params).optimize();
         }
