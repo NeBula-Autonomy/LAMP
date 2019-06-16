@@ -2,7 +2,7 @@
 #!/bin/bash
 SESSION=BLAM
 WORKSPACE=~/blam_ws
-BAGFILE=~/bags/Eagle_mine_standard/Eagle_standard.bag
+BAGFILE=~/eagle_mine/full_tunnel_hand-carry_no_rs_2_2019-01-19-laser_imu.bag
 #BAGFILE=/home/costar/alex/198_multi_level/198_multi_level_3*
 
 ## Start up
@@ -31,7 +31,7 @@ tmux send-keys -t 3 "sleep 11; rviz -d $WORKSPACE/src/localizer_blam/internal/sr
 
 # Prep close script
 tmux send-keys -t 4 "source $WORKSPACE/devel/setup.bash; cd $WORKSPACE/src/localizer_blam/internal/src/loop_closure_tools" C-m
-tmux send-keys -t 4 "python "
+tmux send-keys -t 4 "sleep 11; rosrun rqt_gui rqt_gui" C-m
 
 # Static transform publisher
 tmux select-pane -t 4

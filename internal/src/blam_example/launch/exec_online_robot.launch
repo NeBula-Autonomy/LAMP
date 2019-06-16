@@ -117,6 +117,12 @@
                 'nav_msgs.msg.Odometry(header=m.header, pose=geometry_msgs.msg.PoseWithCovariance(pose=m.pose))' --import nav_msgs geometry_msgs">
     </node>
 
+    <node pkg="blam_slam"
+          name="loop_closure_tools"
+          type="loop_closure_tools.py"
+          output="screen">
+    </node>
+
     <!-- BLAM frame/process manager -->
     <node pkg="blam_slam"
           name="blam_manager"

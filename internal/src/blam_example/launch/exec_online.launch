@@ -126,6 +126,13 @@
       <param name="blam_frame" value="$(arg robot_namespace)/blam"/>
     </node>
 
+    <node pkg="blam_slam"
+          name="loop_closure_tools"
+          type="loop_closure_tools.py"
+          output="screen">
+    </node>
+
+
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"
           name="pose_graph_visualizer"
