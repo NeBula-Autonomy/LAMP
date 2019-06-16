@@ -1940,6 +1940,7 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
   values_ = isam_->calculateEstimate();
 
   // Publish
+  has_changed_ = true;
   PublishPoseGraph();
 
   return true; //result.getVariablesReeliminated() > 0;

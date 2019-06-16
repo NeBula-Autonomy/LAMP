@@ -80,24 +80,25 @@ class LoopClosureTools:
         key_from = msg.key_from
         key_to = msg.key_to
         remove_factor_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/remove_factor', RemoveFactor)
-        response = remove_factor_service(key_from, key_to, False)
-        if response.confirm:
-            if response.success:
-                while not self.confirmation_received:
-                    pass
-                self.set_confirmation_received_to_false()
-                if self.confirmation_status:
-                    response = remove_factor_service(key_from, key_to, True)
-                    if response.success:
-                        print('Successfully removed a factor between %i and %i from the graph.' % (key_from, key_to))
-                    else:
-                        print('An error occurred while trying to remove a factor between %i and %i.' % (key_from, key_to))
+        highlight_edge = rospy.ServiceProxy(self.robot_namespace + '/pose_graph_visualizer/highlight_edge', HighlightEdge)
+        response = highlight_edge(key_from, key_to, True)
+        if response.success:
+            while not self.confirmation_received:
+                pass
+            self.set_confirmation_received_to_false()
+            if self.confirmation_status:
+                highlight_edge(key_from, key_to, False)  # remove edge visualization
+                response = remove_factor_service(key_from, key_to, True)
+                if response.success:
+                    print('Successfully removed a factor between %i and %i from the graph.' % (key_from, key_to))
                 else:
-                    print('Aborted manual loop closure.')
-                    remove_factor_service(0, 0, False)  # remove edge visualization
+                    print('An error occurred while trying to remove a factor between %i and %i.' % (key_from, key_to))
             else:
-                print('Error: One or more of the keys %i and %i do not exist, or they are adjacent.' % (key_from, key_to))
+                print('Aborted manual loop closure.')
                 remove_factor_service(0, 0, False)  # remove edge visualization
+        else:
+            print('Error: One or more of the keys %i and %i do not exist, or they are adjacent.' % (key_from, key_to))
+            remove_factor_service(0, 0, False)  # remove edge visualization
 
     def restart_clbk(self, msg):
         rospy.loginfo("Restart command received")
