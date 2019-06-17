@@ -304,6 +304,10 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
 
   nfg_ = isam_->getFactorsUnsafe();
 
+  //Notify PGV that the posegraph has changed
+  has_changed_ = true;
+
+  //Get ready with next key
   key_++;
 
   return true;
@@ -349,6 +353,10 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
 
   nfg_ = isam_->getFactorsUnsafe();
 
+  //Notify PGV that the posegraph has changed
+  has_changed_ = true;
+
+  //Get ready with next key
   key_++;
 
   return true;
@@ -1872,7 +1880,8 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     }
 
     // // Publish
-    // PublishPoseGraph();
+    has_changed_ = true;
+    PublishPoseGraph();
 
     return true; //result.getVariablesReeliminated() > 0;
   } catch (...) {
@@ -1930,6 +1939,18 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
   if (factorsToRemove.size() == 0) {
     ROS_WARN("RemoveFactor: Factor not found between given keys");
     return false; 
+  }
+
+
+  //Remove the visual edge of the factor
+  for (int i = 0; i< loop_edges_.size();){
+    if((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) || (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)){
+      loop_edges_.erase(loop_edges_.begin()+i);
+      ROS_INFO("hihihihi");
+    }
+    else {
+      i++;
+    }
   }
   
   // 3. Remove factors and update
@@ -2007,11 +2028,9 @@ bool LaserLoopClosure::ErasePosegraph(){
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
   
-  //Initilize interactive marker server
-  if (publish_interactive_markers_) {
-    server.reset(new interactive_markers::InteractiveMarkerServer(
-        "interactive_node", "", false));
-  }
+  //TODO initialize posegraph
+
+  has_changed_ = true;
 } 
 
 bool LaserLoopClosure::Save(const std::string &zipFilename) const {

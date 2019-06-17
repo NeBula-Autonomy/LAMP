@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import rospy
+import rospy, transforms3d
 from blam_slam.srv import SaveGraph, LoadGraph, RemoveFactor, AddFactor, Restart, BatchLoopClosure
 from blam_slam.msg import RemoveFactorCmd, AddFactorCmd
 from std_msgs.msg import String, Empty, Bool
@@ -44,7 +44,7 @@ class LoopClosureTools:
         rospy.loginfo("Add factor command received")
         key_from = msg.key_from
         key_to = msg.key_to
-        quat = [msg.qw, msg.qx, msg.qy, msg.qz]
+        quat = transforms3d.euler.euler2quat(msg.roll, msg.pitch, msg.yaw)
         add_factor_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/add_factor', AddFactor)
         highlight_edge = rospy.ServiceProxy(self.robot_namespace + '/pose_graph_visualizer/highlight_edge', HighlightEdge)
         response = highlight_edge(key_from, key_to, True)
