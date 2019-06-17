@@ -8,8 +8,8 @@ use_artifact_loop_closure: false
 # Make true to save a backup pointcloud before every loop closure.
 save_posegraph_backup: true
 
-#Number of keyes between each saved backup
-keys_between_each_posegraph_backup: 25
+# Number of keyes between each saved backup
+keys_between_each_posegraph_backup: 50
 
 # Optimizer selection: 0 - Generic Solver, 1 - LM, 2 - Dogleg, 3 - Gauss-Newton
 loop_closure_optimizer: 0
@@ -72,6 +72,10 @@ b_check_deltas: false
 # Sanity check thresholds
 translational_sanity_check_lc: 100
 translational_sanity_check_odom: 3
+
+########################################
+b_use_uwb: false
+
 # UWB range measurement noise (standard deviation)
 uwb_range_measurement_error: 0.50
 
