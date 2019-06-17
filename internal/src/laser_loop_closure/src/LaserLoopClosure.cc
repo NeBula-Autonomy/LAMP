@@ -208,7 +208,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   #endif
   #ifdef SOLVER
   OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-  std::vector<char> special_symbs{'l'}; // for artifacts
+  std::vector<char> special_symbs{'l', 'u'}; // for artifacts
   isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   isam_->print();
   ROS_INFO("Using generic solver");
@@ -671,7 +671,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       #endif
       #ifdef SOLVER
       OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-      std::vector<char> special_symbs{'l'}; // for artifacts
+      std::vector<char> special_symbs{'l','u'}; // for artifacts
       isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
       isam_->print();
       #endif
@@ -778,7 +778,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       #endif
       #ifdef SOLVER
       OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-      std::vector<char> special_symbs{'l'}; // for artifacts
+      std::vector<char> special_symbs{'l','u'}; // for artifacts
       isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
       isam_->print();
       #endif
@@ -896,7 +896,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     #endif
     #ifdef SOLVER
     OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-    std::vector<char> special_symbs{'l'}; // for artifacts
+    std::vector<char> special_symbs{'l','u'}; // for artifacts
     isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
     isam_->print();
     #endif
@@ -1255,7 +1255,7 @@ bool LaserLoopClosure::SanityCheckForLoopClosure(double translational_sanity_che
     #endif
     #ifdef SOLVER
     OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-    std::vector<char> special_symbs{'l'}; // for artifacts
+    std::vector<char> special_symbs{'l','u'}; // for artifacts
     isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
     isam_->print();
     #endif
@@ -2199,7 +2199,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   #endif
   #ifdef SOLVER
   OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-  std::vector<char> special_symbs{'l'}; // for artifacts
+  std::vector<char> special_symbs{'l','u'}; // for artifacts
   isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   isam_->print();
   #endif
