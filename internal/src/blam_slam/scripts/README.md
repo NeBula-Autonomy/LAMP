@@ -41,7 +41,7 @@ Creates a loop closure between keys from_key and to_key with a rotation defined 
 the given yaw, pitch and roll angles in radians.
 
 
-## remove_factor.py
+## remove_factor
 
 Allows the user to remove a `BetweenEdge` from the graph that connects two keys in the isam2 pose graph.
 
@@ -53,8 +53,14 @@ python remove_factor.py key1 key2
 
 Once the request has been made, the factor to be removed is visualized by a yellow edge connecting the two keys (red spheres visualize these nodes). The user needs to confirm by running the acton confirmation boolean message (True = yes False = no). The message passing flow is analogous to the above.
 
-## save_graph.py
+## save_graph
 
 Allows the user to save the entire pose graph, including all point clouds attached to it, to a zip file.
 
 `filename.zip` is the path of the zip file which should be generated. Watch the output of the `blam_slam` ROS node for any error messages, or to learn the absolute path of the file that was generated. If a relative path name is given, it is typically saved with respect to the folder `~/.ros/`.
+
+## load_graph
+
+Allows the user to load the entire pose graph, including all point clouds attached to it, from a zip file.
+
+`filename.zip` is the path of the zip file. The load_graph function will assume that a new robot is initialized, the position relative of the second robot can be modified in the parameters.yaml in Blam_slam
