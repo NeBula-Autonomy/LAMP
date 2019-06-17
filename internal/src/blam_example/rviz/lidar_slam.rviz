@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /TF1/Frames1
         - /3D Octree1/Autocompute Value Bounds1
         - /3D Incremental Octree1/Autocompute Value Bounds1
         - /Artifact Edges1/Namespaces1
@@ -56,13 +55,129 @@ Visualization Manager:
       Frame Timeout: 100000000
       Frames:
         All Enabled: false
+        husky/arch:
+          Value: false
+        husky/base_footprint:
+          Value: false
         husky/base_link:
           Value: true
+        husky/base_link_2d:
+          Value: false
         husky/base_link_blam_odometry:
           Value: false
         husky/blam:
           Value: false
+        husky/camera/camera_color_frame:
+          Value: false
+        husky/camera/camera_color_optical_frame:
+          Value: false
+        husky/camera/camera_depth_frame:
+          Value: false
+        husky/camera/camera_depth_optical_frame:
+          Value: false
+        husky/camera/camera_ir2_frame:
+          Value: false
+        husky/camera/camera_ir2_optical_frame:
+          Value: false
+        husky/camera/camera_ir_frame:
+          Value: false
+        husky/camera/camera_ir_optical_frame:
+          Value: false
+        husky/camera/camera_link:
+          Value: false
+        husky/camera_link:
+          Value: false
+        husky/evo_64px_frame:
+          Value: false
+        husky/evo_64px_link:
+          Value: false
+        husky/front_bumper_link:
+          Value: false
+        husky/front_left_wheel_link:
+          Value: false
+        husky/front_right_wheel_link:
+          Value: false
+        husky/husky/flashlight_flashlight_link:
+          Value: false
+        husky/husky/overhead_light_led_link:
+          Value: false
+        husky/imu_link:
+          Value: false
+        husky/inertial_link:
+          Value: false
         husky/map:
+          Value: false
+        husky/map_g_aligned:
+          Value: false
+        husky/odom:
+          Value: false
+        husky/rear_bumper_link:
+          Value: false
+        husky/rear_left_wheel_link:
+          Value: false
+        husky/rear_right_wheel_link:
+          Value: false
+        husky/top_chassis_link:
+          Value: false
+        husky/top_plate_link:
+          Value: false
+        husky/user_rail_link:
+          Value: false
+        husky/velodyne:
+          Value: false
+        husky/velodyne_base_link:
+          Value: false
+        husky_2d/arch:
+          Value: false
+        husky_2d/base_footprint:
+          Value: false
+        husky_2d/base_link:
+          Value: false
+        husky_2d/camera/camera_color_frame:
+          Value: false
+        husky_2d/camera/camera_color_optical_frame:
+          Value: false
+        husky_2d/camera/camera_depth_frame:
+          Value: false
+        husky_2d/camera/camera_depth_optical_frame:
+          Value: false
+        husky_2d/camera/camera_ir2_frame:
+          Value: false
+        husky_2d/camera/camera_ir2_optical_frame:
+          Value: false
+        husky_2d/camera/camera_ir_frame:
+          Value: false
+        husky_2d/camera/camera_ir_optical_frame:
+          Value: false
+        husky_2d/camera/camera_link:
+          Value: false
+        husky_2d/evo_64px_frame:
+          Value: false
+        husky_2d/evo_64px_link:
+          Value: false
+        husky_2d/front_bumper_link:
+          Value: false
+        husky_2d/husky_2d/flashlight_flashlight_link:
+          Value: false
+        husky_2d/husky_2d/overhead_light_led_link:
+          Value: false
+        husky_2d/imu_link:
+          Value: false
+        husky_2d/inertial_link:
+          Value: false
+        husky_2d/rear_bumper_link:
+          Value: false
+        husky_2d/top_chassis_link:
+          Value: false
+        husky_2d/top_plate_link:
+          Value: false
+        husky_2d/user_rail_link:
+          Value: false
+        husky_2d/velodyne:
+          Value: false
+        husky_2d/velodyne_base_link:
+          Value: false
+        world:
           Value: false
       Marker Scale: 3
       Name: TF
@@ -70,12 +185,64 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        husky/map:
-          husky/blam:
-            husky/base_link:
+        world:
+          husky/map:
+            husky/blam:
+              husky/base_link:
+                husky/base_footprint:
+                  {}
+                husky/camera/camera_link:
+                  husky/camera/camera_color_frame:
+                    husky/camera/camera_color_optical_frame:
+                      {}
+                  husky/camera/camera_depth_frame:
+                    husky/camera/camera_depth_optical_frame:
+                      {}
+                  husky/camera/camera_ir2_frame:
+                    husky/camera/camera_ir2_optical_frame:
+                      {}
+                  husky/camera/camera_ir_frame:
+                    husky/camera/camera_ir_optical_frame:
+                      {}
+                  husky/camera_link:
+                    {}
+                husky/evo_64px_link:
+                  husky/evo_64px_frame:
+                    {}
+                husky/front_bumper_link:
+                  {}
+                husky/front_left_wheel_link:
+                  {}
+                husky/front_right_wheel_link:
+                  {}
+                husky/imu_link:
+                  {}
+                husky/inertial_link:
+                  {}
+                husky/rear_bumper_link:
+                  {}
+                husky/rear_left_wheel_link:
+                  {}
+                husky/rear_right_wheel_link:
+                  {}
+                husky/top_chassis_link:
+                  {}
+                husky/top_plate_link:
+                  husky/arch:
+                    husky/husky/flashlight_flashlight_link:
+                      {}
+                    husky/husky/overhead_light_led_link:
+                      {}
+                    husky/velodyne_base_link:
+                      {}
+                husky/user_rail_link:
+                  {}
+              husky/base_link_blam_odometry:
+                {}
+            husky/odom:
               {}
-            husky/base_link_blam_odometry:
-              {}
+          husky/map_g_aligned:
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1

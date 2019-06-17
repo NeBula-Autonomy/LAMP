@@ -26,8 +26,8 @@
       <!-- Topics -->
       <remap from="~pcld" to="/velodyne_points"/>
       <remap from="~artifact" to="~artifact_global" />
-      <remap from="~artifact_relative" to="/object_localizer/reconciled_artifact" />
-      <remap from="~uwb_signal" to="comm/uwb/anchor" />
+      <remap from="~artifact_relative" to="/artifact_reconciliation/reconciled_artifact" />
+      <remap from="~uwb_signal" to="/comm/uwb/anchor" />
 
       <!-- Serives -->
       <remap from="~drop_uwb_anchor" to="drop_uwb_anchor"/>
@@ -72,6 +72,8 @@
 
       <!-- Loop closure -->
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+
+
     </node>
 
     <!-- Pose graph visualization -->
@@ -110,10 +112,15 @@
       <param name="blam_frame" value="$(arg robot_namespace)/blam"/>
     </node>
 
-    <!-- <node pkg="tf"  -->
-        <!-- type="static_transform_publisher"  -->
-        <!-- name="map2world"  -->
-        <!-- args="0 0 0 0 0 0 world $(arg robot_namespace)/map 100" /> -->
+    <node pkg="tf" 
+        type="static_transform_publisher"
+        name="map2world"
+        args="0 0 0 0 0 0 world $(arg robot_namespace)/map 100" />
+
+    <node pkg="tf" 
+        type="static_transform_publisher"
+        name="base2velo"
+        args="0 0 0 0 0 0 $(arg robot_namespace)/base_link $(arg robot_namespace)/velodyne 100" />
 
   </group>
 
