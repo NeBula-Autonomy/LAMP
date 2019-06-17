@@ -193,7 +193,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("odometry_check_threshold", odom_threshold_)) return false;
   if (!pu::Get("pairwise_check_threshold", pw_threshold_)) return false;
 
-  std::cout << "before isam reset" << std::endl; 
   #ifndef SOLVER
   // Create the ISAM2 solver.
   ISAM2Params parameters;
@@ -207,13 +206,12 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("Using ISAM2 optimizer");
   #endif
   #ifdef SOLVER
-  OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
   std::vector<char> special_symbs{'l', 'u'}; // for artifacts
+  OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_, special_symbs);
   isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   isam_->print();
   ROS_INFO("Using generic solver");
   #endif
-  std::cout << "after isam reset" << std::endl; 
 
   // Set the initial position.
   Vector3 translation(init_x, init_y, init_z);
@@ -661,22 +659,22 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       ROS_INFO_STREAM("initial error = " << nfg_.error(linPoint));
       ROS_INFO_STREAM("final error = " << nfg_.error(result));
       
-      // ----------------------------------------------
-      #ifndef SOLVER
-      // Create the ISAM2 solver.
-      ISAM2Params parameters;
-      parameters.relinearizeSkip = relinearize_skip_;
-      parameters.relinearizeThreshold = relinearize_threshold_;
-      isam_.reset(new ISAM2(parameters));
-      #endif
-      #ifdef SOLVER
-      OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-      std::vector<char> special_symbs{'l','u'}; // for artifacts
-      isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
-      isam_->print();
-      #endif
-      // Update with the new graph
-      isam_->update(nfg_,result); 
+      // // ----------------------------------------------
+      // #ifndef SOLVER
+      // // Create the ISAM2 solver.
+      // ISAM2Params parameters;
+      // parameters.relinearizeSkip = relinearize_skip_;
+      // parameters.relinearizeThreshold = relinearize_threshold_;
+      // isam_.reset(new ISAM2(parameters));
+      // #endif
+      // #ifdef SOLVER
+      // OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
+      // std::vector<char> special_symbs{'l','u'}; // for artifacts
+      // isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+      // isam_->print();
+      // #endif
+      // // Update with the new graph
+      // isam_->update(nfg_,result); 
 
       // publish 
       uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
@@ -768,22 +766,22 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       ROS_INFO_STREAM("initial error = " << nfg_.error(linPoint));
       ROS_INFO_STREAM("final error = " << nfg_.error(result));
 
-      // ----------------------------------------------
-      #ifndef SOLVER
-      // Create the ISAM2 solver.
-      ISAM2Params parameters;
-      parameters.relinearizeSkip = relinearize_skip_;
-      parameters.relinearizeThreshold = relinearize_threshold_;
-      isam_.reset(new ISAM2(parameters));
-      #endif
-      #ifdef SOLVER
-      OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-      std::vector<char> special_symbs{'l','u'}; // for artifacts
-      isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
-      isam_->print();
-      #endif
-      // Update with the new graph
-      isam_->update(nfg_,result); 
+      // // ----------------------------------------------
+      // #ifndef SOLVER
+      // // Create the ISAM2 solver.
+      // ISAM2Params parameters;
+      // parameters.relinearizeSkip = relinearize_skip_;
+      // parameters.relinearizeThreshold = relinearize_threshold_;
+      // isam_.reset(new ISAM2(parameters));
+      // #endif
+      // #ifdef SOLVER
+      // OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
+      // std::vector<char> special_symbs{'l','u'}; // for artifacts
+      // isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+      // isam_->print();
+      // #endif
+      // // Update with the new graph
+      // isam_->update(nfg_,result); 
 
       // Update values
       values_ = result;//
@@ -886,22 +884,22 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     ROS_INFO_STREAM("initial error = " << nfg_.error(linPoint));
     ROS_INFO_STREAM("final error = " << nfg_.error(result));
     
-    // ----------------------------------------------
-    #ifndef SOLVER
-    // Create the ISAM2 solver.
-    ISAM2Params parameters;
-    parameters.relinearizeSkip = relinearize_skip_;
-    parameters.relinearizeThreshold = relinearize_threshold_;
-    isam_.reset(new ISAM2(parameters));
-    #endif
-    #ifdef SOLVER
-    OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-    std::vector<char> special_symbs{'l','u'}; // for artifacts
-    isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
-    isam_->print();
-    #endif
-    // Update with the new graph
-    isam_->update(nfg_,result); 
+    // // ----------------------------------------------
+    // #ifndef SOLVER
+    // // Create the ISAM2 solver.
+    // ISAM2Params parameters;
+    // parameters.relinearizeSkip = relinearize_skip_;
+    // parameters.relinearizeThreshold = relinearize_threshold_;
+    // isam_.reset(new ISAM2(parameters));
+    // #endif
+    // #ifdef SOLVER
+    // OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
+    // std::vector<char> special_symbs{'l','u'}; // for artifacts
+    // isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+    // isam_->print();
+    // #endif
+    // // Update with the new graph
+    // isam_->update(nfg_,result); 
 
     // publish 
     uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
@@ -1246,22 +1244,22 @@ bool LaserLoopClosure::SanityCheckForLoopClosure(double translational_sanity_che
     values_ = values_backup_;
     nfg_ = nfg_backup_;
     // Reset
-    #ifndef SOLVER
-    // Create the ISAM2 solver.
-    ISAM2Params parameters;
-    parameters.relinearizeSkip = relinearize_skip_;
-    parameters.relinearizeThreshold = relinearize_threshold_;
-    isam_.reset(new ISAM2(parameters));
-    #endif
-    #ifdef SOLVER
-    OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
-    std::vector<char> special_symbs{'l','u'}; // for artifacts
-    isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
-    isam_->print();
-    #endif
-    ROS_INFO("Reset isam");
-    isam_->update(nfg_, values_);
-    ROS_INFO("updated isam to reset");
+    // #ifndef SOLVER
+    // // Create the ISAM2 solver.
+    // ISAM2Params parameters;
+    // parameters.relinearizeSkip = relinearize_skip_;
+    // parameters.relinearizeThreshold = relinearize_threshold_;
+    // isam_.reset(new ISAM2(parameters));
+    // #endif
+    // #ifdef SOLVER
+    // OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
+    // std::vector<char> special_symbs{'l','u'}; // for artifacts
+    // isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+    // isam_->print();
+    // #endif
+    // ROS_INFO("Reset isam");
+    // isam_->update(nfg_, values_);
+    // ROS_INFO("updated isam to reset");
 
     // Save updated values
     values_ = isam_->calculateEstimate();
@@ -2198,8 +2196,8 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   isam_.reset(new ISAM2(parameters));
   #endif
   #ifdef SOLVER
-  OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_);
   std::vector<char> special_symbs{'l','u'}; // for artifacts
+  OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_, special_symbs);
   isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   isam_->print();
   #endif
