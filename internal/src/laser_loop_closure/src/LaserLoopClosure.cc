@@ -40,6 +40,7 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
+#include <pose_graph_msgs/ErasePosegraph.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 #include <interactive_markers/interactive_marker_server.h>
@@ -256,6 +257,9 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
       nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   keyed_scan_pub_ =
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+  erase_posegraph_pub_ =
+      nl.advertise<pose_graph_msgs::ErasePosegraph>("erase_posegraph", 10, false);
+
   loop_closure_notifier_pub_ = nl.advertise<pose_graph_msgs::PoseGraphEdge>(
       "loop_closure_edge", 10, false);
 
@@ -1941,17 +1945,29 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
     return false; 
   }
 
+  std::cout << "myvector contains:";
+  for (unsigned i=0; i<loop_edges_.size(); ++i)
+    std::cout << ' ' << loop_edges_[i].first;
+  std::cout << '\n';
+  
 
   //Remove the visual edge of the factor
   for (int i = 0; i< loop_edges_.size();){
     if((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) || (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)){
-      loop_edges_.erase(loop_edges_.begin()+i);
-      ROS_INFO("hihihihi");
-    }
-    else {
-      i++;
+      loop_edges_.erase(loop_edges_.begin() + i);
+      if (erase_posegraph_pub_.getNumSubscribers() > 0) {
+        pose_graph_msgs::ErasePosegraph empty_edge;
+        empty_edge.resetedges = true;
+            // Publish.
+        erase_posegraph_pub_.publish(empty_edge);
+      }
     }
   }
+
+  std::cout << "myvector contains:";
+  for (unsigned i=0; i<loop_edges_.size(); ++i)
+    std::cout << ' ' << loop_edges_[i].first;
+  std::cout << '\n';
   
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl; 
@@ -2027,8 +2043,14 @@ bool LaserLoopClosure::ErasePosegraph(){
   odometry_ = Pose3::identity();
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
-  
   //TODO initialize posegraph
+
+  if (erase_posegraph_pub_.getNumSubscribers() > 0) {
+    pose_graph_msgs::ErasePosegraph erase;
+    erase.eraseall = true;
+            // Publish.
+    erase_posegraph_pub_.publish(erase);
+  }
 
   has_changed_ = true;
 } 

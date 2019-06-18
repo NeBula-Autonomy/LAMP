@@ -4,6 +4,7 @@
 #include <interactive_markers/menu_handler.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
+#include <pose_graph_msgs/ErasePosegraph.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
@@ -122,6 +123,9 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_,
   pose_graph_node_sub_ = nh.subscribe<pose_graph_msgs::PoseGraphNode>(
       "blam_slam/pose_graph_node", 10,
       &PoseGraphVisualizer::PoseGraphNodeCallback, this);
+  erase_posegraph_sub_ = nh.subscribe<pose_graph_msgs::ErasePosegraph>(
+      "blam_slam/erase_posegraph", 10, &PoseGraphVisualizer::ErasePosegraphCallback,
+      this);
 
   artifact_sub_ = nh.subscribe("blam_slam/artifact_global",
                                10,
@@ -234,6 +238,32 @@ void PoseGraphVisualizer::PoseGraphEdgeCallback(
     const pose_graph_msgs::PoseGraphEdge::ConstPtr &msg) {
   odometry_edges_.emplace_back(std::make_pair(msg->key_from, msg->key_to));
 }
+
+void PoseGraphVisualizer::ErasePosegraphCallback(
+    const pose_graph_msgs::ErasePosegraph::ConstPtr &msg) {
+  const bool reset_edges = msg->resetedges;
+  const bool erase_all = msg->eraseall;
+
+  //This gets called after remove factor, to remove the visualization of the edge between the nodes
+  if (reset_edges == true){
+    loop_edges_.clear();
+  }
+
+  //This gets called at restart and load to initialize everything before loading the graph
+  if (erase_all == true){
+    keyed_scans_.clear();
+    keyed_stamps_.clear();
+    stamps_keyed_.clear();
+
+    loop_edges_.clear();
+    odometry_edges_.clear();
+    if (publish_interactive_markers_) {
+      server.reset(new interactive_markers::InteractiveMarkerServer(
+          "interactive_node", "", false));
+    }
+  }
+}
+
 
 void PoseGraphVisualizer::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr &msg) {

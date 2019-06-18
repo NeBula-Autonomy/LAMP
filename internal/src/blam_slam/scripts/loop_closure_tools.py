@@ -59,12 +59,13 @@ class LoopClosureTools:
                     print('Successfully added a factor between %i and %i to the graph.' % (key_from, key_to))
                 else:
                     print('An error occurred while trying to add a factor between %i and %i.' % (key_from, key_to))
+                    highlight_edge(key_from, key_to, False)
             else:
                 print('Aborted manual loop closure.')
-                add_factor_service(0, 0, 0, 0, 0, 0, False)  # remove edge visualization
+                highlight_edge(key_from, key_to, False)  # remove edge visualization  # remove edge visualization
         else:
             print('Error: One or more of the keys %i and %i do not exist.' % (key_from, key_to))
-            add_factor_service(0, 0, 0, 0, 0, 0, False)  # remove edge visualization
+            highlight_edge(key_from, key_to, False)  # remove edge visualization  # remove edge visualization
 
     def load_graph_clbk(self, msg):
         rospy.loginfo("Load graph command received")
@@ -93,12 +94,13 @@ class LoopClosureTools:
                     print('Successfully removed a factor between %i and %i from the graph.' % (key_from, key_to))
                 else:
                     print('An error occurred while trying to remove a factor between %i and %i.' % (key_from, key_to))
+                    highlight_edge(key_from, key_to, False)
             else:
                 print('Aborted manual loop closure.')
-                remove_factor_service(0, 0, False)  # remove edge visualization
+                highlight_edge(key_from, key_to, False)  # remove edge visualization # remove edge visualization
         else:
             print('Error: One or more of the keys %i and %i do not exist, or they are adjacent.' % (key_from, key_to))
-            remove_factor_service(0, 0, False)  # remove edge visualization
+            highlight_edge(key_from, key_to, False)  # remove edge visualization # remove edge visualization
 
     def restart_clbk(self, msg):
         rospy.loginfo("Restart command received")
