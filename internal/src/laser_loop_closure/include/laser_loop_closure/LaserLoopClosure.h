@@ -278,7 +278,6 @@ class LaserLoopClosure {
   bool save_posegraph_backup_;
   bool LAMP_recovery_;
   unsigned int keys_between_each_posegraph_backup_;
-  unsigned int loop_closure_optimizer_;
   unsigned int key_;
   unsigned int last_closure_key_;
   unsigned int relinearize_interval_;
@@ -299,7 +298,6 @@ class LaserLoopClosure {
   double laser_lc_trans_sigma_;
   unsigned int relinearize_skip_;
   double relinearize_threshold_;
-  bool use_chordal_factor_;
   bool publish_interactive_markers_;
   std::vector<unsigned int> manual_loop_keys_;
   double odom_threshold_;
@@ -323,7 +321,6 @@ class LaserLoopClosure {
   std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
-  unsigned int uwb_factor_optimizer_;
 
   // ISAM2 optimizer object, and best guess pose values.
   #ifdef SOLVER
