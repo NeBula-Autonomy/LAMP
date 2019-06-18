@@ -1936,11 +1936,14 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
   //Remove the visual edge of the factor
   for (int i = 0; i< loop_edges_.size();){
     if((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) || (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)){
+
+      //Remove the edge from LaserLoopClosure
       loop_edges_.erase(loop_edges_.begin() + i);
+      
+      // Send a message to posegraph visualizer that the edges must be updated
       if (erase_posegraph_pub_.getNumSubscribers() > 0) {
         pose_graph_msgs::ErasePosegraph empty_edge;
         empty_edge.resetedges = true;
-            // Publish.
         erase_posegraph_pub_.publish(empty_edge);
       }
     }
