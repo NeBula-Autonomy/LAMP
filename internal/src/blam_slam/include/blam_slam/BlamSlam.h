@@ -84,7 +84,7 @@ class BlamSlam {
   int marker_id_;
   
   //listener for tf published by fiducials
-  tf::TransformListener listener;
+  tf::TransformListener tf_listener_;
 
  private:
   // Node initialization.
@@ -147,7 +147,7 @@ class BlamSlam {
   // The node's name.
   std::string name_;
 
-  std::string map_frame_;
+  std::string blam_frame_;
   std::string world_frame_;
 
   // The intial key in the pose graph

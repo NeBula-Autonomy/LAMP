@@ -98,7 +98,7 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   }
   // Get the parent and child frame for map to world transformation
   n.param<std::string>("world_frame", world_frame_, "world");
-  n.param<std::string>("map_frame", map_frame_, "map");
+  n.param<std::string>("map_frame", blam_frame_, "husky/blam");
 
   return true;
 }
@@ -367,7 +367,7 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
   
   Eigen::Affine3d map_T_world_link = Eigen::Affine3d::Identity();
-  getTransformEigenFromTF(map_frame_, world_frame_, ros::Time(0), map_T_world_link);
+  getTransformEigenFromTF(world_frame_, blam_frame_, ros::Time(0), map_T_world_link);
   std::cout << "X value: " << map_T_world_link.translation().x() << std::endl;
 
   
@@ -879,8 +879,8 @@ bool BlamSlam::getTransformEigenFromTF(
   ros::Duration timeout(3.0);
   tf::StampedTransform tf_tfm;
   try {
-    listener.waitForTransform(parent_frame, child_frame, time, timeout);
-    listener.lookupTransform(parent_frame, child_frame, time, tf_tfm);
+    tf_listener_.waitForTransform(parent_frame, child_frame, time, timeout);
+    tf_listener_.lookupTransform(parent_frame, child_frame, time, tf_tfm);
   } catch (tf::TransformException& ex) {
     ROS_FATAL("%s", ex.what());
   }
