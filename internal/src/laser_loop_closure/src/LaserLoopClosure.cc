@@ -1933,12 +1933,6 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
     return false; 
   }
 
-  std::cout << "myvector contains:";
-  for (unsigned i=0; i<loop_edges_.size(); ++i)
-    std::cout << ' ' << loop_edges_[i].first;
-  std::cout << '\n';
-  
-
   //Remove the visual edge of the factor
   for (int i = 0; i< loop_edges_.size();){
     if((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) || (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)){
@@ -1951,11 +1945,6 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
       }
     }
   }
-
-  std::cout << "myvector contains:";
-  for (unsigned i=0; i<loop_edges_.size(); ++i)
-    std::cout << ' ' << loop_edges_[i].first;
-  std::cout << '\n';
   
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl; 
