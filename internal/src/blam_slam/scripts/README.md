@@ -45,10 +45,6 @@ the given yaw, pitch and roll angles in radians.
 
 Allows the user to remove a `BetweenEdge` from the graph that connects two keys in the isam2 pose graph.
 
-```sh
-python remove_factor.py key1 key2
-```
-
 `key1` and `key2` are unsigned integers that represent the keys of the edge to be removed.
 
 Once the request has been made, the factor to be removed is visualized by a yellow edge connecting the two keys (red spheres visualize these nodes). The user needs to confirm by running the acton confirmation boolean message (True = yes False = no). The message passing flow is analogous to the above.
