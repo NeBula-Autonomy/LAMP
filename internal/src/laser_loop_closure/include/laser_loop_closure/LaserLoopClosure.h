@@ -44,7 +44,6 @@
 #include <geometry_utils/Matrix3x3.h>
 #include <geometry_utils/Transform3.h>
 #include <point_cloud_filter/PointCloudFilter.h>
-#include <laser_loop_closure/BetweenChordalFactor.h>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -85,7 +84,7 @@
 #include "RobustPGO/RobustPGO.h" // RobustPGO (backend solver)
 #include "RobustPGO/pcm/pcm.h"
 
-// default is isam, 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
+// 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
 #define SOLVER 1
 
 struct ArtifactInfo {
@@ -119,10 +118,6 @@ class LaserLoopClosure {
   // AddKeyScanPair().
   bool AddBetweenFactor(const geometry_utils::Transform3& delta,
                         const Mat66& covariance, const ros::Time& stamp,
-                        unsigned int* key);
-
-  bool AddBetweenChordalFactor(const geometry_utils::Transform3& delta,
-                        const Mat1212& covariance, const ros::Time& stamp,
                         unsigned int* key);
   
   bool AddUwbFactor(const std::string uwb_id,
@@ -233,8 +228,6 @@ class LaserLoopClosure {
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactor(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactorAtLoad(
-      const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
-  gtsam::BetweenChordalFactor<gtsam::Pose3> MakeBetweenChordalFactor(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
 
   // Perform ICP between two laser scans.

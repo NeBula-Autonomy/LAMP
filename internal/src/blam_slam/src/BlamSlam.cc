@@ -123,9 +123,6 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
     uwb_drop_status_[uwb_id_list_[i]] = false;
   }
 
-  if (!pu::Get("use_chordal_factor", use_chordal_factor_))
-    return false;
-
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
   if (!pu::Get("b_use_uwb", b_use_uwb_))
@@ -802,39 +799,21 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   }
 
   unsigned int pose_key;
-  if (!use_chordal_factor_) {
-    // Add the new pose to the pose graph (BetweenFactor)
-    // TODO rename to attitude and position sigma 
-    gu::MatrixNxNBase<double, 6> covariance;
-    covariance.Zeros();
-    for (int i = 0; i < 3; ++i)
-      covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
-    for (int i = 3; i < 6; ++i)
-      covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
+  // Add the new pose to the pose graph (BetweenFactor)
+  // TODO rename to attitude and position sigma 
+  gu::MatrixNxNBase<double, 6> covariance;
+  covariance.Zeros();
+  for (int i = 0; i < 3; ++i)
+    covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
+  for (int i = 3; i < 6; ++i)
+    covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
 
-    const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
+  const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
 
-    // Add between factor
-    if (!loop_closure_.AddBetweenFactor(localization_.GetIncrementalEstimate(),
-                                        covariance, stamp, &pose_key)) {
-      return false;
-    }
-  } else {
-    // Add the new pose to the pose graph (BetweenChordalFactor)
-    gu::MatrixNxNBase<double, 12> covariance;
-    covariance.Zeros();
-    for (int i = 0; i < 9; ++i)
-      covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
-    for (int i = 9; i < 12; ++i)
-      covariance(i, i) = position_sigma_*position_sigma_; //0.4, 0.004; 0.2 m sd
-
-    const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-
-    // Add between factor
-    if (!loop_closure_.AddBetweenChordalFactor(localization_.GetIncrementalEstimate(),
-                                                covariance, stamp, &pose_key)) {
-      return false;
-    }
+  // Add between factor
+  if (!loop_closure_.AddBetweenFactor(localization_.GetIncrementalEstimate(),
+                                      covariance, stamp, &pose_key)) {
+    return false;
   }
 
   *new_keyframe = true;
