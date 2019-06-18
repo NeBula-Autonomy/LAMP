@@ -43,8 +43,6 @@
 #include <pose_graph_msgs/ErasePosegraph.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
-#include <interactive_markers/interactive_marker_server.h>
-#include <interactive_markers/menu_handler.h>
 
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -75,8 +73,6 @@ using gtsam::GraphAndValues;
 using gtsam::Vector3;
 using gtsam::Vector6;
 using gtsam::ISAM2GaussNewtonParams;
-
-boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
 
 LaserLoopClosure::LaserLoopClosure()
     : key_(0), last_closure_key_(std::numeric_limits<int>::min()), tf_listener_(tf_buffer_) {
@@ -115,10 +111,10 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Should we turn loop closure checking on or off?
   if (!pu::Get("check_for_loop_closures", check_for_loop_closures_)) return false;
 
-  // Should we save a backup pointcloud?
+  // Should we save a backup posegraph?
   if (!pu::Get("save_posegraph_backup", save_posegraph_backup_)) return false;
 
-  // Should we save a backup pointcloud?
+  // Should we save a backup posegraph?
   if (!pu::Get("keys_between_each_posegraph_backup", keys_between_each_posegraph_backup_)) return false;
 
   // Optimizer selection
@@ -153,8 +149,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("artifact_rot_precision", artifact_rot_precision_)) return false; 
   if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false; 
   if (!pu::Get("use_chordal_factor", use_chordal_factor_))
-    return false;
-  if (!pu::Get("publish_interactive_markers", publish_interactive_markers_))
     return false;
 
   // Load ICP parameters.
@@ -236,12 +230,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   // Set the initial odometry.
   odometry_ = Pose3::identity();
-
-  // Initilize interactive marker server
-  if (publish_interactive_markers_) {
-    server.reset(new interactive_markers::InteractiveMarkerServer(
-        "interactive_node", "", false));
-  }
 
   return true;
 }
@@ -2043,8 +2031,8 @@ bool LaserLoopClosure::ErasePosegraph(){
   odometry_ = Pose3::identity();
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
-  //TODO initialize posegraph
 
+  //Send message to Pose graph visualizer that it needs to be erased
   if (erase_posegraph_pub_.getNumSubscribers() > 0) {
     pose_graph_msgs::ErasePosegraph erase;
     erase.eraseall = true;
