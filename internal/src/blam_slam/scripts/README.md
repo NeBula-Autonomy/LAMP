@@ -45,10 +45,6 @@ the given yaw, pitch and roll angles in radians.
 
 Allows the user to remove a `BetweenEdge` from the graph that connects two keys in the isam2 pose graph.
 
-```sh
-python remove_factor.py key1 key2
-```
-
 `key1` and `key2` are unsigned integers that represent the keys of the edge to be removed.
 
 Once the request has been made, the factor to be removed is visualized by a yellow edge connecting the two keys (red spheres visualize these nodes). The user needs to confirm by running the acton confirmation boolean message (True = yes False = no). The message passing flow is analogous to the above.
@@ -64,3 +60,11 @@ Allows the user to save the entire pose graph, including all point clouds attach
 Allows the user to load the entire pose graph, including all point clouds attached to it, from a zip file.
 
 `filename.zip` is the path of the zip file. The load_graph function will assume that a new robot is initialized, the position relative of the second robot can be modified in the parameters.yaml in Blam_slam
+
+## restart
+
+Allows the user to load the entire pose graph, including all point clouds attached to it, from `posegraph_backup.zip` in the case where LAMP fails, and one needs to restart it.
+
+## batch_loopclosure
+
+Will run a search for loopclosures through the entire posegraph. 
