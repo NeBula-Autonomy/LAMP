@@ -64,3 +64,11 @@ Allows the user to save the entire pose graph, including all point clouds attach
 Allows the user to load the entire pose graph, including all point clouds attached to it, from a zip file.
 
 `filename.zip` is the path of the zip file. The load_graph function will assume that a new robot is initialized, the position relative of the second robot can be modified in the parameters.yaml in Blam_slam
+
+## restart
+
+Allows the user to load the entire pose graph, including all point clouds attached to it, from `posegraph_backup.zip` in the case where LAMP fails, and one needs to restart it.
+
+## batch_loopclosure
+
+Will run a search for loopclosures through the entire posegraph. 
