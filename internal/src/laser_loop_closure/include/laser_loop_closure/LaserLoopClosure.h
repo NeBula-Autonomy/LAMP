@@ -322,13 +322,8 @@ class LaserLoopClosure {
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
 
-  // ISAM2 optimizer object, and best guess pose values.
-  #ifdef SOLVER
+  // Optimizer object, and best guess pose values.
   std::unique_ptr<RobustPGO> isam_;
-  #endif
-  #ifndef SOLVER
-  std::unique_ptr<gtsam::ISAM2> isam_;
-  #endif
 
   gtsam::NonlinearFactorGraph nfg_;
   gtsam::Values values_;

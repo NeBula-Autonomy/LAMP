@@ -1790,18 +1790,10 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   nfg_ = *gv.first;
   values_ = *gv.second;
 
-  #ifndef SOLVER
-  ISAM2Params parameters;
-  parameters.relinearizeSkip = relinearize_skip_;
-  parameters.relinearizeThreshold = relinearize_threshold_;
-  isam_.reset(new ISAM2(parameters));
-  #endif
-  #ifdef SOLVER
   std::vector<char> special_symbs{'l','u'}; // for artifacts
   OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_, special_symbs);
   isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   isam_->print();
-  #endif
 
   const LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
