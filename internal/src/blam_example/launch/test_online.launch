@@ -73,7 +73,9 @@
       <!-- Loop closure -->
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
 
-
+      <!-- Multirobot -->
+      <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
+      
     </node>
 
     <!-- Pose graph visualization -->

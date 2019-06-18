@@ -303,7 +303,6 @@ class LaserLoopClosure {
   double odom_threshold_;
   double pw_threshold_;
 
-
   // Sanity check parameters
   bool b_check_deltas_; 
   double translational_sanity_check_lc_;
@@ -361,6 +360,7 @@ class LaserLoopClosure {
   typedef std::pair<gtsam::Key, gtsam::Key> ArtifactEdge;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
+  std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
   std::vector<std::pair<unsigned int, gtsam::Key>> uwb_edges_;
 

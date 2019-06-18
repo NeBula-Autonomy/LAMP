@@ -783,7 +783,7 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   // pos.z = artifact_position[2];
   m.pose.position = art.msg.point.point;
 
-  m.header.frame_id = fixed_frame_id_;
+  m.header.frame_id = "world";
   m.pose.orientation.x = 0.0;
   m.pose.orientation.y = 0.0;
   m.pose.orientation.z = 0.0;
@@ -867,7 +867,6 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     // pos.y = artifact_position[1];
     // pos.z = artifact_position[2];
     marker.pose.position = it->second.msg.point.point;
-    marker.header.frame_id = fixed_frame_id_;
     marker.pose.orientation.x = 0.0;
     marker.pose.orientation.y = 0.0;
     marker.pose.orientation.z = 0.0;
