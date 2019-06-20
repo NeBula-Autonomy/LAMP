@@ -375,7 +375,6 @@ class LaserLoopClosure {
   ros::Publisher scan1_pub_;
   ros::Publisher scan2_pub_;
   ros::Publisher artifact_pub_;
-  ros::Publisher erase_posegraph_pub_;
 
   // Used for publishing pose graph only if it hasn't changed.
   bool has_changed_{true};
