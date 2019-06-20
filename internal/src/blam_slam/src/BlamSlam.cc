@@ -59,7 +59,6 @@ BlamSlam::~BlamSlam() {}
 bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   name_ = ros::names::append(n.getNamespace(), "BlamSlam");
   //TODO: Move this to a better location.
-  map_loaded_ = false;
 
   initial_key_ = 0;
 
@@ -344,8 +343,8 @@ bool BlamSlam::SaveGraphService(blam_slam::SaveGraphRequest &request,
 bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
                                 blam_slam::LoadGraphResponse &response) {
   std::cout << "Loading graph..." << std::endl;
+  loop_closure_.ErasePosegraph();
   response.success = loop_closure_.Load(request.filename);
-  map_loaded_ = true;
 
   // Regenerate the 3D map from the loaded posegraph
   PointCloud::Ptr regenerated_map(new PointCloud);

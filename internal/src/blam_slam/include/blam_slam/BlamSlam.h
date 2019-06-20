@@ -92,8 +92,8 @@ class BlamSlam {
   void PointCloudCallback(const PointCloud::ConstPtr& msg);
   void ArtifactCallback(const core_msgs::Artifact& msg);
   void UwbSignalCallback(const uwb_msgs::Anchor& msg);
-
-  // Timer callbacks.
+  
+  // Timer callbacks
   void EstimateTimerCallback(const ros::TimerEvent& ev);
   void VisualizationTimerCallback(const ros::TimerEvent& ev);
   void UwbTimerCallback(const ros::TimerEvent& ev);
