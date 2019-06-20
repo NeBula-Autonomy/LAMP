@@ -107,6 +107,10 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 
 bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
+  // Get the parent and child frame for map to world transformation
+  // n.param<std::string>("world_frame", world_frame_, "world");
+  // n.param<std::string>("map_frame", blam_frame_, "husky/blam");
+  
   // Load frame ids.
   if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
   if (!pu::Get("frame_id/base", base_frame_id_)) return false;
@@ -163,13 +167,14 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   // Load initial position and orientation.
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
-  double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
-  if (!pu::Get("init/position/x", init_x)) return false;
-  if (!pu::Get("init/position/y", init_y)) return false;
-  if (!pu::Get("init/position/z", init_z)) return false;
-  if (!pu::Get("init/orientation/roll", init_roll)) return false;
-  if (!pu::Get("init/orientation/pitch", init_pitch)) return false;
-  if (!pu::Get("init/orientation/yaw", init_yaw)) return false;
+  double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 0.0;
+  if (!pu::Get("fiducial_calibration/position/x", init_x)) return false;
+  if (!pu::Get("fiducial_calibration/position/y", init_y)) return false;
+  if (!pu::Get("fiducial_calibration/position/z", init_z)) return false;
+  if (!pu::Get("fiducial_calibration/orientation/x", init_qx)) return false;
+  if (!pu::Get("fiducial_calibration/orientation/y", init_qy)) return false;
+  if (!pu::Get("fiducial_calibration/orientation/z", init_qz)) return false;
+  if (!pu::Get("fiducial_calibration/orientation/w", init_qw)) return false;
 
   // Load initial position and orientation noise.
   double sigma_x = 0.0, sigma_y = 0.0, sigma_z = 0.0;
@@ -197,7 +202,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   parameters.relinearizeSkip = relinearize_skip_;
   parameters.relinearizeThreshold = relinearize_threshold_;
   parameters.factorization = gtsam::ISAM2Params::QR; // QR
-  // // Set wildfire threshold
+  // Set wildfire threshold
   // ISAM2GaussNewtonParams gnparams(-1);
   // parameters.setOptimizationParams(gnparams);
   isam_.reset(new ISAM2(parameters));
@@ -209,6 +214,15 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("Using generic solver (LM currently)");
   #endif
   std::cout << "after isam reset" << std::endl; 
+
+  // convert initial quaternion to Roll/Pitch/Yaw
+  double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
+  gu::Quat q(gu::Quat(init_qw, init_qx, init_qy, init_qz));
+  gu::Rot3 m1;
+  m1 = gu::QuatToR(q);
+  init_roll = m1.Roll();
+  init_pitch = m1.Pitch();
+  init_yaw = m1.Yaw();
 
   // Set the initial position.
   Vector3 translation(init_x, init_y, init_z);
