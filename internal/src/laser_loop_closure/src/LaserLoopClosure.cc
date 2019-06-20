@@ -43,6 +43,7 @@
 #include <pose_graph_msgs/ErasePosegraph.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
+#include <std_msgs/Bool.h>
 
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -246,7 +247,9 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   keyed_scan_pub_ =
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
   erase_posegraph_pub_ =
-      nl.advertise<pose_graph_msgs::ErasePosegraph>("erase_posegraph", 10, false);
+      nl.advertise<std_msgs::Bool>("erase_posegraph", 10, false);
+  remove_factor_viz_pub_ =
+      nl.advertise<std_msgs::Bool>("remove_factor_viz", 10, false);
 
   loop_closure_notifier_pub_ = nl.advertise<pose_graph_msgs::PoseGraphEdge>(
       "loop_closure_edge", 10, false);
@@ -1941,10 +1944,10 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
       loop_edges_.erase(loop_edges_.begin() + i);
       
       // Send a message to posegraph visualizer that the edges must be updated
-      if (erase_posegraph_pub_.getNumSubscribers() > 0) {
-        pose_graph_msgs::ErasePosegraph empty_edge;
-        empty_edge.resetedges = true;
-        erase_posegraph_pub_.publish(empty_edge);
+      if (remove_factor_viz_pub_.getNumSubscribers() > 0) {
+        std_msgs::Bool empty_edge;
+        empty_edge.data = true;
+        remove_factor_viz_pub_.publish(empty_edge);
       }
     }
   }
@@ -2026,8 +2029,8 @@ bool LaserLoopClosure::ErasePosegraph(){
 
   //Send message to Pose graph visualizer that it needs to be erased
   if (erase_posegraph_pub_.getNumSubscribers() > 0) {
-    pose_graph_msgs::ErasePosegraph erase;
-    erase.eraseall = true;
+    std_msgs::Bool erase;
+    erase.data = true;
             // Publish.
     erase_posegraph_pub_.publish(erase);
   }

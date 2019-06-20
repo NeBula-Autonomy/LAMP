@@ -11,7 +11,7 @@
 #include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
-#include <pose_graph_msgs/ErasePosegraph.h>
+#include <std_msgs/Bool.h>
 
 #include <pose_graph_visualizer/HighlightEdge.h>
 #include <pose_graph_visualizer/HighlightNode.h>
@@ -86,7 +86,8 @@ private:
   bool RegisterCallbacks(const ros::NodeHandle &nh, const ros::NodeHandle &pnh);
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
-  void ErasePosegraphCallback(const pose_graph_msgs::ErasePosegraph::ConstPtr &msg);
+  void ErasePosegraphCallback(const std_msgs::Bool::ConstPtr &msg);
+  void RemoveFactorVizCallback(const std_msgs::Bool::ConstPtr &msg);
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
   void
   PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr &msg);
@@ -156,6 +157,7 @@ private:
   ros::Subscriber pose_graph_edge_sub_;
   ros::Subscriber artifact_sub_;
   ros::Subscriber erase_posegraph_sub_;
+  ros::Subscriber remove_factor_viz_sub_;
 
   // Services.
   ros::ServiceServer highlight_node_srv_;
