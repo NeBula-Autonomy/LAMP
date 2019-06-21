@@ -40,7 +40,6 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
-#include <pose_graph_msgs/ErasePosegraph.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 #include <std_msgs/Bool.h>
