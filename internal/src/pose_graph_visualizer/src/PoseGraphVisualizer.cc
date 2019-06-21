@@ -262,6 +262,7 @@ void PoseGraphVisualizer::ErasePosegraphCallback(
   }
 }
 
+// Callback function to remove the visialization of the edge between factors
 void PoseGraphVisualizer::RemoveFactorVizCallback(
     const std_msgs::Bool::ConstPtr &msg) {
   const bool removefactor = msg->data;
