@@ -204,6 +204,7 @@ class BlamSlam {
   std::map<std::string, std::map<ros::Time, std::pair<double, Eigen::Vector3d>>> map_uwbid_time_data_;
   std::map<std::string, bool> uwb_drop_status_; // true: dropped, false: on the robot
   std::vector<std::string> uwb_id_list_;
+  std::map<std::string, UwbMeasurementInfo> uwb_id2data_hash_;
 
   // Class objects (BlamSlam is a composite class).
   MeasurementSynchronizer synchronizer_;

@@ -674,6 +674,22 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
     map_uwbid_time_data_[msg.id][msg.header.stamp].second
     = localization_.GetIntegratedEstimate().translation.Eigen();
   }
+
+  auto itr_1 = uwb_id2data_hash_.find(msg.id);
+  if (itr_1 == end(uwb_id2data_hash_)) {
+    UwbMeasurementInfo data;
+    data.id = msg.id;
+    data.range.push_back(msg.range);
+    data.time_measured.push_back(msg.header.stamp);
+    data.robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+    uwb_id2data_hash_[msg.id] = data;
+  } 
+  else {
+    uwb_id2data_hash_[msg.id].range.push_back(msg.range);
+    uwb_id2data_hash_[msg.id].time_measured.push_back(msg.header.stamp);
+    uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+  }
+
 }
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {

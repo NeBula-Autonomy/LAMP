@@ -117,6 +117,13 @@ struct ArtifactInfo {
                num_updates(0){}
 };
 
+struct UwbMeasurementInfo {
+  std::string id;
+  std::vector<ros::Time> time_measured;
+  std::vector<double> range;
+  std::vector<Eigen::Vector3d> robot_position;
+};
+
 class LaserLoopClosure {
  public:
   LaserLoopClosure();
