@@ -602,8 +602,9 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
       auto itr_end = (itr->second).end();
       itr_end--;
       auto time_diff = ros::Time::now() - itr_end->first;
+      ROS_WARN("Time difference is %f s",time_diff.toSec());
       if (time_diff.toSec() > 20.0) {
-        if (itr->second.size() > 2) {
+        if (itr->second.size() > 4) {
 
           ProcessUwbRangeData(itr->first);
 
@@ -746,9 +747,6 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
 
       // Also reset the robot's estimated position.
       localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-
-      // Publish artifacts - should be updated from the pose-graph 
-      loop_closure_.PublishArtifacts();
     }
   }
 
