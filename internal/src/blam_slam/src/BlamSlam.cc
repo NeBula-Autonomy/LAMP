@@ -132,10 +132,17 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("restart_pitch", restart_pitch_)) return false;
   if (!pu::Get("restart_yaw", restart_yaw_)) return false;
 
-  // Load dropped item ids
-  if (!pu::Get("items/uwb_id", uwb_id_list_)) return false;
-  for (int i = 0; i < uwb_id_list_.size(); i++) {
-    uwb_drop_status_[uwb_id_list_[i]] = false;
+  // Load uwb information
+  if (!pu::Get("uwb/all", uwb_id_list_all_)) return false;
+  if (!pu::Get("uwb/drop", uwb_id_list_drop_)) return false;
+  for (auto itr = uwb_id_list_all_.begin(); itr != uwb_id_list_all_.end(); itr++) {
+    UwbMeasurementInfo uwb_data;
+    uwb_data.id = *itr;
+    uwb_data.drop_status = false;
+    uwb_id2data_hash_[*itr] = uwb_data;
+  }
+  for (auto itr = uwb_id_list_drop_.begin(); itr != uwb_id_list_drop_.end(); itr++) {
+    uwb_id2data_hash_[*itr].holder = name_.c_str();
   }
 
   if (!pu::Get("use_chordal_factor", use_chordal_factor_))
@@ -679,33 +686,30 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   }
 
   // TODO: Screening before entering into this subscriber
-  auto itr = uwb_drop_status_.find(msg.id);
-  if (itr != end(uwb_drop_status_)) {
-    if (itr->second == true) {
-      map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
-      map_uwbid_time_data_[msg.id][msg.header.stamp].second
-      = localization_.GetIntegratedEstimate().translation.Eigen();
-    }
-  }
-  else {
-    map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
-    map_uwbid_time_data_[msg.id][msg.header.stamp].second
-    = localization_.GetIntegratedEstimate().translation.Eigen();
-  }
+  // auto itr = uwb_drop_status_.find(msg.id);
+  // if (itr != end(uwb_drop_status_)) {
+  //   if (itr->second == true) {
+  //     map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
+  //     map_uwbid_time_data_[msg.id][msg.header.stamp].second
+  //     = localization_.GetIntegratedEstimate().translation.Eigen();
+  //   }
+  // }
+  // else {
+  //   map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
+  //   map_uwbid_time_data_[msg.id][msg.header.stamp].second
+  //   = localization_.GetIntegratedEstimate().translation.Eigen();
+  // }
   
-  auto itr_1 = uwb_id2data_hash_.find(msg.id);
-  if (itr_1 == end(uwb_id2data_hash_)) {
-    UwbMeasurementInfo data;
-    data.id = msg.id;
-    data.range.push_back(msg.range);
-    data.time_measured.push_back(msg.header.stamp);
-    data.robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
-    uwb_id2data_hash_[msg.id] = data;
+  auto itr = uwb_id2data_hash_.find(msg.id);
+  if (itr != end(uwb_id2data_hash_)) {
+    if (uwb_id2data_hash_[msg.id].drop_status == true) {
+      uwb_id2data_hash_[msg.id].range.push_back(msg.range);
+      uwb_id2data_hash_[msg.id].time_measured.push_back(msg.header.stamp);
+      uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+    }
   } 
   else {
-    uwb_id2data_hash_[msg.id].range.push_back(msg.range);
-    uwb_id2data_hash_[msg.id].time_measured.push_back(msg.header.stamp);
-    uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+    ROS_WARN("Not registered UWB ID");
   }
 
 }

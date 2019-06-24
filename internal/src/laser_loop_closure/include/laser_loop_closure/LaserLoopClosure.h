@@ -119,6 +119,8 @@ struct ArtifactInfo {
 
 struct UwbMeasurementInfo {
   std::string id;
+  bool drop_status;
+  std::string holder;
   std::vector<ros::Time> time_measured;
   std::vector<double> range;
   std::vector<Eigen::Vector3d> robot_position;
