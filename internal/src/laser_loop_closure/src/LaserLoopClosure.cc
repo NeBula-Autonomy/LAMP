@@ -42,8 +42,7 @@
 #include <pose_graph_msgs/PoseGraph.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
-#include <interactive_markers/interactive_marker_server.h>
-#include <interactive_markers/menu_handler.h>
+#include <std_msgs/Bool.h>
 
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -74,8 +73,6 @@ using gtsam::GraphAndValues;
 using gtsam::Vector3;
 using gtsam::Vector6;
 using gtsam::ISAM2GaussNewtonParams;
-
-boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
 
 LaserLoopClosure::LaserLoopClosure()
     : key_(0), last_closure_key_(std::numeric_limits<int>::min()), tf_listener_(tf_buffer_) {
@@ -114,10 +111,10 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Should we turn loop closure checking on or off?
   if (!pu::Get("check_for_loop_closures", check_for_loop_closures_)) return false;
 
-  // Should we save a backup pointcloud?
+  // Should we save a backup posegraph?
   if (!pu::Get("save_posegraph_backup", save_posegraph_backup_)) return false;
 
-  // Should we save a backup pointcloud?
+  // Should we save a backup posegraph?
   if (!pu::Get("keys_between_each_posegraph_backup", keys_between_each_posegraph_backup_)) return false;
 
   // Optimizer selection
@@ -152,8 +149,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("artifact_rot_precision", artifact_rot_precision_)) return false; 
   if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false; 
   if (!pu::Get("use_chordal_factor", use_chordal_factor_))
-    return false;
-  if (!pu::Get("publish_interactive_markers", publish_interactive_markers_))
     return false;
 
   // Load ICP parameters.
@@ -236,12 +231,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Set the initial odometry.
   odometry_ = Pose3::identity();
 
-  // Initilize interactive marker server
-  if (publish_interactive_markers_) {
-    server.reset(new interactive_markers::InteractiveMarkerServer(
-        "interactive_node", "", false));
-  }
-
   return true;
 }
 
@@ -256,6 +245,11 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
       nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   keyed_scan_pub_ =
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+  erase_posegraph_pub_ =
+      nl.advertise<std_msgs::Bool>("erase_posegraph", 10, false);
+  remove_factor_viz_pub_ =
+      nl.advertise<std_msgs::Bool>("remove_factor_viz", 10, false);
+
   loop_closure_notifier_pub_ = nl.advertise<pose_graph_msgs::PoseGraphEdge>(
       "loop_closure_edge", 10, false);
 
@@ -304,6 +298,10 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
 
   nfg_ = isam_->getFactorsUnsafe();
 
+  //Notify PGV that the posegraph has changed
+  has_changed_ = true;
+
+  //Get ready with next key
   key_++;
 
   return true;
@@ -349,6 +347,10 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
 
   nfg_ = isam_->getFactorsUnsafe();
 
+  //Notify PGV that the posegraph has changed
+  has_changed_ = true;
+
+  //Get ready with next key
   key_++;
 
   return true;
@@ -1636,15 +1638,7 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
   if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
     ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
     artifact_key2info_hash[artifact_key] = artifact;
-  }else{
-    // Do things here to update artifact info
-    // Update confidence if it is higher
-    if (artifact.msg.confidence > artifact_key2info_hash[artifact_key].msg.confidence){
-      artifact_key2info_hash[artifact_key].msg.confidence = artifact.msg.confidence;
-    }
-
   }
-
   // add to pose graph 
   bool is_manual_loop_closure = false;
   return AddFactor(posekey, artifact_key, pose12, is_manual_loop_closure,
@@ -1880,7 +1874,8 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     }
 
     // // Publish
-    // PublishPoseGraph();
+    has_changed_ = true;
+    PublishPoseGraph();
 
     return true; //result.getVariablesReeliminated() > 0;
   } catch (...) {
@@ -1939,6 +1934,22 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
     ROS_WARN("RemoveFactor: Factor not found between given keys");
     return false; 
   }
+
+  //Remove the visual edge of the factor
+  for (int i = 0; i< loop_edges_.size();){
+    if((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) || (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)){
+
+      //Remove the edge from LaserLoopClosure
+      loop_edges_.erase(loop_edges_.begin() + i);
+      
+      // Send a message to posegraph visualizer that the edges must be updated
+      if (remove_factor_viz_pub_.getNumSubscribers() > 0) {
+        std_msgs::Bool empty_edge;
+        empty_edge.data = true;
+        remove_factor_viz_pub_.publish(empty_edge);
+      }
+    }
+  }
   
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl; 
@@ -1948,6 +1959,7 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
   values_ = isam_->calculateEstimate();
 
   // Publish
+  has_changed_ = true;
   PublishPoseGraph();
 
   return true; //result.getVariablesReeliminated() > 0;
@@ -2013,12 +2025,16 @@ bool LaserLoopClosure::ErasePosegraph(){
   odometry_ = Pose3::identity();
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
-  
-  //Initilize interactive marker server
-  if (publish_interactive_markers_) {
-    server.reset(new interactive_markers::InteractiveMarkerServer(
-        "interactive_node", "", false));
+
+  //Send message to Pose graph visualizer that it needs to be erased
+  if (erase_posegraph_pub_.getNumSubscribers() > 0) {
+    std_msgs::Bool erase;
+    erase.data = true;
+            // Publish.
+    erase_posegraph_pub_.publish(erase);
   }
+
+  has_changed_ = true;
 } 
 
 bool LaserLoopClosure::Save(const std::string &zipFilename) const {
