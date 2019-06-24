@@ -589,49 +589,67 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     return;
   }
 
-  // Show range data for debug
-  for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
-    ROS_DEBUG_STREAM("UWB-ID: " + itr->first);
-    for (auto itr_child = (itr->second).begin(); itr_child != (itr->second).end(); itr_child++) {
-      ROS_DEBUG_STREAM("time = " << itr_child->first << ", range = " << itr_child->second.first);
-    }
-  }
-
-  for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
-    if (!itr->second.empty()) {
-      auto itr_end = (itr->second).end();
-      itr_end--;
-      auto time_diff = ros::Time::now() - itr_end->first;
+  for (auto itr = uwb_id2data_hash_.begin(); itr != uwb_id2data_hash_.end(); itr++) {
+    UwbMeasurementInfo data = itr->second;
+    if (!data.range.empty()) {
+      auto time_diff = ros::Time::now() - data.time_measured.back();
       if (time_diff.toSec() > 20.0) {
-        if (itr->second.size() > 4) {
+        if (data.range.size() > 4) {
           ProcessUwbRangeData(itr->first);
-
-          itr->second.clear();
         }
         else {
           ROS_INFO("Number of range measurement is NOT enough");
-          itr->second.clear();
         }
-        
+        data.range.clear();
+        data.time_measured.clear();
+        data.robot_position.clear();
       }
     }
   }
+
+  // for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
+  //   if (!itr->second.empty()) {
+  //     auto itr_end = (itr->second).end();
+  //     itr_end--;
+  //     auto time_diff = ros::Time::now() - itr_end->first;
+  //     if (time_diff.toSec() > 20.0) {
+  //       if (itr->second.size() > 4) {
+  //         ProcessUwbRangeData(itr->first);
+
+  //         itr->second.clear();
+  //       }
+  //       else {
+  //         ROS_INFO("Number of range measurement is NOT enough");
+  //         itr->second.clear();
+  //       }
+        
+  //     }
+  //   }
+  // }
 }
 
 void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
   ROS_INFO_STREAM("Start to process UWB range measurement data of " << uwb_id);
 
-  std::map<double, ros::Time> map_range_time_;
+  // std::map<double, ros::Time> map_range_time_;
 
-  for (auto itr = map_uwbid_time_data_[uwb_id].begin(); itr != map_uwbid_time_data_[uwb_id].end(); itr++) {
-    map_range_time_[itr->second.first] = itr->first;
-  }
+  // for (auto itr = map_uwbid_time_data_[uwb_id].begin(); itr != map_uwbid_time_data_[uwb_id].end(); itr++) {
+  //   map_range_time_[itr->second.first] = itr->first;
+  // }
 
-  auto minItr = std::min_element(map_range_time_.begin(), map_range_time_.end());
+  // auto minItr = std::min_element(map_range_time_.begin(), map_range_time_.end());
 
-  ros::Time aug_time = minItr->second;
-  double aug_range = minItr->first;
-  Eigen::Vector3d aug_robot_position = map_uwbid_time_data_[uwb_id][aug_time].second;
+  // ros::Time aug_time = minItr->second;
+  // double aug_range = minItr->first;
+  // Eigen::Vector3d aug_robot_position = map_uwbid_time_data_[uwb_id][aug_time].second;
+
+  UwbMeasurementInfo data = uwb_id2data_hash_[uwb_id];
+  auto itr = std::min_element(data.range.begin(), data.range.end());
+  size_t min_index = std::distance(data.range.begin(), itr);
+
+  ros::Time aug_time = data.time_measured[min_index];
+  double aug_range = data.range[min_index];
+  Eigen::Vector3d aug_robot_position = data.robot_position[min_index];
 
   if (loop_closure_.AddUwbFactor(uwb_id, aug_time, aug_range, aug_robot_position)) {
     ROS_INFO("Updating the map by UWB data");
@@ -674,7 +692,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
     map_uwbid_time_data_[msg.id][msg.header.stamp].second
     = localization_.GetIntegratedEstimate().translation.Eigen();
   }
-
+  
   auto itr_1 = uwb_id2data_hash_.find(msg.id);
   if (itr_1 == end(uwb_id2data_hash_)) {
     UwbMeasurementInfo data;
