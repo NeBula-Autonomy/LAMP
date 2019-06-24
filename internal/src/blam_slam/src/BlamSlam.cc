@@ -138,11 +138,12 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   for (auto itr = uwb_id_list_all_.begin(); itr != uwb_id_list_all_.end(); itr++) {
     UwbMeasurementInfo uwb_data;
     uwb_data.id = *itr;
-    uwb_data.drop_status = false;
+    uwb_data.drop_status = true;  // This should be false. (after the enhancement of UWB firmware)
     uwb_id2data_hash_[*itr] = uwb_data;
   }
   for (auto itr = uwb_id_list_drop_.begin(); itr != uwb_id_list_drop_.end(); itr++) {
     uwb_id2data_hash_[*itr].holder = name_.c_str();
+    uwb_id2data_hash_[*itr].drop_status = false;  // This sentence will be removed.
   }
 
   if (!pu::Get("use_chordal_factor", use_chordal_factor_))
@@ -412,7 +413,7 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
 
   loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, aug_robot_position);
 
-  uwb_drop_status_[request.node.AnchorID] = true;
+  uwb_id2data_hash_[request.node.AnchorID].drop_status = true;
   
   return true;
 }
@@ -613,42 +614,11 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
       }
     }
   }
-
-  // for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
-  //   if (!itr->second.empty()) {
-  //     auto itr_end = (itr->second).end();
-  //     itr_end--;
-  //     auto time_diff = ros::Time::now() - itr_end->first;
-  //     if (time_diff.toSec() > 20.0) {
-  //       if (itr->second.size() > 4) {
-  //         ProcessUwbRangeData(itr->first);
-
-  //         itr->second.clear();
-  //       }
-  //       else {
-  //         ROS_INFO("Number of range measurement is NOT enough");
-  //         itr->second.clear();
-  //       }
-        
-  //     }
-  //   }
-  // }
+  return;
 }
 
 void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
   ROS_INFO_STREAM("Start to process UWB range measurement data of " << uwb_id);
-
-  // std::map<double, ros::Time> map_range_time_;
-
-  // for (auto itr = map_uwbid_time_data_[uwb_id].begin(); itr != map_uwbid_time_data_[uwb_id].end(); itr++) {
-  //   map_range_time_[itr->second.first] = itr->first;
-  // }
-
-  // auto minItr = std::min_element(map_range_time_.begin(), map_range_time_.end());
-
-  // ros::Time aug_time = minItr->second;
-  // double aug_range = minItr->first;
-  // Eigen::Vector3d aug_robot_position = map_uwbid_time_data_[uwb_id][aug_time].second;
 
   UwbMeasurementInfo data = uwb_id2data_hash_[uwb_id];
   auto itr = std::min_element(data.range.begin(), data.range.end());
@@ -678,27 +648,13 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
 
     ROS_INFO("Updated the map by UWB Range Factors");
   }
+  return;
 }
 
 void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   if (!b_use_uwb_) {
     return;
   }
-
-  // TODO: Screening before entering into this subscriber
-  // auto itr = uwb_drop_status_.find(msg.id);
-  // if (itr != end(uwb_drop_status_)) {
-  //   if (itr->second == true) {
-  //     map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
-  //     map_uwbid_time_data_[msg.id][msg.header.stamp].second
-  //     = localization_.GetIntegratedEstimate().translation.Eigen();
-  //   }
-  // }
-  // else {
-  //   map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
-  //   map_uwbid_time_data_[msg.id][msg.header.stamp].second
-  //   = localization_.GetIntegratedEstimate().translation.Eigen();
-  // }
   
   auto itr = uwb_id2data_hash_.find(msg.id);
   if (itr != end(uwb_id2data_hash_)) {
@@ -711,7 +667,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   else {
     ROS_WARN("Not registered UWB ID");
   }
-
+  return;
 }
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {

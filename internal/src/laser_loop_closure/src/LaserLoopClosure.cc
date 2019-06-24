@@ -560,7 +560,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
     ROS_INFO("Creating new UWB Factor");
     ROS_INFO("UWB key: %u", uwb_key);
     ROS_INFO("UWB ID:  %s", uwb_id.c_str());
-    ROS_INFO_STREAM("Robot position: " << robot_position.transpose());
   }
 
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
