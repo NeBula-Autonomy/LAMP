@@ -86,8 +86,8 @@ private:
   bool RegisterCallbacks(const ros::NodeHandle &nh, const ros::NodeHandle &pnh);
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
-  void ErasePosegraphCallback(const std_msgs::Bool::ConstPtr &msg);
-  void RemoveFactorVizCallback(const std_msgs::Bool::ConstPtr &msg);
+  void ErasePosegraphCallback(const std_msgs::Bool::ConstPtr& msg);
+  void RemoveFactorVizCallback(const std_msgs::Bool::ConstPtr& msg);
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
   void
   PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr &msg);

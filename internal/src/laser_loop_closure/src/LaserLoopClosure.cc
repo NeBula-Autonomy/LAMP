@@ -40,9 +40,9 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
-#include <std_msgs/Bool.h>
 
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -298,10 +298,10 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
 
   nfg_ = isam_->getFactorsUnsafe();
 
-  //Notify PGV that the posegraph has changed
+  // Notify PGV that the posegraph has changed
   has_changed_ = true;
 
-  //Get ready with next key
+  // Get ready with next key
   key_++;
 
   return true;
@@ -347,10 +347,10 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
 
   nfg_ = isam_->getFactorsUnsafe();
 
-  //Notify PGV that the posegraph has changed
+  // Notify PGV that the posegraph has changed
   has_changed_ = true;
 
-  //Get ready with next key
+  // Get ready with next key
   key_++;
 
   return true;
@@ -1935,13 +1935,13 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
     return false; 
   }
 
-  //Remove the visual edge of the factor
-  for (int i = 0; i< loop_edges_.size();){
-    if((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) || (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)){
-
-      //Remove the edge from LaserLoopClosure
+  // Remove the visual edge of the factor
+  for (int i = 0; i < loop_edges_.size();) {
+    if ((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) ||
+        (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)) {
+      // Remove the edge from LaserLoopClosure
       loop_edges_.erase(loop_edges_.begin() + i);
-      
+
       // Send a message to posegraph visualizer that the edges must be updated
       if (remove_factor_viz_pub_.getNumSubscribers() > 0) {
         std_msgs::Bool empty_edge;
@@ -1950,7 +1950,7 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
       }
     }
   }
-  
+
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl; 
   isam_->update(gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove, is_batch_loop_closure);
@@ -2026,11 +2026,11 @@ bool LaserLoopClosure::ErasePosegraph(){
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
 
-  //Send message to Pose graph visualizer that it needs to be erased
+  // Send message to Pose graph visualizer that it needs to be erased
   if (erase_posegraph_pub_.getNumSubscribers() > 0) {
     std_msgs::Bool erase;
     erase.data = true;
-            // Publish.
+    // Publish.
     erase_posegraph_pub_.publish(erase);
   }
 
