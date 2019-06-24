@@ -1636,7 +1636,15 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
   if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
     ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
     artifact_key2info_hash[artifact_key] = artifact;
+  }else{
+    // Do things here to update artifact info
+    // Update confidence if it is higher
+    if (artifact.msg.confidence > artifact_key2info_hash[artifact_key].msg.confidence){
+      artifact_key2info_hash[artifact_key].msg.confidence = artifact.msg.confidence;
+    }
+
   }
+
   // add to pose graph 
   bool is_manual_loop_closure = false;
   return AddFactor(posekey, artifact_key, pose12, is_manual_loop_closure,
