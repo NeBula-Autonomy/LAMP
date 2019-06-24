@@ -154,10 +154,7 @@ class LaserLoopClosure {
                         const Mat1212& covariance, const ros::Time& stamp,
                         unsigned int* key);
   
-  bool AddUwbFactor(const std::string uwb_id,
-                    const ros::Time& stamp,
-                    const double range,
-                    const Eigen::Vector3d robot_position);
+  bool AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data);
   
   bool DropUwbAnchor(const std::string uwb_id,
                      const ros::Time& stamp,

@@ -620,15 +620,7 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
 void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
   ROS_INFO_STREAM("Start to process UWB range measurement data of " << uwb_id);
 
-  UwbMeasurementInfo data = uwb_id2data_hash_[uwb_id];
-  auto itr = std::min_element(data.range.begin(), data.range.end());
-  size_t min_index = std::distance(data.range.begin(), itr);
-
-  ros::Time aug_time = data.time_measured[min_index];
-  double aug_range = data.range[min_index];
-  Eigen::Vector3d aug_robot_position = data.robot_position[min_index];
-
-  if (loop_closure_.AddUwbFactor(uwb_id, aug_time, aug_range, aug_robot_position)) {
+  if (loop_closure_.AddUwbFactor(uwb_id, uwb_id2data_hash_[uwb_id])) {  
     ROS_INFO("Updating the map by UWB data");
     PointCloud::Ptr regenerated_map(new PointCloud);
     loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());

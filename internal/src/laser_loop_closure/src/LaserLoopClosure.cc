@@ -543,10 +543,8 @@ bool LaserLoopClosure::AddBetweenChordalFactor(
   return false;
 }
 
-bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, 
-                                    const ros::Time& stamp,
-                                    const double range,
-                                    const Eigen::Vector3d robot_position) {
+
+bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data) {
 
   gtsam::Key uwb_key;
   if (uwb_id2key_hash_.find(uwb_id) != uwb_id2key_hash_.end()) {
@@ -567,8 +565,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
   gtsam::noiseModel::Base::shared_ptr gaussian = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
   gtsam::noiseModel::Base::shared_ptr rangeNoise = gaussian;
 
-  gtsam::Key pose_key = GetKeyAtTime(stamp);
-
   // Change the process according to whether the uwb anchor is observed for the first time or not
   if (!values_.exists(uwb_key)) {
 
@@ -579,14 +575,21 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
     NonlinearFactorGraph new_factor;
     gtsam::Values new_values;
 
-    // Add a UWB key
-    gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
-    new_values.insert(uwb_key, pose_uwb);
-    linPoint.insert(new_values);
-
     switch (uwb_range_compensation_) {
       case 0 : 
       {
+        auto itr = std::min_element(uwb_data.range.begin(), uwb_data.range.end());
+        size_t min_index = std::distance(uwb_data.range.begin(), itr);
+
+        ros::Time stamp = uwb_data.time_measured[min_index];
+        double range = uwb_data.range[min_index];
+        Eigen::Vector3d robot_position = uwb_data.robot_position[min_index];
+
+        // Add a UWB key
+        gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
+        new_values.insert(uwb_key, pose_uwb);
+        linPoint.insert(new_values);
+
         // Add a PriorFactor for the UWB key
         gtsam::Vector6 prior_precisions;
         prior_precisions.head<3>().setConstant(10.0);
@@ -596,6 +599,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
         new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(uwb_key, gtsam::Pose3(), prior_noise));
 
         // Add a RangeFactor between the nearest pose key and the UWB key
+        gtsam::Key pose_key = GetKeyAtTime(stamp);
         new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
         uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
         ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
@@ -670,9 +674,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       // Update with the new graph
       isam_->update(nfg_,result); 
 
-      // publish 
-      uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-
       // Update values
       values_ = result;//
 
@@ -702,7 +703,14 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
 
     switch (uwb_range_compensation_) {
       case 0 :
-      {  
+      {
+        auto itr = std::min_element(uwb_data.range.begin(), uwb_data.range.end());
+        size_t min_index = std::distance(uwb_data.range.begin(), itr);
+
+        ros::Time stamp = uwb_data.time_measured[min_index];
+        double range = uwb_data.range[min_index];
+
+        gtsam::Key pose_key = GetKeyAtTime(stamp);
         new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
         uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
       }
