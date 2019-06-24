@@ -605,7 +605,6 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
       ROS_WARN("Time difference is %f s",time_diff.toSec());
       if (time_diff.toSec() > 20.0) {
         if (itr->second.size() > 4) {
-
           ProcessUwbRangeData(itr->first);
 
           itr->second.clear();
