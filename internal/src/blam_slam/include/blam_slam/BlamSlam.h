@@ -201,8 +201,6 @@ class BlamSlam {
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
 
   // UWB
-  std::map<std::string, std::map<ros::Time, std::pair<double, Eigen::Vector3d>>> map_uwbid_time_data_;
-  std::map<std::string, bool> uwb_drop_status_; // true: dropped, false: on the robot
   std::vector<std::string> uwb_id_list_all_;
   std::vector<std::string> uwb_id_list_drop_;
   std::map<std::string, UwbMeasurementInfo> uwb_id2data_hash_;
