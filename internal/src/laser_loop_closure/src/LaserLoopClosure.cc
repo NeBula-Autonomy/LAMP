@@ -187,7 +187,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("pairwise_check_threshold", pw_threshold_)) return false;
 
   std::vector<char> special_symbs{'l', 'u'}; // for artifacts
-  OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_, special_symbs);
+  OutlierRemoval *pcm = new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   isam_->print();
 
@@ -1789,7 +1789,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   values_ = *gv.second;
 
   std::vector<char> special_symbs{'l','u'}; // for artifacts
-  OutlierRemoval *pcm = new PCM(odom_threshold_, pw_threshold_, special_symbs);
+  OutlierRemoval *pcm = new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   isam_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   isam_->print();
 
