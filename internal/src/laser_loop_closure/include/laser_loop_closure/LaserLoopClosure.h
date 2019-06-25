@@ -139,11 +139,11 @@ class LaserLoopClosure {
   // AddKeyScanPair().
   bool AddBetweenFactor(const geometry_utils::Transform3& delta,
                         const Mat66& covariance, const ros::Time& stamp,
-                        unsigned int* key);
+                        gtsam::Symbol* key);
 
   bool AddBetweenChordalFactor(const geometry_utils::Transform3& delta,
                         const Mat1212& covariance, const ros::Time& stamp,
-                        unsigned int* key);
+                        gtsam::Symbol* key);
   
   bool AddUwbFactor(const std::string uwb_id,
                     const ros::Time& stamp,
@@ -156,12 +156,12 @@ class LaserLoopClosure {
 
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.
-  bool AddKeyScanPair(unsigned int key, const PointCloud::ConstPtr& scan, bool initial_pose);
+  bool AddKeyScanPair(gtsam::Symbol key, const PointCloud::ConstPtr& scan, bool initial_pose);
 
   // After receiving an output key from 'AddBetweenFactor', call this to check
   // for loop closures with other poses in the pose graph.
-  bool FindLoopClosures(unsigned int key,
-                        std::vector<unsigned int>* closure_keys);
+  bool FindLoopClosures(gtsam::Symbol key,
+                        std::vector<gtsam::Symbol>* closure_keys);
 
   // Build a 3D point cloud by concatenating all point clouds from poses along
   // the pose graph.
@@ -292,9 +292,9 @@ class LaserLoopClosure {
   std::string name_;
 
   // Keep a list of keyed laser scans and keyed timestamps.
-  std::map<unsigned int, PointCloud::ConstPtr> keyed_scans_;
-  std::map<unsigned int, ros::Time> keyed_stamps_;
-  std::map<double, unsigned int> stamps_keyed_;
+  std::map<gtsam::Symbol, PointCloud::ConstPtr> keyed_scans_;
+  std::map<gtsam::Symbol, ros::Time> keyed_stamps_;
+  std::map<double, gtsam::Symbol> stamps_keyed_;
 
   // Aggregate odometry until we can update the pose graph.
   gtsam::Pose3 odometry_;
@@ -306,8 +306,8 @@ class LaserLoopClosure {
   bool LAMP_recovery_;
   unsigned int keys_between_each_posegraph_backup_;
   unsigned int loop_closure_optimizer_;
-  unsigned int key_;
-  unsigned int last_closure_key_;
+  gtsam::Symbol key_;
+  gtsam::Symbol last_closure_key_;
   unsigned int relinearize_interval_;
   double distance_to_skip_recent_poses_;
   unsigned int skip_recent_poses_;

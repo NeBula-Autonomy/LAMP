@@ -759,7 +759,9 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Interactive markers.
   if (publish_interactive_markers_) {
     for (const auto &keyed_pose : keyed_poses_) {
-      MakeMenuMarker(keyed_pose.second, std::to_string(keyed_pose.first));
+      gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.first);
+      std::string robot_id = std::string(key_id);
+      MakeMenuMarker(keyed_pose.second, robot_id);
     }
     if (server != nullptr) {
       server->applyChanges();

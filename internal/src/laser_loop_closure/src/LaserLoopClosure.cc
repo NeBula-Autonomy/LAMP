@@ -78,7 +78,7 @@ using gtsam::ISAM2GaussNewtonParams;
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
 
 LaserLoopClosure::LaserLoopClosure()
-    : key_(0), last_closure_key_(std::numeric_limits<int>::min()), tf_listener_(tf_buffer_) {
+    : key_(), last_closure_key_(std::numeric_limits<int>::min()), tf_listener_(tf_buffer_) {
   initial_noise_.setZero();
 }
 
@@ -222,6 +222,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
 
+  key_ = gtsam::Symbol('a', 0);
+
   // Initialize ISAM2.
   NonlinearFactorGraph new_factor;
   Values new_value;
@@ -231,7 +233,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   isam_->update(new_factor, new_value);
   values_ = isam_->calculateEstimate();
   nfg_ = isam_->getFactorsUnsafe();
-  key_++;
+  key_ = key_ + 1;
 
   // Set the initial odometry.
   odometry_ = Pose3::identity();
@@ -269,7 +271,8 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
   Pose3 new_odometry = ToGtsam(delta);
 
   //add a new factor
-  Pose3 last_pose = values_.at<Pose3>(key_-1);
+  gtsam::Symbol previous_key = key_-1;
+  Pose3 last_pose = values_.at<Pose3>(previous_key);
 
   NonlinearFactorGraph new_factor;
   Values new_value;
@@ -304,7 +307,7 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
 
   nfg_ = isam_->getFactorsUnsafe();
 
-  key_++;
+  key_ = key_ + 1;
 
   return true;
 }
@@ -349,14 +352,13 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
 
   nfg_ = isam_->getFactorsUnsafe();
 
-  key_++;
 
   return true;
 }
 
 bool LaserLoopClosure::AddBetweenFactor(
     const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance,
-    const ros::Time& stamp, unsigned int* key) {
+    const ros::Time& stamp, gtsam::Symbol* key) {
   if (key == NULL) {
     ROS_ERROR("%s: Output key is null.", name_.c_str());
     return false;
@@ -385,9 +387,9 @@ bool LaserLoopClosure::AddBetweenFactor(
   Values new_value;
   new_factor.add(MakeBetweenFactor(odometry_, ToGtsam(covariance)));
   // TODO Compose covariances at the same time as odometry
-
-  ROS_INFO("Checking for key %d",key_-1);
-  Pose3 last_pose = values_.at<Pose3>(key_-1);
+  gtsam::Symbol previous_key = key_-1;
+  ROS_INFO("Checking for key %d",previous_key.key());
+  Pose3 last_pose = values_.at<Pose3>(previous_key);
   new_value.insert(key_, last_pose.compose(odometry_));
 
   // Compute cost before optimization
@@ -434,7 +436,7 @@ bool LaserLoopClosure::AddBetweenFactor(
   // Do sanity check on result
   bool b_accept_update;
   ROS_INFO("Starting sanity check");
-  if (b_check_deltas_ && values_backup_.exists(key_-1)){ // Only check if the values_backup has been stored (a loop closure has occured)
+  if (b_check_deltas_ && values_backup_.exists(previous_key)){ // Only check if the values_backup has been stored (a loop closure has occured)
     ROS_INFO("Sanity checking output");
     b_accept_update = SanityCheckForLoopClosure(translational_sanity_check_odom_, cost_old, cost);
     // TODO - remove vizualization keys if it is rejected 
@@ -452,11 +454,15 @@ bool LaserLoopClosure::AddBetweenFactor(
 
   // Adding poses to stored hash maps
   // Store this timestamp so that we can publish the pose graph later.
-  keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, stamp));
-  stamps_keyed_.insert(std::pair<double, unsigned int>(stamp.toSec(), key_));
+  keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(key_, stamp));
+  stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(stamp.toSec(), key_));
 
   // Assign output and get ready to go again!
-  *key = key_++;
+  *key = gtsam::Symbol (key_);
+  key_ = key_ + 1;
+  ROS_INFO_STREAM("key value is... "
+                << gtsam::DefaultKeyFormatter(*key) << " key_ is: "
+                << gtsam::DefaultKeyFormatter(key_));
 
   // Reset odometry to identity
   odometry_ = Pose3::identity();
@@ -479,7 +485,7 @@ bool LaserLoopClosure::ChangeKeyNumber(){
 
 bool LaserLoopClosure::AddBetweenChordalFactor(
     const gu::Transform3& delta, const LaserLoopClosure::Mat1212& covariance,
-    const ros::Time& stamp, unsigned int* key) {
+    const ros::Time& stamp, gtsam::Symbol* key) {
   if (key == NULL) {
     ROS_ERROR("%s: Output key is null.", name_.c_str());
     return false;
@@ -492,11 +498,12 @@ bool LaserLoopClosure::AddBetweenChordalFactor(
   Values new_value;
   new_factor.add(MakeBetweenChordalFactor(new_odometry, ToGtsam(covariance)));
 
-  Pose3 last_pose = values_.at<Pose3>(key_-1);
+  gtsam::Symbol previous_key = key_-1;
+  Pose3 last_pose = values_.at<Pose3>(previous_key);
   new_value.insert(key_, last_pose.compose(new_odometry));
 
   // Store this timestamp so that we can publish the pose graph later.
-  keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, stamp));
+  keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(key_, stamp));
 
   // Update ISAM2.
   try {
@@ -527,8 +534,8 @@ bool LaserLoopClosure::AddBetweenChordalFactor(
   nfg_ = isam_->getFactorsUnsafe();
 
   // Assign output and get ready to go again!
-  *key = key_++;
-
+  *key = gtsam::Symbol (key_);
+  key_ = key_ + 1;
   // We always add new poses, but only return true if the pose is far enough
   // away from the last one (keyframes). This lets the caller know when they
   // can add a laser scan.
@@ -913,7 +920,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   return true;
 }
 
-bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
+bool LaserLoopClosure::AddKeyScanPair(gtsam::Symbol key,
                                       const PointCloud::ConstPtr& scan, bool initial_pose) {
   if (keyed_scans_.count(key)) {
     ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
@@ -924,14 +931,14 @@ bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
   // scan's timestamp for pose zero.
   if (initial_pose) {
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-    keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key, stamp));
-    stamps_keyed_.insert(std::pair<double, unsigned int>(stamp.toSec(), key));
+    keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(key, stamp));
+    stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(stamp.toSec(), key));
   }
 
   // ROS_INFO_STREAM("AddKeyScanPair " << key);
 
   // Add the key and scan.
-  keyed_scans_.insert(std::pair<unsigned int, PointCloud::ConstPtr>(key, scan));
+  keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
 
   // Publish the inserted laser scan.
   if (keyed_scan_pub_.getNumSubscribers() > 0) {
@@ -946,8 +953,7 @@ bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
 }
 
 bool LaserLoopClosure::FindLoopClosures(
-    unsigned int key, std::vector<unsigned int>* closure_keys) {
-
+    gtsam::Symbol key, std::vector<gtsam::Symbol>* closure_keys) {
   // Function to save the posegraph regularly
   if (key % keys_between_each_posegraph_backup_ == 0 && save_posegraph_backup_){
     LaserLoopClosure::Save("posegraph_backup.zip");
@@ -983,7 +989,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
   // Check that the key exists
   if (!values_.exists(key)) {
-    ROS_WARN("Key %u does not exist in find loop closures", key);
+    ROS_INFO_STREAM("does not exist in find loop closures... "<< gtsam::DefaultKeyFormatter(key));
     return false;
   }
 
@@ -1020,8 +1026,7 @@ bool LaserLoopClosure::FindLoopClosures(
   bool b_only_allow_one_loop = false; // TODO make this a parameter
 
   for (const auto& keyed_pose : values_) {
-    const unsigned int other_key = keyed_pose.key;
-
+    const gtsam::Symbol other_key = keyed_pose.key;
     if (closed_loop && b_only_allow_one_loop) {
       ROS_INFO("Found one loop with current scan, now exiting...");
       break;
@@ -1038,7 +1043,7 @@ bool LaserLoopClosure::FindLoopClosures(
         continue;
     }
 
-    if (key < other_key){
+    if (other_key > key){
       //loopclosure can only occur from high to low value
         continue;
     }
@@ -1193,8 +1198,9 @@ bool LaserLoopClosure::FindLoopClosures(
 
 bool LaserLoopClosure::SanityCheckForLoopClosure(double translational_sanity_check, double cost_old, double cost){
   // Checks loop closures to see if the translational threshold is within limits
+  gtsam::Symbol previous_key = key_ - 1;
 
-  if (!values_backup_.exists(key_-1)){
+  if (!values_backup_.exists(previous_key)){
     ROS_WARN("Key %u does not exist in backup in SanityCheckForLoopClosure");
   }
 
@@ -1205,9 +1211,9 @@ bool LaserLoopClosure::SanityCheckForLoopClosure(double translational_sanity_che
   if (key_ > 1){
     ROS_INFO("Key is more than 1, checking pose change");
     // Previous pose
-    old_pose = values_backup_.at<Pose3>(key_-1);
+    old_pose = values_backup_.at<Pose3>(previous_key);
     // New pose
-    new_pose = values_.at<Pose3>(key_-1);
+    new_pose = values_.at<Pose3>(previous_key);
   }
   else{
     ROS_INFO("Key is less than or equal to 1, not checking pose change");
@@ -1269,7 +1275,7 @@ bool LaserLoopClosure::GetMaximumLikelihoodPoints(PointCloud* points) {
   // Iterate over poses in the graph, transforming their corresponding laser
   // scans into world frame and appending them to the output.
   for (const auto& keyed_pose : values_) {
-    const unsigned int key = keyed_pose.key;
+    const gtsam::Symbol key = keyed_pose.key;
 
     // Check if this pose is a keyframe. If it's not, it won't have a scan
     // associated to it and we should continue.
@@ -1300,8 +1306,9 @@ unsigned int LaserLoopClosure::GetKey() const {
 }
 
 gu::Transform3 LaserLoopClosure::GetLastPose() const {
-  if (key_ > 1) {
-    return ToGu(values_.at<Pose3>(key_-1));
+  if (key_.key() > 1) {
+    gtsam::Symbol previous_key = key_-1;
+    return ToGu(values_.at<Pose3>(previous_key));
   } else {
     ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
     return ToGu(values_.at<Pose3>(0));
@@ -1386,8 +1393,9 @@ PriorFactor<Pose3> LaserLoopClosure::MakePriorFactor(
 BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactor(
     const Pose3& delta,
     const LaserLoopClosure::Gaussian::shared_ptr& covariance) {
-  odometry_edges_.push_back(std::make_pair(key_-1, key_));
-  return BetweenFactor<Pose3>(key_-1, key_, delta, covariance);
+  gtsam::Symbol previous_key = key_-1;
+  odometry_edges_.push_back(std::make_pair(previous_key, key_));
+  return BetweenFactor<Pose3>(previous_key, key_, delta, covariance);
 }
 
 BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactorAtLoad(
@@ -1400,8 +1408,9 @@ BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactorAtLoad(
 gtsam::BetweenChordalFactor<Pose3> LaserLoopClosure::MakeBetweenChordalFactor(
     const Pose3& delta, 
     const LaserLoopClosure::Gaussian::shared_ptr& covariance) {
-  odometry_edges_.push_back(std::make_pair(key_-1, key_));
-  return gtsam::BetweenChordalFactor<Pose3>(key_-1, key_, delta, covariance);
+    gtsam::Symbol previous_key = key_-1;
+  odometry_edges_.push_back(std::make_pair(previous_key, key_));
+  return gtsam::BetweenChordalFactor<Pose3>(previous_key, key_, delta, covariance);
 }
 
 bool LaserLoopClosure::PerformICP(PointCloud::Ptr& scan1,
@@ -2033,6 +2042,7 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
   int i = 0;
   for (const auto &entry : keyed_scans_) {
     keys_file << entry.first << ",";
+    ROS_INFO_STREAM(entry.first);
     // save point cloud as binary PCD file
     const std::string pcd_filename = path + "/pc_" + std::to_string(i) + ".pcd";
     pcl::io::savePCDFile(pcd_filename, *entry.second, true);
@@ -2040,11 +2050,11 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
 
     ROS_INFO("Saved point cloud %d/%d.", i+1, (int) keyed_scans_.size());
     keys_file << pcd_filename << ",";
-    if (!values_.exists(entry.first)) {
+    if (!values_.exists(gtsam::Symbol(entry.first))) {
       ROS_WARN("Key,  %u, does not exist in Save", entry.first);
       return false;
     }
-    keys_file << keyed_stamps_.at(entry.first).toNSec() << "\n";
+    keys_file << keyed_stamps_.at(gtsam::Symbol(entry.first)).toNSec() << "\n";
     ++i;
   }
   keys_file.close();
@@ -2210,7 +2220,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     std::getline(info_file, keyStr, ',');
     if (keyStr.empty())
       break;
-    key_ = std::stoi(keyStr);
+    key_ = gtsam::Symbol(std::stoi(keyStr));
     std::getline(info_file, pcd_filename, ',');
     PointCloud::Ptr pc(new PointCloud);
     if (pcl::io::loadPCDFile(pcd_filename, *pc) == -1) {
@@ -2227,8 +2237,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   }
 
   // Increment key to be ready for more scans
-  key_++;
-
+  key_ = key_+ 1;
   ROS_INFO("Restored all point clouds.");
   info_file.close();
 
@@ -2244,9 +2253,9 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
       std::getline(edge_file, edgeStr, ',');
       if (edgeStr.empty())
         break;
-      edge.first = static_cast<unsigned int>(std::stoi(edgeStr));
+      edge.first = static_cast<gtsam::Symbol>(std::stoi(edgeStr));
       std::getline(edge_file, edgeStr);
-      edge.second = static_cast<unsigned int>(std::stoi(edgeStr));
+      edge.second = static_cast<gtsam::Symbol>(std::stoi(edgeStr));
       odometry_edges_.emplace_back(edge);
     }
     edge_file.close();
@@ -2265,9 +2274,9 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
       std::getline(edge_file, edgeStr, ',');
       if (edgeStr.empty())
         break;
-      edge.first = static_cast<unsigned int>(std::stoi(edgeStr));
+      edge.first = static_cast<gtsam::Symbol>(std::stoi(edgeStr));
       std::getline(edge_file, edgeStr);
-      edge.second = static_cast<unsigned int>(std::stoi(edgeStr));
+      edge.second = static_cast<gtsam::Symbol>(std::stoi(edgeStr));
       loop_edges_.emplace_back(edge);
     }
     edge_file.close();
@@ -2305,7 +2314,7 @@ bool LaserLoopClosure::BatchLoopClosure() {
   bool found_loop = false;
   //Loop through all keyed scans and look for loop closures
    for (const auto& keyed_pose : values_) {
-    std::vector<unsigned int> closure_keys;
+    std::vector<gtsam::Symbol> closure_keys;
     if (FindLoopClosures(keyed_pose.key, &closure_keys)){
       found_loop = true;
     }

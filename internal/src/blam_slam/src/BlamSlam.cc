@@ -61,7 +61,7 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   //TODO: Move this to a better location.
   map_loaded_ = false;
 
-  initial_key_ = 0;
+  initial_key_ = gtsam::Symbol('a',0);
 
   if (!filter_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud filter.", name_.c_str());
@@ -808,7 +808,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
     return false;
   }
 
-  unsigned int pose_key;
+  gtsam::Symbol pose_key;
   if (!use_chordal_factor_) {
     // Add the new pose to the pose graph (BetweenFactor)
     // TODO rename to attitude and position sigma 
@@ -850,7 +850,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
     return false;
   }
 
-  std::vector<unsigned int> closure_keys;
+  std::vector<gtsam::Symbol> closure_keys;
   if (!loop_closure_.FindLoopClosures(pose_key, &closure_keys)) {
     return false;
   }

@@ -1,3 +1,4 @@
+string robot_id
 uint32 key_from
 uint32 key_to
 # attitude quaternion coordinates in radians:
