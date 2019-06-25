@@ -344,6 +344,7 @@ bool BlamSlam::SaveGraphService(blam_slam::SaveGraphRequest &request,
 bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
                                 blam_slam::LoadGraphResponse &response) {
   std::cout << "Loading graph..." << std::endl;
+  loop_closure_.ErasePosegraph();
   response.success = loop_closure_.Load(request.filename);
   map_loaded_ = true;
 
