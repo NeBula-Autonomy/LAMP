@@ -119,14 +119,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("noise/odom_position_sigma", position_sigma_)) return false;
   if (!pu::Get("noise/odom_attitude_sigma", attitude_sigma_)) return false;
 
-  //Load and restart deltas
-  if (!pu::Get("load_graph_x", load_graph_x_)) return false;
-  if (!pu::Get("load_graph_y", load_graph_y_)) return false;
-  if (!pu::Get("load_graph_z", load_graph_z_)) return false;
-  if (!pu::Get("load_graph_roll", load_graph_roll_)) return false;
-  if (!pu::Get("load_graph_pitch", load_graph_pitch_)) return false;
-  if (!pu::Get("load_graph_yaw", load_graph_yaw_)) return false;
-
+  //Restart deltas
   if (!pu::Get("restart_x", restart_x_)) return false;
   if (!pu::Get("restart_y", restart_y_)) return false;
   if (!pu::Get("restart_z", restart_z_)) return false;
@@ -366,19 +359,10 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
   
-  Eigen::Affine3d map_T_world_link = Eigen::Affine3d::Identity();
-  getTransformEigenFromTF(world_frame_, blam_frame_, ros::Time(0), map_T_world_link);
-  std::cout << "X value: " << map_T_world_link.translation().x() << std::endl;
-
-  
-
-
-  // Obtain the second robot's initial pose from the tf
-  //TODO: Kamak: write a callback function to get the tf
-  // compute the delta and put it in this format.
-  delta_after_load_.translation = gu::Vec3(load_graph_x_, load_graph_y_, load_graph_z_);
-  delta_after_load_.rotation = gu::Rot3(load_graph_roll_, load_graph_pitch_, load_graph_yaw_);
-  loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
+  gu::Transform3 init_pose = loop_closure_.GetInitialPose();
+  gu::Transform3 current_pose = loop_closure_.GetCurrentPose();
+  const gu::Transform3 pose_delta = gu::PoseDelta(init_pose, current_pose);
+  loop_closure_.AddFactorAtLoad(pose_delta, covariance);
 
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
@@ -797,7 +781,12 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
   for (int i = 0; i < 3; ++i)
     covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
   for (int i = 3; i < 6; ++i)
-    covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
+    covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad s
+
+  //TODO: Kamak Initialize from a tf
+  // Eigen::Affine3d map_T_world_link = Eigen::Affine3d::Identity();
+  // getTransformEigenFromTF(world_frame_, blam_frame_, ros::Time(0), map_T_world_link);
+  // std::cout << "X value: " << map_T_world_link.translation().x() << std::endl;
 
 
   // This will add a between factor after obtaining the delta between poses.

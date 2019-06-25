@@ -83,7 +83,7 @@ bool PointCloudOdometry::LoadParameters(const ros::NodeHandle& n) {
 
   // Load initial position.
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
-  double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 0.0;
+  double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
   if (!pu::Get("fiducial_calibration/position/x", init_x)) return false;
   if (!pu::Get("fiducial_calibration/position/y", init_y)) return false;
   if (!pu::Get("fiducial_calibration/position/z", init_z)) return false;

@@ -106,7 +106,6 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 }
 
 bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
-
   // Get the parent and child frame for map to world transformation
   // n.param<std::string>("world_frame", world_frame_, "world");
   // n.param<std::string>("map_frame", blam_frame_, "husky/blam");
@@ -167,7 +166,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   // Load initial position and orientation.
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
-  double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 0.0;
+  double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
   if (!pu::Get("fiducial_calibration/position/x", init_x)) return false;
   if (!pu::Get("fiducial_calibration/position/y", init_y)) return false;
   if (!pu::Get("fiducial_calibration/position/z", init_z)) return false;
@@ -1317,6 +1316,15 @@ unsigned int LaserLoopClosure::GetKey() const {
 gu::Transform3 LaserLoopClosure::GetLastPose() const {
   if (key_ > 1) {
     return ToGu(values_.at<Pose3>(key_-1));
+  } else {
+    ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
+    return ToGu(values_.at<Pose3>(0));
+  }
+}
+
+gu::Transform3 LaserLoopClosure::GetCurrentPose() const {
+  if (key_ > 1) {
+    return ToGu(values_.at<Pose3>(key_));
   } else {
     ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
     return ToGu(values_.at<Pose3>(0));

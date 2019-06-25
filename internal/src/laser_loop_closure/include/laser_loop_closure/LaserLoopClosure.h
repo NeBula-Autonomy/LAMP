@@ -169,6 +169,10 @@ class LaserLoopClosure {
 
   // Get the most recent pose in the pose graph.
   geometry_utils::Transform3 GetLastPose() const;
+
+// Get the current pose of the robot using fiducial calibration.
+  geometry_utils::Transform3 GetCurrentPose() const;
+  
   unsigned int GetKey() const;
 
   bool AddFactorAtRestart(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);

@@ -156,9 +156,7 @@ class BlamSlam {
   // The delta between where LAMP was last saved, and where it is restarted.
   geometry_utils::Transform3 delta_after_restart_;
 
-  geometry_utils::Transform3 delta_after_load_;
-
-  // Update rates and callback timers.
+   // Update rates and callback timers.
   double estimate_update_rate_;
   double visualization_update_rate_;
   double uwb_update_rate_;
@@ -178,14 +176,7 @@ class BlamSlam {
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
 
-  // Load and restart delta
-  double load_graph_x_;
-  double load_graph_y_;
-  double load_graph_z_;
-  double load_graph_roll_;
-  double load_graph_pitch_;
-  double load_graph_yaw_;
-
+  // Restart delta
   double restart_x_;
   double restart_y_;
   double restart_z_;
