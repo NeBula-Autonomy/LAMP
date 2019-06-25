@@ -15,6 +15,12 @@
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
     </node>
 
+    <node pkg="blam_slam"
+      name="loop_closure_tools"
+      type="loop_closure_tools.py"
+      output="screen">
+    </node>
+
   </group>
 
 </launch>
