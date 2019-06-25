@@ -48,6 +48,7 @@ class LoopClosureTools:
         add_factor_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/add_factor', AddFactor)
         highlight_edge = rospy.ServiceProxy(self.robot_namespace + '/pose_graph_visualizer/highlight_edge', HighlightEdge)
         response = highlight_edge(key_from, key_to, True)
+
         if response.success:
             while not self.confirmation_received:
                 pass
