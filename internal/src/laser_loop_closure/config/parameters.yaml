@@ -55,7 +55,7 @@ distance_to_skip_recent_poses: 20 #10 # 200
 # amount of translational distance (m).
 distance_before_reclosing: 20 #10
 
-# outlier rejection thresholds 
+# outlier rejection thresholds (on Mahalanobis distance)
 odometry_check_threshold: 1.0
 pairwise_check_threshold: 1.0
 # TODO make these dynamic with the translation threshold for nodes
