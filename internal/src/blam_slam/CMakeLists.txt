@@ -37,11 +37,14 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   pcl_conversions
   core_msgs
+  uwb_msgs
+  mesh_msgs
   geometry_msgs
   message_generation
+  tf_conversions
 )
 
-add_service_files(FILES AddFactor.srv RemoveFactor.srv SaveGraph.srv)
+add_service_files(FILES AddFactor.srv RemoveFactor.srv SaveGraph.srv Restart.srv LoadGraph.srv BatchLoopClosure.srv)
 generate_messages()
 
 catkin_package(
@@ -57,11 +60,15 @@ catkin_package(
     laser_loop_closure
     point_cloud_localization
     point_cloud_mapper
+    pose_graph_visualizer
+    point_cloud_visualizer
     geometry_utils
     parameter_utils
     pcl_ros
     pcl_conversions
     core_msgs
+    uwb_msgs
+    mesh_msgs
     geometry_msgs
   DEPENDS
     Boost
@@ -104,3 +111,7 @@ target_link_libraries(${PROJECT_NAME}_offline
   ${Boost_LIBRARIES}
   gtsam
 )
+
+if (CATKIN_ENABLE_TESTING)
+  add_subdirectory(test)
+endif()

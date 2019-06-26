@@ -42,6 +42,10 @@
 #include <blam_slam/AddFactor.h>
 #include <blam_slam/RemoveFactor.h>
 #include <blam_slam/SaveGraph.h>
+#include <blam_slam/Restart.h>
+#include <blam_slam/LoadGraph.h>
+#include <blam_slam/BatchLoopClosure.h>
+
 
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -51,10 +55,13 @@
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2_ros/transform_listener.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
 
 #include <core_msgs/Artifact.h>
+#include <uwb_msgs/Anchor.h>
+#include <mesh_msgs/ProcessCommNode.h>
 
 class BlamSlam {
  public:
@@ -71,7 +78,13 @@ class BlamSlam {
   // Sensor message processing.
   void ProcessPointCloudMessage(const PointCloud::ConstPtr& msg);
 
+  // UWB range measurement data processing
+  void ProcessUwbRangeData(const std::string uwb_id);
+
   int marker_id_;
+  
+  //listener for tf published by fiducials
+  tf::TransformListener tf_listener_;
 
  private:
   // Node initialization.
@@ -84,10 +97,12 @@ class BlamSlam {
   // Sensor callbacks.
   void PointCloudCallback(const PointCloud::ConstPtr& msg);
   void ArtifactCallback(const core_msgs::Artifact& msg);
+  void UwbSignalCallback(const uwb_msgs::Anchor& msg);
 
   // Timer callbacks.
   void EstimateTimerCallback(const ros::TimerEvent& ev);
   void VisualizationTimerCallback(const ros::TimerEvent& ev);
+  void UwbTimerCallback(const ros::TimerEvent& ev);
 
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
@@ -100,24 +115,54 @@ class BlamSlam {
   bool RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                            blam_slam::RemoveFactorResponse &response);
 
+  // Service for restarting from last saved posegraph
+  bool RestartService(blam_slam::RestartRequest &request,
+                        blam_slam::RestartResponse &response);
+  // Drop UWB from a robot
+  bool DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
+                      mesh_msgs::ProcessCommNodeResponse &response);
+
+  // Service for rinning lazer loop closure again
+  bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
+                        blam_slam::BatchLoopClosureResponse &response);
+
   bool use_chordal_factor_;
 
   // Service to write the pose graph and all point clouds to a zip file.
   bool SaveGraphService(blam_slam::SaveGraphRequest &request,
                         blam_slam::SaveGraphResponse &response);
 
+  bool LoadGraphService(blam_slam::LoadGraphRequest &request,
+                        blam_slam::LoadGraphResponse &response);                      
+
   // Publish Artifacts
   void PublishArtifact(const Eigen::Vector3d& W_artifact_position,
                        const core_msgs::Artifact& msg);
 
+  bool getTransformEigenFromTF(const std::string& parent_frame,
+                               const std::string& child_frame,
+                               const ros::Time& time,
+                               Eigen::Affine3d& T);
+
   // The node's name.
   std::string name_;
 
-  // Update rates and callback timers.
+  std::string blam_frame_;
+  std::string world_frame_;
+
+  // The intial key in the pose graph
+  unsigned int initial_key_;
+
+  // The delta between where LAMP was last saved, and where it is restarted.
+  geometry_utils::Transform3 delta_after_restart_;
+
+   // Update rates and callback timers.
   double estimate_update_rate_;
   double visualization_update_rate_;
+  double uwb_update_rate_;
   ros::Timer estimate_update_timer_;
   ros::Timer visualization_update_timer_;
+  ros::Timer uwb_update_timer_;
 
   // Covariances
   double position_sigma_;
@@ -126,24 +171,44 @@ class BlamSlam {
   // Subscribers.
   ros::Subscriber pcld_sub_;
   ros::Subscriber artifact_sub_;
-  tf2_ros::Buffer tf_buffer_;
-  tf2_ros::TransformListener tf_listener_;
+  ros::Subscriber uwb_sub_;
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
-  ros::Publisher artifact_pub_;
-  ros::Publisher marker_pub_;
+
+  // Restart delta
+  double restart_x_;
+  double restart_y_;
+  double restart_z_;
+  double restart_roll_;
+  double restart_pitch_;
+  double restart_yaw_;
   
 
   // Services
   ros::ServiceServer add_factor_srv_;
   ros::ServiceServer remove_factor_srv_;
   ros::ServiceServer save_graph_srv_;
+  ros::ServiceServer restart_srv_;
+  ros::ServiceServer load_graph_srv_;
+  ros::ServiceServer batch_loop_closure_srv_;
+  ros::ServiceServer drop_uwb_srv_;
 
   // Names of coordinate frames.
   std::string fixed_frame_id_;
   std::string base_frame_id_;
   bool artifacts_in_global_;
+  int largest_artifact_id_; 
+  bool use_artifact_loop_closure_;
+  bool b_use_uwb_;
+
+  // Object IDs
+  std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
+
+  // UWB
+  std::map<std::string, std::map<ros::Time, std::pair<double, Eigen::Vector3d>>> map_uwbid_time_data_;
+  std::map<std::string, bool> uwb_drop_status_; // true: dropped, false: on the robot
+  std::vector<std::string> uwb_id_list_;
 
   // Class objects (BlamSlam is a composite class).
   MeasurementSynchronizer synchronizer_;

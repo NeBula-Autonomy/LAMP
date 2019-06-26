@@ -1,0 +1,20 @@
+<launch>
+  <arg name="robot_namespace" default="robot"/>
+
+  <group ns="$(arg robot_namespace)">
+
+    <!-- Pose graph visualization -->
+    <node pkg="pose_graph_visualizer"
+          name="pose_graph_visualizer"
+          type="pose_graph_visualizer_node"
+          output="screen">
+      <!-- Frames -->
+      <rosparam file="$(find blam_example)/config/blam_frames.yaml" subst_value="true"/>
+      
+      <!-- Loop closure -->
+      <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+    </node>
+
+  </group>
+
+</launch>
