@@ -21,6 +21,16 @@ This package requires `minizip` to be available globally. It can be installed fr
 apt install libminizip-dev
 ```
 
+This package also requires [RobustPGO](https://github.com/BenjaminMorrell/RobustPGO), specifically the `LAMP` branch. 
+```bash
+cd RobustPGO
+git checkout LAMP
+mkdir build 
+cd build
+cmake ..
+sudo make install
+```
+
 ***BLAM!*** relies on system installations of the following packages:
 
 * [ROS](http://wiki.ros.org/ROS/Installation)

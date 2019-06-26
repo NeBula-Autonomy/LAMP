@@ -117,11 +117,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Should we save a backup posegraph?
   if (!pu::Get("keys_between_each_posegraph_backup", keys_between_each_posegraph_backup_)) return false;
 
-  // Optimizer selection
-  if (!pu::Get("loop_closure_optimizer", loop_closure_optimizer_)) return false;
-  
-
-  // Load ISAM2 parameters.
+  // Load Optimization parameters.
   relinearize_skip_ = 1;
   relinearize_threshold_ = 0.01;
   if (!pu::Get("relinearize_skip", relinearize_skip_)) return false;
@@ -148,8 +144,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_)) return false;
   if (!pu::Get("artifact_rot_precision", artifact_rot_precision_)) return false; 
   if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false; 
-  if (!pu::Get("use_chordal_factor", use_chordal_factor_))
-    return false;
 
   // Load ICP parameters.
   if (!pu::Get("icp/tf_epsilon", icp_tf_epsilon_)) return false;
@@ -183,27 +177,17 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // UWB
   if (!pu::Get("uwb_range_measurement_error", uwb_range_measurement_error_)) return false;
   if (!pu::Get("uwb_range_compensation", uwb_range_compensation_)) return false;
-  if (!pu::Get("uwb_factor_optimizer", uwb_factor_optimizer_)) return false;
+  // Robust Optimizer
+  if (!pu::Get("odometry_check_threshold", odom_threshold_))
+    return false;
+  if (!pu::Get("pairwise_check_threshold", pw_threshold_))
+    return false;
 
-  std::cout << "before isam reset" << std::endl; 
-  #ifndef SOLVER
-  // Create the ISAM2 solver.
-  ISAM2Params parameters;
-  parameters.relinearizeSkip = relinearize_skip_;
-  parameters.relinearizeThreshold = relinearize_threshold_;
-  parameters.factorization = gtsam::ISAM2Params::QR; // QR
-  // // Set wildfire threshold
-  // ISAM2GaussNewtonParams gnparams(-1);
-  // parameters.setOptimizationParams(gnparams);
-  isam_.reset(new ISAM2(parameters));
-  ROS_INFO("Using ISAM2 optimizer");
-  #endif
-  #ifdef SOLVER
-  isam_.reset(new GenericSolver());
-  isam_->print();
-  ROS_INFO("Using generic solver (LM currently)");
-  #endif
-  std::cout << "after isam reset" << std::endl; 
+  std::vector<char> special_symbs{'l', 'u'}; // for artifacts
+  OutlierRemoval* pcm =
+      new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
+  pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  pgo_solver_->print();
 
   // Set the initial position.
   Vector3 translation(init_x, init_y, init_z);
@@ -217,15 +201,15 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
 
-  // Initialize ISAM2.
+  // Initialize
   NonlinearFactorGraph new_factor;
   Values new_value;
   new_factor.add(MakePriorFactor(pose, covariance));
   new_value.insert(key_, pose);
 
-  isam_->update(new_factor, new_value);
-  values_ = isam_->calculateEstimate();
-  nfg_ = isam_->getFactorsUnsafe();
+  pgo_solver_->update(new_factor, new_value);
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
   key_++;
 
   // Set the initial odometry.
@@ -271,9 +255,9 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
 
   new_value.insert(key_, last_pose.compose(new_odometry));
   // TODO Compose covariances at the same time as odometry
-   // Update ISAM2.
+  // Update
   try{
-    isam_->update(new_factor, new_value); 
+    pgo_solver_->update(new_factor, new_value);
   } catch (...){
     // redirect cout to file
     std::ofstream nfgFile;
@@ -283,20 +267,20 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
     std::cout.rdbuf(nfgFile.rdbuf());
 
     // save entire factor graph to file and debug if loop closure is correct
-    gtsam::NonlinearFactorGraph nfg = isam_->getFactorsUnsafe();
+    gtsam::NonlinearFactorGraph nfg = pgo_solver_->getFactorsUnsafe();
     nfg.print();
     nfgFile.close();
 
     std::cout.rdbuf(coutbuf); //reset to standard output again
 
-    ROS_ERROR("ISAM update error in AddBetweenFactors");
+    ROS_ERROR("Update ERROR in AddBetweenFactors");
     throw;
   }
   
   // Update class variables
-  values_ = isam_->calculateEstimate();
+  values_ = pgo_solver_->calculateEstimate();
 
-  nfg_ = isam_->getFactorsUnsafe();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
 
   // Notify PGV that the posegraph has changed
   has_changed_ = true;
@@ -319,9 +303,9 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
   new_factor.add(MakeBetweenFactorAtLoad(new_odometry, ToGtsam(covariance)));
   new_value.insert(key_, first_pose.compose(new_odometry));
   // TODO Compose covariances at the same time as odometry
-   // Update ISAM2.
+  // Update
   try{
-    isam_->update(new_factor, new_value); 
+    pgo_solver_->update(new_factor, new_value);
     has_changed_ = true;
   } catch (...){
     // redirect cout to file
@@ -332,20 +316,20 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
     std::cout.rdbuf(nfgFile.rdbuf());
 
     // save entire factor graph to file and debug if loop closure is correct
-    gtsam::NonlinearFactorGraph nfg = isam_->getFactorsUnsafe();
+    gtsam::NonlinearFactorGraph nfg = pgo_solver_->getFactorsUnsafe();
     nfg.print();
     nfgFile.close();
 
     std::cout.rdbuf(coutbuf); //reset to standard output again
 
-    ROS_ERROR("ISAM update error in AddBetweenFactors");
+    ROS_ERROR("Update ERROR in AddBetweenFactors");
     throw;
   }
   
   // Update class variables
-  values_ = isam_->calculateEstimate();
+  values_ = pgo_solver_->calculateEstimate();
 
-  nfg_ = isam_->getFactorsUnsafe();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
 
   // Notify PGV that the posegraph has changed
   has_changed_ = true;
@@ -393,16 +377,16 @@ bool LaserLoopClosure::AddBetweenFactor(
   new_value.insert(key_, last_pose.compose(odometry_));
 
   // Compute cost before optimization
-  NonlinearFactorGraph nfg_temp = isam_->getFactorsUnsafe();
+  NonlinearFactorGraph nfg_temp = pgo_solver_->getFactorsUnsafe();
   nfg_temp.add(new_factor);
-  Values values_temp = isam_->getLinearizationPoint();
+  Values values_temp = pgo_solver_->getLinearizationPoint();
   values_temp.insert(key_, last_pose.compose(odometry_));
   double cost_old = nfg_temp.error(values_temp); // Assume values is up to date - no new values
   //ROS_INFO("Cost before optimization is: %f", cost_old);
 
-  // Update ISAM2.
+  // Update
   try {
-    isam_->update(new_factor, new_value);
+    pgo_solver_->update(new_factor, new_value);
     has_changed_ = true;
   } catch (...) {
     // redirect cout to file
@@ -413,20 +397,20 @@ bool LaserLoopClosure::AddBetweenFactor(
     std::cout.rdbuf(nfgFile.rdbuf());
 
     // save entire factor graph to file and debug if loop closure is correct
-    gtsam::NonlinearFactorGraph nfg = isam_->getFactorsUnsafe();
+    gtsam::NonlinearFactorGraph nfg = pgo_solver_->getFactorsUnsafe();
     nfg.print();
     nfgFile.close();
 
     std::cout.rdbuf(coutbuf); //reset to standard output again
 
-    ROS_ERROR("ISAM update error in AddBetweenFactors");
+    ROS_ERROR("Update ERROR in AddBetweenFactors");
     throw;
   }
   
   // Update class variables
-  values_ = isam_->calculateEstimate();
+  values_ = pgo_solver_->calculateEstimate();
 
-  nfg_ = isam_->getFactorsUnsafe();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
 
   // Get updated cost
   double cost = nfg_.error(values_);
@@ -435,7 +419,6 @@ bool LaserLoopClosure::AddBetweenFactor(
 
   // Do sanity check on result
   bool b_accept_update;
-  ROS_INFO("Starting sanity check");
   if (b_check_deltas_ && values_backup_.exists(key_-1)){ // Only check if the values_backup has been stored (a loop closure has occured)
     ROS_INFO("Sanity checking output");
     b_accept_update = SanityCheckForLoopClosure(translational_sanity_check_odom_, cost_old, cost);
@@ -477,72 +460,6 @@ bool LaserLoopClosure::AddBetweenFactor(
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
     key_ = 10000;
-} 
-
-bool LaserLoopClosure::AddBetweenChordalFactor(
-    const gu::Transform3& delta, const LaserLoopClosure::Mat1212& covariance,
-    const ros::Time& stamp, unsigned int* key) {
-  if (key == NULL) {
-    ROS_ERROR("%s: Output key is null.", name_.c_str());
-    return false;
-  }
-
-  // Append the new odometry.
-  Pose3 new_odometry = ToGtsam(delta);
-
-  NonlinearFactorGraph new_factor;
-  Values new_value;
-  new_factor.add(MakeBetweenChordalFactor(new_odometry, ToGtsam(covariance)));
-
-  Pose3 last_pose = values_.at<Pose3>(key_-1);
-  new_value.insert(key_, last_pose.compose(new_odometry));
-
-  // Store this timestamp so that we can publish the pose graph later.
-  keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, stamp));
-
-  // Update ISAM2.
-  try {
-    isam_->update(new_factor, new_value);
-    has_changed_ = true;
-  } catch (...) {
-    // redirect cout to file
-    std::ofstream nfgFile;
-    std::string home_folder(getenv("HOME"));
-    nfgFile.open(home_folder + "/Desktop/factor_graph.txt");
-    std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
-    std::cout.rdbuf(nfgFile.rdbuf());
-
-    // save entire factor graph to file and debug if loop closure is correct
-    gtsam::NonlinearFactorGraph nfg = isam_->getFactorsUnsafe();
-    nfg.print();
-    nfgFile.close();
-
-    std::cout.rdbuf(coutbuf); //reset to standard output again
-
-    ROS_ERROR("ISAM update error in AddBetweenFactors");
-    throw;
-  }
-  
-  // Update class variables
-  values_ = isam_->calculateEstimate();
-
-  nfg_ = isam_->getFactorsUnsafe();
-
-  // Assign output and get ready to go again!
-  *key = key_++;
-
-  // We always add new poses, but only return true if the pose is far enough
-  // away from the last one (keyframes). This lets the caller know when they
-  // can add a laser scan.
-
-  // Is the odometry translation large enough to add a new keyframe to the graph?
-  odometry_ = odometry_.compose(new_odometry);
-  if (odometry_.translation().norm() > translation_threshold_kf_) {
-    odometry_ = Pose3::identity();
-    return true;
-  }
-
-  return false;
 }
 
 bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, 
@@ -574,9 +491,8 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
 
   // Change the process according to whether the uwb anchor is observed for the first time or not
   if (!values_.exists(uwb_key)) {
-
-    gtsam::Values linPoint = isam_->getLinearizationPoint();
-    nfg_ = isam_->getFactorsUnsafe();
+    gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
+    nfg_ = pgo_solver_->getFactorsUnsafe();
     double cost; // for debugging
 
     NonlinearFactorGraph new_factor;
@@ -627,51 +543,12 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
     try {
       ROS_INFO("Optimizing uwb-based loop closure, iteration");
       gtsam::Values result;
+      pgo_solver_->update(new_factor, new_values);
+      result = pgo_solver_->calculateEstimate();
+      nfg_ = NonlinearFactorGraph(pgo_solver_->getFactorsUnsafe());
 
-      // Switch based on optimizer input
-      switch (uwb_factor_optimizer_){
-        case 0 : // only do the above isam update 
-        {
-          // ISAM2
-          isam_->update(new_factor, new_values);
-          result = isam_->calculateEstimate();
-          nfg_ = NonlinearFactorGraph(isam_->getFactorsUnsafe());
-        }
-          break;
-        case 1 : 
-        {
-          // Levenberg Marquardt Optimizer
-          nfg_.add(new_factor); // add new factor (new values already inserted above)
-          ROS_INFO("Running LM optimization");
-          gtsam::LevenbergMarquardtParams params;
-          params.setVerbosityLM("SUMMARY");
-          result = gtsam::LevenbergMarquardtOptimizer(nfg_, linPoint, params).optimize();
-        }
-          break;
-        default : 
-        {
-          // Error
-          ROS_INFO_STREAM("ERROR, wrong optimizer option");
-          // TODO handle the error
-        }
-      }
-
-      ROS_INFO_STREAM("initial error = " << nfg_.error(linPoint));
-      ROS_INFO_STREAM("final error = " << nfg_.error(result));
-      
-      // ----------------------------------------------
-      #ifndef SOLVER
-      // Create the ISAM2 solver.
-      ISAM2Params parameters;
-      parameters.relinearizeSkip = relinearize_skip_;
-      parameters.relinearizeThreshold = relinearize_threshold_;
-      isam_.reset(new ISAM2(parameters));
-      #endif
-      #ifdef SOLVER
-      isam_.reset(new GenericSolver());
-      #endif
-      // Update with the new graph
-      isam_->update(nfg_,result); 
+      ROS_INFO_STREAM("initial cost = " << nfg_.error(linPoint));
+      ROS_INFO_STREAM("final cost = " << nfg_.error(result));
 
       // publish 
       uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
@@ -680,24 +557,26 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       values_ = result;//
 
       // INFO stream new cost
-      linPoint = isam_->getLinearizationPoint();
+      linPoint = pgo_solver_->getLinearizationPoint();
       cost = nfg_.error(linPoint);
-      ROS_INFO_STREAM("Error at linearization point (after adding UWB RangeFactor): " << cost);
+      ROS_INFO_STREAM(
+          "Cost at linearization point (after adding UWB RangeFactor): "
+          << cost);
 
       PublishPoseGraph(false);
 
       return true;
     }
     catch (...) {
-      ROS_ERROR("An error occurred while adding a factor");
+      ROS_ERROR("An ERROR occurred while adding a factor");
       throw;
     }
   }
   else {
     // Add a RangeFactor when the UWB is already registered in the pose graph.
 
-    gtsam::Values linPoint = isam_->getLinearizationPoint();
-    nfg_ = isam_->getFactorsUnsafe();
+    gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
+    nfg_ = pgo_solver_->getFactorsUnsafe();
 
     double cost; // for debugging
 
@@ -732,65 +611,29 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
       ROS_INFO_STREAM("Optimizing uwb-based loop closure, iteration");
       gtsam::Values result;
 
-      // Switch based on optimizer input
-      switch (uwb_factor_optimizer_){
-        case 0 : // only do the above isam update 
-        {
-          // ISAM2
-          isam_->update(new_factor, Values());
-          result = isam_->calculateEstimate();
-          nfg_ = NonlinearFactorGraph(isam_->getFactorsUnsafe());
-        }
-          break;
-        case 1 : 
-        {
-          // Levenberg Marquardt Optimizer
-          nfg_.add(new_factor); // add new factor (new values already inserted above)
-          ROS_INFO_STREAM("Running LM optimization");
-          gtsam::LevenbergMarquardtParams params;
-          params.setVerbosityLM("SUMMARY");
-          result = gtsam::LevenbergMarquardtOptimizer(nfg_, linPoint, params).optimize();
-        }
-          break;
-        default : 
-        {
-          // Error
-          ROS_INFO_STREAM("ERROR, wrong optimizer option");
-          // TODO: handle the error
-        }
-      }
+      pgo_solver_->update(new_factor, Values());
+      result = pgo_solver_->calculateEstimate();
+      nfg_ = NonlinearFactorGraph(pgo_solver_->getFactorsUnsafe());
 
-      ROS_INFO_STREAM("initial error = " << nfg_.error(linPoint));
-      ROS_INFO_STREAM("final error = " << nfg_.error(result));
-
-      // ----------------------------------------------
-      #ifndef SOLVER
-      // Create the ISAM2 solver.
-      ISAM2Params parameters;
-      parameters.relinearizeSkip = relinearize_skip_;
-      parameters.relinearizeThreshold = relinearize_threshold_;
-      isam_.reset(new ISAM2(parameters));
-      #endif
-      #ifdef SOLVER
-      isam_.reset(new GenericSolver());
-      #endif
-      // Update with the new graph
-      isam_->update(nfg_,result); 
+      ROS_INFO_STREAM("initial cost = " << nfg_.error(linPoint));
+      ROS_INFO_STREAM("final cost = " << nfg_.error(result));
 
       // Update values
       values_ = result;//
 
       // INFO stream new cost
-      linPoint = isam_->getLinearizationPoint();
+      linPoint = pgo_solver_->getLinearizationPoint();
       cost = nfg_.error(linPoint);
-      ROS_INFO_STREAM("Error at linearization point (after adding UWB RangeFactor): " << cost);
+      ROS_INFO_STREAM(
+          "Cost at linearization point (after adding UWB RangeFactor): "
+          << cost);
 
       PublishPoseGraph(false);
 
       return true;
     }
     catch (...) {
-      ROS_ERROR("An error occurred while manually adding a factor.");
+      ROS_ERROR("An ERROR occurred while manually adding a factor.");
       throw;
     }
   }
@@ -812,8 +655,8 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
-  gtsam::Values linPoint = isam_->getLinearizationPoint();
-  nfg_ = isam_->getFactorsUnsafe();
+  gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
   double cost; // for debugging
 
   NonlinearFactorGraph new_factor;
@@ -847,50 +690,12 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     ROS_INFO_STREAM("Optimizing uwb-based loop closure, iteration");
     gtsam::Values result;
 
-    // Switch based on optimizer input
-    switch (uwb_factor_optimizer_){
-      case 0 : // only do the above isam update 
-      {
-        // ISAM2
-        isam_->update(new_factor, new_values);
-        result = isam_->calculateEstimate();
-        nfg_ = NonlinearFactorGraph(isam_->getFactorsUnsafe());
-      }
-        break;
-      case 1 : 
-      {
-        // Levenberg Marquardt Optimizer
-        nfg_.add(new_factor); // add new factor (new values already inserted above)
-        ROS_INFO("Running LM optimization");
-        gtsam::LevenbergMarquardtParams params;
-        params.setVerbosityLM("SUMMARY");
-        result = gtsam::LevenbergMarquardtOptimizer(nfg_, linPoint, params).optimize();
-      }
-        break;
-      default : 
-      {
-        // Error
-        ROS_INFO_STREAM("ERROR, wrong optimizer option");
-        // TODO handle the error
-      }
-    }
+    pgo_solver_->update(new_factor, new_values);
+    result = pgo_solver_->calculateEstimate();
+    nfg_ = NonlinearFactorGraph(pgo_solver_->getFactorsUnsafe());
 
-    ROS_INFO_STREAM("initial error = " << nfg_.error(linPoint));
-    ROS_INFO_STREAM("final error = " << nfg_.error(result));
-    
-    // ----------------------------------------------
-    #ifndef SOLVER
-    // Create the ISAM2 solver.
-    ISAM2Params parameters;
-    parameters.relinearizeSkip = relinearize_skip_;
-    parameters.relinearizeThreshold = relinearize_threshold_;
-    isam_.reset(new ISAM2(parameters));
-    #endif
-    #ifdef SOLVER
-    isam_.reset(new GenericSolver());
-    #endif
-    // Update with the new graph
-    isam_->update(nfg_,result); 
+    ROS_INFO_STREAM("initial cost = " << nfg_.error(linPoint));
+    ROS_INFO_STREAM("final cost = " << nfg_.error(result));
 
     // publish 
     uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
@@ -899,16 +704,17 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     values_ = result;//
 
     // INFO stream new cost
-    linPoint = isam_->getLinearizationPoint();
+    linPoint = pgo_solver_->getLinearizationPoint();
     cost = nfg_.error(linPoint);
-    ROS_INFO_STREAM("Error at linearization point (after adding UWB RangeFactor): " << cost);
+    ROS_INFO_STREAM(
+        "Cost at linearization point (after adding UWB RangeFactor): " << cost);
 
     PublishPoseGraph();
 
     return true;
   }
   catch (...) {
-    ROS_ERROR("An error occurred while manually adding a factor.");
+    ROS_ERROR("An ERROR occurred while manually adding a factor.");
     throw;
   }
 
@@ -976,8 +782,8 @@ bool LaserLoopClosure::FindLoopClosures(
   ROS_INFO("STARTING FindLoopCLosures...");
 
   // Update backups
-  nfg_backup_ = isam_->getFactorsUnsafe();
-  values_backup_ = isam_->getLinearizationPoint();
+  nfg_backup_ = pgo_solver_->getFactorsUnsafe();
+  values_backup_ = pgo_solver_->getLinearizationPoint();
 
   // To track change in cost
   double cost;
@@ -1064,110 +870,65 @@ bool LaserLoopClosure::FindLoopClosures(
       // Found a potential loop closure! Perform ICP between the two scans to
       // determine if there really is a loop to close.
       const PointCloud::ConstPtr scan2 = keyed_scans_[other_key];
-      
-      if (!use_chordal_factor_) {
-        gu::Transform3 delta; // (Using BetweenFactor)
-        LaserLoopClosure::Mat66 covariance;
 
-        if (PerformICP(transformedPointCloud, scan2, pose1, pose2, &delta, &covariance, true, inputCoordinateFrame)) {
-          // Save the backup pose graph
-          if (save_posegraph_backup_ && !pose_graph_saved_) {
-            LaserLoopClosure::Save("posegraph_backup.zip");
-            pose_graph_saved_ = true;
-          } 
+      gu::Transform3 delta; // (Using BetweenFactor)
+      LaserLoopClosure::Mat66 covariance;
 
-          //Tell posegraph to update
-          has_changed_ = true;
-
-          // We found a loop closure. Add it to the pose graph.
-          NonlinearFactorGraph new_factor;
-          new_factor.add(BetweenFactor<Pose3>(key, other_key, ToGtsam(delta),
-                                              ToGtsam(covariance)));
-          
-          // Compute cost before optimization
-          NonlinearFactorGraph nfg_temp = isam_->getFactorsUnsafe();
-          nfg_temp.add(new_factor);
-          cost_old = nfg_temp.error(values_); // Assume values is up to date - no new values
-
-
-          // Optimization                                
-          isam_->update(new_factor, Values());
-          closed_loop = true;
-          last_closure_key_ = key;
-
-          // Get updated cost
-          nfg_temp = isam_->getFactorsUnsafe();
-          cost = nfg_temp.error(isam_->getLinearizationPoint());
-
-
-          // Store for visualization and output.
-          loop_edges_.push_back(std::make_pair(key, other_key));
-          closure_keys->push_back(other_key);
-
-          // Send an message notifying any subscribers that we found a loop
-          // closure and having the keys of the loop edge.
-          pose_graph_msgs::PoseGraphEdge edge;
-          edge.key_from = key;
-          edge.key_to = other_key;
-          edge.pose =  gr::ToRosPose(delta_icp_);
-          loop_closure_notifier_pub_.publish(edge);
-
-          // break if a successful loop closure 
-          // break;
+      if (PerformICP(transformedPointCloud,
+                     scan2,
+                     pose1,
+                     pose2,
+                     &delta,
+                     &covariance,
+                     true,
+                     inputCoordinateFrame)) {
+        // Save the backup pose graph
+        if (save_posegraph_backup_ && !pose_graph_saved_) {
+          LaserLoopClosure::Save("posegraph_backup.zip");
+          pose_graph_saved_ = true;
         }
       } else {
+        // We found a loop closure. Add it to the pose graph.
+        NonlinearFactorGraph new_factor;
+        new_factor.add(BetweenFactor<Pose3>(
+            key, other_key, ToGtsam(delta), ToGtsam(covariance)));
 
-        gu::Transform3 delta; // (Using BetweenChordalFactor)
-        LaserLoopClosure::Mat1212 covariance;
-        if (PerformICP(transformedPointCloud, scan2, pose1, pose2, &delta, &covariance, true, inputCoordinateFrame)) {
-          // Save the backup pose graph
-          if (save_posegraph_backup_ && !pose_graph_saved_) {
-            LaserLoopClosure::Save("posegraph_backup.zip");
-            pose_graph_saved_ = true;
-          }
+        // Compute cost before optimization
+        NonlinearFactorGraph nfg_temp = pgo_solver_->getFactorsUnsafe();
+        nfg_temp.add(new_factor);
+        cost_old = nfg_temp.error(
+            values_); // Assume values is up to date - no new values
 
-          // We found a loop closure. Add it to the pose graph.
-          NonlinearFactorGraph new_factor;
-          new_factor.add(gtsam::BetweenChordalFactor<Pose3>(key, other_key, ToGtsam(delta),
-                                              ToGtsam(covariance)));
-          
-          // Compute cost before optimization
-          NonlinearFactorGraph nfg_temp = isam_->getFactorsUnsafe();
-          nfg_temp.add(new_factor);
-          cost_old = nfg_temp.error(values_); // Assume values is up to date - no new values
+        // Optimization
+        pgo_solver_->update(new_factor, Values());
+        closed_loop = true;
+        last_closure_key_ = key;
 
-          // Optimization                                
-          isam_->update(new_factor, Values());
-          closed_loop = true;
-          last_closure_key_ = key;
+        // Get updated cost
+        nfg_temp = pgo_solver_->getFactorsUnsafe();
+        cost = nfg_temp.error(pgo_solver_->getLinearizationPoint());
 
-          // Get updated cost
-          nfg_temp = isam_->getFactorsUnsafe();
-          cost = nfg_temp.error(isam_->getLinearizationPoint());
+        // Store for visualization and output.
+        loop_edges_.push_back(std::make_pair(key, other_key));
+        closure_keys->push_back(other_key);
 
+        // Send an message notifying any subscribers that we found a loop
+        // closure and having the keys of the loop edge.
+        pose_graph_msgs::PoseGraphEdge edge;
+        edge.key_from = key;
+        edge.key_to = other_key;
+        edge.pose = gr::ToRosPose(delta_icp_);
+        loop_closure_notifier_pub_.publish(edge);
 
-          // Store for visualization and output.
-          loop_edges_.push_back(std::make_pair(key, other_key));
-          closure_keys->push_back(other_key);
-
-          // Send an message notifying any subscribers that we found a loop
-          // closure and having the keys of the loop edge.
-          pose_graph_msgs::PoseGraphEdge edge;
-          edge.key_from = key;
-          edge.key_to = other_key;
-          edge.pose =  gr::ToRosPose(delta_icp_);
-          loop_closure_notifier_pub_.publish(edge);
-
-          // break if a successful loop closure 
-          // break;
-        } // end of if ICP
-      }   // end of if use chordial
+        // break if a successful loop closure
+        // break;
+      }
 
       // Get values
-      values_ = isam_->calculateEstimate();
+      values_ = pgo_solver_->calculateEstimate();
 
       // Update factors
-      nfg_ = isam_->getFactorsUnsafe();
+      nfg_ = pgo_solver_->getFactorsUnsafe();
 
       // Check the change in pose to see if it exceeds criteria
       if (b_check_deltas_ && closed_loop) {
@@ -1234,24 +995,10 @@ bool LaserLoopClosure::SanityCheckForLoopClosure(double translational_sanity_che
     // Updating 
     values_ = values_backup_;
     nfg_ = nfg_backup_;
-    // Reset
-    #ifndef SOLVER
-    // Create the ISAM2 solver.
-    ISAM2Params parameters;
-    parameters.relinearizeSkip = relinearize_skip_;
-    parameters.relinearizeThreshold = relinearize_threshold_;
-    isam_.reset(new ISAM2(parameters));
-    #endif
-    #ifdef SOLVER
-    isam_.reset(new GenericSolver());
-    #endif
-    ROS_INFO("Reset isam");
-    isam_->update(nfg_, values_);
-    ROS_INFO("updated isam to reset");
 
     // Save updated values
-    values_ = isam_->calculateEstimate();
-    nfg_ = isam_->getFactorsUnsafe();
+    values_ = pgo_solver_->calculateEstimate();
+    nfg_ = pgo_solver_->getFactorsUnsafe();
     ROS_INFO("updated stored values");
 
     return false;
@@ -1397,13 +1144,6 @@ BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactorAtLoad(
     const LaserLoopClosure::Gaussian::shared_ptr& covariance) {
   odometry_edges_.push_back(std::make_pair(0, key_));
   return BetweenFactor<Pose3>(0, key_, delta, covariance);
-}
-
-gtsam::BetweenChordalFactor<Pose3> LaserLoopClosure::MakeBetweenChordalFactor(
-    const Pose3& delta, 
-    const LaserLoopClosure::Gaussian::shared_ptr& covariance) {
-  odometry_edges_.push_back(std::make_pair(key_-1, key_));
-  return gtsam::BetweenChordalFactor<Pose3>(key_-1, key_, delta, covariance);
 }
 
 bool LaserLoopClosure::PerformICP(PointCloud::Ptr& scan1,
@@ -1653,12 +1393,12 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
   // Thanks to Luca for providing the code
   ROS_INFO_STREAM("Adding factor between " << gtsam::DefaultKeyFormatter(key1) << " and " << gtsam::DefaultKeyFormatter(key2));
 
-  gtsam::Values linPoint = isam_->getLinearizationPoint();
-  nfg_ = isam_->getFactorsUnsafe();
+  gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
 
   // Update backups
-  nfg_backup_ = isam_->getFactorsUnsafe();
-  values_backup_ = isam_->getLinearizationPoint();
+  nfg_backup_ = pgo_solver_->getFactorsUnsafe();
+  values_backup_ = pgo_solver_->getLinearizationPoint();
 
   // Remove visualization of edge to be confirmed
   if (is_manual_loop_closure) {
@@ -1676,7 +1416,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
   gtsam::Values new_values;
 
   if (!is_manual_loop_closure && !linPoint.exists(key2)) {
-
+    // Adding an artifact
     if(!linPoint.exists(key1)) {
       ROS_WARN("AddFactor: Trying to add artifact factor, but key1 does not exist");
       return false;    
@@ -1689,80 +1429,44 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
                   new_values.at<Pose3>(key2).translation().vector().x(),
                   new_values.at<Pose3>(key2).translation().vector().y(),
                   new_values.at<Pose3>(key2).translation().vector().z());
-    
-
-    // // Set prior on rotation as a hack for 0 precision on rotation 
-    // gtsam::Vector6 prior_precisions; // inverse of variances
-    // prior_precisions.head<3>().setConstant(10.0); // rotation precision
-    // prior_precisions.tail<3>().setConstant(0.0); //
-    // static const gtsam::SharedNoiseModel& prior_noise =
-    // gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
-
-    // new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(key2, linPoint.at<gtsam::Pose3>(key1).compose(pose12), prior_noise));
   }
 
   linPoint.insert(new_values); // insert new values
 
-  if (!use_chordal_factor_) {
-    // Use BetweenFactor
-    // creating relative pose factor (also works for relative positions)
+  // Use BetweenFactor
+  // creating relative pose factor (also works for relative positions)
 
-    // create Information of measured
-    gtsam::Vector6 precisions; // inverse of variances
-    precisions.head<3>().setConstant(rot_precision); // rotation precision
-    precisions.tail<3>().setConstant(trans_precision); // std: 1/1000 ~ 30 m 1/100 - 10 m 1/25 - 5m
-    static const gtsam::SharedNoiseModel& noise =
-    gtsam::noiseModel::Diagonal::Precisions(precisions);
+  // create Information of measured
+  gtsam::Vector6 precisions;                       // inverse of variances
+  precisions.head<3>().setConstant(rot_precision); // rotation precision
+  precisions.tail<3>().setConstant(
+      trans_precision); // std: 1/1000 ~ 30 m 1/100 - 10 m 1/25 - 5m
+  static const gtsam::SharedNoiseModel& noise =
+      gtsam::noiseModel::Diagonal::Precisions(precisions);
 
-    gtsam::BetweenFactor<gtsam::Pose3> factor(key1, key2, pose12, noise);
+  gtsam::BetweenFactor<gtsam::Pose3> factor(key1, key2, pose12, noise);
 
-    if (is_manual_loop_closure) {
-      factor.print("manual loop closure factor \n");
-      cost = factor.error(linPoint);
-      ROS_INFO_STREAM("Cost of loop closure: " << cost); // 10^6 - 10^9 is ok (re-adjust covariances)  // cost = ( error )’ Omega ( error ), where the Omega = diag([0 0 0 1/25 1/25 1/25]). Error = [3 3 3] get an estimate for cost.
-      // TODO get the positions of each of the poses and compute the distance between them - see what the error should be - maybe a bug there
-    }
-    else {
-      factor.print("Artifact loop closure factor \n");
-      cost = factor.error(linPoint);
-      ROS_INFO_STREAM("Cost of artifact factor is: " << cost); 
-    }  
-
-    // add factor to factor graph
-    new_factor.add(factor);
-
-    // Store cost before optimization
-    cost_old = new_factor.error(linPoint);
-
-
+  if (is_manual_loop_closure) {
+    factor.print("manual loop closure factor \n");
+    cost = factor.error(linPoint);
+    ROS_INFO_STREAM(
+        "Cost of loop closure: "
+        << cost); // 10^6 - 10^9 is ok (re-adjust covariances)  // cost = (
+                  // error )’ Omega ( error ), where the Omega = diag([0 0 0
+                  // 1/25 1/25 1/25]). Error = [3 3 3] get an estimate for cost.
+    // TODO get the positions of each of the poses and compute the distance
+    // between them - see what the error should be - maybe a bug there
   } else {
-    // Use BetweenChordalFactor  
-    gtsam::Vector12 precisions; 
-    precisions.head<9>().setConstant(rot_precision); // rotation precision 
-    precisions.tail<3>().setConstant(trans_precision);
-    static const gtsam::SharedNoiseModel& noise = 
-    gtsam::noiseModel::Diagonal::Precisions(precisions);
- 
-    gtsam::BetweenChordalFactor<gtsam::Pose3> factor(key1, key2, pose12, noise);
-
-    if (is_manual_loop_closure) {
-      factor.print("manual loop closure factor \n");
-      cost = factor.error(linPoint);
-      ROS_INFO_STREAM("Cost of loop closure: " << cost); // 10^6 - 10^9 is ok (re-adjust covariances)  // cost = ( error )’ Omega ( error ), where the Omega = diag([0 0 0 1/25 1/25 1/25]). Error = [3 3 3] get an estimate for cost.
-      // TODO get the positions of each of the poses and compute the distance between them - see what the error should be - maybe a bug there
-    }
-    else {
-      factor.print("Artifact loop closure factor \n");
-      cost = factor.error(linPoint);
-      ROS_INFO_STREAM("Cost of artifact factor is: " << cost); 
-    }  
-
-    // add factor to factor graph
-    new_factor.add(factor);
-
-    // Store cost before optimization
-    cost_old = new_factor.error(linPoint);
+    factor.print("Artifact loop closure factor \n");
+    cost = factor.error(linPoint);
+    ROS_INFO_STREAM("Cost of artifact factor is: " << cost);
   }
+
+  // add factor to factor graph
+  new_factor.add(factor);
+
+  // Store cost before optimization
+  cost_old = new_factor.error(linPoint);
 
   // optimize
   try {
@@ -1773,82 +1477,16 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     }
     gtsam::Values result;
 
-    // TODO - loop over optimizers?
-    // TODO using strings or enum rather than ints
-    // Switch based on optimizer input
-    switch (loop_closure_optimizer_){
-      case 0 : // only do the above isam update 
-      {
-        // ISAM2
-        isam_->update(new_factor, new_values);
-        result = isam_->calculateEstimate();
-        nfg_ = NonlinearFactorGraph(isam_->getFactorsUnsafe());
-      }
-        break;
-      case 1 : 
-      {
-        // Levenberg Marquardt Optimizer
-        nfg_.add(new_factor); // add new factor (new values already inserted above)
-        std::cout << "Running LM optimization" << std::endl;
-        gtsam::LevenbergMarquardtParams params;
-        params.setVerbosityLM("SUMMARY");
-        result = gtsam::LevenbergMarquardtOptimizer(nfg_, linPoint, params).optimize();
-      }
-        break;
-      case 2 : 
-      {
-        // Dogleg Optimizer
-        std::cout << "Running Dogleg optimization" << std::endl;
-        nfg_.add(new_factor);
-        result = gtsam::DoglegOptimizer(nfg_, linPoint).optimize();
-      }
-        break;
-      case 3 : 
-      {
-        // Gauss Newton Optimizer
-        nfg_.add(new_factor); // add new factor (new values already inserted above)
-        std::cout << "Running Gauss Newton optimization" << std::endl;
-        gtsam::GaussNewtonParams params;
-        params.setVerbosity("ERROR");
-        result = gtsam::GaussNewtonOptimizer(nfg_, linPoint, params).optimize();
-      }
-        break;
-      default : 
-      {
-        // Error
-        ROS_INFO_STREAM("ERROR, wrong optimizer option");
-        // TODO handle the error
-      }
-    }
-    std::cout << "initial error = " << nfg_.error(linPoint) << std::endl;
-    std::cout << "final error = " << nfg_.error(result) << std::endl;
+    pgo_solver_->update(new_factor, new_values);
+    result = pgo_solver_->calculateEstimate();
+    nfg_ = NonlinearFactorGraph(pgo_solver_->getFactorsUnsafe());
 
-    
-    // ----------------------------------------------
-    #ifndef SOLVER
-    // Create the ISAM2 solver.
-    ISAM2Params parameters;
-    parameters.relinearizeSkip = relinearize_skip_;
-    parameters.relinearizeThreshold = relinearize_threshold_;
-    isam_.reset(new ISAM2(parameters));
-    #endif
-    #ifdef SOLVER
-    isam_.reset(new GenericSolver());
-    #endif
-    // Update with the new graph
-    isam_->update(nfg_,result); 
+    std::cout << "initial cost = " << nfg_.error(linPoint) << std::endl;
+    std::cout << "final cost = " << nfg_.error(result) << std::endl;
 
     if (is_manual_loop_closure) {
       // Store for visualization and output.
       loop_edges_.push_back(std::make_pair(key1, key2));
-
-      // Send an message notifying any subscribers that we found a loop
-      // closure and having the keys of the loop edge.
-      pose_graph_msgs::PoseGraphEdge edge;
-      edge.key_from = key1;
-      edge.key_to = key2;
-      edge.pose =  gr::ToRosPose(gu::Transform3::Identity());
-      loop_closure_notifier_pub_.publish(edge);
 
       // Store manual loop keys to not interfere with batch loop closure.
       manual_loop_edges_.push_back(std::make_pair(key1, key2));
@@ -1859,13 +1497,22 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       artifact_edges_.push_back(std::make_pair(key1, key2));
     }
 
+    // Send an message notifying any subscribers that we found a loop
+    // closure and having the keys of the loop edge.
+    pose_graph_msgs::PoseGraphEdge edge;
+    edge.key_from = key1;
+    edge.key_to = key2;
+    edge.pose = gr::ToRosPose(ToGu(pose12));
+    loop_closure_notifier_pub_.publish(edge);
+
     // Update values
     values_ = result;//
 
     // INFO stream new cost
-    linPoint = isam_->getLinearizationPoint();
+    linPoint = pgo_solver_->getLinearizationPoint();
     cost = nfg_.error(linPoint);
-    ROS_INFO_STREAM("iSAM2 Error at linearization point (after loop closure): " << cost); // 10^6 - 10^9 is ok (re-adjust covariances) 
+    ROS_INFO_STREAM(
+        "Solver cost at linearization point (after loop closure): " << cost);
 
     // Check the change in pose to see if it exceeds criteria
     if (b_check_deltas_){
@@ -1873,13 +1520,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       bool check_result = SanityCheckForLoopClosure(translational_sanity_check_lc_, cost_old, cost);
     }
 
-    // // Publish
+    // flag to note change in graph
     has_changed_ = true;
-    PublishPoseGraph();
 
-    return true; //result.getVariablesReeliminated() > 0;
+    return true;
   } catch (...) {
-    ROS_ERROR("An error occurred while manually adding a factor to iSAM2.");
+    ROS_ERROR(
+        "An ERROR occurred while manually adding a factor to the PGO solver.");
     throw;
   }
 }
@@ -1893,41 +1540,24 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
     return false; 
   }
 
-  // 1. Get factor graph 
-  NonlinearFactorGraph nfg = isam_->getFactorsUnsafe();
+  // 1. Get factor graph
+  NonlinearFactorGraph nfg = pgo_solver_->getFactorsUnsafe();
   // 2. Search for the two keys
   gtsam::FactorIndices factorsToRemove;
   for (size_t slot = 0; slot < nfg.size(); ++slot) {
     const gtsam::NonlinearFactor::shared_ptr& f = nfg[slot];
     if (f) {
+      boost::shared_ptr<gtsam::BetweenFactor<Pose3>> pose3Between =
+          boost::dynamic_pointer_cast<gtsam::BetweenFactor<Pose3>>(nfg[slot]);
 
-      if (!use_chordal_factor_) {
-        boost::shared_ptr<gtsam::BetweenFactor<Pose3> > pose3Between =
-              boost::dynamic_pointer_cast<gtsam::BetweenFactor<Pose3> >(nfg[slot]);
-
-        if (pose3Between) {
-          if ((pose3Between->key1() == key1 && pose3Between->key2() == key2) ||
-              (pose3Between->key1() == key2 && pose3Between->key2() == key1)) {
-            factorsToRemove.push_back(slot);
-            nfg[slot]->print("");
-          }
-        }
-
-      } else { // using BetweenChordalFactor
-        boost::shared_ptr<gtsam::BetweenChordalFactor<Pose3> > pose3Between =
-              boost::dynamic_pointer_cast<gtsam::BetweenChordalFactor<Pose3> >(nfg[slot]);
-
-        if (pose3Between) {
-          if ((pose3Between->key1() == key1 && pose3Between->key2() == key2) ||
-              (pose3Between->key1() == key2 && pose3Between->key2() == key1)) {
-            factorsToRemove.push_back(slot);
-            nfg[slot]->print("");
-          }
+      if (pose3Between) {
+        if ((pose3Between->key1() == key1 && pose3Between->key2() == key2) ||
+            (pose3Between->key1() == key2 && pose3Between->key2() == key1)) {
+          factorsToRemove.push_back(slot);
+          nfg[slot]->print("");
         }
       }
-
     }
-
   }
 
   if (factorsToRemove.size() == 0) {
@@ -1952,11 +1582,18 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
   }
 
   // 3. Remove factors and update
-  std::cout << "Before remove update" << std::endl; 
-  isam_->update(gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove, is_batch_loop_closure);
+  std::cout << "Before remove update" << std::endl;
+  if (is_batch_loop_closure) {
+    // Only updating the factor graph to remove factors
+    pgo_solver_->removeFactorsNoUpdate(factorsToRemove);
+  } else {
+    // Running update to also do the optimization
+    pgo_solver_->update(
+        gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove);
+  }
 
   // Update values
-  values_ = isam_->calculateEstimate();
+  values_ = pgo_solver_->calculateEstimate();
 
   // Publish
   has_changed_ = true;
@@ -2042,7 +1679,7 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
   const boost::filesystem::path directory(path);
   boost::filesystem::create_directory(directory);
 
-  writeG2o(isam_->getFactorsUnsafe(), values_, path + "/graph.g2o");
+  writeG2o(pgo_solver_->getFactorsUnsafe(), values_, path + "/graph.g2o");
   ROS_INFO("Saved factor graph as a g2o file.");
 
   // keys.csv stores factor key, point cloud filename, and time stamp
@@ -2199,15 +1836,11 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   nfg_ = *gv.first;
   values_ = *gv.second;
 
-  #ifndef SOLVER
-  ISAM2Params parameters;
-  parameters.relinearizeSkip = relinearize_skip_;
-  parameters.relinearizeThreshold = relinearize_threshold_;
-  isam_.reset(new ISAM2(parameters));
-  #endif
-  #ifdef SOLVER
-  isam_.reset(new GenericSolver());
-  #endif
+  std::vector<char> special_symbs{'l', 'u'}; // for artifacts
+  OutlierRemoval* pcm =
+      new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
+  pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  pgo_solver_->print();
 
   const LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
@@ -2218,7 +1851,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     return false;
   }
   nfg_.add(gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
-  isam_->update(nfg_, values_); 
+  pgo_solver_->update(nfg_, values_);
 
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
 
@@ -2559,73 +2192,6 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
   }
 }
 
-GenericSolver::GenericSolver(): 
-  nfg_gs_(gtsam::NonlinearFactorGraph()),
-  values_gs_(gtsam::Values()) {
-  
-  std::cout << "instantiated generic solver." << std::endl; 
-}
-
-void GenericSolver::update(gtsam::NonlinearFactorGraph nfg, 
-                           gtsam::Values values, 
-                           gtsam::FactorIndices factorsToRemove,
-                           bool is_batch_loop) {
-  // remove factors
-  for (size_t index : factorsToRemove) {
-    nfg_gs_[index].reset();
-  }
-  if (is_batch_loop){
-    return;
-  }
-
-  // add new values and factors
-  nfg_gs_.add(nfg);
-  values_gs_.insert(values);
-  bool do_optimize = true; 
-
-  // print number of loop closures
-  // std::cout << "number of loop closures so far: " << nfg_gs_.size() - values_gs_.size() << std::endl; 
-
-  if (values.size() > 1) {ROS_WARN("Unexpected behavior: number of update poses greater than one.");}
-
-  if (nfg.size() > 1) {ROS_WARN("Unexpected behavior: number of update factors greater than one.");}
-
-  if (nfg.size() == 0 && values.size() > 0) {ROS_ERROR("Unexpected behavior: added values but no factors.");}
-
-  // Do not optimize for just odometry additions 
-  // odometry values would not have prefix 'l' unlike artifact values
-  // TODO change this for handling more node types (i.e. uwbs)
-  if (nfg.size() == 1 && values.size() == 1) {
-    const gtsam::Symbol symb(values.keys()[0]); 
-    if (symb.chr() != 'l') {do_optimize = false;}
-  }
-
-  // nothing added so no optimization 
-  if (nfg.size() == 0 && values.size() == 0) {do_optimize = false;}
-
-  if (factorsToRemove.size() > 0) 
-    do_optimize = true;
-
-  if (do_optimize) {
-    ROS_INFO(">>>>>>>>>>>> Run Optimizer <<<<<<<<<<<<");
-    // optimize
-    #if SOLVER==1
-    gtsam::LevenbergMarquardtParams params;
-    params.setVerbosityLM("SUMMARY");
-    std::cout << "Running LM" << std::endl; 
-    params.diagonalDamping = true; 
-    values_gs_ = gtsam::LevenbergMarquardtOptimizer(nfg_gs_, values_gs_, params).optimize();
-    #elif SOLVER==2
-    gtsam::GaussNewtonParams params;
-    params.setVerbosity("ERROR");
-    std::cout << "Running GN" << std::endl; 
-    values_gs_ = gtsam::GaussNewtonOptimizer(nfg_gs_, values_gs_, params).optimize();
-    #elif SOLVER==3
-    // something
-    #endif
-  }
-}
-
 gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
   ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
 
@@ -2682,11 +2248,3 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_
   return values_.at<Pose3>(artifact_key).translation().vector();
 }
 
-/* TODO: 
--> AddBetweenFactor (and Chordal): rename to AddBetweenFactorOdometry 
--> AddBetweenChordalFactor: use ifdef to avoid copy paste 
--> move conversion functions to Utils.h
--> ideally laserLoopClosure should be split into LSLAMFrontEnd (icp), LSLAMBacknd (gtsam + posegraph)
--> AddFactor should be AddFactorManual (this will need a lot of cleaning after STIX) 
--> move all visualization functions to a Visualizer.h 
-*/ 

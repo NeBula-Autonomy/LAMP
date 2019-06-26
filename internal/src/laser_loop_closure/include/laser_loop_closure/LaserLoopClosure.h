@@ -44,7 +44,6 @@
 #include <geometry_utils/Matrix3x3.h>
 #include <geometry_utils/Transform3.h>
 #include <point_cloud_filter/PointCloudFilter.h>
-#include <laser_loop_closure/BetweenChordalFactor.h>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -82,31 +81,11 @@
 #include <map>
 #include <vector>
 
-// default is isam, 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
+#include "RobustPGO/RobustPGO.h" // RobustPGO (backend solver)
+#include "RobustPGO/pcm/pcm.h"
+
+// 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
 #define SOLVER 1
-
-class GenericSolver {
-public:
-  GenericSolver();
-  void update(gtsam::NonlinearFactorGraph nfg=gtsam::NonlinearFactorGraph(), 
-              gtsam::Values values=gtsam::Values(),
-              gtsam::FactorIndices factorsToRemove=gtsam::FactorIndices(),
-              bool is_batch_loop=false);
-
-  gtsam::Values calculateEstimate() { return values_gs_; }
-  gtsam::Values calculateBestEstimate() { return values_gs_; }
-  gtsam::Values getLinearizationPoint() { return values_gs_; }
-  gtsam::NonlinearFactorGraph getFactorsUnsafe(){ return nfg_gs_; }
-
-  void print() {
-    nfg_gs_.print("");
-    values_gs_.print("");
-  }
-
-private:
-  gtsam::Values values_gs_;
-  gtsam::NonlinearFactorGraph nfg_gs_;
-};
 
 struct ArtifactInfo {
   std::string id; // this corresponds to parent_id
@@ -139,10 +118,6 @@ class LaserLoopClosure {
   // AddKeyScanPair().
   bool AddBetweenFactor(const geometry_utils::Transform3& delta,
                         const Mat66& covariance, const ros::Time& stamp,
-                        unsigned int* key);
-
-  bool AddBetweenChordalFactor(const geometry_utils::Transform3& delta,
-                        const Mat1212& covariance, const ros::Time& stamp,
                         unsigned int* key);
   
   bool AddUwbFactor(const std::string uwb_id,
@@ -212,7 +187,9 @@ class LaserLoopClosure {
                  double trans_precision);
 
   // Removes the factor between the two keys from the pose graph.
-  bool RemoveFactor(unsigned int key1, unsigned int key2, bool is_batch_loop_closure);
+  bool RemoveFactor(unsigned int key1,
+                    unsigned int key2,
+                    bool is_batch_loop_closure = false);
 
   // Erase the posegraph
   bool ErasePosegraph();
@@ -253,8 +230,6 @@ class LaserLoopClosure {
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactor(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactorAtLoad(
-      const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
-  gtsam::BetweenChordalFactor<gtsam::Pose3> MakeBetweenChordalFactor(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
 
   // Perform ICP between two laser scans.
@@ -305,7 +280,6 @@ class LaserLoopClosure {
   bool save_posegraph_backup_;
   bool LAMP_recovery_;
   unsigned int keys_between_each_posegraph_backup_;
-  unsigned int loop_closure_optimizer_;
   unsigned int key_;
   unsigned int last_closure_key_;
   unsigned int relinearize_interval_;
@@ -326,9 +300,10 @@ class LaserLoopClosure {
   double laser_lc_trans_sigma_;
   unsigned int relinearize_skip_;
   double relinearize_threshold_;
-  bool use_chordal_factor_;
   bool publish_interactive_markers_;
-
+  std::vector<unsigned int> manual_loop_keys_;
+  double odom_threshold_;
+  double pw_threshold_;
 
   // Sanity check parameters
   bool b_check_deltas_; 
@@ -347,15 +322,9 @@ class LaserLoopClosure {
   std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
-  unsigned int uwb_factor_optimizer_;
 
-  // ISAM2 optimizer object, and best guess pose values.
-  #ifdef SOLVER
-  std::unique_ptr<GenericSolver> isam_;
-  #endif
-  #ifndef SOLVER
-  std::unique_ptr<gtsam::ISAM2> isam_;
-  #endif
+  // Optimizer object, and best guess pose values.
+  std::unique_ptr<RobustPGO> pgo_solver_;
 
   gtsam::NonlinearFactorGraph nfg_;
   gtsam::Values values_;
