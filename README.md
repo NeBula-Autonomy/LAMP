@@ -23,6 +23,7 @@ apt install libminizip-dev
 
 This package also requires [RobustPGO](https://github.com/MIT-SPARK/RobustPGO), specifically the `LAMP` branch. 
 ```bash
+git clone https://github.com/MIT-SPARK/RobustPGO.git
 cd RobustPGO
 git checkout LAMP
 mkdir build 
