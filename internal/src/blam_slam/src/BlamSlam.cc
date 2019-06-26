@@ -230,7 +230,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
     return true;
   }
 
-  // Get last node pose before doing artifact loop closure 
+  // Get last node pose before doing loop closure
   gu::Transform3 last_key_pose;
   last_key_pose = loop_closure_.GetLastPose();
 
@@ -735,7 +735,6 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     // No new loop closures - but was there a new key frame? If so, add new
     // points to the map.
     if (new_keyframe) {
-      // ROS_INFO("Updating with a new key frame");
       localization_.MotionUpdate(gu::Transform3::Identity());
       localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
       PointCloud::Ptr unused(new PointCloud);

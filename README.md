@@ -21,7 +21,7 @@ This package requires `minizip` to be available globally. It can be installed fr
 apt install libminizip-dev
 ```
 
-This package also requires [RobustPGO](https://github.com/MIT-SPARK/RobustPGO), specifically the `LAMP` branch. 
+This package also requires [RobustPGO](https://github.com/BenjaminMorrell/RobustPGO), specifically the `LAMP` branch. 
 ```bash
 cd RobustPGO
 git checkout LAMP

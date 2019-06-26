@@ -419,7 +419,6 @@ bool LaserLoopClosure::AddBetweenFactor(
 
   // Do sanity check on result
   bool b_accept_update;
-  ROS_INFO("Starting sanity check");
   if (b_check_deltas_ && values_backup_.exists(key_-1)){ // Only check if the values_backup has been stored (a loop closure has occured)
     ROS_INFO("Sanity checking output");
     b_accept_update = SanityCheckForLoopClosure(translational_sanity_check_odom_, cost_old, cost);
@@ -1417,7 +1416,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
   gtsam::Values new_values;
 
   if (!is_manual_loop_closure && !linPoint.exists(key2)) {
-
+    // Adding an artifact
     if(!linPoint.exists(key1)) {
       ROS_WARN("AddFactor: Trying to add artifact factor, but key1 does not exist");
       return false;    
@@ -1489,14 +1488,6 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       // Store for visualization and output.
       loop_edges_.push_back(std::make_pair(key1, key2));
 
-      // Send an message notifying any subscribers that we found a loop
-      // closure and having the keys of the loop edge.
-      pose_graph_msgs::PoseGraphEdge edge;
-      edge.key_from = key1;
-      edge.key_to = key2;
-      edge.pose =  gr::ToRosPose(gu::Transform3::Identity());
-      loop_closure_notifier_pub_.publish(edge);
-
       // Store manual loop keys to not interfere with batch loop closure.
       manual_loop_edges_.push_back(std::make_pair(key1, key2));
 
@@ -1506,14 +1497,22 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       artifact_edges_.push_back(std::make_pair(key1, key2));
     }
 
+    // Send an message notifying any subscribers that we found a loop
+    // closure and having the keys of the loop edge.
+    pose_graph_msgs::PoseGraphEdge edge;
+    edge.key_from = key1;
+    edge.key_to = key2;
+    edge.pose = gr::ToRosPose(ToGu(pose12));
+    loop_closure_notifier_pub_.publish(edge);
+
     // Update values
     values_ = result;//
 
     // INFO stream new cost
     linPoint = pgo_solver_->getLinearizationPoint();
     cost = nfg_.error(linPoint);
-    ROS_INFO_STREAM("Solver cost at linearization point (after loop closure): "
-                    << cost); // 10^6 - 10^9 is ok (re-adjust covariances)
+    ROS_INFO_STREAM(
+        "Solver cost at linearization point (after loop closure): " << cost);
 
     // Check the change in pose to see if it exceeds criteria
     if (b_check_deltas_){
@@ -1524,7 +1523,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     // flag to note change in graph
     has_changed_ = true;
 
-    return true; //result.getVariablesReeliminated() > 0;
+    return true;
   } catch (...) {
     ROS_ERROR(
         "An ERROR occurred while manually adding a factor to the PGO solver.");
