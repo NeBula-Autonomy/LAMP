@@ -5,6 +5,7 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
@@ -122,6 +123,17 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_,
   pose_graph_node_sub_ = nh.subscribe<pose_graph_msgs::PoseGraphNode>(
       "blam_slam/pose_graph_node", 10,
       &PoseGraphVisualizer::PoseGraphNodeCallback, this);
+  erase_posegraph_sub_ =
+      nh.subscribe<std_msgs::Bool>("blam_slam/erase_posegraph",
+                                   10,
+                                   &PoseGraphVisualizer::ErasePosegraphCallback,
+                                   this);
+
+  remove_factor_viz_sub_ = nh.subscribe<std_msgs::Bool>(
+      "blam_slam/remove_factor_viz",
+      10,
+      &PoseGraphVisualizer::RemoveFactorVizCallback,
+      this);
 
   artifact_sub_ = nh.subscribe("blam_slam/artifact_global",
                                10,
@@ -233,6 +245,38 @@ void PoseGraphVisualizer::PoseGraphNodeCallback(
 void PoseGraphVisualizer::PoseGraphEdgeCallback(
     const pose_graph_msgs::PoseGraphEdge::ConstPtr &msg) {
   odometry_edges_.emplace_back(std::make_pair(msg->key_from, msg->key_to));
+}
+
+void PoseGraphVisualizer::ErasePosegraphCallback(
+    const std_msgs::Bool::ConstPtr& msg) {
+  const bool erase_all = msg->data;
+
+  // This gets called at restart and load to initialize everything before
+  // loading the graph
+  if (erase_all == true) {
+    keyed_scans_.clear();
+    keyed_stamps_.clear();
+    stamps_keyed_.clear();
+
+    loop_edges_.clear();
+    odometry_edges_.clear();
+    if (publish_interactive_markers_) {
+      server.reset(new interactive_markers::InteractiveMarkerServer(
+          "interactive_node", "", false));
+    }
+  }
+}
+
+// Callback function to remove the visialization of the edge between factors
+void PoseGraphVisualizer::RemoveFactorVizCallback(
+    const std_msgs::Bool::ConstPtr& msg) {
+  const bool removefactor = msg->data;
+
+  // This gets called after remove factor, to remove the visualization of the
+  // edge between the nodes
+  if (removefactor == true) {
+    loop_edges_.clear();
+  }
 }
 
 void PoseGraphVisualizer::KeyedScanCallback(

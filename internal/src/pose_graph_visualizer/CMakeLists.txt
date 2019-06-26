@@ -28,6 +28,14 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(FILES HighlightEdge.srv HighlightNode.srv)
 generate_messages()
 
+catkin_package(
+  INCLUDE_DIRS include
+  LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS
+    roscpp
+    message_runtime
+)
+
 find_package(GTSAM REQUIRED)
 if (NOT GTSAM_FOUND)
   message(FATAL_ERROR "This program requires the GTSAM library.")

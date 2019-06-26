@@ -40,10 +40,9 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
-#include <interactive_markers/interactive_marker_server.h>
-#include <interactive_markers/menu_handler.h>
 
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -74,8 +73,6 @@ using gtsam::GraphAndValues;
 using gtsam::Vector3;
 using gtsam::Vector6;
 using gtsam::ISAM2GaussNewtonParams;
-
-boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
 
 LaserLoopClosure::LaserLoopClosure()
     : key_(), last_closure_key_(std::numeric_limits<int>::min()), tf_listener_(tf_buffer_) {
@@ -114,10 +111,10 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Should we turn loop closure checking on or off?
   if (!pu::Get("check_for_loop_closures", check_for_loop_closures_)) return false;
 
-  // Should we save a backup pointcloud?
+  // Should we save a backup posegraph?
   if (!pu::Get("save_posegraph_backup", save_posegraph_backup_)) return false;
 
-  // Should we save a backup pointcloud?
+  // Should we save a backup posegraph?
   if (!pu::Get("keys_between_each_posegraph_backup", keys_between_each_posegraph_backup_)) return false;
 
   // Optimizer selection
@@ -152,8 +149,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("artifact_rot_precision", artifact_rot_precision_)) return false; 
   if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false; 
   if (!pu::Get("use_chordal_factor", use_chordal_factor_))
-    return false;
-  if (!pu::Get("publish_interactive_markers", publish_interactive_markers_))
     return false;
 
   // Load ICP parameters.
@@ -238,12 +233,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Set the initial odometry.
   odometry_ = Pose3::identity();
 
-  // Initilize interactive marker server
-  if (publish_interactive_markers_) {
-    server.reset(new interactive_markers::InteractiveMarkerServer(
-        "interactive_node", "", false));
-  }
-
   return true;
 }
 
@@ -258,6 +247,11 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
       nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   keyed_scan_pub_ =
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+  erase_posegraph_pub_ =
+      nl.advertise<std_msgs::Bool>("erase_posegraph", 10, false);
+  remove_factor_viz_pub_ =
+      nl.advertise<std_msgs::Bool>("remove_factor_viz", 10, false);
+
   loop_closure_notifier_pub_ = nl.advertise<pose_graph_msgs::PoseGraphEdge>(
       "loop_closure_edge", 10, false);
 
@@ -307,6 +301,10 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
 
   nfg_ = isam_->getFactorsUnsafe();
 
+  // Notify PGV that the posegraph has changed
+  has_changed_ = true;
+
+  // Get ready with next key
   key_ = key_ + 1;
 
   return true;
@@ -352,6 +350,8 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
 
   nfg_ = isam_->getFactorsUnsafe();
 
+  // Notify PGV that the posegraph has changed
+  has_changed_ = true;
 
   return true;
 }
@@ -387,6 +387,7 @@ bool LaserLoopClosure::AddBetweenFactor(
   Values new_value;
   new_factor.add(MakeBetweenFactor(odometry_, ToGtsam(covariance)));
   // TODO Compose covariances at the same time as odometry
+
   gtsam::Symbol previous_key = key_-1;
   ROS_INFO("Checking for key %d",previous_key.key());
   Pose3 last_pose = values_.at<Pose3>(previous_key);
@@ -460,9 +461,6 @@ bool LaserLoopClosure::AddBetweenFactor(
   // Assign output and get ready to go again!
   *key = gtsam::Symbol (key_);
   key_ = key_ + 1;
-  ROS_INFO_STREAM("key value is... "
-                << gtsam::DefaultKeyFormatter(*key) << " key_ is: "
-                << gtsam::DefaultKeyFormatter(key_));
 
   // Reset odometry to identity
   odometry_ = Pose3::identity();
@@ -989,7 +987,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
   // Check that the key exists
   if (!values_.exists(key)) {
-    ROS_INFO_STREAM("does not exist in find loop closures... "<< gtsam::DefaultKeyFormatter(key));
+    ROS_WARN("Key %u does not exist in find loop closures", key);
     return false;
   }
 
@@ -1027,6 +1025,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
   for (const auto& keyed_pose : values_) {
     const gtsam::Symbol other_key = keyed_pose.key;
+
     if (closed_loop && b_only_allow_one_loop) {
       ROS_INFO("Found one loop with current scan, now exiting...");
       break;
@@ -1881,7 +1880,8 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     }
 
     // // Publish
-    // PublishPoseGraph();
+    has_changed_ = true;
+    PublishPoseGraph();
 
     return true; //result.getVariablesReeliminated() > 0;
   } catch (...) {
@@ -1940,7 +1940,23 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
     ROS_WARN("RemoveFactor: Factor not found between given keys");
     return false; 
   }
-  
+
+  // Remove the visual edge of the factor
+  for (int i = 0; i < loop_edges_.size();) {
+    if ((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) ||
+        (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)) {
+      // Remove the edge from LaserLoopClosure
+      loop_edges_.erase(loop_edges_.begin() + i);
+
+      // Send a message to posegraph visualizer that the edges must be updated
+      if (remove_factor_viz_pub_.getNumSubscribers() > 0) {
+        std_msgs::Bool empty_edge;
+        empty_edge.data = true;
+        remove_factor_viz_pub_.publish(empty_edge);
+      }
+    }
+  }
+
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl; 
   isam_->update(gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove, is_batch_loop_closure);
@@ -1949,6 +1965,7 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
   values_ = isam_->calculateEstimate();
 
   // Publish
+  has_changed_ = true;
   PublishPoseGraph();
 
   return true; //result.getVariablesReeliminated() > 0;
@@ -2014,12 +2031,16 @@ bool LaserLoopClosure::ErasePosegraph(){
   odometry_ = Pose3::identity();
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
-  
-  //Initilize interactive marker server
-  if (publish_interactive_markers_) {
-    server.reset(new interactive_markers::InteractiveMarkerServer(
-        "interactive_node", "", false));
+
+  // Send message to Pose graph visualizer that it needs to be erased
+  if (erase_posegraph_pub_.getNumSubscribers() > 0) {
+    std_msgs::Bool erase;
+    erase.data = true;
+    // Publish.
+    erase_posegraph_pub_.publish(erase);
   }
+
+  has_changed_ = true;
 } 
 
 bool LaserLoopClosure::Save(const std::string &zipFilename) const {
@@ -2042,7 +2063,6 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
   int i = 0;
   for (const auto &entry : keyed_scans_) {
     keys_file << entry.first << ",";
-    ROS_INFO_STREAM(entry.first);
     // save point cloud as binary PCD file
     const std::string pcd_filename = path + "/pc_" + std::to_string(i) + ".pcd";
     pcl::io::savePCDFile(pcd_filename, *entry.second, true);
@@ -2050,11 +2070,11 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
 
     ROS_INFO("Saved point cloud %d/%d.", i+1, (int) keyed_scans_.size());
     keys_file << pcd_filename << ",";
-    if (!values_.exists(gtsam::Symbol(entry.first))) {
+    if (!values_.exists(entry.first)) {
       ROS_WARN("Key,  %u, does not exist in Save", entry.first);
       return false;
     }
-    keys_file << keyed_stamps_.at(gtsam::Symbol(entry.first)).toNSec() << "\n";
+    keys_file << keyed_stamps_.at(entry.first).toNSec() << "\n";
     ++i;
   }
   keys_file.close();
@@ -2220,7 +2240,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     std::getline(info_file, keyStr, ',');
     if (keyStr.empty())
       break;
-    key_ = gtsam::Symbol(std::stoi(keyStr));
+    key_ = std::stoi(keyStr);
     std::getline(info_file, pcd_filename, ',');
     PointCloud::Ptr pc(new PointCloud);
     if (pcl::io::loadPCDFile(pcd_filename, *pc) == -1) {
@@ -2253,9 +2273,9 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
       std::getline(edge_file, edgeStr, ',');
       if (edgeStr.empty())
         break;
-      edge.first = static_cast<gtsam::Symbol>(std::stoi(edgeStr));
+      edge.first = static_cast<unsigned int>(std::stoi(edgeStr));
       std::getline(edge_file, edgeStr);
-      edge.second = static_cast<gtsam::Symbol>(std::stoi(edgeStr));
+      edge.second = static_cast<unsigned int>(std::stoi(edgeStr));
       odometry_edges_.emplace_back(edge);
     }
     edge_file.close();
@@ -2274,9 +2294,9 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
       std::getline(edge_file, edgeStr, ',');
       if (edgeStr.empty())
         break;
-      edge.first = static_cast<gtsam::Symbol>(std::stoi(edgeStr));
+      edge.first = static_cast<unsigned int>(std::stoi(edgeStr));
       std::getline(edge_file, edgeStr);
-      edge.second = static_cast<gtsam::Symbol>(std::stoi(edgeStr));
+      edge.second = static_cast<unsigned int>(std::stoi(edgeStr));
       loop_edges_.emplace_back(edge);
     }
     edge_file.close();
