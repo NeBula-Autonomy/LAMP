@@ -505,10 +505,18 @@ bool PoseGraphVisualizer::HighlightNodeService(
 bool PoseGraphVisualizer::HighlightEdgeService(
     pose_graph_visualizer::HighlightEdgeRequest &request,
     pose_graph_visualizer::HighlightEdgeResponse &response) {
+  unsigned char prefix_from = request.prefix_from[0];
+  unsigned int key_from = request.key_from;
+  gtsam::Symbol id_from (prefix_from,key_from);
+
+  unsigned char prefix_to = request.prefix_to[0]; 
+  unsigned int key_to = request.key_to;
+  gtsam::Symbol id_to (prefix_to,key_to);
+
   if (request.highlight) {
-    response.success = HighlightEdge(request.key_from, request.key_to);
+    response.success = HighlightEdge(id_from, id_to);
   } else {
-    UnhighlightEdge(request.key_from, request.key_to);
+    UnhighlightEdge(id_from, id_to);
     response.success = true;
   }
   return true;

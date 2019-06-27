@@ -226,7 +226,17 @@ bool BlamSlam::CreatePublishers(const ros::NodeHandle& n) {
 
 bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
                                 blam_slam::AddFactorResponse &response) {
-  // TODO - bring the service creation into this node?
+  
+  //Convert from string and int to gtsam::Symbol 
+  unsigned char prefix_from = request.prefix_from[0];
+  unsigned int key_from = request.key_from;
+  gtsam::Symbol id_from (prefix_from,key_from);
+
+  unsigned char prefix_to = request.prefix_to[0]; 
+  unsigned int key_to = request.key_to;
+  gtsam::Symbol id_to (prefix_to,key_to);
+  
+   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
     ROS_WARN("Cannot add factor because the request is not confirmed.");
     response.success = false;
@@ -242,8 +252,8 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   pose_from_to.print("Between pose is ");
 
   response.success = loop_closure_.AddManualLoopClosure(
-    static_cast<unsigned int>(request.key_from),
-    static_cast<unsigned int>(request.key_to),
+    static_cast<gtsam::Symbol>(id_from),
+    static_cast<gtsam::Symbol>(id_to),
     pose_from_to);
   response.confirm = false;
   if (response.success){
@@ -291,6 +301,17 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 
 bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                                    blam_slam::RemoveFactorResponse &response) {
+    
+  //Convert from string and int to gtsam::Symbol 
+  unsigned char prefix_from = request.prefix_from[0];
+  unsigned int key_from = request.key_from;
+  gtsam::Symbol id_from (prefix_from,key_from);
+
+  unsigned char prefix_to = request.prefix_to[0]; 
+  unsigned int key_to = request.key_to;
+  gtsam::Symbol id_to (prefix_to,key_to);
+
+
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
     ROS_WARN("Cannot remove factor because the request is not confirmed.");
@@ -299,8 +320,8 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
   }
   bool is_batch_loop_closure = false;
   response.success = loop_closure_.RemoveFactor(
-    static_cast<unsigned int>(request.key_from),
-    static_cast<unsigned int>(request.key_to),
+    static_cast<gtsam::Symbol>(id_from),
+    static_cast<gtsam::Symbol>(id_to),
     is_batch_loop_closure);
   if (response.success){
     std::cout << "removing factor from pose graph succeeded" << std::endl;

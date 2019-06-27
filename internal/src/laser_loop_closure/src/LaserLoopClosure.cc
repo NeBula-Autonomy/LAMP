@@ -478,7 +478,7 @@ bool LaserLoopClosure::AddBetweenFactor(
 
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
-    key_ = 10000;
+      key_ = gtsam::Symbol('b', 0);
 } 
 
 bool LaserLoopClosure::AddBetweenChordalFactor(
@@ -1300,7 +1300,7 @@ bool LaserLoopClosure::GetMaximumLikelihoodPoints(PointCloud* points) {
   }
 }
 
-unsigned int LaserLoopClosure::GetKey() const {
+gtsam::Symbol LaserLoopClosure::GetKey() const {
   return key_;
 }
 
@@ -2240,7 +2240,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     std::getline(info_file, keyStr, ',');
     if (keyStr.empty())
       break;
-    key_ = std::stoi(keyStr);
+    key_ = gtsam::Symbol (std::stoull(keyStr));
     std::getline(info_file, pcd_filename, ',');
     PointCloud::Ptr pc(new PointCloud);
     if (pcl::io::loadPCDFile(pcd_filename, *pc) == -1) {
@@ -2273,9 +2273,9 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
       std::getline(edge_file, edgeStr, ',');
       if (edgeStr.empty())
         break;
-      edge.first = static_cast<unsigned int>(std::stoi(edgeStr));
+      edge.first = static_cast<gtsam::Key>(std::stoull(edgeStr));
       std::getline(edge_file, edgeStr);
-      edge.second = static_cast<unsigned int>(std::stoi(edgeStr));
+      edge.second = static_cast<gtsam::Key>(std::stoull(edgeStr));
       odometry_edges_.emplace_back(edge);
     }
     edge_file.close();
@@ -2294,9 +2294,9 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
       std::getline(edge_file, edgeStr, ',');
       if (edgeStr.empty())
         break;
-      edge.first = static_cast<unsigned int>(std::stoi(edgeStr));
+      edge.first = static_cast<gtsam::Key>(std::stoull(edgeStr));
       std::getline(edge_file, edgeStr);
-      edge.second = static_cast<unsigned int>(std::stoi(edgeStr));
+      edge.second = static_cast<gtsam::Key>(std::stoull(edgeStr));
       loop_edges_.emplace_back(edge);
     }
     edge_file.close();

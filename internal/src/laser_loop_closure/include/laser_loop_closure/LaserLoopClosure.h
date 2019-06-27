@@ -169,7 +169,7 @@ class LaserLoopClosure {
 
   // Get the most recent pose in the pose graph.
   geometry_utils::Transform3 GetLastPose() const;
-  unsigned int GetKey() const;
+  gtsam::Symbol GetKey() const;
 
   bool AddFactorAtRestart(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);
   bool AddFactorAtLoad(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);
