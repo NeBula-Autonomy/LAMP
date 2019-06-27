@@ -152,6 +152,8 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
   if (!pu::Get("b_use_uwb", b_use_uwb_)) return false;
+  if (!pu::Get("b_use_uwb_key_based", b_use_uwb_key_based_)) return false;
+  if (!pu::Get("b_use_uwb_timer_based", b_use_uwb_timer_based_)) return false;
   if (!pu::Get("uwb_skip_measurement_number", uwb_skip_measurement_number_)) return false;
   if (!pu::Get("uwb_update_period", uwb_update_period_)) return false;
 
@@ -594,7 +596,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 }
 
 void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
-  if (!b_use_uwb_) {
+  if (!b_use_uwb_timer_based_) {
     return;
   }
 
@@ -752,6 +754,26 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     base_frame_pcld.header.frame_id = base_frame_id_;
     base_frame_pcld_pub_.publish(base_frame_pcld);
   }
+
+  // Process UWB measurement data
+  if (b_use_uwb_key_based_) {
+    for (auto itr = uwb_id2data_hash_.begin(); itr != uwb_id2data_hash_.end(); itr++) {
+      std::string uwb_id = itr->first;
+      UwbMeasurementInfo data = itr->second;
+      if (!data.range.empty()) {
+        if (data.range.size() > uwb_skip_measurement_number_) {
+          ProcessUwbRangeData(uwb_id);
+        }
+        else {
+          ROS_INFO("Number of range measurement is NOT enough");
+        }
+        data.range.clear();
+        data.time_measured.clear();
+        data.robot_position.clear();
+      }
+    }
+  }
+
 }
 
 bool BlamSlam::RestartService(blam_slam::RestartRequest &request,

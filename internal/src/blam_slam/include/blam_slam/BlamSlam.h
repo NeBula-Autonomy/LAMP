@@ -196,6 +196,8 @@ class BlamSlam {
   int largest_artifact_id_; 
   bool use_artifact_loop_closure_;
   bool b_use_uwb_;
+  bool b_use_uwb_key_based_;
+  bool b_use_uwb_timer_based_;
 
   // Object IDs
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
