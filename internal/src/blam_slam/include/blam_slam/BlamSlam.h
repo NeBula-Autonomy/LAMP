@@ -203,6 +203,8 @@ class BlamSlam {
   // UWB
   std::vector<std::string> uwb_id_list_all_;
   std::vector<std::string> uwb_id_list_drop_;
+  unsigned int uwb_skip_key_number_;
+  double uwb_update_period_;
   std::map<std::string, UwbMeasurementInfo> uwb_id2data_hash_;
 
   // Class objects (BlamSlam is a composite class).

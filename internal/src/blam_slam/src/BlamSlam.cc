@@ -151,8 +151,9 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
-  if (!pu::Get("b_use_uwb", b_use_uwb_))
-    return false;
+  if (!pu::Get("b_use_uwb", b_use_uwb_)) return false;
+  if (!pu::Get("uwb_skip_key_number", uwb_skip_key_number_)) return false;
+  if (!pu::Get("uwb_update_period", uwb_update_period_)) return false;
 
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
@@ -601,8 +602,8 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     UwbMeasurementInfo data = itr->second;
     if (!data.range.empty()) {
       auto time_diff = ros::Time::now() - data.time_measured.back();
-      if (time_diff.toSec() > 20.0) {
-        if (data.range.size() > 4) {
+      if (time_diff.toSec() > uwb_update_period_) {
+        if (data.range.size() > uwb_skip_key_number_) {
           ProcessUwbRangeData(itr->first);
         }
         else {

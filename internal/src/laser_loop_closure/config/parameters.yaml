@@ -84,3 +84,9 @@ uwb_range_compensation: 0
 
 # Optimizer selection for UWB factors: 0 - ISAM2, 1 - LM
 uwb_factor_optimizer: 1
+
+# Number of pose keys to wait to add UWB factors
+uwb_skip_key_number: 5
+
+# Period for checking whether there are enough number of range measurements or not [sec]
+uwb_update_period: 20.0
