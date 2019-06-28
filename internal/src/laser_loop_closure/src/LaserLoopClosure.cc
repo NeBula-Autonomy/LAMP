@@ -887,7 +887,7 @@ bool LaserLoopClosure::FindLoopClosures(
           LaserLoopClosure::Save("posegraph_backup.zip");
           pose_graph_saved_ = true;
         }
-      } else {
+        
         // We found a loop closure. Add it to the pose graph.
         NonlinearFactorGraph new_factor;
         new_factor.add(BetweenFactor<Pose3>(
