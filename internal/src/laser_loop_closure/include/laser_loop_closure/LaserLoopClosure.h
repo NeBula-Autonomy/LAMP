@@ -124,6 +124,7 @@ struct UwbMeasurementInfo {
   std::vector<ros::Time> time_measured;
   std::vector<double> range;
   std::vector<Eigen::Vector3d> robot_position;
+  std::vector<gtsam::Key> nearest_pose_key;
 };
 
 class LaserLoopClosure {

@@ -206,6 +206,7 @@ class BlamSlam {
   std::vector<std::string> uwb_id_list_all_;
   std::vector<std::string> uwb_id_list_drop_;
   unsigned int uwb_skip_measurement_number_;
+  unsigned int uwb_update_key_number_;
   double uwb_update_period_;
   std::map<std::string, UwbMeasurementInfo> uwb_id2data_hash_;
 

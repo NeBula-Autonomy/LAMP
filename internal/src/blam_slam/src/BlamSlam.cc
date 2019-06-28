@@ -156,6 +156,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("b_use_uwb_timer_based", b_use_uwb_timer_based_)) return false;
   if (!pu::Get("uwb_skip_measurement_number", uwb_skip_measurement_number_)) return false;
   if (!pu::Get("uwb_update_period", uwb_update_period_)) return false;
+  if (!pu::Get("uwb_update_key_number", uwb_update_key_number_)) return false;
 
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
@@ -604,8 +605,12 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     std::string uwb_id = itr->first;
     UwbMeasurementInfo data = itr->second;
     if (!data.range.empty()) {
-      auto time_diff = ros::Time::now() - data.time_measured.back();
-      if (time_diff.toSec() > uwb_update_period_) {
+      // auto time_diff = ros::Time::now() - data.time_measured.back();
+      // if (time_diff.toSec() > uwb_update_period_) {
+      auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
+      auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_measured.back());
+      int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
+      if (key_diff > uwb_update_key_number_) {
         if (data.range.size() > uwb_skip_measurement_number_) {
           ProcessUwbRangeData(uwb_id);
         }
@@ -658,6 +663,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
       uwb_id2data_hash_[msg.id].range.push_back(msg.range);
       uwb_id2data_hash_[msg.id].time_measured.push_back(msg.header.stamp);
       uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+      uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
     }
   } 
   else {

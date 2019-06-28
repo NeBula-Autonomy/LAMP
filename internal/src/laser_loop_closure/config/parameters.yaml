@@ -93,3 +93,6 @@ uwb_skip_measurement_number: 5
 
 # Period for checking whether there are enough number of range measurements or not [sec]
 uwb_update_period: 20.0
+
+# Pose key number for checking whether there are enough number of range measurements or not
+uwb_update_key_number: 3
