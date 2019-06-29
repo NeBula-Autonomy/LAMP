@@ -127,6 +127,15 @@ struct UwbMeasurementInfo {
   std::vector<gtsam::Key> nearest_pose_key;
 };
 
+struct UwbProcessData {
+  unsigned int data_number;
+  double range_sum;
+  double range_average;
+  std::vector<double> range;
+  std::vector<double> dist_posekey;
+};
+
+
 class LaserLoopClosure {
  public:
   LaserLoopClosure();
@@ -160,6 +169,8 @@ class LaserLoopClosure {
   bool DropUwbAnchor(const std::string uwb_id,
                      const ros::Time& stamp,
                      const Eigen::Vector3d robot_position);
+  
+  void Sort2Vectors(std::vector<double> &vector1, std::vector<double> &vector2);
 
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.
