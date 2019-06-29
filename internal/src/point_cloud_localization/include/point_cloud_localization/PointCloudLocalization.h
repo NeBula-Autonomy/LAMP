@@ -84,8 +84,11 @@ class PointCloudLocalization {
   // Pose estimate.
   geometry_utils::Transform3 incremental_estimate_;
   geometry_utils::Transform3 integrated_estimate_;
-  
- private:
+
+  // Publish for first pose
+  void PublishPoseNoUpdate();
+
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);

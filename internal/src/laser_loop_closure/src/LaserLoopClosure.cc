@@ -167,13 +167,25 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Load initial position and orientation.
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
-  if (!pu::Get("fiducial_calibration/position/x", init_x)) return false;
-  if (!pu::Get("fiducial_calibration/position/y", init_y)) return false;
-  if (!pu::Get("fiducial_calibration/position/z", init_z)) return false;
-  if (!pu::Get("fiducial_calibration/orientation/x", init_qx)) return false;
-  if (!pu::Get("fiducial_calibration/orientation/y", init_qy)) return false;
-  if (!pu::Get("fiducial_calibration/orientation/z", init_qz)) return false;
-  if (!pu::Get("fiducial_calibration/orientation/w", init_qw)) return false;
+  bool b_have_fiducial = true;
+  if (!pu::Get("fiducial_calibration/position/x", init_x))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/position/y", init_y))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/position/z", init_z))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/orientation/x", init_qx))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/orientation/y", init_qy))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/orientation/z", init_qz))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/orientation/w", init_qw))
+    b_have_fiducial = false;
+
+  if (!b_have_fiducial) {
+    ROS_ERROR("Can't find fiducials, using origin");
+  }
 
   // Load initial position and orientation noise.
   double sigma_x = 0.0, sigma_y = 0.0, sigma_z = 0.0;
