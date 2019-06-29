@@ -678,17 +678,21 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   PointCloud::Ptr msg_filtered(new PointCloud);
   filter_.Filter(msg, msg_filtered);
 
+  PointCloud::Ptr msg_transformed(new PointCloud);
+
   // Update odometry by performing ICP.
   if (!odometry_.UpdateEstimate(*msg_filtered)) {
     // First update ever.
+    // Transforming msg to fixed frame for non-zero initial position
+    localization_.TransformPointsToFixedFrame(*msg_filtered,
+                                              msg_transformed.get());
     PointCloud::Ptr unused(new PointCloud);
-    mapper_.InsertPoints(msg_filtered, unused.get());
+    mapper_.InsertPoints(msg_transformed, unused.get());
     loop_closure_.AddKeyScanPair(initial_key_, msg, true);
     return;
   }
 
   // Containers.
-  PointCloud::Ptr msg_transformed(new PointCloud);
   PointCloud::Ptr msg_neighbors(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
