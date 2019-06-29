@@ -216,9 +216,23 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
+  
+  //Get the robot prefix from launchfile to set initial key
+  bool b_initialized_prefix_from_launchfile = true;
+  std::string prefix;
+  unsigned char prefix_converter[1];
+  initial_key_ = 0;
+  if (!pu::Get("robot_prefix", prefix)){
+     b_initialized_prefix_from_launchfile = false;
+     ROS_ERROR("Could not find node ID assosiated with robot_namespace");
+  }
+  
+  if (b_initialized_prefix_from_launchfile){
+    std::copy( prefix.begin(), prefix.end(), prefix_converter);
+    initial_key_ = gtsam::Symbol(prefix_converter[0],0);
+  }
 
-  key_ = gtsam::Symbol('a', 0);
-
+  key_ = initial_key_;
   // Initialize ISAM2.
   NonlinearFactorGraph new_factor;
   Values new_value;
@@ -313,10 +327,10 @@ bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const Las
 bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance){
   // Append the new odometry.
   Pose3 new_odometry = ToGtsam(delta);
-
+  ROS_INFO_STREAM(first_loaded_key_);
   //add a new factor
-  Pose3 first_pose = values_.at<Pose3>(0);
-
+  Pose3 first_pose = values_.at<Pose3>(first_loaded_key_);
+  ROS_INFO_STREAM(key_);
   NonlinearFactorGraph new_factor;
   Values new_value;
   new_factor.add(MakeBetweenFactorAtLoad(new_odometry, ToGtsam(covariance)));
@@ -352,6 +366,8 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
 
   // Notify PGV that the posegraph has changed
   has_changed_ = true;
+
+  key_ = key_ + 1;
 
   return true;
 }
@@ -478,7 +494,7 @@ bool LaserLoopClosure::AddBetweenFactor(
 
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
-      key_ = gtsam::Symbol('b', 0);
+      key_ = initial_key_;
 } 
 
 bool LaserLoopClosure::AddBetweenChordalFactor(
@@ -1314,6 +1330,10 @@ gu::Transform3 LaserLoopClosure::GetLastPose() const {
   }
 }
 
+gtsam::Symbol LaserLoopClosure::GetInitialKey() const {
+  return initial_key_;
+}
+
 gu::Transform3 LaserLoopClosure::GetInitialPose() const {
   if (key_ > 1) {
     return ToGu(values_.at<Pose3>(0));
@@ -1400,8 +1420,8 @@ BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactor(
 BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactorAtLoad(
     const Pose3& delta,
     const LaserLoopClosure::Gaussian::shared_ptr& covariance) {
-  odometry_edges_.push_back(std::make_pair(0, key_));
-  return BetweenFactor<Pose3>(0, key_, delta, covariance);
+  odometry_edges_.push_back(std::make_pair(first_loaded_key_, key_));
+  return BetweenFactor<Pose3>(first_loaded_key_, key_, delta, covariance);
 }
 
 gtsam::BetweenChordalFactor<Pose3> LaserLoopClosure::MakeBetweenChordalFactor(
@@ -2022,6 +2042,8 @@ bool writeFileToZip(zipFile &zip, const std::string &filename) {
 }
 
 bool LaserLoopClosure::ErasePosegraph(){
+
+  
   keyed_scans_.clear();
   keyed_stamps_.clear();
   stamps_keyed_.clear();
@@ -2218,6 +2240,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   const LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
   const gtsam::Key key0 = *nfg_.keys().begin();
+  first_loaded_key_ = key0;
 
   if (!values_.exists(key0)){
     ROS_WARN("Key0, %s, does not exist in Load", key0);

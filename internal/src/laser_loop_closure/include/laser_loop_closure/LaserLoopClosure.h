@@ -177,6 +177,9 @@ class LaserLoopClosure {
   // Get the most initial pose in the pose graph.
   geometry_utils::Transform3 GetInitialPose() const;
 
+  // Get the  initial key in the pose graph.
+  gtsam::Symbol GetInitialKey() const;
+
   // Get pose at an input time
   gtsam::Key GetKeyAtTime(const ros::Time& stamp) const;
 
@@ -328,7 +331,8 @@ class LaserLoopClosure {
   double relinearize_threshold_;
   bool use_chordal_factor_;
   bool publish_interactive_markers_;
-
+  gtsam::Symbol initial_key_;
+  gtsam::Symbol first_loaded_key_;
 
   // Sanity check parameters
   bool b_check_deltas_; 

@@ -59,9 +59,6 @@ BlamSlam::~BlamSlam() {}
 bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   name_ = ros::names::append(n.getNamespace(), "BlamSlam");
   //TODO: Move this to a better location.
-  map_loaded_ = false;
-
-  initial_key_ = gtsam::Symbol('a',0);
 
   if (!filter_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud filter.", name_.c_str());
@@ -164,6 +161,9 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
       ROS_ERROR_STREAM("Failed to load graph from " << graph_filename);
     }
   }
+
+  //Get the initial key value to initialize timestamp and pointcloud msgs
+  initial_key_ = loop_closure_.GetInitialKey();
 
   return true;
 }
@@ -367,7 +367,6 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   std::cout << "Loading graph..." << std::endl;
   loop_closure_.ErasePosegraph();
   response.success = loop_closure_.Load(request.filename);
-  map_loaded_ = true;
 
   // Regenerate the 3D map from the loaded posegraph
   PointCloud::Ptr regenerated_map(new PointCloud);

@@ -78,7 +78,6 @@ class BlamSlam {
   void ProcessUwbRangeData(const std::string uwb_id);
 
   int marker_id_;
-  bool map_loaded_;
 
  private:
   // Node initialization.

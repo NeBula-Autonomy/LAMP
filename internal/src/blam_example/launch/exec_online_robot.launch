@@ -76,6 +76,12 @@
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
 
+      <!-- The robot prefix dependent of robot_space -->
+      <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
+      <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
+      <param name="robot_prefix" value="c" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax')"/>
+
     </node>
 
     <!-- Trotthling input cloud -->
