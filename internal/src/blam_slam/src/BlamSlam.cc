@@ -689,6 +689,13 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     PointCloud::Ptr unused(new PointCloud);
     mapper_.InsertPoints(msg_filtered, unused.get());
     loop_closure_.AddKeyScanPair(initial_key_, msg, true);
+
+    // Publish localization pose messages
+    localization_.PublishPoseNoUpdate();
+
+    // Publish
+    loop_closure_.PublishPoseGraph();
+
     return;
   }
 
