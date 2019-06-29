@@ -560,6 +560,25 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     ROS_INFO("UWB ID:  %s", uwb_id.c_str());
   }
 
+  for (int itr = 0; itr < uwb_data.time_measured.size(); itr++) {
+    uwb_data.nearest_pose_key.push_back(GetKeyAtTime(uwb_data.time_measured[itr]));
+  }
+
+  // For debugging
+  std::cout << "UWB ID is " << uwb_data.id << "\n";
+  std::cout << "Drop status is " << uwb_data.drop_status << "\n";
+  std::cout << "----------DATA (start)----------" << "\n";
+  std::cout << "Data size check" << "\n";
+  std::cout << "range: " << uwb_data.range.size() << ", time_measured: " << uwb_data.time_measured.size();
+  std::cout << ", robot_position: " << uwb_data.robot_position.size();
+  std::cout << ", nearest_pose_key: " << uwb_data.nearest_pose_key.size() << "\n";
+  for (int itr = 0; itr < uwb_data.range.size(); itr++) {
+    std::cout << "range: " << uwb_data.range[itr] << ", time_measured: " << uwb_data.time_measured[itr];
+    std::cout << ", robot_position: " << uwb_data.robot_position[itr];
+    std::cout << ", nearest_pose_key: " << uwb_data.nearest_pose_key[itr] << "\n";
+  }
+  std::cout << "----------DATA (end)----------" << std::endl;
+
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
   double sigmaR = uwb_range_measurement_error_;
   gtsam::noiseModel::Base::shared_ptr gaussian = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);

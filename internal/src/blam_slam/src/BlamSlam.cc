@@ -606,17 +606,17 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     UwbMeasurementInfo data = itr->second;
     if (!data.range.empty()) {
       // Timer-based skipping
-        // auto time_diff = ros::Time::now() - data.time_measured.back();
-        // if (time_diff.toSec() > uwb_update_period_) {
+        auto time_diff = ros::Time::now() - data.time_measured.back();
+        if (time_diff.toSec() > uwb_update_period_) {
       // Key-based skipping
         // auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
         // auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_measured.back());
         // int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
         // if (key_diff > uwb_update_key_number_) {
-      std::vector<gtsam::Key> count_key = data.nearest_pose_key;
-      std::sort(count_key.begin(), count_key.end());
-      count_key.erase(std::unique(count_key.begin(), count_key.end()), count_key.end());
-      if (count_key.size()>2) {
+      // std::vector<gtsam::Key> count_key = data.nearest_pose_key;
+      // std::sort(count_key.begin(), count_key.end());
+      // count_key.erase(std::unique(count_key.begin(), count_key.end()), count_key.end());
+      // if (count_key.size()>2) {
         if (data.range.size() > uwb_skip_measurement_number_) {
           ProcessUwbRangeData(uwb_id);
         }
@@ -669,7 +669,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
       uwb_id2data_hash_[msg.id].range.push_back(msg.range);
       uwb_id2data_hash_[msg.id].time_measured.push_back(msg.header.stamp);
       uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
-      uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
+      // uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
     }
   } 
   else {
