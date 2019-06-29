@@ -184,7 +184,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     b_have_fiducial = false;
 
   if (!b_have_fiducial) {
-    ROS_ERROR("Can't find fiducials, using origin");
+    ROS_WARN("Can't find fiducials, using origin");
   }
 
   // Load initial position and orientation noise.
