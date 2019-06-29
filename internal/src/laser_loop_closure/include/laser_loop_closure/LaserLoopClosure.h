@@ -132,6 +132,7 @@ struct UwbProcessData {
   double range_sum;
   double range_average;
   std::vector<double> range;
+  std::vector<Eigen::Vector3d> robot_position;
   std::vector<double> dist_posekey;
 };
 
@@ -170,7 +171,8 @@ class LaserLoopClosure {
                      const ros::Time& stamp,
                      const Eigen::Vector3d robot_position);
   
-  void Sort2Vectors(std::vector<double> &vector1, std::vector<double> &vector2);
+  template <class T1, class T2>
+  void Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &vector2);
 
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.

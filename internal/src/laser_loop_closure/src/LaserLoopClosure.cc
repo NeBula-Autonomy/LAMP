@@ -607,8 +607,10 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     for (auto itr2 = itr2_begin; itr2 != itr2_end; itr2++) {
       uwb_posekey2data[*itr].range.push_back(uwb_data.range[itr2]);
       uwb_posekey2data[*itr].dist_posekey.push_back(dist_posekey_observation[itr2]);
+      uwb_posekey2data[*itr].robot_position.push_back(uwb_data.robot_position[itr2]);
     }
-    Sort2Vectors(uwb_posekey2data[*itr].dist_posekey, uwb_posekey2data[*itr].range);
+    // TODO: the order of robot_position should be changed.
+    Sort2Vectors<double, double>(uwb_posekey2data[*itr].dist_posekey, uwb_posekey2data[*itr].range);
     uwb_posekey2data[*itr].data_number = uwb_posekey2data[*itr].range.size();
     uwb_posekey2data[*itr].range_sum = std::accumulate(uwb_posekey2data[*itr].range.begin(), uwb_posekey2data[*itr].range.end(), 0.0);
     uwb_posekey2data[*itr].range_average = uwb_posekey2data[*itr].range_sum / uwb_posekey2data[*itr].data_number;
@@ -631,7 +633,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
   for (auto itr = pose_key_list.begin(); itr != pose_key_list.end(); itr++) {
     range_nearest_key.push_back(uwb_posekey2data[*itr].range[0]);
   }
-  // Sort2Vectors(range_nearest_key, pose_key_list);
+  Sort2Vectors<double, gtsam::Key>(range_nearest_key, pose_key_list);
 
   // For debugging
   for (int itr = 0; itr < pose_key_list.size(); itr++) {
@@ -656,13 +658,38 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 
     switch (uwb_range_compensation_) {
       case 0 : 
-      {
-        auto itr = std::min_element(uwb_data.range.begin(), uwb_data.range.end());
-        size_t min_index = std::distance(uwb_data.range.begin(), itr);
+      {      
+        // Add a RangeFactor between the nearest pose key and the UWB key
+        int counter = 0;
+        for (int itr = 0; itr < 3; itr++) {
+          while(range_nearest_key[counter] < 3.0) {
+            counter++;
+            if (counter >= range_nearest_key.size()) {
+              ROS_INFO("Not enough number of range measurement");
+              // TODO
+              return false;
+            }
+          }
+          double range = range_nearest_key[counter];
+          gtsam::Key pose_key = pose_key_list[counter];
+          counter++;
+          // For debugging
+          std::cout << "Follwing range factor will be added into the pose graph" <<"\n";
+          std::cout << "Pose key: " << pose_key << "\t";
+          std::cout << "Range: " << range << "\n";
+          new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
+          uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+          // ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+          //                 << gtsam::DefaultKeyFormatter(pose_key) << " and "
+          //                 << gtsam::DefaultKeyFormatter(uwb_key));
+        }
 
-        ros::Time stamp = uwb_data.time_measured[min_index];
-        double range = uwb_data.range[min_index];
-        Eigen::Vector3d robot_position = uwb_data.robot_position[min_index];
+        // TODO
+        Eigen::Vector3d robot_position = uwb_posekey2data[pose_key_list[0]].robot_position[0];
+        // For debugging
+        std::cout << "Robot position for UWB prior factor" << "\n";
+        std::cout << "Pose key: " << pose_key_list[0] << "\n";
+        std::cout << uwb_posekey2data[pose_key_list[0]].robot_position[0] << "\n";
 
         // Add a UWB key
         gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
@@ -676,14 +703,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
         static const gtsam::SharedNoiseModel& prior_noise = 
         gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
         new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(uwb_key, gtsam::Pose3(), prior_noise));
-
-        // Add a RangeFactor between the nearest pose key and the UWB key
-        gtsam::Key pose_key = GetKeyAtTime(stamp);
-        new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-        uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-        ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
-                        << gtsam::DefaultKeyFormatter(pose_key) << " and "
-                        << gtsam::DefaultKeyFormatter(uwb_key));
+       
       }
         break;
       case 1 :
@@ -811,15 +831,29 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     switch (uwb_range_compensation_) {
       case 0 :
       {
-        auto itr = std::min_element(uwb_data.range.begin(), uwb_data.range.end());
-        size_t min_index = std::distance(uwb_data.range.begin(), itr);
-
-        ros::Time stamp = uwb_data.time_measured[min_index];
-        double range = uwb_data.range[min_index];
-
-        gtsam::Key pose_key = GetKeyAtTime(stamp);
-        new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-        uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+        int counter = 0;
+        for (int itr = 0; itr < 1; itr++) {
+          while(range_nearest_key[counter] < 3.0) {
+            counter++;
+            if (counter >= range_nearest_key.size()) {
+              ROS_INFO("Not enough number of range measurement");
+              // TODO
+              return false;
+            }
+          }
+          double range = range_nearest_key[counter];
+          gtsam::Key pose_key = pose_key_list[counter];
+          counter++;
+          // For debugging
+          std::cout << "Follwing range factor will be added into the pose graph" <<"\n";
+          std::cout << "Pose key: " << pose_key << "\t";
+          std::cout << "Range: " << range << "\n";
+          new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
+          uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+          // ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+          //                 << gtsam::DefaultKeyFormatter(pose_key) << " and "
+          //                 << gtsam::DefaultKeyFormatter(uwb_key));
+        }
       }
         break;
       case 1 :
@@ -926,11 +960,13 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
   return true;
 }
 
-void LaserLoopClosure::Sort2Vectors(std::vector<double> &vector1, std::vector<double> &vector2) {
+template <class T1, class T2>
+void LaserLoopClosure::Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &vector2) {
   int n = vector1.size();
-    std::vector<double> p(n), vec1_temp(n), vec2_temp(n);
+    std::vector<T1> p(n), vec1_temp(n);
+    std::vector<T2> vec2_temp(n);
     std::iota(p.begin(), p.end(), 0);
-    std::sort(p.begin(), p.end(), [&](int i, int j) {return vector1[i] < vector1[j];});
+    std::sort(p.begin(), p.end(), [&](T1 i, T1 j) {return vector1[i] < vector1[j];});
     for (int itr = 0; itr < n; itr++) {
         vec1_temp[itr] = vector1[p[itr]];
         vec2_temp[itr] = vector2[p[itr]];

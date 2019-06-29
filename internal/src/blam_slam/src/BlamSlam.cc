@@ -623,9 +623,9 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
         else {
           ROS_INFO("Number of range measurement is NOT enough");
         }
-        data.range.clear();
-        data.time_measured.clear();
-        data.robot_position.clear();
+        uwb_id2data_hash_[uwb_id].range.clear();
+        uwb_id2data_hash_[uwb_id].time_measured.clear();
+        uwb_id2data_hash_[uwb_id].robot_position.clear();
       }
     }
   }
