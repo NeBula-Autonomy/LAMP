@@ -605,12 +605,18 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     std::string uwb_id = itr->first;
     UwbMeasurementInfo data = itr->second;
     if (!data.range.empty()) {
-      // auto time_diff = ros::Time::now() - data.time_measured.back();
-      // if (time_diff.toSec() > uwb_update_period_) {
-      auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
-      auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_measured.back());
-      int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
-      if (key_diff > uwb_update_key_number_) {
+      // Timer-based skipping
+        // auto time_diff = ros::Time::now() - data.time_measured.back();
+        // if (time_diff.toSec() > uwb_update_period_) {
+      // Key-based skipping
+        // auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
+        // auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_measured.back());
+        // int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
+        // if (key_diff > uwb_update_key_number_) {
+      std::vector<gtsam::Key> count_key = data.nearest_pose_key;
+      std::sort(count_key.begin(), count_key.end());
+      count_key.erase(std::unique(count_key.begin(), count_key.end()), count_key.end());
+      if (count_key.size()>2) {
         if (data.range.size() > uwb_skip_measurement_number_) {
           ProcessUwbRangeData(uwb_id);
         }
