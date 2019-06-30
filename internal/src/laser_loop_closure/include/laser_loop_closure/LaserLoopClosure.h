@@ -46,6 +46,11 @@
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <laser_loop_closure/BetweenChordalFactor.h>
 
+#include <pose_graph_msgs/KeyedScan.h>
+#include <pose_graph_msgs/PoseGraph.h>
+#include <pose_graph_msgs/PoseGraphEdge.h>
+#include <pose_graph_msgs/PoseGraphNode.h>
+
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
@@ -64,6 +69,8 @@
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
+
+#include <tf/transform_datatypes.h>
 
 #include <core_msgs/Artifact.h>
 
@@ -332,6 +339,9 @@ class LaserLoopClosure {
   gtsam::Symbol first_loaded_key_;
   gtsam::Symbol stored_key_;
 
+  //Basestation
+  bool b_is_basestation_;
+
   // Sanity check parameters
   bool b_check_deltas_; 
   double translational_sanity_check_lc_;
@@ -379,6 +389,19 @@ class LaserLoopClosure {
   ros::Publisher artifact_pub_;
   ros::Publisher erase_posegraph_pub_;
   ros::Publisher remove_factor_viz_pub_;
+
+  //Basestatiopn subscribers
+  ros::Subscriber keyed_scan_sub_;
+  ros::Subscriber pose_graph_sub_;
+
+  std::map<long unsigned int, tf::Pose> keyed_poses_;
+
+  //Basestation callbackfunctions
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
+  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+  
+  //Function to get the gu position of all the keys
+  geometry_utils::Transform3 GetPoseAtLoadedKey(const gtsam::Key &key) const;
 
   // Used for publishing pose graph only if it hasn't changed.
   bool has_changed_{true};

@@ -50,6 +50,8 @@
 
 #include <gtsam/slam/dataset.h>
 
+#include <tf_conversions/tf_eigen.h>
+
 #include <fstream>
 
 #include <minizip/zip.h>
@@ -120,6 +122,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Optimizer selection
   if (!pu::Get("loop_closure_optimizer", loop_closure_optimizer_)) return false;
   
+  // check if lamp is run as basestation
+  if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
 
   // Load ISAM2 parameters.
   relinearize_skip_ = 1;
@@ -254,22 +258,32 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
-  scan2_pub_ = nl.advertise<PointCloud>("loop_closure_scan2", 10, false);
+  if(b_is_basestation_){
+    keyed_scan_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
+        "blam_slam/keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback,
+        this);
+    pose_graph_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
+        "blam_slam/pose_graph", 10, &LaserLoopClosure::PoseGraphCallback,
+        this);
+  }
+  else {
+    scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
+    scan2_pub_ = nl.advertise<PointCloud>("loop_closure_scan2", 10, false);
 
-  pose_graph_pub_ =
-      nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
-  keyed_scan_pub_ =
-      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
-  erase_posegraph_pub_ =
-      nl.advertise<std_msgs::Bool>("erase_posegraph", 10, false);
-  remove_factor_viz_pub_ =
-      nl.advertise<std_msgs::Bool>("remove_factor_viz", 10, false);
+    pose_graph_pub_ =
+        nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
+    keyed_scan_pub_ =
+        nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+    erase_posegraph_pub_ =
+        nl.advertise<std_msgs::Bool>("erase_posegraph", 10, false);
+    remove_factor_viz_pub_ =
+        nl.advertise<std_msgs::Bool>("remove_factor_viz", 10, false);
 
-  loop_closure_notifier_pub_ = nl.advertise<pose_graph_msgs::PoseGraphEdge>(
-      "loop_closure_edge", 10, false);
+    loop_closure_notifier_pub_ = nl.advertise<pose_graph_msgs::PoseGraphEdge>(
+        "loop_closure_edge", 10, false);
 
-  artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
+    artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
+  }
       
   return true;
 }
@@ -2697,6 +2711,120 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_
     return Eigen::Vector3d();
   }
   return values_.at<Pose3>(artifact_key).translation().vector();
+}
+
+//Basestation functions:
+
+geometry_utils::Transform3 LaserLoopClosure::GetPoseAtLoadedKey(const gtsam::Key &key) const {
+  // Get the pose at that key
+  if (keyed_poses_.find(key) == keyed_poses_.end()) {
+    ROS_WARN("PGV: Key %u does not exist in GetPoseAtKey", key);
+    return gu::Transform3();
+  }
+  const tf::Pose &pose = keyed_poses_.at(key);
+  Eigen::Quaterniond quat;
+  // TODO convert tf pose's rotation to Eigen
+  // tf::quaternionTfToEigen(pose.getRotation(), quat);
+  gu::Transform3 result(
+      gu::Vec3(pose.getOrigin().getX(), pose.getOrigin().getY(), pose.getOrigin().getZ()),
+      gu::Quat(quat.w(), quat.x(), quat.y(), quat.z()));
+  return result;
+}
+
+
+void LaserLoopClosure::KeyedScanCallback(
+    const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
+  const long unsigned int key = msg->key;
+  if (keyed_scans_.find(key) != keyed_scans_.end()) {
+    ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
+    return;
+  }
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr scan(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromROSMsg(msg->scan, *scan);
+
+  // The first key should be treated differently; we need to use the laser
+  // scan's timestamp for pose zero.
+  if (key == 0) {
+    const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
+    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(key, stamp));
+    stamps_keyed_.insert(
+        std::pair<double, long unsigned int>(stamp.toSec(), key));
+  }
+
+  // ROS_INFO_STREAM("AddKeyScanPair " << key);
+
+  // Add the key and scan.
+  keyed_scans_.insert(
+      std::pair<long unsigned int, PointCloud::ConstPtr>(key, scan));
+}
+
+void LaserLoopClosure::PoseGraphCallback(
+    const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
+  if (!msg->incremental) {
+    keyed_poses_.clear();
+    odometry_edges_.clear();
+  }
+  for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
+    tf::Pose pose;
+    tf::poseMsgToTF(msg_node.pose, pose);
+
+    gtsam::Symbol sym_key(gtsam::Key(msg_node.key));
+
+    // ROS_INFO_STREAM("Symbol key is " << gtsam::DefaultKeyFormatter(sym_key));
+    // ROS_INFO_STREAM("Symbol key (directly) is "
+    //                 << gtsam::DefaultKeyFormatter(msg_node.key));
+
+    // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
+
+    // Add UUID if an artifact or uwb node
+
+    // Fill pose nodes (representing the robot position)
+    keyed_poses_[msg_node.key] = pose;
+
+    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(
+        msg_node.key, msg_node.header.stamp));
+    stamps_keyed_.insert(std::pair<double, long unsigned int>(
+        msg_node.header.stamp.toSec(), msg_node.key));
+  }
+
+  for (const auto &msg_edge : msg->edges) {
+    if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
+      odometry_edges_.emplace_back(
+          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+      loop_edges_.emplace_back(
+          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      artifact_edges_.emplace_back(
+          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<long unsigned int>(msg_edge.key_from) &&
+            edge.second == static_cast<long unsigned int>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_.emplace_back(
+            std::make_pair(static_cast<long unsigned int>(msg_edge.key_from),
+                           static_cast<long unsigned int>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+      }
+    }
+  }
+
 }
 
 /* TODO: 
