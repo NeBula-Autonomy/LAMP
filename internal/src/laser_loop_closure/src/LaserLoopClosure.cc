@@ -129,6 +129,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("translation_threshold_nodes", translation_threshold_nodes_))
     return false;
+  if (!pu::Get("rotation_threshold_nodes", rotation_threshold_nodes_))
+    return false;
   if (!pu::Get("proximity_threshold", proximity_threshold_)) return false;
   if (!pu::Get("max_tolerable_fitness", max_tolerable_fitness_)) return false;
   if (!pu::Get("distance_to_skip_recent_poses", distance_to_skip_recent_poses_)) return false;
@@ -351,19 +353,17 @@ bool LaserLoopClosure::AddBetweenFactor(
   // Append the new odometry.
   Pose3 new_odometry = ToGtsam(delta);
 
-  // CHANGE TO CONFLICT THE BELOW STATEMENT
-  // We always add new poses, but only return true if the pose is far enough
-  // away from the last one (keyframes). This lets the caller know when they
-  // can add a laser scan.
-
   // Is the odometry translation large enough to add a new node to the graph
   odometry_ = odometry_.compose(new_odometry);
   odometry_kf_ = odometry_kf_.compose(new_odometry);
 
-  if (odometry_.translation().norm() < translation_threshold_nodes_) {
-    // No new pose - translation is not enough to add a new node
+  if (odometry_.translation().norm() < translation_threshold_nodes_ &&  2*acos(odometry_.rotation().toQuaternion().w()) < rotation_threshold_nodes_) {
+    // No new pose - translation is not enough, nor is rotation to add a new node
     return false;
   }
+
+  ROS_INFO_STREAM("New node, translation is: " << odometry_.translation().norm() << " (lim: " << translation_threshold_nodes_ << ")\nRotation is: "
+    << 2*acos(odometry_.rotation().toQuaternion().w())*180.0/3.1415 << " (lim: " << rotation_threshold_nodes_*180.0/3.1415 << ").");
 
   // Else - add a new factor
 

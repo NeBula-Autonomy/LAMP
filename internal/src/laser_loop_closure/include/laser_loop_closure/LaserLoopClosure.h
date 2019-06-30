@@ -289,6 +289,7 @@ class LaserLoopClosure {
   unsigned int poses_before_reclosing_;
   unsigned int n_iterations_manual_loop_close_;
   double translation_threshold_nodes_;
+  double rotation_threshold_nodes_;
   double translation_threshold_kf_;
   double proximity_threshold_;
   double max_tolerable_fitness_;
