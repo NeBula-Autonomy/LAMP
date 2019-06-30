@@ -382,6 +382,7 @@ class LaserLoopClosure {
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
   unsigned int uwb_factor_optimizer_;
+  bool display_uwb_data_;
 
   // ISAM2 optimizer object, and best guess pose values.
   #ifdef SOLVER

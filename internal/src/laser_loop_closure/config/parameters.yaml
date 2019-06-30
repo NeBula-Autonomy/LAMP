@@ -96,3 +96,6 @@ uwb_update_period: 20.0
 
 # Pose key number for checking whether there are enough number of range measurements or not
 uwb_update_key_number: 3
+
+# Flag to decide whether to show uwb data or not (for debugging)
+display_uwb_data: true

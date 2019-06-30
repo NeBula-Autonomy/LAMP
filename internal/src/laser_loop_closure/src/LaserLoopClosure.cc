@@ -189,6 +189,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_range_measurement_error", uwb_range_measurement_error_)) return false;
   if (!pu::Get("uwb_range_compensation", uwb_range_compensation_)) return false;
   if (!pu::Get("uwb_factor_optimizer", uwb_factor_optimizer_)) return false;
+  if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
 
   std::cout << "before isam reset" << std::endl; 
   #ifndef SOLVER
@@ -925,17 +926,19 @@ UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_dat
   sorted_data.posekey2data = uwb_posekey2data;
 
   //
-  ShowUwbRawData(uwb_data);
-  ShowUwbRearrangedData(sorted_data);
+  if (display_uwb_data_) {
+    ShowUwbRawData(uwb_data);
+    ShowUwbRearrangedData(sorted_data);
+  }
 
   return sorted_data;
 }
 
 void LaserLoopClosure::ShowUwbRawData(const UwbMeasurementInfo uwb_data) {
 
+  std::cout << "----------UWB RAW DATA (start)----------" << "\n";
   std::cout << "UWB ID is " << uwb_data.id << "\n";
   std::cout << "Drop status is " << uwb_data.drop_status << "\n";
-  std::cout << "----------DATA (start)----------" << "\n";
   std::cout << "Data size check" << "\n";
   std::cout << "range: " << uwb_data.range.size() << "\t";
   std::cout << "time_stamp: " << uwb_data.time_stamp.size() << "\t";
@@ -949,10 +952,12 @@ void LaserLoopClosure::ShowUwbRawData(const UwbMeasurementInfo uwb_data) {
     std::cout << "dist_posekey: " << uwb_data.dist_posekey[itr] << "\t";
     std::cout << "\n";
   }
-  std::cout << "----------DATA (end)----------" << std::endl;
+  std::cout << "----------UWB RAW DATA (end)----------" << std::endl;
 }
 
 void LaserLoopClosure::ShowUwbRearrangedData(UwbRearrangedData uwb_data) {
+
+  std::cout << "----------UWB SORTED DATA (start)----------" << "\n";
   // 
   for (int itr = 0; itr < uwb_data.pose_key_list.size(); itr++) {
     std::cout << "Pose key: " << uwb_data.pose_key_list[itr] << "\t";
@@ -970,6 +975,7 @@ void LaserLoopClosure::ShowUwbRearrangedData(UwbRearrangedData uwb_data) {
       std::cout << "dist_posekey: " << data_temp.dist_posekey[itr2] << "\n";
     }
   }
+  std::cout << "----------UWB SORTED DATA (end)----------" << std::endl;
 }
 
 template <class T1, class T2>
