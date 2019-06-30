@@ -606,11 +606,11 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     UwbMeasurementInfo data = itr->second;
     if (!data.range.empty()) {
       // Timer-based skipping
-        auto time_diff = ros::Time::now() - data.time_measured.back();
+        auto time_diff = ros::Time::now() - data.time_stamp.back();
         if (time_diff.toSec() > uwb_update_period_) {
       // Key-based skipping
         // auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
-        // auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_measured.back());
+        // auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_stamp.back());
         // int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
         // if (key_diff > uwb_update_key_number_) {
       // std::vector<gtsam::Key> count_key = data.nearest_pose_key;
@@ -624,7 +624,7 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
           ROS_INFO("Number of range measurement is NOT enough");
         }
         uwb_id2data_hash_[uwb_id].range.clear();
-        uwb_id2data_hash_[uwb_id].time_measured.clear();
+        uwb_id2data_hash_[uwb_id].time_stamp.clear();
         uwb_id2data_hash_[uwb_id].robot_position.clear();
       }
     }
@@ -667,7 +667,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   if (itr != end(uwb_id2data_hash_)) {
     if (uwb_id2data_hash_[msg.id].drop_status == true) {
       uwb_id2data_hash_[msg.id].range.push_back(msg.range);
-      uwb_id2data_hash_[msg.id].time_measured.push_back(msg.header.stamp);
+      uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
       uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
       // uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
     }
@@ -780,7 +780,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
           ROS_INFO("Number of range measurement is NOT enough");
         }
         data.range.clear();
-        data.time_measured.clear();
+        data.time_stamp.clear();
         data.robot_position.clear();
       }
     }
