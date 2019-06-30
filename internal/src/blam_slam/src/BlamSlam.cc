@@ -378,7 +378,7 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   // change the key number for the second robot to 10000
   loop_closure_.ChangeKeyNumber();
 
-  initial_key_ = loop_closure_.GetKey();
+  initial_key_ = loop_closure_.GetInitialKey();
   gu::MatrixNxNBase<double, 6> covariance;
   covariance.Zeros();
   for (int i = 0; i < 3; ++i)

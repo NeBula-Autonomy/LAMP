@@ -171,6 +171,9 @@ class LaserLoopClosure {
   geometry_utils::Transform3 GetLastPose() const;
   gtsam::Symbol GetKey() const;
 
+  //Get initial key
+   gtsam::Symbol GetInitialKey() const;
+
   bool AddFactorAtRestart(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);
   bool AddFactorAtLoad(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);
 

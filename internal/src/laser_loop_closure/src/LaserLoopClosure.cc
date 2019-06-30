@@ -1318,6 +1318,10 @@ gtsam::Symbol LaserLoopClosure::GetKey() const {
   return key_;
 }
 
+gtsam::Symbol LaserLoopClosure::GetInitialKey() const {
+  return initial_key_;
+}
+
 gu::Transform3 LaserLoopClosure::GetLastPose() const {
   if (key_.key() > 1) {
     gtsam::Symbol previous_key = key_-1;
