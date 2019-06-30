@@ -9,7 +9,7 @@ use_artifact_loop_closure: false
 save_posegraph_backup: true
 
 # Number of keyes between each saved backup
-keys_between_each_posegraph_backup: 20
+keys_between_each_posegraph_backup: 50
 
 # Default parameters for the ISAM2 data structure.
 relinearize_skip: 1 # - keep this at 1 - to encourage relinearization

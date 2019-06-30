@@ -497,8 +497,9 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   gu::Transform3 last_key_pose;
   // get artifact id / key -----------------------------------------------
   // Check if the ID of the object already exists in the object hash
-  if (use_artifact_loop_closure_ && artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end()) {
-    // Take the ID for that object
+  if (use_artifact_loop_closure_ && artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() && 
+      msg.label != "cellphone") {
+    // Take the ID for that object - no reconciliation in the pose-graph if a cell phone (for now)
     cur_artifact_key = artifact_id2key_hash[artifact_id];
     std::cout << "artifact previously observed, artifact id " << artifact_id 
               << " with key in pose graph " 

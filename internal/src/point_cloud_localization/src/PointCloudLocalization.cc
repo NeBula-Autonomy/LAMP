@@ -289,3 +289,9 @@ void PointCloudLocalization::PublishPose(const gu::Transform3& pose,
   ros_pose.header.stamp = stamp_;
   pub.publish(ros_pose);
 }
+
+void PointCloudLocalization::PublishPoseNoUpdate() {
+  // Convert pose estimates to ROS format and publish.
+  PublishPose(incremental_estimate_, incremental_estimate_pub_);
+  PublishPose(integrated_estimate_, integrated_estimate_pub_);
+}

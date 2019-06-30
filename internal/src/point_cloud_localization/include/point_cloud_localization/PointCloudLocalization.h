@@ -84,6 +84,10 @@ class PointCloudLocalization {
   // Pose estimate.
   geometry_utils::Transform3 incremental_estimate_;
   geometry_utils::Transform3 integrated_estimate_;
+
+  // Publish for first pose
+  void PublishPoseNoUpdate();
+
   
  private:
   // Node initialization.
