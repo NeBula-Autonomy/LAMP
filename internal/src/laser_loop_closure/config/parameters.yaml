@@ -37,6 +37,7 @@ artifact_trans_precision: 1.0
 # are fast.
 translation_threshold_kf: 1.0 # For adding keyframes 
 translation_threshold_nodes: 1.0  # For adding nodes to pose graph 
+rotation_threshold_nodes: 0.5  # (rad) rotation before adding new poses 
 
 # When searching through old poses for loop closures, only consider old poses
 # that are within this distance of the current pose.
