@@ -98,7 +98,6 @@ target_link_libraries(${PROJECT_NAME}
   minizip
   ${Boost_LIBRARIES}
   ${ZLIB_LIBRARIES}
-  RobustPGO
   #SESync
 )
 
