@@ -22,6 +22,8 @@
   <build_depend>pcl_ros</build_depend>
   <build_depend>interactive_markers</build_depend>
   <build_depend>core_msgs</build_depend>
+  <build_depend>robust_pgo</build_depend>
+  <build_depend>RobustPGO</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>message_runtime</run_depend>
@@ -34,5 +36,7 @@
   <run_depend>pcl_ros</run_depend>
   <run_depend>interactive_markers</run_depend>
   <run_depend>core_msgs</run_depend>
+  <run_depend>robust_pgo</run_depend>
+  <run_depend>RobustPGO</run_depend>
 
 </package>
