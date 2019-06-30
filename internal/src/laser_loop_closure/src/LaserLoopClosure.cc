@@ -334,7 +334,7 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
   NonlinearFactorGraph new_factor;
   Values new_value;
   new_factor.add(MakeBetweenFactorAtLoad(new_odometry, ToGtsam(covariance)));
-  new_value.insert(key_, first_pose.compose(new_odometry));
+  new_value.insert(initial_key_, first_pose.compose(new_odometry));
   // TODO Compose covariances at the same time as odometry
    // Update ISAM2.
   try{
@@ -366,8 +366,6 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
 
   // Notify PGV that the posegraph has changed
   has_changed_ = true;
-
-  key_ = key_ + 1;
 
   return true;
 }
@@ -494,7 +492,7 @@ bool LaserLoopClosure::AddBetweenFactor(
 
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
-      key_ = initial_key_;
+      key_ = stored_key_;
 } 
 
 bool LaserLoopClosure::AddBetweenChordalFactor(
@@ -1330,19 +1328,6 @@ gu::Transform3 LaserLoopClosure::GetLastPose() const {
   }
 }
 
-gtsam::Symbol LaserLoopClosure::GetInitialKey() const {
-  return initial_key_;
-}
-
-gu::Transform3 LaserLoopClosure::GetInitialPose() const {
-  if (key_ > 1) {
-    return ToGu(values_.at<Pose3>(0));
-  } else {
-    ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
-    return ToGu(values_.at<Pose3>(0));
-  }
-}
-
 
 gu::Transform3 LaserLoopClosure::ToGu(const Pose3& pose) const {
   gu::Transform3 out;
@@ -1420,8 +1405,8 @@ BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactor(
 BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactorAtLoad(
     const Pose3& delta,
     const LaserLoopClosure::Gaussian::shared_ptr& covariance) {
-  odometry_edges_.push_back(std::make_pair(first_loaded_key_, key_));
-  return BetweenFactor<Pose3>(first_loaded_key_, key_, delta, covariance);
+  odometry_edges_.push_back(std::make_pair(first_loaded_key_, initial_key_));
+  return BetweenFactor<Pose3>(first_loaded_key_, initial_key_, delta, covariance);
 }
 
 gtsam::BetweenChordalFactor<Pose3> LaserLoopClosure::MakeBetweenChordalFactor(
@@ -2043,7 +2028,6 @@ bool writeFileToZip(zipFile &zip, const std::string &filename) {
 
 bool LaserLoopClosure::ErasePosegraph(){
 
-  
   keyed_scans_.clear();
   keyed_stamps_.clear();
   stamps_keyed_.clear();
@@ -2134,6 +2118,7 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
 bool LaserLoopClosure::Load(const std::string &zipFilename) {
   const std::string absFilename = absPath(zipFilename);
   auto zipFile = unzOpen64(zipFilename.c_str());
+  stored_key_ = key_;
   if (!zipFile) {
     ROS_ERROR_STREAM("Failed to open zip file " << absFilename);
     return false;

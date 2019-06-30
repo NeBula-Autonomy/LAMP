@@ -163,7 +163,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   }
 
   //Get the initial key value to initialize timestamp and pointcloud msgs
-  initial_key_ = loop_closure_.GetInitialKey();
+  initial_key_ = loop_closure_.GetKey();
 
   return true;
 }
@@ -365,7 +365,7 @@ bool BlamSlam::SaveGraphService(blam_slam::SaveGraphRequest &request,
 bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
                                 blam_slam::LoadGraphResponse &response) {
   std::cout << "Loading graph..." << std::endl;
-  loop_closure_.ErasePosegraph();
+
   response.success = loop_closure_.Load(request.filename);
 
   // Regenerate the 3D map from the loaded posegraph
@@ -393,8 +393,6 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   delta_after_load_.rotation = gu::Rot3(load_graph_roll_, load_graph_pitch_, load_graph_yaw_);
   loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
 
-  // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   return true;
 }
 
