@@ -152,8 +152,6 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
   if (!pu::Get("b_use_uwb", b_use_uwb_)) return false;
-  if (!pu::Get("b_use_uwb_key_based", b_use_uwb_key_based_)) return false;
-  if (!pu::Get("b_use_uwb_timer_based", b_use_uwb_timer_based_)) return false;
   if (!pu::Get("uwb_skip_measurement_number", uwb_skip_measurement_number_)) return false;
   if (!pu::Get("uwb_update_period", uwb_update_period_)) return false;
   if (!pu::Get("uwb_update_key_number", uwb_update_key_number_)) return false;
@@ -597,7 +595,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 }
 
 void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
-  if (!b_use_uwb_timer_based_) {
+  if (!b_use_uwb_) {
     return;
   }
 
@@ -605,18 +603,10 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     std::string uwb_id = itr->first;
     UwbMeasurementInfo data = itr->second;
     if (!data.range.empty()) {
-      // Timer-based skipping
-        auto time_diff = ros::Time::now() - data.time_stamp.back();
-        if (time_diff.toSec() > uwb_update_period_) {
-      // Key-based skipping
-        // auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
-        // auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_stamp.back());
-        // int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
-        // if (key_diff > uwb_update_key_number_) {
-      // std::vector<gtsam::Key> count_key = data.nearest_pose_key;
-      // std::sort(count_key.begin(), count_key.end());
-      // count_key.erase(std::unique(count_key.begin(), count_key.end()), count_key.end());
-      // if (count_key.size()>2) {
+      auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
+      auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_stamp.back());
+      int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
+      if (key_diff > uwb_update_key_number_) {
         if (data.range.size() > uwb_skip_measurement_number_) {
           ProcessUwbRangeData(uwb_id);
         }
@@ -626,6 +616,8 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
         uwb_id2data_hash_[uwb_id].range.clear();
         uwb_id2data_hash_[uwb_id].time_stamp.clear();
         uwb_id2data_hash_[uwb_id].robot_position.clear();
+        uwb_id2data_hash_[uwb_id].dist_posekey.clear();
+        uwb_id2data_hash_[uwb_id].nearest_pose_key.clear();
       }
     }
   }
@@ -669,7 +661,6 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
       uwb_id2data_hash_[msg.id].range.push_back(msg.range);
       uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
       uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
-      // uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
     }
   } 
   else {
@@ -765,25 +756,6 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     PointCloud base_frame_pcld = *msg;
     base_frame_pcld.header.frame_id = base_frame_id_;
     base_frame_pcld_pub_.publish(base_frame_pcld);
-  }
-
-  // Process UWB measurement data
-  if (b_use_uwb_key_based_) {
-    for (auto itr = uwb_id2data_hash_.begin(); itr != uwb_id2data_hash_.end(); itr++) {
-      std::string uwb_id = itr->first;
-      UwbMeasurementInfo data = itr->second;
-      if (!data.range.empty()) {
-        if (data.range.size() > uwb_skip_measurement_number_) {
-          ProcessUwbRangeData(uwb_id);
-        }
-        else {
-          ROS_INFO("Number of range measurement is NOT enough");
-        }
-        data.range.clear();
-        data.time_stamp.clear();
-        data.robot_position.clear();
-      }
-    }
   }
 
 }

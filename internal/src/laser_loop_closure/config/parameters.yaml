@@ -73,16 +73,12 @@ translational_sanity_check_odom: 3
 ########################################
 b_use_uwb: false
 
-b_use_uwb_key_based: false
-b_use_uwb_timer_based: false
-
 # UWB range measurement noise (standard deviation)
 uwb_range_measurement_error: 0.50
 
 # Selection of UWB range measurement compensation
 # 0 - No compensation
-# 1 - RangeFactor+BetweenFactor
-# 2 - Calculate a estimated range between a certain pose key and a UWB anchor
+# 1 - TODO
 uwb_range_compensation: 0
 
 # Optimizer selection for UWB factors: 0 - ISAM2, 1 - LM
