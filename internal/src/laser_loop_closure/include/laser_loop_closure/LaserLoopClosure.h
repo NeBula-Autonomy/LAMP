@@ -180,6 +180,9 @@ class LaserLoopClosure {
                      const ros::Time& stamp,
                      const Eigen::Vector3d robot_position);
   
+  bool UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
+                                  gtsam::Values new_values);
+  
   UwbRearrangedData RearrangeUwbData(UwbMeasurementInfo &uwb_data);
 
   void ShowUwbRawData(const UwbMeasurementInfo uwb_data);
