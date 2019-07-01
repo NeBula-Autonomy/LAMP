@@ -219,7 +219,9 @@ class LaserLoopClosure {
                  double trans_precision);
 
   // Removes the factor between the two keys from the pose graph.
-  bool RemoveFactor(gtsam::Symbol key1, gtsam::Symbol key2, bool is_batch_loop_closure);
+  bool RemoveFactor(gtsam::Symbol key1,
+                    gtsam::Symbol key2,
+                    bool is_batch_loop_closure);
 
   // Erase the posegraph
   bool ErasePosegraph();
@@ -415,7 +417,7 @@ class LaserLoopClosure {
   ros::Publisher keyed_scan_pub_;
   ros::Publisher loop_closure_notifier_pub_;
 
-  typedef std::pair<gtsam::Symbol, gtsam::Symbol>  Edge;
+  typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
@@ -423,6 +425,7 @@ class LaserLoopClosure {
   std::vector<ArtifactEdge> artifact_edges_;
   std::vector<std::pair<unsigned int, gtsam::Key>> uwb_edges_;
   std::map<Edge, gtsam::Pose3> edge_poses_;
+  std::map<Edge, LaserLoopClosure::Mat66> covariance_betweenfactor_;
 
   // For filtering laser scans prior to ICP.
   PointCloudFilter filter_;
