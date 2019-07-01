@@ -555,14 +555,9 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
-
-    ROS_INFO("Creating new UWB Factor");
-    ROS_INFO("UWB key: %u", uwb_key);
-    ROS_INFO("UWB ID:  %s", uwb_id.c_str());
   }
 
-  UwbRearrangedData sorted_data;
-  sorted_data = RearrangeUwbData(uwb_data);
+  UwbRearrangedData sorted_data = RearrangeUwbData(uwb_data);
 
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
   double sigmaR = uwb_range_measurement_error_;
@@ -578,7 +573,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     switch (uwb_range_compensation_) {
       case 0 : 
       {      
-        // Add a RangeFactor between the nearest pose key and the UWB key
+        // Add RangeFactors between the nearest pose key and the UWB key
         int counter = 0;
         for (int itr = 0; itr < 3; itr++) {
           while(sorted_data.range_nearest_key[counter] < 3.0) {
@@ -592,28 +587,18 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
           double range = sorted_data.range_nearest_key[counter];
           gtsam::Key pose_key = sorted_data.pose_key_list[counter];
           counter++;
-          // For debugging
-          std::cout << "Follwing range factor will be added into the pose graph" <<"\n";
-          std::cout << "Pose key: " << pose_key << "\t";
-          std::cout << "Range: " << range << "\n";
           new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
           uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-          // ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
-          //                 << gtsam::DefaultKeyFormatter(pose_key) << " and "
-          //                 << gtsam::DefaultKeyFormatter(uwb_key));
+          ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+                          << gtsam::DefaultKeyFormatter(pose_key) << " and "
+                          << gtsam::DefaultKeyFormatter(uwb_key));
         }
 
+        // Add a UWB key
         // TODO
         Eigen::Vector3d robot_position = sorted_data.posekey2data[sorted_data.pose_key_list[0]].robot_position[0];
-        // For debugging
-        std::cout << "Robot position for UWB prior factor" << "\n";
-        std::cout << "Pose key: " << sorted_data.pose_key_list[0] << "\n";
-        std::cout << sorted_data.posekey2data[sorted_data.pose_key_list[0]].robot_position[0] << "\n";
-
-        // Add a UWB key
         gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
         new_values.insert(uwb_key, pose_uwb);
-        // linPoint.insert(new_values);
 
         // Add a PriorFactor for the UWB key
         gtsam::Vector6 prior_precisions;
@@ -627,40 +612,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
         break;
       case 1 :
       {
-
-        auto itr = std::min_element(uwb_data.dist_posekey.begin(), uwb_data.dist_posekey.end());
-        size_t min_index = std::distance(uwb_data.dist_posekey.begin(), itr);
-
-        ros::Time stamp = uwb_data.time_stamp[min_index];
-        double range = uwb_data.range[min_index];
-        Eigen::Vector3d robot_position = uwb_data.robot_position[min_index];
-        gtsam::Key pose_key = uwb_data.nearest_pose_key[min_index];
-
-        // Add a UWB key
-        gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
-        new_values.insert(uwb_key, pose_uwb);
-        // linPoint.insert(new_values);
-
-        // Add a PriorFactor for the UWB key
-        gtsam::Vector6 prior_precisions;
-        prior_precisions.head<3>().setConstant(10.0);
-        prior_precisions.tail<3>().setConstant(0.0);
-        static const gtsam::SharedNoiseModel& prior_noise = 
-        gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
-        new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(uwb_key, gtsam::Pose3(), prior_noise));
-
-        // Add a RangeFactor between the nearest pose key and the UWB key
-        new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-        uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-        ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
-                        << gtsam::DefaultKeyFormatter(pose_key) << " and "
-                        << gtsam::DefaultKeyFormatter(uwb_key));
-
-      }
-        break;
-      case 2 :
-      {
-        // TODO: Calculate a estimated range between a certain pose key and a UWB anchor
+        // TODO: 
       }
         break;
       default :
@@ -688,33 +640,17 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
           double range = sorted_data.range_nearest_key[counter];
           gtsam::Key pose_key = sorted_data.pose_key_list[counter];
           counter++;
-          // For debugging
-          std::cout << "Follwing range factor will be added into the pose graph" <<"\n";
-          std::cout << "Pose key: " << pose_key << "\t";
-          std::cout << "Range: " << range << "\n";
           new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
           uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-          // ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
-          //                 << gtsam::DefaultKeyFormatter(pose_key) << " and "
-          //                 << gtsam::DefaultKeyFormatter(uwb_key));
+          ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+                          << gtsam::DefaultKeyFormatter(pose_key) << " and "
+                          << gtsam::DefaultKeyFormatter(uwb_key));
         }
       }
         break;
       case 1 :
       {
-        auto itr = std::min_element(uwb_data.dist_posekey.begin(), uwb_data.dist_posekey.end());
-        size_t min_index = std::distance(uwb_data.dist_posekey.begin(), itr);
-
-        double range = uwb_data.range[min_index];
-        gtsam::Key pose_key = uwb_data.nearest_pose_key[min_index];
-
-        new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-        uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-      }
-        break;
-      case 2 :
-      {
-        // TODO: Calculate a estimated range between a certain pose key and a UWB anchor
+        // TODO: 
       }
         break;
       default :
@@ -728,6 +664,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
+
 
 UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_data) {
 
@@ -789,6 +726,7 @@ UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_dat
   return sorted_data;
 }
 
+
 void LaserLoopClosure::ShowUwbRawData(const UwbMeasurementInfo uwb_data) {
 
   std::cout << "----------UWB RAW DATA (start)----------" << "\n";
@@ -809,6 +747,7 @@ void LaserLoopClosure::ShowUwbRawData(const UwbMeasurementInfo uwb_data) {
   }
   std::cout << "----------UWB RAW DATA (end)----------" << std::endl;
 }
+
 
 void LaserLoopClosure::ShowUwbRearrangedData(UwbRearrangedData uwb_data) {
 
@@ -833,6 +772,7 @@ void LaserLoopClosure::ShowUwbRearrangedData(UwbRearrangedData uwb_data) {
   std::cout << "----------UWB SORTED DATA (end)----------" << std::endl;
 }
 
+
 template <class T1, class T2>
 void LaserLoopClosure::Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &vector2) {
   int n = vector1.size();
@@ -847,6 +787,7 @@ void LaserLoopClosure::Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &v
     vector1 = vec1_temp;
     vector2 = vec2_temp;
 }
+
 
 bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
                                      const ros::Time& stamp,
@@ -864,7 +805,6 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
 
   NonlinearFactorGraph new_factor;
   gtsam::Values new_values;
-
   gtsam::Key pose_key = GetKeyAtTime(stamp);
 
   // Add a UWB key
@@ -891,13 +831,13 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
 
+
 bool LaserLoopClosure::UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
                                                   gtsam::Values new_values) {
-  gtsam::Values linPoint = isam_->getLinearizationPoint();
   nfg_ = isam_->getFactorsUnsafe();
-  double cost; // for debugging
-
+  gtsam::Values linPoint = isam_->getLinearizationPoint();
   linPoint.insert(new_values);
+  double cost; // for debugging
   
   try {
     ROS_INFO_STREAM("Optimizing uwb-based loop closure, iteration");
