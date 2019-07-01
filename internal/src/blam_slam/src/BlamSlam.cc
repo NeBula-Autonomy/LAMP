@@ -163,7 +163,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   }
 
   //Get the initial key value to initialize timestamp and pointcloud msgs
-  initial_key_ = loop_closure_.GetKey();
+  initial_key_ = loop_closure_.GetInitialKey();
 
   return true;
 }

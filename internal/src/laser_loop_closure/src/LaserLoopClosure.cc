@@ -125,6 +125,11 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // check if lamp is run as basestation
   if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
 
+  // set up subscriber to all robots if run on basestation
+  if (b_is_basestation_){
+    if (!pu::Get("robot_names", robot_names_)) return false;
+  }
+
   // Load ISAM2 parameters.
   relinearize_skip_ = 1;
   relinearize_threshold_ = 0.01;
@@ -215,8 +220,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   Pose3 pose(rotation, translation);
 
   // Set the covariance on initial position.
-  Vector6 noise;
-  noise << sigma_roll, sigma_pitch, sigma_yaw, sigma_x, sigma_y, sigma_z;
+  initial_noise_ << sigma_roll, sigma_pitch, sigma_yaw, sigma_x, sigma_y, sigma_z;
 
   LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
@@ -238,19 +242,23 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   key_ = initial_key_;
   // Initialize ISAM2.
-  NonlinearFactorGraph new_factor;
-  Values new_value;
-  new_factor.add(MakePriorFactor(pose, covariance));
-  new_value.insert(key_, pose);
+  if(!b_is_basestation_){
+    NonlinearFactorGraph new_factor;
+    Values new_value;
+    
+    new_factor.add(MakePriorFactor(pose, covariance));
+    new_value.insert(key_, pose);
 
-  isam_->update(new_factor, new_value);
-  values_ = isam_->calculateEstimate();
-  nfg_ = isam_->getFactorsUnsafe();
-  key_ = key_ + 1;
-
+    
+    isam_->update(new_factor, new_value);
+    values_ = isam_->calculateEstimate();
+    nfg_ = isam_->getFactorsUnsafe();
+    key_ = key_ + 1;
+    ROS_INFO_STREAM("wowowow");
+  }
   // Set the initial odometry.
   odometry_ = Pose3::identity();
-
+  ROS_INFO_STREAM(key_);
   return true;
 }
 
@@ -259,14 +267,17 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   if(b_is_basestation_){
-    keyed_scan_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
-        "blam_slam/keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback,
-        this);
-    pose_graph_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
-        "blam_slam/pose_graph", 10, &LaserLoopClosure::PoseGraphCallback,
-        this);
+    int num_robots = robot_names_.size();
+    for (size_t i = 0; i < num_robots; i++) {
+      keyed_scan_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
+          "/" + robot_names_[i] + "/blam_slam/keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback,
+          this);
+      pose_graph_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
+          "/" + robot_names_[i] + "/blam_slam/pose_graph", 10, &LaserLoopClosure::PoseGraphCallback,
+          this);
+          ROS_INFO_STREAM(robot_names_[i]);
+    }
   }
-  else {
     scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
     scan2_pub_ = nl.advertise<PointCloud>("loop_closure_scan2", 10, false);
 
@@ -283,7 +294,6 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
         "loop_closure_edge", 10, false);
 
     artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
-  }
       
   return true;
 }
@@ -421,6 +431,11 @@ bool LaserLoopClosure::AddBetweenFactor(
   Pose3 last_pose = values_.at<Pose3>(previous_key);
   new_value.insert(key_, last_pose.compose(odometry_));
 
+  //Add edges for base station
+  Edge odometry_edge;
+  odometry_edge = std::make_pair (previous_key,key_);
+  edge_poses_[odometry_edge] = odometry_;
+
   // Compute cost before optimization
   NonlinearFactorGraph nfg_temp = isam_->getFactorsUnsafe();
   nfg_temp.add(new_factor);
@@ -527,6 +542,11 @@ bool LaserLoopClosure::AddBetweenChordalFactor(
   gtsam::Symbol previous_key = key_-1;
   Pose3 last_pose = values_.at<Pose3>(previous_key);
   new_value.insert(key_, last_pose.compose(new_odometry));
+
+  //Add edges for base station
+  Edge odometry_edge;
+  odometry_edge = std::make_pair (previous_key,key_);
+  edge_poses_[odometry_edge] = new_odometry;
 
   // Store this timestamp so that we can publish the pose graph later.
   keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(key_, stamp));
@@ -1071,7 +1091,7 @@ bool LaserLoopClosure::FindLoopClosures(
     }
 
     if (other_key > key){
-      //loopclosure can only occur from high to low value
+      //loopclosure can only occur from high to low valueclosure can only 
         continue;
     }
 
@@ -1913,7 +1933,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
   }
 }
 
-bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool is_batch_loop_closure) {
+bool LaserLoopClosure::RemoveFactor(gtsam::Symbol key1, gtsam::Symbol key2, bool is_batch_loop_closure) {
   ROS_INFO("Removing factor between %i and %i from the pose graph...", key1, key2);
 
   // Prevent removing odometry edges 
@@ -2441,7 +2461,13 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
     for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
       edge.key_from = odometry_edges_[ii].first;
       edge.key_to = odometry_edges_[ii].second;
+
+      //Tocleanup!
+      edge.pose = gr::ToRosPose(ToGu(edge_poses_[odometry_edges_[ii]]));
       edge.type = pose_graph_msgs::PoseGraphEdge::ODOM;
+      
+      //factors is prodtected, can maybe make a getter function inside it?
+      //const auto& measured = nfg_.factors_[ii].measured();
       // Get edge transform and covariance
       // TODO
       g.edges.push_back(edge);
@@ -2715,26 +2741,9 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_
 
 //Basestation functions:
 
-geometry_utils::Transform3 LaserLoopClosure::GetPoseAtLoadedKey(const gtsam::Key &key) const {
-  // Get the pose at that key
-  if (keyed_poses_.find(key) == keyed_poses_.end()) {
-    ROS_WARN("PGV: Key %u does not exist in GetPoseAtKey", key);
-    return gu::Transform3();
-  }
-  const tf::Pose &pose = keyed_poses_.at(key);
-  Eigen::Quaterniond quat;
-  // TODO convert tf pose's rotation to Eigen
-  // tf::quaternionTfToEigen(pose.getRotation(), quat);
-  gu::Transform3 result(
-      gu::Vec3(pose.getOrigin().getX(), pose.getOrigin().getY(), pose.getOrigin().getZ()),
-      gu::Quat(quat.w(), quat.x(), quat.y(), quat.z()));
-  return result;
-}
-
-
 void LaserLoopClosure::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
-  const long unsigned int key = msg->key;
+  gtsam::Symbol key = gtsam::Symbol(msg->key);
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
     ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
     return;
@@ -2747,54 +2756,77 @@ void LaserLoopClosure::KeyedScanCallback(
   // scan's timestamp for pose zero.
   if (key == 0) {
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(key, stamp));
+    keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(key, stamp));
     stamps_keyed_.insert(
-        std::pair<double, long unsigned int>(stamp.toSec(), key));
+        std::pair<double, gtsam::Symbol>(stamp.toSec(), key));
   }
 
   // ROS_INFO_STREAM("AddKeyScanPair " << key);
 
   // Add the key and scan.
   keyed_scans_.insert(
-      std::pair<long unsigned int, PointCloud::ConstPtr>(key, scan));
+      std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
 }
 
 void LaserLoopClosure::PoseGraphCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
+  ROS_INFO_STREAM("message recieved");
   if (!msg->incremental) {
     keyed_poses_.clear();
     odometry_edges_.clear();
   }
+  gtsam::Values new_values;
+  NonlinearFactorGraph new_factor;
+
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
     tf::Pose pose;
     tf::poseMsgToTF(msg_node.pose, pose);
 
-    gtsam::Symbol sym_key(gtsam::Key(msg_node.key));
+    //add to gtsam values
 
-    // ROS_INFO_STREAM("Symbol key is " << gtsam::DefaultKeyFormatter(sym_key));
-    // ROS_INFO_STREAM("Symbol key (directly) is "
-    //                 << gtsam::DefaultKeyFormatter(msg_node.key));
+    key_ = gtsam::Symbol(msg_node.key);
+    gtsam::Point3 pose_translation(msg_node.pose.position.x, msg_node.pose.position.y, msg_node.pose.position.z);
+    gtsam::Rot3 pose_orientation(msg_node.pose.orientation.w, msg_node.pose.orientation.x, msg_node.pose.orientation.y, msg_node.pose.orientation.z);
+    gtsam::Pose3 full_pose = gtsam::Pose3(pose_orientation, pose_translation);
 
-    // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
+    //if previous key exists
+    if (new_values.exists(key_ - 1)) {
+      ROS_INFO_STREAM(key_);
 
-    // Add UUID if an artifact or uwb node
+      new_values.insert(key_, full_pose);
+      
+    }
+    // is initial key
+    else {
+      LaserLoopClosure::Diagonal::shared_ptr covariance(LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
 
-    // Fill pose nodes (representing the robot position)
-    keyed_poses_[msg_node.key] = pose;
+      new_factor.add(MakePriorFactor(full_pose, covariance));
+      new_values.insert(key_, full_pose);
+    }
+
 
     keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(
         msg_node.key, msg_node.header.stamp));
     stamps_keyed_.insert(std::pair<double, long unsigned int>(
         msg_node.header.stamp.toSec(), msg_node.key));
   }
+  ROS_INFO_STREAM("3");
 
   for (const auto &msg_edge : msg->edges) {
+    gtsam::Point3 delta_translation(msg_edge.pose.position.x, msg_edge.pose.position.y, msg_edge.pose.position.z);
+    gtsam::Rot3 delta_orientation(msg_edge.pose.orientation.w, msg_edge.pose.orientation.x, msg_edge.pose.orientation.y, msg_edge.pose.orientation.z);
+    gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
+
     if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
       odometry_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
+            ROS_INFO_STREAM("1");
+          new_factor.add(BetweenFactor<Pose3>(msg_edge.key_from, msg_edge.key_to, delta,  ToGtsam(msg_edge.covariance)));
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
       loop_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
+            ROS_INFO_STREAM("2");
+          new_factor.add(BetweenFactor<Pose3>(msg_edge.key_from, msg_edge.key_to, delta,  ToGtsam(msg_edge.covariance)));
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
       artifact_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
@@ -2824,7 +2856,43 @@ void LaserLoopClosure::PoseGraphCallback(
       }
     }
   }
+    ROS_INFO_STREAM("4");
+  
+  new_factor.print();
+  new_values.print();
+  // Update ISAM2.
+  ROS_INFO_STREAM("5");
+    try {
+    isam_->update(new_factor, new_values);
+    has_changed_ = true;
+  } catch (...) {
+    // redirect cout to file
+    std::ofstream nfgFile;
+    std::string home_folder(getenv("HOME"));
+    nfgFile.open(home_folder + "/Desktop/factor_graph.txt");
+    std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
+    std::cout.rdbuf(nfgFile.rdbuf());
 
+    // save entire factor graph to file and debug if loop closure is correct
+    gtsam::NonlinearFactorGraph nfg = isam_->getFactorsUnsafe();
+    nfg.print();
+    nfgFile.close();
+
+    std::cout.rdbuf(coutbuf); //reset to standard output again
+
+    ROS_ERROR("ISAM update error in AddBetweenFactors");
+    throw;
+  } 
+  
+  // Update class variables
+  values_ = isam_->calculateEstimate();
+
+  nfg_ = isam_->getFactorsUnsafe();
+
+
+  //publish posegraph
+/*   has_changed_ = true;
+  PublishPoseGraph(); */
 }
 
 /* TODO: 

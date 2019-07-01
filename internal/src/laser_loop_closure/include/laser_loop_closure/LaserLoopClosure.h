@@ -219,13 +219,10 @@ class LaserLoopClosure {
                  double trans_precision);
 
   // Removes the factor between the two keys from the pose graph.
-  bool RemoveFactor(unsigned int key1, unsigned int key2, bool is_batch_loop_closure);
+  bool RemoveFactor(gtsam::Symbol key1, gtsam::Symbol key2, bool is_batch_loop_closure);
 
   // Erase the posegraph
   bool ErasePosegraph();
-
-  //Test to not add lazerloopclosures close to a manual loop closure
-  bool BatchLoopClosingTest(unsigned int key, unsigned int other_key);
 
   // Saves pose graph and accompanying point clouds to a zip file.
   bool Save(const std::string &zipFilename) const;
@@ -403,6 +400,8 @@ class LaserLoopClosure {
   //Function to get the gu position of all the keys
   geometry_utils::Transform3 GetPoseAtLoadedKey(const gtsam::Key &key) const;
 
+  std::vector<std::string> robot_names_;
+
   // Used for publishing pose graph only if it hasn't changed.
   bool has_changed_{true};
 
@@ -416,13 +415,14 @@ class LaserLoopClosure {
   ros::Publisher keyed_scan_pub_;
   ros::Publisher loop_closure_notifier_pub_;
 
-  typedef std::pair<gtsam::Key, gtsam::Key>  Edge;
-  typedef std::pair<gtsam::Key, gtsam::Key> ArtifactEdge;
+  typedef std::pair<gtsam::Symbol, gtsam::Symbol>  Edge;
+  typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
   std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
   std::vector<std::pair<unsigned int, gtsam::Key>> uwb_edges_;
+  std::map<Edge, gtsam::Pose3> edge_poses_;
 
   // For filtering laser scans prior to ICP.
   PointCloudFilter filter_;
