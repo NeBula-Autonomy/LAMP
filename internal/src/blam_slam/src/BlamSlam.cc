@@ -58,10 +58,6 @@ BlamSlam::~BlamSlam() {}
 
 bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   name_ = ros::names::append(n.getNamespace(), "BlamSlam");
-  //TODO: Move this to a better location.
-  map_loaded_ = false;
-
-  initial_key_ = 0;
 
   if (!filter_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud filter.", name_.c_str());
@@ -162,6 +158,9 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
     }
   }
 
+  //Get the initial key value to initialize timestamp and pointcloud msgs
+  initial_key_ = loop_closure_.GetInitialKey();
+
   return true;
 }
 
@@ -223,6 +222,16 @@ bool BlamSlam::CreatePublishers(const ros::NodeHandle& n) {
 
 bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
                                 blam_slam::AddFactorResponse &response) {
+ 
+  //Convert from string and int to gtsam::Symbol 
+  unsigned char prefix_from = request.prefix_from[0];
+  unsigned int key_from = request.key_from;
+  gtsam::Symbol id_from (prefix_from,key_from);
+
+  unsigned char prefix_to = request.prefix_to[0]; 
+  unsigned int key_to = request.key_to;
+  gtsam::Symbol id_to (prefix_to,key_to);
+  
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
     ROS_WARN("Cannot add factor because the request is not confirmed.");
@@ -230,7 +239,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
     return true;
   }
 
-  // Get last node pose before doing loop closure
+  // Get last node pose before doing loop closure 
   gu::Transform3 last_key_pose;
   last_key_pose = loop_closure_.GetLastPose();
 
@@ -239,8 +248,8 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   pose_from_to.print("Between pose is ");
 
   response.success = loop_closure_.AddManualLoopClosure(
-    static_cast<unsigned int>(request.key_from),
-    static_cast<unsigned int>(request.key_to),
+    static_cast<gtsam::Symbol>(id_from),
+    static_cast<gtsam::Symbol>(id_to),
     pose_from_to);
   response.confirm = false;
   if (response.success){
@@ -288,6 +297,17 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 
 bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                                    blam_slam::RemoveFactorResponse &response) {
+    
+  //Convert from string and int to gtsam::Symbol 
+  unsigned char prefix_from = request.prefix_from[0];
+  unsigned int key_from = request.key_from;
+  gtsam::Symbol id_from (prefix_from,key_from);
+
+  unsigned char prefix_to = request.prefix_to[0]; 
+  unsigned int key_to = request.key_to;
+  gtsam::Symbol id_to (prefix_to,key_to);
+
+
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
     ROS_WARN("Cannot remove factor because the request is not confirmed.");
@@ -295,9 +315,10 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
     return true;
   }
   bool is_batch_loop_closure = false;
-  response.success =
-      loop_closure_.RemoveFactor(static_cast<unsigned int>(request.key_from),
-                                 static_cast<unsigned int>(request.key_to));
+  response.success = loop_closure_.RemoveFactor(
+    static_cast<gtsam::Symbol>(id_from),
+    static_cast<gtsam::Symbol>(id_to),
+    is_batch_loop_closure);
   if (response.success){
     std::cout << "removing factor from pose graph succeeded" << std::endl;
   }else{
@@ -340,9 +361,9 @@ bool BlamSlam::SaveGraphService(blam_slam::SaveGraphRequest &request,
 bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
                                 blam_slam::LoadGraphResponse &response) {
   std::cout << "Loading graph..." << std::endl;
-  loop_closure_.ErasePosegraph();
+  // TODO: If robot namespace is same as loaded, then erase
+  //loop_closure_.ErasePosegraph();
   response.success = loop_closure_.Load(request.filename);
-  map_loaded_ = true;
 
   // Regenerate the 3D map from the loaded posegraph
   PointCloud::Ptr regenerated_map(new PointCloud);
@@ -354,7 +375,8 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   // change the key number for the second robot to 10000
   loop_closure_.ChangeKeyNumber();
 
-  initial_key_ = loop_closure_.GetKey();
+  // TODO: Double check this
+  initial_key_ = loop_closure_.GetInitialKey();
   gu::MatrixNxNBase<double, 6> covariance;
   covariance.Zeros();
   for (int i = 0; i < 3; ++i)
@@ -369,8 +391,6 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   delta_after_load_.rotation = gu::Rot3(load_graph_roll_, load_graph_pitch_, load_graph_yaw_);
   loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
 
-  // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   return true;
 }
 
@@ -697,6 +717,8 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     // Publish
     loop_closure_.PublishPoseGraph();
 
+    // To do = publish map
+
     return;
   }
 
@@ -810,7 +832,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
     return false;
   }
 
-  unsigned int pose_key;
+  gtsam::Symbol pose_key;
   // Add the new pose to the pose graph (BetweenFactor)
   // TODO rename to attitude and position sigma
   gu::MatrixNxNBase<double, 6> covariance;
@@ -838,7 +860,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
     return false;
   }
 
-  std::vector<unsigned int> closure_keys;
+  std::vector<gtsam::Symbol> closure_keys;
   if (!loop_closure_.FindLoopClosures(pose_key, &closure_keys)) {
     return false;
   }

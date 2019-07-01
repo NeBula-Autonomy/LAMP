@@ -78,7 +78,6 @@ class BlamSlam {
   void ProcessUwbRangeData(const std::string uwb_id);
 
   int marker_id_;
-  bool map_loaded_;
 
  private:
   // Node initialization.
@@ -137,7 +136,7 @@ class BlamSlam {
   std::string name_;
 
   // The intial key in the pose graph
-  unsigned int initial_key_;
+  gtsam::Symbol initial_key_;
 
   // The delta between where LAMP was last saved, and where it is restarted.
   geometry_utils::Transform3 delta_after_restart_;
