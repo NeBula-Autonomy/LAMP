@@ -91,7 +91,20 @@ uwb_skip_measurement_number: 5
 uwb_update_period: 20.0
 
 # Pose key number for checking whether there are enough number of range measurements or not
-uwb_update_key_number: 3
+uwb_update_key_number: 2
+
+# Rquired number of pose keys linked with UWB range measurement
+uwb_required_key_number_first: 3
+uwb_required_key_number_not_first: 1
+
+# Number of range factors added at the first observation
+uwb_number_added_rangefactor_first: 3
+
+# Number of range factors added aganst an existing UWB key in the pose graph
+uwb_number_added_rangefactor_not_first: 1
+
+# Range added into the pose graph should be longer than the following value
+uwb_minimum_range_threshold: 3.0
 
 # Flag to decide whether to show uwb data or not (for debugging)
 display_uwb_data: true

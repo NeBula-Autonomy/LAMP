@@ -115,6 +115,9 @@ class BlamSlam {
   // Drop UWB from a robot
   bool DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
                       mesh_msgs::ProcessCommNodeResponse &response);
+  
+  // Clear UWB buffer
+  void UwbClearBuffer(const std::string uwb_id);
 
   // Service for rinning lazer loop closure again
   bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
@@ -205,6 +208,8 @@ class BlamSlam {
   std::vector<std::string> uwb_id_list_drop_;
   unsigned int uwb_skip_measurement_number_;
   unsigned int uwb_update_key_number_;
+  unsigned int uwb_required_key_number_first_;
+  unsigned int uwb_required_key_number_not_first_;
   double uwb_update_period_;
   std::map<std::string, UwbMeasurementInfo> uwb_id2data_hash_;
 

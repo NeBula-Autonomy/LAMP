@@ -189,6 +189,9 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_range_measurement_error", uwb_range_measurement_error_)) return false;
   if (!pu::Get("uwb_range_compensation", uwb_range_compensation_)) return false;
   if (!pu::Get("uwb_factor_optimizer", uwb_factor_optimizer_)) return false;
+  if (!pu::Get("uwb_number_added_rangefactor_first", uwb_number_added_rangefactor_first_)) return false;
+  if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
+  if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
   if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
 
   std::cout << "before isam reset" << std::endl; 
@@ -575,7 +578,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
       {      
         // Add RangeFactors between the nearest pose key and the UWB key
         int counter = 0;
-        for (int itr = 0; itr < 3; itr++) {
+        for (int itr = 0; itr < uwb_number_added_rangefactor_first_; itr++) {
           while(sorted_data.range_nearest_key[counter] < 3.0) {
             counter++;
             if (counter >= sorted_data.range_nearest_key.size()) {
@@ -628,8 +631,8 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
       case 0 :
       {
         int counter = 0;
-        for (int itr = 0; itr < 3; itr++) {
-          while(sorted_data.range_nearest_key[counter] < 3.0) {
+        for (int itr = 0; itr < uwb_number_added_rangefactor_not_first_; itr++) {
+          while(sorted_data.range_nearest_key[counter] < uwb_minimum_range_threshold_) {
             counter++;
             if (counter >= sorted_data.range_nearest_key.size()) {
               ROS_INFO("Not enough number of range measurement");
@@ -669,6 +672,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_data) {
 
   // 
+  uwb_data.nearest_pose_key.clear();
   for (int itr = 0; itr < uwb_data.time_stamp.size(); itr++) {
     uwb_data.nearest_pose_key.push_back(GetKeyAtTime(uwb_data.time_stamp[itr]));
   }
@@ -776,16 +780,16 @@ void LaserLoopClosure::ShowUwbRearrangedData(UwbRearrangedData uwb_data) {
 template <class T1, class T2>
 void LaserLoopClosure::Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &vector2) {
   int n = vector1.size();
-    std::vector<T1> p(n), vec1_temp(n);
-    std::vector<T2> vec2_temp(n);
-    std::iota(p.begin(), p.end(), 0);
-    std::sort(p.begin(), p.end(), [&](T1 i, T1 j) {return vector1[i] < vector1[j];});
-    for (int itr = 0; itr < n; itr++) {
-        vec1_temp[itr] = vector1[p[itr]];
-        vec2_temp[itr] = vector2[p[itr]];
-    }
-    vector1 = vec1_temp;
-    vector2 = vec2_temp;
+  std::vector<T1> p(n), vec1_temp(n);
+  std::vector<T2> vec2_temp(n);
+  std::iota(p.begin(), p.end(), 0);
+  std::sort(p.begin(), p.end(), [&](T1 i, T1 j) {return vector1[i] < vector1[j];});
+  for (int itr = 0; itr < n; itr++) {
+      vec1_temp[itr] = vector1[p[itr]];
+      vec2_temp[itr] = vector2[p[itr]];
+  }
+  vector1 = vec1_temp;
+  vector2 = vec2_temp;
 }
 
 
@@ -2597,7 +2601,7 @@ void GenericSolver::update(gtsam::NonlinearFactorGraph nfg,
 }
 
 gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
-  ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
+  // ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
 
   auto iterTime = stamps_keyed_.lower_bound(stamp.toSec()); // First key that is not less than timestamp 
 

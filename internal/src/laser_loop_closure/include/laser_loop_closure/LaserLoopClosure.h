@@ -122,6 +122,7 @@ struct UwbMeasurementInfo {
   std::string id; // UWB HEX-ID ex) CE6B
   std::string holder; // Robot name which carrys the UWB anchor
   bool drop_status; // Flag of drop stats -dropped: true, -mounted: false
+  bool in_pose_graph; // Is included in the pose graph: true, not: false
   std::vector<ros::Time> time_stamp; // Time when the ranage measurement is acquired
   std::vector<double> range; // Range measurement data
   std::vector<Eigen::Vector3d> robot_position; // The robot position where the range data is acquired
@@ -385,6 +386,9 @@ class LaserLoopClosure {
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
   unsigned int uwb_factor_optimizer_;
+  unsigned int uwb_number_added_rangefactor_first_;
+  unsigned int uwb_number_added_rangefactor_not_first_;
+  double uwb_minimum_range_threshold_;
   bool display_uwb_data_;
 
   // ISAM2 optimizer object, and best guess pose values.
