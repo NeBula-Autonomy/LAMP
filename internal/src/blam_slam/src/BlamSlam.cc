@@ -52,6 +52,7 @@ BlamSlam::BlamSlam()
     attitude_sigma_(0.04),
     marker_id_(0),
     largest_artifact_id_(0),
+    b_first_pose_scan_revieved_(false),
     use_artifact_loop_closure_(false) {}
 
 BlamSlam::~BlamSlam() {}
@@ -68,18 +69,8 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
     return false;
   }
 
-  if (!odometry_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize point cloud odometry.", name_.c_str());
-    return false;
-  }
-
   if (!loop_closure_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize laser loop closure.", name_.c_str());
-    return false;
-  }
-
-  if (!localization_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize localization.", name_.c_str());
     return false;
   }
 
@@ -153,7 +144,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
       mapper_.InsertPoints(regenerated_map, unused.get());
 
       // Also reset the robot's estimated position.
-      localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+      be_current_pose_ = loop_closure_.GetLastPose();
 
       // Publish updated map
       mapper_.PublishMap();
@@ -196,9 +187,8 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  estimate_update_timer_ = nl.createTimer(
-      estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
-  
+  pose_scan_sub_ = nl.subscribe("pose_and_scan", 100000, &BlamSlam::PoseScanCallback, this);
+
   uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
 
   pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
@@ -263,14 +253,14 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   gu::Transform3 new_key_pose = loop_closure_.GetLastPose();
   // Update to the pose of the last key
   // Current estimate
-  gu::Transform3 new_pose = localization_.GetIntegratedEstimate();
+  gu::Transform3 new_pose = be_current_pose_;
   // Delta translation
   new_pose.translation = new_pose.translation + (new_key_pose.translation - last_key_pose.translation);
   // Delta rotation
   new_pose.rotation = new_pose.rotation*(new_key_pose.rotation*last_key_pose.rotation.Trans());
 
   // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(new_pose);
+  be_current_pose_ = new_pose;
 
   // Sends pose graph to visualizer node, if graph has changed.
   loop_closure_.PublishPoseGraph();
@@ -314,7 +304,7 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
   mapper_.InsertPoints(regenerated_map, unused.get());
 
   // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  be_current_pose_ = loop_closure_.GetLastPose();
 
   // Visualize the pose graph and current loop closure radius.
   loop_closure_.PublishPoseGraph();
@@ -323,7 +313,7 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
   loop_closure_.PublishArtifacts();
 
   // Publish updated map
-  mapper_.PublishMap();
+  mapper_.PublishMap(); // TODO publish elsewhere?
 
   std::cout << "Updated the map" << std::endl;
 
@@ -370,7 +360,7 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
 
   // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  be_current_pose_ = loop_closure_.GetLastPose();
   return true;
 }
 
@@ -389,16 +379,15 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   mapper_.InsertPoints(regenerated_map, unused.get());
 
   // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  be_current_pose_ = loop_closure_.GetLastPose();
   return true; 
 }
-
 
 bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
                               mesh_msgs::ProcessCommNodeResponse &response) {
   ROS_INFO_STREAM("Dropped UWB anchor is " + request.node.AnchorID);
 
-  Eigen::Vector3d aug_robot_position = localization_.GetIntegratedEstimate().translation.Eigen();
+  Eigen::Vector3d aug_robot_position = be_current_pose_.translation.Eigen();
 
   loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, aug_robot_position);
 
@@ -407,40 +396,68 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
   return true;
 }
 
+void BlamSlam::PoseScanCallback(const core_msgs::PoseAndScanConstPtr& msg) {
+  
+  // Get the pose
+  geometry_utils::Transform3 fe_pose = geometry_utils::ros::FromROS(msg->integrated_estimate.pose);// Change name to include pose
+
+
+
+  PointCloud::Ptr received_cloud_ptr;
+  received_cloud_ptr.reset(new PointCloud);
+  // sensor_msgs::PointCloud2ConstPtr pointcloud_msg;
+  
+  pcl::fromROSMsg( msg->scan, *received_cloud_ptr.get());
+
+  // Process pose and scan
+  ProcessPoseScanMessage(fe_pose, received_cloud_ptr);
+
+  return;
+}
+
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
-  synchronizer_.AddPCLPointCloudMessage(msg);
+  // TODO - for other front-ends
+  ROS_WARN("Not yet implemented");
+  // use filtering etc/ to sync with odome messages, then use
+  // ProcessPoseScanMessage(fe_pose, msg.scan);
+  return;
 }
 
 void BlamSlam::EstimateTimerCallback(const ros::TimerEvent& ev) {
-  // Sort all messages accumulated since the last estimate update.
-  synchronizer_.SortMessages();
 
-  // Iterate through sensor messages, passing to update functions.
-  MeasurementSynchronizer::sensor_type type;
-  unsigned int index = 0;
-  while (synchronizer_.GetNextMessage(&type, &index)) {
-    switch(type) {
+  // NOT IMPLEMENTED OR USED CURRENTLY
+  return;
 
-      // Point cloud messages.
-      case MeasurementSynchronizer::PCL_POINTCLOUD: {
-        const MeasurementSynchronizer::Message<PointCloud>::ConstPtr& m =
-            synchronizer_.GetPCLPointCloudMessage(index);
+  // // Not currently used, but consider using when using a different odom source 
+  // // Sort all messages accumulated since the last estimate update.
+  // synchronizer_.SortMessages();
 
-        ProcessPointCloudMessage(m->msg);
-        break;
-      }
+  // // Iterate through sensor messages, passing to update functions.
+  // MeasurementSynchronizer::sensor_type type;
+  // unsigned int index = 0;
+  // while (synchronizer_.GetNextMessage(&type, &index)) {
+  //   switch(type) {
 
-      // Unhandled sensor messages.
-      default: {
-        ROS_WARN("%s: Unhandled measurement type (%s).", name_.c_str(),
-                 MeasurementSynchronizer::GetTypeString(type).c_str());
-        break;
-      }
-    }
-  }
+  //     // Point cloud messages.
+  //     case MeasurementSynchronizer::PCL_POINTCLOUD: {
+  //       const MeasurementSynchronizer::Message<PointCloud>::ConstPtr& m =
+  //           synchronizer_.GetPCLPointCloudMessage(index);
 
-  // Remove processed messages from the synchronizer.
-  synchronizer_.ClearMessages();
+  //       ProcessPointCloudMessage(m->msg);
+  //       break;
+  //     }
+
+  //     // Unhandled sensor messages.
+  //     default: {
+  //       ROS_WARN("%s: Unhandled measurement type (%s).", name_.c_str(),
+  //                MeasurementSynchronizer::GetTypeString(type).c_str());
+  //       break;
+  //     }
+  //   }
+  // }
+
+  // // Remove processed messages from the synchronizer.
+  // synchronizer_.ClearMessages();
 }
 
 void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
@@ -463,9 +480,6 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Get artifact position 
   Eigen::Vector3d artifact_position;
   artifact_position << msg.point.point.x, msg.point.point.y, msg.point.point.z;
-
-  // Get global pose (of robot)
-  // geometry_utils::Transform3 global_pose = localization_.GetIntegratedEstimate();
 
   Eigen::Vector3d R_artifact_position; // In robot frame
 
@@ -561,7 +575,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
     gu::Transform3 new_key_pose = loop_closure_.GetLastPose();
     // Update to the pose of the last key
     // Current estimate
-    gu::Transform3 new_pose = localization_.GetIntegratedEstimate();
+    gu::Transform3 new_pose = be_current_pose_;
     // Delta translation from the loop closure change to the last pose node
     new_pose.translation = new_pose.translation + (new_key_pose.translation - last_key_pose.translation);
     // Delta rotation
@@ -569,7 +583,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 
     // Update localization
     // Also reset the robot's estimated position.
-    localization_.SetIntegratedEstimate(new_pose);
+    be_current_pose_ = new_pose;
 
     // Visualize the pose graph updates
     loop_closure_.PublishPoseGraph();
@@ -642,7 +656,7 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
     mapper_.InsertPoints(regenerated_map, unused.get());
 
     // Also reset the robot's estimated position.
-    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+    be_current_pose_ = loop_closure_.GetLastPose();
 
     // Visualize the pose graph and current loop closure radius.
     loop_closure_.PublishPoseGraph();
@@ -665,13 +679,13 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
     if (itr->second == true) {
       map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
       map_uwbid_time_data_[msg.id][msg.header.stamp].second
-      = localization_.GetIntegratedEstimate().translation.Eigen();
+      = be_current_pose_.translation.Eigen();
     }
   }
   else {
     map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
     map_uwbid_time_data_[msg.id][msg.header.stamp].second
-    = localization_.GetIntegratedEstimate().translation.Eigen();
+    = be_current_pose_.translation.Eigen();
   }
 }
 
@@ -679,51 +693,51 @@ void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
 }
 
-void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
-  // Filter the incoming point cloud message.
-  PointCloud::Ptr msg_filtered(new PointCloud);
-  filter_.Filter(msg, msg_filtered);
+void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const PointCloud::Ptr& scan) {
+  
+  PointCloud::Ptr scan_filtered(new PointCloud);
+  filter_.Filter(scan, scan_filtered);
 
-  // Update odometry by performing ICP.
-  if (!odometry_.UpdateEstimate(*msg_filtered)) {
+  PointCloud::Ptr scan_transformed(new PointCloud);
+  PointCloud::Ptr scan_fixed(new PointCloud);
+
+  if (!b_first_pose_scan_revieved_){
     // First update ever.
-    PointCloud::Ptr unused(new PointCloud);
-    mapper_.InsertPoints(msg_filtered, unused.get());
-    loop_closure_.AddKeyScanPair(initial_key_, msg, true);
 
-    // Publish localization pose messages
-    localization_.PublishPoseNoUpdate();
+    // Update what the last pose added to pose graph
+    fe_last_pose_ = fe_pose;
+
+    // Init current pose in back-end
+    be_current_pose_ = fe_pose;
+
+    // Transform if not starting at 0, 0, 0,
+    TransformPointsToFixedFrame(*scan_filtered,
+                                            scan_transformed.get());
+
+
+    // Transform point cloud 
+    PointCloud::Ptr unused(new PointCloud);
+    mapper_.InsertPoints(scan_filtered, unused.get());
+    loop_closure_.AddKeyScanPair(initial_key_, scan, true);
+    // TODO: check how initial key is set
 
     // Publish
     loop_closure_.PublishPoseGraph();
 
+    // have first scan now
+    b_first_pose_scan_revieved_ = true;
+
     return;
   }
 
-  // Containers.
-  PointCloud::Ptr msg_transformed(new PointCloud);
-  PointCloud::Ptr msg_neighbors(new PointCloud);
-  PointCloud::Ptr msg_base(new PointCloud);
-  PointCloud::Ptr msg_fixed(new PointCloud);
+  // Update delta 
+  geometry_utils::Transform3 pose_delta = geometry_utils::PoseDelta(fe_last_pose_, fe_pose);
 
-  // Transform the incoming point cloud to the best estimate of the base frame.
-  localization_.MotionUpdate(odometry_.GetIncrementalEstimate());
-  localization_.TransformPointsToFixedFrame(*msg_filtered,
-                                            msg_transformed.get());
+  // reset fe_last_pose_
+  fe_last_pose_ = fe_pose;
 
-  // Get approximate nearest neighbors from the map.
-  mapper_.ApproxNearestNeighbors(*msg_transformed, msg_neighbors.get());
-
-  // Transform those nearest neighbors back into sensor frame to perform ICP.
-  localization_.TransformPointsToSensorFrame(*msg_neighbors, msg_neighbors.get());
-
-  // Localize to the map. Localization will output a pointcloud aligned in the
-  // sensor frame.
-  localization_.MeasurementUpdate(msg_filtered, msg_neighbors, msg_base.get());
-
-  // Check for new loop closures.
   bool new_keyframe = false;
-  if (HandleLoopClosures(msg, &new_keyframe)) {
+  if (HandleLoopClosures(scan, pose_delta, &new_keyframe)) {
     // We found one - regenerate the 3D map.
     PointCloud::Ptr regenerated_map(new PointCloud);
     loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
@@ -732,9 +746,9 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     PointCloud::Ptr unused(new PointCloud);
     mapper_.InsertPoints(regenerated_map, unused.get());
 
-    // Also reset the robot's estimated position.
-    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-
+    // Update current pose
+    be_current_pose_ = loop_closure_.GetLastPose();
+    
     // Publish artifacts - should be updated from the pose-graph 
     loop_closure_.PublishArtifacts();
 
@@ -743,13 +757,18 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     // No new loop closures - but was there a new key frame? If so, add new
     // points to the map.
     if (new_keyframe) {
-      localization_.MotionUpdate(gu::Transform3::Identity());
-      localization_.TransformPointsToFixedFrame(*msg, msg_fixed.get());
-      PointCloud::Ptr unused(new PointCloud);
-      mapper_.InsertPoints(msg_fixed, unused.get());
+      // Update current pose
+      be_current_pose_ = loop_closure_.GetLastPose();
 
-      // Also reset the robot's estimated position.
-      localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+      // Update the map
+      TransformPointsToFixedFrame(*scan, scan_fixed.get());
+      PointCloud::Ptr unused(new PointCloud);
+      mapper_.InsertPoints(scan_fixed, unused.get());
+
+    } else{
+      // Update current pose with input delta
+      be_current_pose_ = geometry_utils::PoseUpdate(be_current_pose_, pose_delta);
+
     }
   }
 
@@ -760,12 +779,13 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   }   
   
 
-  // Publish the incoming point cloud message from the base frame.
-  if (base_frame_pcld_pub_.getNumSubscribers() != 0) {
-    PointCloud base_frame_pcld = *msg;
-    base_frame_pcld.header.frame_id = base_frame_id_;
-    base_frame_pcld_pub_.publish(base_frame_pcld);
-  }
+  // // Publish the incoming point cloud message from the base frame.
+  // if (base_frame_pcld_pub_.getNumSubscribers() != 0) {
+  //   PointCloud base_frame_pcld = *msg;
+  //   base_frame_pcld.header.frame_id = base_frame_id_;
+  //   base_frame_pcld_pub_.publish(base_frame_pcld);
+  // }
+
 }
 
 bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
@@ -799,11 +819,11 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
   loop_closure_.AddFactorAtRestart(delta_after_restart_, covariance);
 
   // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  be_current_pose_ = loop_closure_.GetLastPose();
   return true;
 }
 
-bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
+bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan, geometry_utils::Transform3 pose_delta,
                                   bool* new_keyframe) {
   if (new_keyframe == NULL) {
     ROS_ERROR("%s: Output boolean for new keyframe is null.", name_.c_str());
@@ -824,8 +844,10 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
 
   const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
 
+  // TODO: compose covariances as well
+
   // Add between factor
-  if (!loop_closure_.AddBetweenFactor(localization_.GetIncrementalEstimate(),
+  if (!loop_closure_.AddBetweenFactor(pose_delta,
                                       covariance,
                                       stamp,
                                       &pose_key)) {
@@ -850,4 +872,25 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   return true;
 }
 
+bool BlamSlam::TransformPointsToFixedFrame(
+    const PointCloud& points, PointCloud* points_transformed) const {
+  if (points_transformed == NULL) {
+    ROS_ERROR("%s: Output is null.", name_.c_str());
+    return false;
+  }
 
+  // Compose the current incremental estimate (from odometry) with the
+  // integrated estimate, and transform the incoming point cloud.
+  const gu::Transform3 estimate =
+      be_current_pose_;
+  const Eigen::Matrix<double, 3, 3> R = estimate.rotation.Eigen();
+  const Eigen::Matrix<double, 3, 1> T = estimate.translation.Eigen();
+
+  Eigen::Matrix4d tf;
+  tf.block(0, 0, 3, 3) = R;
+  tf.block(0, 3, 3, 1) = T;
+
+  pcl::transformPointCloud(points, *points_transformed, tf);
+
+  return true;
+}
