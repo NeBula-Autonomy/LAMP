@@ -368,7 +368,6 @@ class LaserLoopClosure {
   ros::Subscriber pose_graph_sub_;
   std::vector<ros::Subscriber> Subscriber_posegraphList_;
   std::vector<ros::Subscriber> Subscriber_keyedscanList_;
-  
 
   std::map<long unsigned int, tf::Pose> keyed_poses_;
 

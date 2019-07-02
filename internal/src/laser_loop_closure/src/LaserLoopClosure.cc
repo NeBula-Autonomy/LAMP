@@ -262,13 +262,11 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   if(b_is_basestation_){
-
     int num_robots = robot_names_.size();
-    //init size of subscribers
-    //loop through each robot to set up subscriber
+    // init size of subscribers
+    // loop through each robot to set up subscriber
     for (size_t i = 0; i < num_robots; i++) {
-      
-      ros::Subscriber keyed_scan_sub  = nl.subscribe<pose_graph_msgs::KeyedScan>(
+      ros::Subscriber keyed_scan_sub = nl.subscribe<pose_graph_msgs::KeyedScan>(
           "/" + robot_names_[i] + "/blam_slam/keyed_scans",
           10,
           &LaserLoopClosure::KeyedScanCallback,
@@ -428,7 +426,7 @@ bool LaserLoopClosure::AddBetweenFactor(
   // TODO Compose covariances at the same time as odometry
 
   gtsam::Symbol previous_key = key_-1;
-  ROS_INFO("Checking for key %c %d",previous_key.chr(),previous_key.key());
+  ROS_INFO("Checking for key %c %d", previous_key.chr(), previous_key.key());
   Pose3 last_pose = values_.at<Pose3>(key_-1);
   new_value.insert(key_, last_pose.compose(odometry_));
 
@@ -523,17 +521,16 @@ bool LaserLoopClosure::AddBetweenFactor(
 }
 
 // Function to change key number for multiple robots
-bool LaserLoopClosure::ChangeKeyNumber(){ 
+bool LaserLoopClosure::ChangeKeyNumber() {
   ROS_INFO_STREAM("4");
 
-  if (initial_key_ == first_loaded_key_){
-      unsigned char random = (unsigned char) rand();
-      ROS_INFO_STREAM(random);
-      key_ = gtsam::Symbol(random,0);
-      LaserLoopClosure::ChangeKeyNumber();
-  }
-  else{
-  key_ = initial_key_;
+  if (initial_key_ == first_loaded_key_) {
+    unsigned char random = (unsigned char)rand();
+    ROS_INFO_STREAM(random);
+    key_ = gtsam::Symbol(random, 0);
+    LaserLoopClosure::ChangeKeyNumber();
+  } else {
+    key_ = initial_key_;
   }
 }
 
@@ -1930,7 +1927,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   pgo_solver_->print();
   ROS_INFO_STREAM("2");
 
-  //TODO: Should store initial_noise to use in load
+  // TODO: Should store initial_noise to use in load
   const LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
   const gtsam::Symbol key0 = gtsam::Symbol(*nfg_.keys().begin());

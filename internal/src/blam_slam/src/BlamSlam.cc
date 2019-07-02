@@ -366,7 +366,7 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
 
   response.success = loop_closure_.Load(request.filename);
 
-    // change the key number for the second robot
+  // change the key number for the second robot
   loop_closure_.ChangeKeyNumber();
 
   // Regenerate the 3D map from the loaded posegraph
