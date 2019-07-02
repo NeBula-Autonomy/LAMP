@@ -329,6 +329,7 @@ class LaserLoopClosure {
   double translation_threshold_nodes_;
   double rotation_threshold_nodes_;
   double translation_threshold_kf_;
+  double rotation_threshold_kf_;
   double proximity_threshold_;
   double max_tolerable_fitness_;
   double manual_lc_rot_precision_;
