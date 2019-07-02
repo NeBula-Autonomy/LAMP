@@ -398,8 +398,10 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
 
 void BlamSlam::PoseScanCallback(const core_msgs::PoseAndScanConstPtr& msg) {
   
+  ROS_INFO("Inside PoseScanCallback");
+
   // Get the pose
-  geometry_utils::Transform3 fe_pose = geometry_utils::ros::FromROS(msg->integrated_estimate.pose);// Change name to include pose
+  geometry_utils::Transform3 fe_pose = geometry_utils::ros::FromROS(msg->pose.pose);// Change name to include pose
 
 
 

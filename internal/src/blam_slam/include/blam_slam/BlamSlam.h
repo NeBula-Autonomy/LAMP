@@ -46,7 +46,6 @@
 #include <blam_slam/LoadGraph.h>
 #include <blam_slam/BatchLoopClosure.h>
 
-
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_odometry/PointCloudOdometry.h>
