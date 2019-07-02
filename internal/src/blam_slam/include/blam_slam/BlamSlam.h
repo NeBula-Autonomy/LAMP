@@ -55,6 +55,10 @@
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
+
 #include <core_msgs/Artifact.h>
 #include <uwb_msgs/Anchor.h>
 #include <mesh_msgs/ProcessCommNode.h>
@@ -78,7 +82,9 @@ class BlamSlam {
   void ProcessUwbRangeData(const std::string uwb_id);
 
   int marker_id_;
-  bool map_loaded_;
+  
+  //listener for tf published by fiducials
+  tf::TransformListener tf_listener_;
 
  private:
   // Node initialization.
@@ -133,8 +139,16 @@ class BlamSlam {
   void PublishArtifact(const Eigen::Vector3d& W_artifact_position,
                        const core_msgs::Artifact& msg);
 
+  bool getTransformEigenFromTF(const std::string& parent_frame,
+                               const std::string& child_frame,
+                               const ros::Time& time,
+                               Eigen::Affine3d& T);
+
   // The node's name.
   std::string name_;
+
+  std::string blam_frame_;
+  std::string world_frame_;
 
   // The intial key in the pose graph
   unsigned int initial_key_;
@@ -142,9 +156,7 @@ class BlamSlam {
   // The delta between where LAMP was last saved, and where it is restarted.
   geometry_utils::Transform3 delta_after_restart_;
 
-  geometry_utils::Transform3 delta_after_load_;
-
-  // Update rates and callback timers.
+   // Update rates and callback timers.
   double estimate_update_rate_;
   double visualization_update_rate_;
   double uwb_update_rate_;
@@ -164,14 +176,7 @@ class BlamSlam {
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
 
-  // Load and restart delta
-  double load_graph_x_;
-  double load_graph_y_;
-  double load_graph_z_;
-  double load_graph_roll_;
-  double load_graph_pitch_;
-  double load_graph_yaw_;
-
+  // Restart delta
   double restart_x_;
   double restart_y_;
   double restart_z_;

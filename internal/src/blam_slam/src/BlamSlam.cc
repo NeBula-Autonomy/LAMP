@@ -58,8 +58,6 @@ BlamSlam::~BlamSlam() {}
 
 bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   name_ = ros::names::append(n.getNamespace(), "BlamSlam");
-  //TODO: Move this to a better location.
-  map_loaded_ = false;
 
   initial_key_ = 0;
 
@@ -118,13 +116,6 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("noise/odom_attitude_sigma", attitude_sigma_)) return false;
 
   //Load and restart deltas
-  if (!pu::Get("load_graph_x", load_graph_x_)) return false;
-  if (!pu::Get("load_graph_y", load_graph_y_)) return false;
-  if (!pu::Get("load_graph_z", load_graph_z_)) return false;
-  if (!pu::Get("load_graph_roll", load_graph_roll_)) return false;
-  if (!pu::Get("load_graph_pitch", load_graph_pitch_)) return false;
-  if (!pu::Get("load_graph_yaw", load_graph_yaw_)) return false;
-
   if (!pu::Get("restart_x", restart_x_)) return false;
   if (!pu::Get("restart_y", restart_y_)) return false;
   if (!pu::Get("restart_z", restart_z_)) return false;
@@ -294,7 +285,6 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
     response.success = false;
     return true;
   }
-  bool is_batch_loop_closure = false;
   response.success =
       loop_closure_.RemoveFactor(static_cast<unsigned int>(request.key_from),
                                  static_cast<unsigned int>(request.key_to));
@@ -342,7 +332,6 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   std::cout << "Loading graph..." << std::endl;
   loop_closure_.ErasePosegraph();
   response.success = loop_closure_.Load(request.filename);
-  map_loaded_ = true;
 
   // Regenerate the 3D map from the loaded posegraph
   PointCloud::Ptr regenerated_map(new PointCloud);
@@ -361,13 +350,11 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
     covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
-
-  // Obtain the second robot's initial pose from the tf
-  //TODO: Kamak: write a callback function to get the tf
-  // compute the delta and put it in this format.
-  delta_after_load_.translation = gu::Vec3(load_graph_x_, load_graph_y_, load_graph_z_);
-  delta_after_load_.rotation = gu::Rot3(load_graph_roll_, load_graph_pitch_, load_graph_yaw_);
-  loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
+  
+  gu::Transform3 init_pose = loop_closure_.GetInitialPose();
+  gu::Transform3 current_pose = loop_closure_.GetCurrentPose();
+  const gu::Transform3 pose_delta = gu::PoseDelta(init_pose, current_pose);
+  loop_closure_.AddFactorAtLoad(pose_delta, covariance);
 
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
@@ -377,19 +364,26 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
 bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
                                 blam_slam::BatchLoopClosureResponse &response) {
  
-  std::cout << "Looking for any loop closures..." << std::endl;
+  std::cout << "BATCH LOOP CLOSURE. Looking for any loop closures..." << std::endl;
 
   response.success = loop_closure_.BatchLoopClosure();
-  // We found one - regenerate the 3D map.
-  PointCloud::Ptr regenerated_map(new PointCloud);
-  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  mapper_.Reset();
-  PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(regenerated_map, unused.get());
+  if (response.success){
+    ROS_INFO("Found Loop Closures in batch loop closure");
+  
+    // We found one - regenerate the 3D map.
+    PointCloud::Ptr regenerated_map(new PointCloud);
+    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+    mapper_.Reset();
+    PointCloud::Ptr unused(new PointCloud);
+    mapper_.InsertPoints(regenerated_map, unused.get());
+
+    // Also reset the robot's estimated position.
+    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  }else {
+    ROS_INFO("No loop closures in batch loop closure");
+  }
   return true; 
 }
 
@@ -684,11 +678,16 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   PointCloud::Ptr msg_filtered(new PointCloud);
   filter_.Filter(msg, msg_filtered);
 
+  PointCloud::Ptr msg_transformed(new PointCloud);
+
   // Update odometry by performing ICP.
   if (!odometry_.UpdateEstimate(*msg_filtered)) {
     // First update ever.
+    // Transforming msg to fixed frame for non-zero initial position
+    localization_.TransformPointsToFixedFrame(*msg_filtered,
+                                              msg_transformed.get());
     PointCloud::Ptr unused(new PointCloud);
-    mapper_.InsertPoints(msg_filtered, unused.get());
+    mapper_.InsertPoints(msg_transformed, unused.get());
     loop_closure_.AddKeyScanPair(initial_key_, msg, true);
 
     // Publish localization pose messages
@@ -701,7 +700,6 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   }
 
   // Containers.
-  PointCloud::Ptr msg_transformed(new PointCloud);
   PointCloud::Ptr msg_neighbors(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
@@ -792,7 +790,6 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
 
-
   // This will add a between factor after obtaining the delta between poses.
   delta_after_restart_.translation = gu::Vec3(restart_x_, restart_y_, restart_z_);
   delta_after_restart_.rotation = gu::Rot3(restart_roll_, restart_pitch_, restart_yaw_);
@@ -850,4 +847,19 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   return true;
 }
 
+bool BlamSlam::getTransformEigenFromTF(
+    const std::string& parent_frame,
+    const std::string& child_frame,
+    const ros::Time& time,
+    Eigen::Affine3d& T) {
+  ros::Duration timeout(3.0);
+  tf::StampedTransform tf_tfm;
+  try {
+    tf_listener_.waitForTransform(parent_frame, child_frame, time, timeout);
+    tf_listener_.lookupTransform(parent_frame, child_frame, time, tf_tfm);
+  } catch (tf::TransformException& ex) {
+    ROS_FATAL("%s", ex.what());
+  }
+  tf::transformTFToEigen(tf_tfm, T);
+}
 

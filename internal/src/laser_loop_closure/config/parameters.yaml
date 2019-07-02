@@ -6,7 +6,7 @@ check_for_loop_closures: true
 use_artifact_loop_closure: false
 
 # Make true to save a backup pointcloud before every loop closure.
-save_posegraph_backup: true
+save_posegraph_backup: false
 
 # Number of keyes between each saved backup
 keys_between_each_posegraph_backup: 50
@@ -37,8 +37,8 @@ artifact_trans_precision: 1.0
 # are fast.
 translation_threshold_kf: 1.0 # For adding keyframes 
 translation_threshold_nodes: 1.0  # For adding nodes to pose graph 
-rotation_threshold_nodes: 0.5  # (rad) rotation before adding new poses 
-rotation_threshold_kf: 0.5 # (rad) rotation before adding new poses 
+rotation_threshold_nodes: 30.5  # (rad) rotation before adding new poses 
+rotation_threshold_kf: 30.5 # (rad) rotation before adding new poses 
 
 # When searching through old poses for loop closures, only consider old poses
 # that are within this distance of the current pose.
@@ -71,7 +71,7 @@ translational_sanity_check_lc: 100
 translational_sanity_check_odom: 3
 
 ########################################
-b_use_uwb: false
+b_use_uwb: true
 
 # UWB range measurement noise (standard deviation)
 uwb_range_measurement_error: 0.50
