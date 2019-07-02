@@ -550,6 +550,7 @@ bool LaserLoopClosure::AddBetweenChordalFactor(
 
 bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data) {
 
+  // Check whether the input UWB ID exists in the pose graph or not
   gtsam::Key uwb_key;
   if (uwb_id2key_hash_.find(uwb_id) != uwb_id2key_hash_.end()) {
     uwb_key = uwb_id2key_hash_[uwb_id];
@@ -560,6 +561,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
+  // Sort the UWB-related data stored in the buffer 
   UwbRearrangedData sorted_data = RearrangeUwbData(uwb_data);
 
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
@@ -572,14 +574,15 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 
   // Change the process according to whether the uwb anchor is observed for the first time or not
   if (!values_.exists(uwb_key)) {
-
+    // Adding a UWB key at the first time
     switch (uwb_range_compensation_) {
       case 0 : 
       {      
         // Add RangeFactors between the nearest pose key and the UWB key
         int counter = 0;
         for (int itr = 0; itr < uwb_number_added_rangefactor_first_; itr++) {
-          while(sorted_data.range_nearest_key[counter] < 3.0) {
+          // Too short range data is ignored
+          while(sorted_data.range_nearest_key[counter] < uwb_minimum_range_threshold_) {
             counter++;
             if (counter >= sorted_data.range_nearest_key.size()) {
               ROS_INFO("Not enough number of range measurement");
@@ -671,13 +674,14 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 
 UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_data) {
 
-  // 
+  // Recalculate the nearest pose key at the range measurement timing
+  // "uwb_data.nearest_pose_key" already stores the data, so it should be freed up in advance.
   uwb_data.nearest_pose_key.clear();
   for (int itr = 0; itr < uwb_data.time_stamp.size(); itr++) {
     uwb_data.nearest_pose_key.push_back(GetKeyAtTime(uwb_data.time_stamp[itr]));
   }
 
-  // 
+  // Calculate the distance between the pose key and the point where receiving UWB range measurement
   double dist_temp;
   Eigen::Vector3d pose_at_key;
   for (int itr = 0; itr < uwb_data.range.size(); itr++) {
@@ -686,11 +690,11 @@ UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_dat
     uwb_data.dist_posekey.push_back(dist_temp);
   }
 
-  // 
+  // Make a unique list of the pose keys
   auto pose_key_list = uwb_data.nearest_pose_key;
   pose_key_list.erase(std::unique(pose_key_list.begin(), pose_key_list.end()), pose_key_list.end());
 
-  //
+  // Classify UWB data in accordance with the pose keys
   std::map<gtsam::Key, UwbDataLinkedWithKey> uwb_posekey2data;
   for (auto itr = pose_key_list.begin(); itr != pose_key_list.end(); itr++) {
     auto bounds     = std::equal_range(uwb_data.nearest_pose_key.begin(), uwb_data.nearest_pose_key.end(), *itr);
@@ -701,27 +705,24 @@ UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_dat
       uwb_posekey2data[*itr].dist_posekey.push_back(uwb_data.dist_posekey[itr2]);
       uwb_posekey2data[*itr].robot_position.push_back(uwb_data.robot_position[itr2]);
     }
-    // TODO: the order of robot_position should be changed.
+    // TODO: the order of robot_position should be also changed.
     Sort2Vectors<double, double>(uwb_posekey2data[*itr].dist_posekey, uwb_posekey2data[*itr].range);
     uwb_posekey2data[*itr].data_number = uwb_posekey2data[*itr].range.size();
     double range_sum = std::accumulate(uwb_posekey2data[*itr].range.begin(), uwb_posekey2data[*itr].range.end(), 0.0);
     uwb_posekey2data[*itr].range_average = range_sum / uwb_posekey2data[*itr].data_number;
   }
 
-  // 
   std::vector<double> range_nearest_key;
   for (auto itr = pose_key_list.begin(); itr != pose_key_list.end(); itr++) {
     range_nearest_key.push_back(uwb_posekey2data[*itr].range[0]);
   }
   
-  // 
   UwbRearrangedData sorted_data;
   Sort2Vectors<double, gtsam::Key>(range_nearest_key, pose_key_list);
   sorted_data.pose_key_list = pose_key_list;
   sorted_data.range_nearest_key = range_nearest_key;
   sorted_data.posekey2data = uwb_posekey2data;
 
-  //
   if (display_uwb_data_) {
     ShowUwbRawData(uwb_data);
     ShowUwbRearrangedData(sorted_data);

@@ -608,12 +608,16 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
 
     if (data.range.size() > uwb_skip_measurement_number_) {
 
+      // Calculate the pose key number difference between the latest pose key and the pose key linked with UWB
       auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
       auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_stamp.back());
       int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
 
+      // Check whether enough number of pose key is passed or not
       if (key_diff >= uwb_update_key_number_) {
         
+        // Count the number of pose keys linked with UWB
+        // If it's the first time observation, at least three keys are necessary to localize the UWB anchor
         unsigned int required_key_number;
         if (uwb_id2data_hash_[uwb_id].in_pose_graph == false) {
           required_key_number = uwb_required_key_number_first_;
@@ -638,6 +642,7 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
 }
 
 void BlamSlam::UwbClearBuffer(const std::string uwb_id) {
+  // Clear the UWB data buffer after processing the data and adding RangeFactor
   uwb_id2data_hash_[uwb_id].range.clear();
   uwb_id2data_hash_[uwb_id].time_stamp.clear();
   uwb_id2data_hash_[uwb_id].robot_position.clear();
@@ -679,6 +684,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
     return;
   }
   
+  // Store the UWB-related data into the buffer "uwb_id2data_hash_"
   auto itr = uwb_id2data_hash_.find(msg.id);
   if (itr != end(uwb_id2data_hash_)) {
     if (uwb_id2data_hash_[msg.id].drop_status == true) {
