@@ -65,6 +65,8 @@ pairwise_check_threshold: 1.0
 ########################################
 # Turn on sanity checks
 b_check_deltas: false
+# Use zip file for backup or from memory?
+load_graph_from_zip_file: false
 
 # Sanity check thresholds
 translational_sanity_check_lc: 100
