@@ -3,19 +3,17 @@ project(robust_pgo)
 
 find_package(catkin REQUIRED)
 
-find_package(Eigen3 REQUIRED)
-
+## Export package settings
 catkin_package(
   INCLUDE_DIRS
-    RobustPGO/RobustPGO
     RobustPGO
-    RobustPGO/RobustPGO/pcm
-    RobustPGO/RobustPGO/max_clique_finder
-    ${EIGEN3_INCLUDE_DIR}
-  LIBRARIES ${PROJECT_NAME}
+  LIBRARIES
+    RobustPGO
   CATKIN_DEPENDS
   DEPENDS
+    Boost
     Eigen3
+    GTSAM
 )
 
 ## Build RobustPGO
