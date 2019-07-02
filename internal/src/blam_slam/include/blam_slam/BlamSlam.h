@@ -121,6 +121,9 @@ class BlamSlam {
   // Drop UWB from a robot
   bool DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
                       mesh_msgs::ProcessCommNodeResponse &response);
+  
+  // Clear UWB buffer
+  void UwbClearBuffer(const std::string uwb_id);
 
   // Service for rinning lazer loop closure again
   bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
@@ -206,9 +209,13 @@ class BlamSlam {
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
 
   // UWB
-  std::map<std::string, std::map<ros::Time, std::pair<double, Eigen::Vector3d>>> map_uwbid_time_data_;
-  std::map<std::string, bool> uwb_drop_status_; // true: dropped, false: on the robot
-  std::vector<std::string> uwb_id_list_;
+  std::vector<std::string> uwb_id_list_all_;
+  std::vector<std::string> uwb_id_list_drop_;
+  unsigned int uwb_skip_measurement_number_;
+  unsigned int uwb_update_key_number_;
+  unsigned int uwb_required_key_number_first_;
+  unsigned int uwb_required_key_number_not_first_;
+  std::map<std::string, UwbMeasurementInfo> uwb_id2data_hash_;
 
   // Class objects (BlamSlam is a composite class).
   MeasurementSynchronizer synchronizer_;

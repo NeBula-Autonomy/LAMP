@@ -204,6 +204,11 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   pgo_solver_->print();
+  if (!pu::Get("uwb_factor_optimizer", uwb_factor_optimizer_)) return false;
+  if (!pu::Get("uwb_number_added_rangefactor_first", uwb_number_added_rangefactor_first_)) return false;
+  if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
+  if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
+  if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
 
   // convert initial quaternion to Roll/Pitch/Yaw
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
@@ -499,11 +504,10 @@ bool LaserLoopClosure::ChangeKeyNumber(){
     key_ = 10000;
 }
 
-bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, 
-                                    const ros::Time& stamp,
-                                    const double range,
-                                    const Eigen::Vector3d robot_position) {
 
+bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data) {
+
+  // Check whether the input UWB ID exists in the pose graph or not
   gtsam::Key uwb_key;
   if (uwb_id2key_hash_.find(uwb_id) != uwb_id2key_hash_.end()) {
     uwb_key = uwb_id2key_hash_[uwb_id];
@@ -512,37 +516,53 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
     uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
-
-    ROS_INFO("Creating new UWB Factor");
-    ROS_INFO("UWB key: %u", uwb_key);
-    ROS_INFO("UWB ID:  %s", uwb_id.c_str());
-    ROS_INFO_STREAM("Robot position: " << robot_position.transpose());
   }
+
+  // Sort the UWB-related data stored in the buffer 
+  UwbRearrangedData sorted_data = RearrangeUwbData(uwb_data);
 
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
   double sigmaR = uwb_range_measurement_error_;
   gtsam::noiseModel::Base::shared_ptr gaussian = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
   gtsam::noiseModel::Base::shared_ptr rangeNoise = gaussian;
 
-  gtsam::Key pose_key = GetKeyAtTime(stamp);
+  NonlinearFactorGraph new_factor;
+  gtsam::Values new_values;
 
   // Change the process according to whether the uwb anchor is observed for the first time or not
   if (!values_.exists(uwb_key)) {
-    gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
-    nfg_ = pgo_solver_->getFactorsUnsafe();
-    double cost; // for debugging
-
-    NonlinearFactorGraph new_factor;
-    gtsam::Values new_values;
-
-    // Add a UWB key
-    gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
-    new_values.insert(uwb_key, pose_uwb);
-    linPoint.insert(new_values);
 
     switch (uwb_range_compensation_) {
       case 0 : 
-      {
+      {      
+        // Add RangeFactors between the nearest pose key and the UWB key
+        int counter = 0;
+        for (int itr = 0; itr < uwb_number_added_rangefactor_first_; itr++) {
+          // Too short range data is ignored
+          while(sorted_data.range_nearest_key[counter] < uwb_minimum_range_threshold_) {
+            counter++;
+            if (counter >= sorted_data.range_nearest_key.size()) {
+              ROS_INFO("Not enough number of range measurement");
+              // TODO
+              return false;
+            }
+          }
+          double range = sorted_data.range_nearest_key[counter];
+          gtsam::Key pose_key = sorted_data.pose_key_list[counter];
+          counter++;
+          new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
+          uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+          ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+                          << gtsam::DefaultKeyFormatter(pose_key) << " and "
+                          << gtsam::DefaultKeyFormatter(uwb_key));
+        }
+
+        // Add a UWB key
+        // TODO
+        Eigen::Vector3d robot_position = sorted_data.posekey2data[sorted_data.pose_key_list[0]].robot_position[0];
+        gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
+        new_values.insert(uwb_key, pose_uwb);
+
         // Add a PriorFactor for the UWB key
         gtsam::Vector6 prior_precisions;
         prior_precisions.head<3>().setConstant(10.0);
@@ -550,23 +570,12 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
         static const gtsam::SharedNoiseModel& prior_noise = 
         gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
         new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(uwb_key, gtsam::Pose3(), prior_noise));
-
-        // Add a RangeFactor between the nearest pose key and the UWB key
-        new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-        uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-        ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
-                        << gtsam::DefaultKeyFormatter(pose_key) << " and "
-                        << gtsam::DefaultKeyFormatter(uwb_key));
+       
       }
         break;
       case 1 :
       {
-        // TODO: Add a BetweenFactor between the pose key and the UWB key
-      }
-        break;
-      case 2 :
-      {
-        // TODO: Calculate a estimated range between a certain pose key and a UWB anchor
+        // TODO: 
       }
         break;
       default :
@@ -576,64 +585,35 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
         // TODO: handle the error
       }
     }
-
-    try {
-      ROS_INFO("Optimizing uwb-based loop closure, iteration");
-      gtsam::Values result;
-      pgo_solver_->update(new_factor, new_values);
-      result = pgo_solver_->calculateEstimate();
-      nfg_ = NonlinearFactorGraph(pgo_solver_->getFactorsUnsafe());
-
-      ROS_INFO_STREAM("initial cost = " << nfg_.error(linPoint));
-      ROS_INFO_STREAM("final cost = " << nfg_.error(result));
-
-      // publish 
-      uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
-
-      // Update values
-      values_ = result;//
-
-      // INFO stream new cost
-      linPoint = pgo_solver_->getLinearizationPoint();
-      cost = nfg_.error(linPoint);
-      ROS_INFO_STREAM(
-          "Cost at linearization point (after adding UWB RangeFactor): "
-          << cost);
-
-      PublishPoseGraph(false);
-
-      return true;
-    }
-    catch (...) {
-      ROS_ERROR("An ERROR occurred while adding a factor");
-      throw;
-    }
   }
   else {
-    // Add a RangeFactor when the UWB is already registered in the pose graph.
-
-    gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
-    nfg_ = pgo_solver_->getFactorsUnsafe();
-
-    double cost; // for debugging
-
-    NonlinearFactorGraph new_factor;
-
     switch (uwb_range_compensation_) {
       case 0 :
-      {  
-        new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-        uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+      {
+        int counter = 0;
+        for (int itr = 0; itr < uwb_number_added_rangefactor_not_first_; itr++) {
+          while(sorted_data.range_nearest_key[counter] < uwb_minimum_range_threshold_) {
+            counter++;
+            if (counter >= sorted_data.range_nearest_key.size()) {
+              ROS_INFO("Not enough number of range measurement");
+              // TODO
+              return false;
+            }
+          }
+          double range = sorted_data.range_nearest_key[counter];
+          gtsam::Key pose_key = sorted_data.pose_key_list[counter];
+          counter++;
+          new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
+          uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+          ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+                          << gtsam::DefaultKeyFormatter(pose_key) << " and "
+                          << gtsam::DefaultKeyFormatter(uwb_key));
+        }
       }
         break;
       case 1 :
       {
-        // TODO: Add a BetweenFactor between the pose key and the UWB key
-      }
-        break;
-      case 2 :
-      {
-        // TODO: Calculate a estimated range between a certain pose key and a UWB anchor
+        // TODO: 
       }
         break;
       default :
@@ -643,40 +623,133 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id,
         // TODO handle the error
       }
     }
-
-    try {
-      ROS_INFO_STREAM("Optimizing uwb-based loop closure, iteration");
-      gtsam::Values result;
-
-      pgo_solver_->update(new_factor, Values());
-      result = pgo_solver_->calculateEstimate();
-      nfg_ = NonlinearFactorGraph(pgo_solver_->getFactorsUnsafe());
-
-      ROS_INFO_STREAM("initial cost = " << nfg_.error(linPoint));
-      ROS_INFO_STREAM("final cost = " << nfg_.error(result));
-
-      // Update values
-      values_ = result;//
-
-      // INFO stream new cost
-      linPoint = pgo_solver_->getLinearizationPoint();
-      cost = nfg_.error(linPoint);
-      ROS_INFO_STREAM(
-          "Cost at linearization point (after adding UWB RangeFactor): "
-          << cost);
-
-      PublishPoseGraph(false);
-
-      return true;
-    }
-    catch (...) {
-      ROS_ERROR("An ERROR occurred while manually adding a factor.");
-      throw;
-    }
   }
 
-  return true;
+  return (UwbLoopClosureOptimization(new_factor, new_values));
 }
+
+
+UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_data) {
+
+  // Recalculate the nearest pose key at the range measurement timing
+  // "uwb_data.nearest_pose_key" already stores the data, so it should be freed up in advance.
+  uwb_data.nearest_pose_key.clear();
+  for (int itr = 0; itr < uwb_data.time_stamp.size(); itr++) {
+    uwb_data.nearest_pose_key.push_back(GetKeyAtTime(uwb_data.time_stamp[itr]));
+  }
+
+  // Calculate the distance between the pose key and the point where receiving UWB range measurement
+  double dist_temp;
+  Eigen::Vector3d pose_at_key;
+  for (int itr = 0; itr < uwb_data.range.size(); itr++) {
+    pose_at_key = GetPoseAtKey(uwb_data.nearest_pose_key[itr]).translation.Eigen();
+    dist_temp = (pose_at_key - uwb_data.robot_position[itr]).norm();
+    uwb_data.dist_posekey.push_back(dist_temp);
+  }
+
+  // Make a unique list of the pose keys
+  auto pose_key_list = uwb_data.nearest_pose_key;
+  pose_key_list.erase(std::unique(pose_key_list.begin(), pose_key_list.end()), pose_key_list.end());
+
+  // Classify UWB data in accordance with the pose keys
+  std::map<gtsam::Key, UwbDataLinkedWithKey> uwb_posekey2data;
+  for (auto itr = pose_key_list.begin(); itr != pose_key_list.end(); itr++) {
+    auto bounds     = std::equal_range(uwb_data.nearest_pose_key.begin(), uwb_data.nearest_pose_key.end(), *itr);
+    auto itr2_begin = std::distance(uwb_data.nearest_pose_key.begin(), bounds.first);
+    auto itr2_end   = std::distance(uwb_data.nearest_pose_key.begin(), bounds.second);
+    for (auto itr2 = itr2_begin; itr2 != itr2_end; itr2++) {
+      uwb_posekey2data[*itr].range.push_back(uwb_data.range[itr2]);
+      uwb_posekey2data[*itr].dist_posekey.push_back(uwb_data.dist_posekey[itr2]);
+      uwb_posekey2data[*itr].robot_position.push_back(uwb_data.robot_position[itr2]);
+    }
+    // TODO: the order of robot_position should be also changed.
+    Sort2Vectors<double, double>(uwb_posekey2data[*itr].dist_posekey, uwb_posekey2data[*itr].range);
+    uwb_posekey2data[*itr].data_number = uwb_posekey2data[*itr].range.size();
+    double range_sum = std::accumulate(uwb_posekey2data[*itr].range.begin(), uwb_posekey2data[*itr].range.end(), 0.0);
+    uwb_posekey2data[*itr].range_average = range_sum / uwb_posekey2data[*itr].data_number;
+  }
+
+  std::vector<double> range_nearest_key;
+  for (auto itr = pose_key_list.begin(); itr != pose_key_list.end(); itr++) {
+    range_nearest_key.push_back(uwb_posekey2data[*itr].range[0]);
+  }
+  
+  UwbRearrangedData sorted_data;
+  Sort2Vectors<double, gtsam::Key>(range_nearest_key, pose_key_list);
+  sorted_data.pose_key_list = pose_key_list;
+  sorted_data.range_nearest_key = range_nearest_key;
+  sorted_data.posekey2data = uwb_posekey2data;
+
+  if (display_uwb_data_) {
+    ShowUwbRawData(uwb_data);
+    ShowUwbRearrangedData(sorted_data);
+  }
+
+  return sorted_data;
+}
+
+
+void LaserLoopClosure::ShowUwbRawData(const UwbMeasurementInfo uwb_data) {
+
+  std::cout << "----------UWB RAW DATA (start)----------" << "\n";
+  std::cout << "UWB ID is " << uwb_data.id << "\n";
+  std::cout << "Drop status is " << uwb_data.drop_status << "\n";
+  std::cout << "Data size check" << "\n";
+  std::cout << "range: " << uwb_data.range.size() << "\t";
+  std::cout << "time_stamp: " << uwb_data.time_stamp.size() << "\t";
+  std::cout << "robot_position: " << uwb_data.robot_position.size() << "\t";
+  std::cout << "nearest_pose_key: " << uwb_data.nearest_pose_key.size() << "\n";
+  for (int itr = 0; itr < uwb_data.range.size(); itr++) {
+    std::cout << "range: " << uwb_data.range[itr] << "\t";
+    std::cout << "time_stamp: " << uwb_data.time_stamp[itr] << "\t";
+    // std::cout << ", robot_position: " << uwb_data.robot_position[itr];
+    std::cout << "nearest_pose_key: " << uwb_data.nearest_pose_key[itr] << "\t";
+    std::cout << "dist_posekey: " << uwb_data.dist_posekey[itr] << "\t";
+    std::cout << "\n";
+  }
+  std::cout << "----------UWB RAW DATA (end)----------" << std::endl;
+}
+
+
+void LaserLoopClosure::ShowUwbRearrangedData(UwbRearrangedData uwb_data) {
+
+  std::cout << "----------UWB SORTED DATA (start)----------" << "\n";
+  // 
+  for (int itr = 0; itr < uwb_data.pose_key_list.size(); itr++) {
+    std::cout << "Pose key: " << uwb_data.pose_key_list[itr] << "\t";
+    std::cout << "Range: " << uwb_data.range_nearest_key[itr] << "\n";
+  }
+
+  //
+  for (auto itr = uwb_data.pose_key_list.begin(); itr != uwb_data.pose_key_list.end(); itr++) {
+    std::cout << "Data linked with the pose key " << *itr << "\n";
+    UwbDataLinkedWithKey data_temp = uwb_data.posekey2data[*itr];
+    std::cout << "Number of range measurement data is " << data_temp.data_number << "\n";
+    std::cout << "Average range measurement is " << data_temp.range_average << "\n";
+    for (int itr2 = 0; itr2 < data_temp.range.size(); itr2++) {
+      std::cout << "range: " << data_temp.range[itr2] << "\t";
+      std::cout << "dist_posekey: " << data_temp.dist_posekey[itr2] << "\n";
+    }
+  }
+  std::cout << "----------UWB SORTED DATA (end)----------" << std::endl;
+}
+
+
+template <class T1, class T2>
+void LaserLoopClosure::Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &vector2) {
+  int n = vector1.size();
+  std::vector<T1> p(n), vec1_temp(n);
+  std::vector<T2> vec2_temp(n);
+  std::iota(p.begin(), p.end(), 0);
+  std::sort(p.begin(), p.end(), [&](T1 i, T1 j) {return vector1[i] < vector1[j];});
+  for (int itr = 0; itr < n; itr++) {
+      vec1_temp[itr] = vector1[p[itr]];
+      vec2_temp[itr] = vector2[p[itr]];
+  }
+  vector1 = vec1_temp;
+  vector2 = vec2_temp;
+}
+
 
 bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
                                      const ros::Time& stamp,
@@ -692,19 +765,13 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
-  gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
-  nfg_ = pgo_solver_->getFactorsUnsafe();
-  double cost; // for debugging
-
   NonlinearFactorGraph new_factor;
   gtsam::Values new_values;
-
   gtsam::Key pose_key = GetKeyAtTime(stamp);
 
   // Add a UWB key
   gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
   new_values.insert(uwb_key, pose_uwb);
-  linPoint.insert(new_values);
 
   // Add a PriorFactor for the UWB key
   gtsam::Vector6 prior_precisions;
@@ -723,6 +790,18 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   // TODO
   new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
 
+  return (UwbLoopClosureOptimization(new_factor, new_values));
+}
+
+
+bool LaserLoopClosure::UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
+                                                  gtsam::Values new_values) {
+
+  gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
+  linPoint.insert(new_values);
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+  double cost; // for debugging
+  
   try {
     ROS_INFO_STREAM("Optimizing uwb-based loop closure, iteration");
     gtsam::Values result;
@@ -733,9 +812,6 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
 
     ROS_INFO_STREAM("initial cost = " << nfg_.error(linPoint));
     ROS_INFO_STREAM("final cost = " << nfg_.error(result));
-
-    // publish 
-    uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
 
     // Update values
     values_ = result;//
@@ -751,12 +827,11 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     return true;
   }
   catch (...) {
-    ROS_ERROR("An ERROR occurred while manually adding a factor.");
+    ROS_ERROR("An error occurred while adding a factor");
     throw;
   }
-
-  return true;
 }
+
 
 bool LaserLoopClosure::AddKeyScanPair(unsigned int key,
                                       const PointCloud::ConstPtr& scan, bool initial_pose) {
@@ -2282,7 +2357,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 }
 
 gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
-  ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
+  // ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
 
   auto iterTime = stamps_keyed_.lower_bound(stamp.toSec()); // First key that is not less than timestamp 
 
