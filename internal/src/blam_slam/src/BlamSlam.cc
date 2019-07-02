@@ -874,4 +874,18 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   return true;
 }
 
+void BlamSlam::Regenerate3dMap(){
+    PointCloud::Ptr regenerated_map(new PointCloud);
+    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+    mapper_.Reset();
+    PointCloud::Ptr unused(new PointCloud);
+    mapper_.InsertPoints(regenerated_map, unused.get());
+
+    // Also reset the robot's estimated position.
+    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+
+    // Publish artifacts - should be updated from the pose-graph 
+    loop_closure_.PublishArtifacts();
+}
 

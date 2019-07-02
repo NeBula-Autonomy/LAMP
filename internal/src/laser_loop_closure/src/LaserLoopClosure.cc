@@ -527,7 +527,7 @@ bool LaserLoopClosure::ChangeKeyNumber() {
   if (initial_key_ == first_loaded_key_) {
     unsigned char random = (unsigned char)rand();
     ROS_INFO_STREAM(random);
-    key_ = gtsam::Symbol(random, 0);
+    key_ = gtsam::Symbol('z', 0);
     LaserLoopClosure::ChangeKeyNumber();
   } else {
     key_ = initial_key_;
@@ -2536,6 +2536,6 @@ void LaserLoopClosure::PoseGraphCallback(
 
   // publish posegraph
   has_changed_ = true;
-  PublishPoseGraph();
+  PublishPoseGraph(); 
 }
 
