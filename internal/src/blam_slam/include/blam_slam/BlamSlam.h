@@ -210,7 +210,6 @@ class BlamSlam {
   unsigned int uwb_update_key_number_;
   unsigned int uwb_required_key_number_first_;
   unsigned int uwb_required_key_number_not_first_;
-  double uwb_update_period_;
   std::map<std::string, UwbMeasurementInfo> uwb_id2data_hash_;
 
   // Class objects (BlamSlam is a composite class).

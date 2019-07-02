@@ -151,7 +151,6 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("b_use_uwb", b_use_uwb_)) return false;
   if (!pu::Get("uwb_skip_measurement_number", uwb_skip_measurement_number_)) return false;
-  if (!pu::Get("uwb_update_period", uwb_update_period_)) return false;
   if (!pu::Get("uwb_update_key_number", uwb_update_key_number_)) return false;
   if (!pu::Get("uwb_required_key_number_first", uwb_required_key_number_first_)) return false;
   if (!pu::Get("uwb_required_key_number_not_first", uwb_required_key_number_not_first_)) return false;
