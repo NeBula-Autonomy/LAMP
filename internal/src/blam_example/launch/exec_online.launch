@@ -84,8 +84,8 @@
       <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
 
       <!-- See if LAMP is run as basestation -->
-      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base')"/>
-      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base')"/>
+      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base_station')"/>
+      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base_station')"/>
 
     </node>
 

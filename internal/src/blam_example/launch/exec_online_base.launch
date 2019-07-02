@@ -83,11 +83,15 @@
       <rosparam file="$(find laser_loop_closure)/config/robot_names.yaml" />
 
       <!-- See if LAMP is run as basestation -->
-      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base')"/>
-      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base')"/>
-
+      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base_station')"/>
+      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base_station')"/>
 
     </node>
+
+    <node pkg="tf2_ros" 
+        type="static_transform_publisher"
+        name="base2world"
+        args="0 0 0 0 0 0 $(arg robot_namespace)/blam /world" />
 
     <node pkg="blam_slam"
       name="loop_closure_tools"
