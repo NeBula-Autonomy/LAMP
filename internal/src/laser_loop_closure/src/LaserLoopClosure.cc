@@ -214,12 +214,23 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
+
+  // Set the initial odometry.
+  odometry_ = Pose3::identity();
+
+  initial_key_ = 0;
+
+  // Initialize
+  // Skip pgo_solver and prefix_robot init if base station
+  if (b_is_basestation_) {
+    ROS_INFO("LAMP run as base_station");
+    return true;
+  }
   
   //Get the robot prefix from launchfile to set initial key
   bool b_initialized_prefix_from_launchfile = true;
   std::string prefix;
   unsigned char prefix_converter[1];
-  initial_key_ = 0;
   if (!pu::Get("robot_prefix", prefix)){
      b_initialized_prefix_from_launchfile = false;
      ROS_ERROR("Could not find node ID assosiated with robot_namespace");
@@ -232,13 +243,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   // Initialize key_
   key_ = initial_key_;
-
-  // Set the initial odometry.
-  odometry_ = Pose3::identity();
-
-  // Initialize
-  // Skip pgo_solver init if base station
-  if (b_is_basestation_) {return true;}
 
   NonlinearFactorGraph new_factor;
   Values new_value;
@@ -270,7 +274,6 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
           10,
           &LaserLoopClosure::PoseGraphCallback,
           this);
-      ROS_INFO_STREAM(robot_names_[i]);
     }
   }
   scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
