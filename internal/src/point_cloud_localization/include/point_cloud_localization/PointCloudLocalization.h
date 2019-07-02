@@ -88,8 +88,7 @@ class PointCloudLocalization {
   // Publish for first pose
   void PublishPoseNoUpdate();
 
-  
- private:
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);

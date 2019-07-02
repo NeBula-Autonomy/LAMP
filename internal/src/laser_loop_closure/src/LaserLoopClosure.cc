@@ -103,7 +103,6 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 }
 
 bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
-
   // Load frame ids.
   if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
   if (!pu::Get("frame_id/base", base_frame_id_)) return false;
@@ -156,13 +155,26 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   // Load initial position and orientation.
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
-  double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
-  if (!pu::Get("init/position/x", init_x)) return false;
-  if (!pu::Get("init/position/y", init_y)) return false;
-  if (!pu::Get("init/position/z", init_z)) return false;
-  if (!pu::Get("init/orientation/roll", init_roll)) return false;
-  if (!pu::Get("init/orientation/pitch", init_pitch)) return false;
-  if (!pu::Get("init/orientation/yaw", init_yaw)) return false;
+  double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
+  bool b_have_fiducial = true;
+  if (!pu::Get("fiducial_calibration/position/x", init_x))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/position/y", init_y))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/position/z", init_z))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/orientation/x", init_qx))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/orientation/y", init_qy))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/orientation/z", init_qz))
+    b_have_fiducial = false;
+  if (!pu::Get("fiducial_calibration/orientation/w", init_qw))
+    b_have_fiducial = false;
+
+  if (!b_have_fiducial) {
+    ROS_WARN("Can't find fiducials, using origin");
+  }
 
   // Load initial position and orientation noise.
   double sigma_x = 0.0, sigma_y = 0.0, sigma_z = 0.0;
@@ -192,6 +204,15 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   pgo_solver_->print();
+
+  // convert initial quaternion to Roll/Pitch/Yaw
+  double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
+  gu::Quat q(gu::Quat(init_qw, init_qx, init_qy, init_qz));
+  gu::Rot3 m1;
+  m1 = gu::QuatToR(q);
+  init_roll = m1.Roll();
+  init_pitch = m1.Pitch();
+  init_yaw = m1.Yaw();
 
   // Set the initial position.
   Vector3 translation(init_x, init_y, init_z);
@@ -364,7 +385,7 @@ bool LaserLoopClosure::AddBetweenFactor(
     return false;
   }
 
-  ROS_INFO_STREAM("New node, translation is: " << odometry_.translation().norm() << " (lim: " << translation_threshold_nodes_ << ")\nRotation is: "
+  ROS_INFO_STREAM("New node\nTranslation is: " << odometry_.translation().norm() << " (lim: " << translation_threshold_nodes_ << ")\nRotation is: "
     << 2*acos(odometry_.rotation().toQuaternion().w())*180.0/3.1415 << " (lim: " << rotation_threshold_nodes_*180.0/3.1415 << ").");
 
   // Else - add a new factor
@@ -1053,6 +1074,15 @@ unsigned int LaserLoopClosure::GetKey() const {
 gu::Transform3 LaserLoopClosure::GetLastPose() const {
   if (key_ > 1) {
     return ToGu(values_.at<Pose3>(key_-1));
+  } else {
+    ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
+    return ToGu(values_.at<Pose3>(0));
+  }
+}
+
+gu::Transform3 LaserLoopClosure::GetCurrentPose() const {
+  if (key_ > 1) {
+    return ToGu(values_.at<Pose3>(key_));
   } else {
     ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
     return ToGu(values_.at<Pose3>(0));
