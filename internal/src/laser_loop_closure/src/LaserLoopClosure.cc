@@ -226,7 +226,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     ROS_INFO("LAMP run as base_station");
     return true;
   }
-  
+
   //Get the robot prefix from launchfile to set initial key
   bool b_initialized_prefix_from_launchfile = true;
   std::string prefix;
@@ -262,18 +262,25 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   if(b_is_basestation_){
+
     int num_robots = robot_names_.size();
+    //init size of subscribers
+    //loop through each robot to set up subscriber
     for (size_t i = 0; i < num_robots; i++) {
-      keyed_scan_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
+      
+      ros::Subscriber keyed_scan_sub  = nl.subscribe<pose_graph_msgs::KeyedScan>(
           "/" + robot_names_[i] + "/blam_slam/keyed_scans",
           10,
           &LaserLoopClosure::KeyedScanCallback,
           this);
-      pose_graph_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
+      ros::Subscriber pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
           "/" + robot_names_[i] + "/blam_slam/pose_graph",
           10,
           &LaserLoopClosure::PoseGraphCallback,
           this);
+      Subscriber_posegraphList_.push_back(pose_graph_sub);
+      Subscriber_keyedscanList_.push_back(keyed_scan_sub);
+      ROS_INFO_STREAM(i);
     }
   }
   scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
@@ -354,7 +361,7 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
   NonlinearFactorGraph new_factor;
   Values new_value;
   new_factor.add(MakeBetweenFactorAtLoad(new_odometry, ToGtsam(covariance)));
-  new_value.insert(initial_key_, first_pose.compose(new_odometry));
+  new_value.insert(key_, first_pose.compose(new_odometry));
   // TODO Compose covariances at the same time as odometry
   // Update
   try{
@@ -387,6 +394,9 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
   // Notify PGV that the posegraph has changed
   has_changed_ = true;
 
+  // Get ready with next key
+  key_ = key_ + 1;
+
   return true;
 }
 
@@ -418,7 +428,7 @@ bool LaserLoopClosure::AddBetweenFactor(
   // TODO Compose covariances at the same time as odometry
 
   gtsam::Symbol previous_key = key_-1;
-  ROS_INFO("Checking for key %d",previous_key.key());
+  ROS_INFO("Checking for key %c %d",previous_key.chr(),previous_key.key());
   Pose3 last_pose = values_.at<Pose3>(key_-1);
   new_value.insert(key_, last_pose.compose(odometry_));
 
@@ -513,9 +523,18 @@ bool LaserLoopClosure::AddBetweenFactor(
 }
 
 // Function to change key number for multiple robots
-bool LaserLoopClosure::ChangeKeyNumber(){
-  // Stored key is from when we load
-      key_ = stored_key_;
+bool LaserLoopClosure::ChangeKeyNumber(){ 
+  ROS_INFO_STREAM("4");
+
+  if (initial_key_ == first_loaded_key_){
+      unsigned char random = (unsigned char) rand();
+      ROS_INFO_STREAM(random);
+      key_ = gtsam::Symbol(random,0);
+      LaserLoopClosure::ChangeKeyNumber();
+  }
+  else{
+  key_ = initial_key_;
+  }
 }
 
 bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, 
@@ -1205,8 +1224,8 @@ BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactor(
 BetweenFactor<Pose3> LaserLoopClosure::MakeBetweenFactorAtLoad(
     const Pose3& delta,
     const LaserLoopClosure::Gaussian::shared_ptr& covariance) {
-  odometry_edges_.push_back(std::make_pair(first_loaded_key_, initial_key_));
-  return BetweenFactor<Pose3>(first_loaded_key_, initial_key_, delta, covariance);
+  odometry_edges_.push_back(std::make_pair(first_loaded_key_, key_));
+  return BetweenFactor<Pose3>(first_loaded_key_, key_, delta, covariance);
 }
 
 bool LaserLoopClosure::PerformICP(PointCloud::Ptr& scan1,
@@ -1902,25 +1921,29 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   const GraphAndValues gv = gtsam::load3D(graphFilename);
   nfg_ = *gv.first;
   values_ = *gv.second;
+  ROS_INFO_STREAM("1");
 
   std::vector<char> special_symbs{'l', 'u'}; // for artifacts
   OutlierRemoval* pcm =
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   pgo_solver_->print();
+  ROS_INFO_STREAM("2");
 
+  //TODO: Should store initial_noise to use in load
   const LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
-  const gtsam::Key key0 = *nfg_.keys().begin();
+  const gtsam::Symbol key0 = gtsam::Symbol(*nfg_.keys().begin());
   first_loaded_key_ = key0;
-
+  ROS_INFO_STREAM("3");
   if (!values_.exists(key0)){
     ROS_WARN("Key0, %s, does not exist in Load", key0);
     return false;
   }
   nfg_.add(gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
+  ROS_INFO_STREAM("fsad");
   pgo_solver_->update(nfg_, values_);
-
+  ROS_INFO_STREAM("4");
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
 
   // info_file stores factor key, point cloud filename, and time stamp
@@ -1929,7 +1952,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     ROS_ERROR_STREAM("Failed to open " << keysFilename);
     return false;
   }
-
+  ROS_INFO_STREAM("5");
   std::string keyStr, pcd_filename, timeStr;
   while (info_file.good()) {
     std::getline(info_file, keyStr, ',');
@@ -1950,7 +1973,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     keyed_stamps_[key_] = t;
     //stamps_keyed_[t] = key_ ;
   }
-
+  ROS_INFO_STREAM("6");
   // Increment key to be ready for more scans
   key_ = key_+ 1;
   ROS_INFO("Restored all point clouds.");
@@ -1976,7 +1999,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     edge_file.close();
     ROS_INFO("Restored odometry edges.");
   }
-
+  ROS_INFO_STREAM("7");
   if (!loopEdgesFilename.empty()) {
     std::ifstream edge_file(loopEdgesFilename);
     if (edge_file.bad()) {
@@ -1997,7 +2020,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     edge_file.close();
     ROS_INFO("Restored loop closure edges.");
   }
-  
+  ROS_INFO_STREAM("8");
   // remove all extracted folders
   for (const auto &folder: folders)
     boost::filesystem::remove_all(folder);

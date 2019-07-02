@@ -362,8 +362,12 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
                                 blam_slam::LoadGraphResponse &response) {
   std::cout << "Loading graph..." << std::endl;
   // TODO: If robot namespace is same as loaded, then erase
-  //loop_closure_.ErasePosegraph();
+  loop_closure_.ErasePosegraph();
+
   response.success = loop_closure_.Load(request.filename);
+
+    // change the key number for the second robot
+  loop_closure_.ChangeKeyNumber();
 
   // Regenerate the 3D map from the loaded posegraph
   PointCloud::Ptr regenerated_map(new PointCloud);
@@ -372,8 +376,6 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   mapper_.Reset();
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(regenerated_map, unused.get());
-  // change the key number for the second robot to 10000
-  loop_closure_.ChangeKeyNumber();
 
   // TODO: Double check this
   initial_key_ = loop_closure_.GetInitialKey();
