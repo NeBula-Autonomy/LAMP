@@ -196,26 +196,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
   if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
 
-  std::cout << "before isam reset" << std::endl; 
-  #ifndef SOLVER
-  // Create the ISAM2 solver.
-  ISAM2Params parameters;
-  parameters.relinearizeSkip = relinearize_skip_;
-  parameters.relinearizeThreshold = relinearize_threshold_;
-  parameters.factorization = gtsam::ISAM2Params::QR; // QR
-  // // Set wildfire threshold
-  // ISAM2GaussNewtonParams gnparams(-1);
-  // parameters.setOptimizationParams(gnparams);
-  isam_.reset(new ISAM2(parameters));
-  ROS_INFO("Using ISAM2 optimizer");
-  #endif
-  #ifdef SOLVER
-  isam_.reset(new GenericSolver());
-  isam_->print();
-  ROS_INFO("Using generic solver (LM currently)");
-  #endif
-  std::cout << "after isam reset" << std::endl; 
-
   // Set the initial position.
   Vector3 translation(init_x, init_y, init_z);
   Rot3 rotation(Rot3::RzRyRx(init_roll, init_pitch, init_yaw));
@@ -514,17 +494,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 
   // Change the process according to whether the uwb anchor is observed for the first time or not
   if (!values_.exists(uwb_key)) {
-    gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
-    nfg_ = pgo_solver_->getFactorsUnsafe();
-    double cost; // for debugging
-
-    NonlinearFactorGraph new_factor;
-    gtsam::Values new_values;
-
-    // Add a UWB key
-    gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
-    new_values.insert(uwb_key, pose_uwb);
-    linPoint.insert(new_values);
 
     switch (uwb_range_compensation_) {
       case 0 : 
@@ -759,10 +728,6 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
-  gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
-  nfg_ = pgo_solver_->getFactorsUnsafe();
-  double cost; // for debugging
-
   NonlinearFactorGraph new_factor;
   gtsam::Values new_values;
   gtsam::Key pose_key = GetKeyAtTime(stamp);
@@ -794,9 +759,10 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
 
 bool LaserLoopClosure::UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
                                                   gtsam::Values new_values) {
-  nfg_ = isam_->getFactorsUnsafe();
-  gtsam::Values linPoint = isam_->getLinearizationPoint();
+
+  gtsam::Values linPoint = pgo_solver_->getLinearizationPoint();
   linPoint.insert(new_values);
+  nfg_ = pgo_solver_->getFactorsUnsafe();
   double cost; // for debugging
   
   try {
