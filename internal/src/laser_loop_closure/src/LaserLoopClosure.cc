@@ -1586,7 +1586,7 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
         if ((pose3Between->key1() == key1 && pose3Between->key2() == key2) ||
             (pose3Between->key1() == key2 && pose3Between->key2() == key1)) {
           factorsToRemove.push_back(slot);
-          nfg[slot]->print("");
+          nfg[slot]->print("Removing... ");
         }
       }
     }
@@ -1597,12 +1597,14 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
     return false; 
   }
 
+  ROS_INFO("removing manual loop edge visualization");
   // Remove the visual edge of the factor
-  for (int i = 0; i < loop_edges_.size();) {
+  std::vector<int> remove_indices;
+  for (int i = 0; i < loop_edges_.size(); i++) {
     if ((key1 == loop_edges_[i].first && key2 == loop_edges_[i].second) ||
         (key1 == loop_edges_[i].second && key2 == loop_edges_[i].first)) {
       // Remove the edge from LaserLoopClosure
-      loop_edges_.erase(loop_edges_.begin() + i);
+      remove_indices.push_back(i);
 
       // Send a message to posegraph visualizer that the edges must be updated
       if (remove_factor_viz_pub_.getNumSubscribers() > 0) {
@@ -1613,8 +1615,14 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
     }
   }
 
+  ROS_INFO("About to remove loop_edges");
+  // Remove from the edges
+  for (int i = 0; i < remove_indices.size(); i++){
+    loop_edges_.erase(loop_edges_.begin() + remove_indices[i]);
+  }
+
   // 3. Remove factors and update
-  std::cout << "Before remove update" << std::endl;
+  ROS_INFO("Before remove factor in pgo_solver");
   if (is_batch_loop_closure) {
     // Only updating the factor graph to remove factors
     pgo_solver_->removeFactorsNoUpdate(factorsToRemove);
@@ -1631,7 +1639,7 @@ bool LaserLoopClosure::RemoveFactor(unsigned int key1, unsigned int key2, bool i
   has_changed_ = true;
   PublishPoseGraph();
 
-  return true; //result.getVariablesReeliminated() > 0;
+  return true; 
 }
 
 std::string absPath(const std::string &relPath) {
@@ -1991,12 +1999,15 @@ bool LaserLoopClosure::BatchLoopClosure() {
     RemoveFactor(manual_loop_edges_[i].first, manual_loop_edges_[i].second, is_batch_loop_closure);
   }
 
+  ROS_INFO("Removed manual loop closure factors");
+
   bool found_loop = false;
   //Loop through all keyed scans and look for loop closures
-   for (const auto& keyed_pose : values_) {
+  for (const auto& keyed_pose : values_) {
     std::vector<unsigned int> closure_keys;
-    if (FindLoopClosures(keyed_pose.key, &closure_keys)){
-      found_loop = true;
+    found_loop = FindLoopClosures(keyed_pose.key, &closure_keys);
+    if (found_loop){
+      ROS_INFO("Loop found in batch loop closure");
     }
   } 
   //Restore the flags as initalized in parameters.yaml

@@ -95,9 +95,6 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
     ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
     return false;
   }
-  // Get the parent and child frame for map to world transformation
-  n.param<std::string>("world_frame", world_frame_, "world");
-  n.param<std::string>("map_frame", blam_frame_, "husky/blam");
 
   return true;
 }
@@ -119,13 +116,6 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("noise/odom_attitude_sigma", attitude_sigma_)) return false;
 
   //Load and restart deltas
-  if (!pu::Get("load_graph_x", load_graph_x_)) return false;
-  if (!pu::Get("load_graph_y", load_graph_y_)) return false;
-  if (!pu::Get("load_graph_z", load_graph_z_)) return false;
-  if (!pu::Get("load_graph_roll", load_graph_roll_)) return false;
-  if (!pu::Get("load_graph_pitch", load_graph_pitch_)) return false;
-  if (!pu::Get("load_graph_yaw", load_graph_yaw_)) return false;
-
   if (!pu::Get("restart_x", restart_x_)) return false;
   if (!pu::Get("restart_y", restart_y_)) return false;
   if (!pu::Get("restart_z", restart_z_)) return false;
@@ -342,7 +332,6 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   std::cout << "Loading graph..." << std::endl;
   loop_closure_.ErasePosegraph();
   response.success = loop_closure_.Load(request.filename);
-  map_loaded_ = true;
 
   // Regenerate the 3D map from the loaded posegraph
   PointCloud::Ptr regenerated_map(new PointCloud);
@@ -375,19 +364,26 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
 bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
                                 blam_slam::BatchLoopClosureResponse &response) {
  
-  std::cout << "Looking for any loop closures..." << std::endl;
+  std::cout << "BATCH LOOP CLOSURE. Looking for any loop closures..." << std::endl;
 
   response.success = loop_closure_.BatchLoopClosure();
-  // We found one - regenerate the 3D map.
-  PointCloud::Ptr regenerated_map(new PointCloud);
-  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  mapper_.Reset();
-  PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(regenerated_map, unused.get());
+  if (response.success){
+    ROS_INFO("Found Loop Closures in batch loop closure");
+  
+    // We found one - regenerate the 3D map.
+    PointCloud::Ptr regenerated_map(new PointCloud);
+    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+    mapper_.Reset();
+    PointCloud::Ptr unused(new PointCloud);
+    mapper_.InsertPoints(regenerated_map, unused.get());
+
+    // Also reset the robot's estimated position.
+    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  }else {
+    ROS_INFO("No loop closures in batch loop closure");
+  }
   return true; 
 }
 
@@ -793,12 +789,6 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
     covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
-
-  //TODO: Kamak Initialize from a tf
-  // Eigen::Affine3d map_T_world_link = Eigen::Affine3d::Identity();
-  // getTransformEigenFromTF(world_frame_, blam_frame_, ros::Time(0), map_T_world_link);
-  // std::cout << "X value: " << map_T_world_link.translation().x() << std::endl;
-
 
   // This will add a between factor after obtaining the delta between poses.
   delta_after_restart_.translation = gu::Vec3(restart_x_, restart_y_, restart_z_);
