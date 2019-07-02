@@ -29,6 +29,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   interactive_markers
   core_msgs
+  robust_pgo
 )
 
 catkin_package(
@@ -46,6 +47,7 @@ catkin_package(
     pcl_ros
     interactive_markers
     core_msgs
+    robust_pgo
 )
 
 
@@ -96,7 +98,6 @@ target_link_libraries(${PROJECT_NAME}
   minizip
   ${Boost_LIBRARIES}
   ${ZLIB_LIBRARIES}
-  RobustPGO
   #SESync
 )
 
