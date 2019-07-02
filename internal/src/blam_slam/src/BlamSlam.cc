@@ -132,16 +132,29 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("restart_pitch", restart_pitch_)) return false;
   if (!pu::Get("restart_yaw", restart_yaw_)) return false;
 
-  // Load dropped item ids
-  if (!pu::Get("items/uwb_id", uwb_id_list_)) return false;
-  for (int i = 0; i < uwb_id_list_.size(); i++) {
-    uwb_drop_status_[uwb_id_list_[i]] = false;
+  // Load uwb information
+  if (!pu::Get("uwb/all", uwb_id_list_all_)) return false;
+  if (!pu::Get("uwb/drop", uwb_id_list_drop_)) return false;
+  for (auto itr = uwb_id_list_all_.begin(); itr != uwb_id_list_all_.end(); itr++) {
+    UwbMeasurementInfo uwb_data;
+    uwb_data.id = *itr;
+    uwb_data.drop_status = true;  // This should be false. (after the enhancement of UWB firmware)
+    uwb_id2data_hash_[*itr] = uwb_data;
+    uwb_id2data_hash_[*itr].in_pose_graph = false;
+  }
+  for (auto itr = uwb_id_list_drop_.begin(); itr != uwb_id_list_drop_.end(); itr++) {
+    uwb_id2data_hash_[*itr].holder = name_.c_str();
+    uwb_id2data_hash_[*itr].drop_status = false;  // This sentence will be removed.
   }
 
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
-  if (!pu::Get("b_use_uwb", b_use_uwb_))
-    return false;
+  if (!pu::Get("b_use_uwb", b_use_uwb_)) return false;
+  if (!pu::Get("uwb_skip_measurement_number", uwb_skip_measurement_number_)) return false;
+  if (!pu::Get("uwb_update_period", uwb_update_period_)) return false;
+  if (!pu::Get("uwb_update_key_number", uwb_update_key_number_)) return false;
+  if (!pu::Get("uwb_required_key_number_first", uwb_required_key_number_first_)) return false;
+  if (!pu::Get("uwb_required_key_number_not_first", uwb_required_key_number_not_first_)) return false;
 
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
@@ -402,7 +415,7 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
 
   loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, aug_robot_position);
 
-  uwb_drop_status_[request.node.AnchorID] = true;
+  uwb_id2data_hash_[request.node.AnchorID].drop_status = true;
   
   return true;
 }
@@ -587,52 +600,59 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     return;
   }
 
-  // Show range data for debug
-  for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
-    ROS_DEBUG_STREAM("UWB-ID: " + itr->first);
-    for (auto itr_child = (itr->second).begin(); itr_child != (itr->second).end(); itr_child++) {
-      ROS_DEBUG_STREAM("time = " << itr_child->first << ", range = " << itr_child->second.first);
-    }
-  }
+  for (auto itr = uwb_id2data_hash_.begin(); itr != uwb_id2data_hash_.end(); itr++) {
+    std::string uwb_id = itr->first;
+    UwbMeasurementInfo data = itr->second;
 
-  for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
-    if (!itr->second.empty()) {
-      auto itr_end = (itr->second).end();
-      itr_end--;
-      auto time_diff = ros::Time::now() - itr_end->first;
-      ROS_WARN("Time difference is %f s",time_diff.toSec());
-      if (time_diff.toSec() > 20.0) {
-        if (itr->second.size() > 4) {
-          ProcessUwbRangeData(itr->first);
+    if (data.range.size() > uwb_skip_measurement_number_) {
 
-          itr->second.clear();
+      // Calculate the pose key number difference between the latest pose key and the pose key linked with UWB
+      auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
+      auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_stamp.back());
+      int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
+
+      // Check whether enough number of pose key is passed or not
+      if (key_diff >= uwb_update_key_number_) {
+        
+        // Count the number of pose keys linked with UWB
+        // If it's the first time observation, at least three keys are necessary to localize the UWB anchor
+        unsigned int required_key_number;
+        if (uwb_id2data_hash_[uwb_id].in_pose_graph == false) {
+          required_key_number = uwb_required_key_number_first_;
+        }
+        else {
+          required_key_number = uwb_required_key_number_not_first_;
+        }
+
+        auto pose_key_list = data.nearest_pose_key;
+        pose_key_list.erase(std::unique(pose_key_list.begin(), pose_key_list.end()), pose_key_list.end());
+        if (pose_key_list.size() >= required_key_number) {
+          ProcessUwbRangeData(uwb_id);
+          UwbClearBuffer(uwb_id);
         }
         else {
           ROS_INFO("Number of range measurement is NOT enough");
-          itr->second.clear();
         }
-        
       }
     }
   }
+  return;
 }
+
+void BlamSlam::UwbClearBuffer(const std::string uwb_id) {
+  // Clear the UWB data buffer after processing the data and adding RangeFactor
+  uwb_id2data_hash_[uwb_id].range.clear();
+  uwb_id2data_hash_[uwb_id].time_stamp.clear();
+  uwb_id2data_hash_[uwb_id].robot_position.clear();
+  uwb_id2data_hash_[uwb_id].dist_posekey.clear();
+  uwb_id2data_hash_[uwb_id].nearest_pose_key.clear();
+}
+
 
 void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
   ROS_INFO_STREAM("Start to process UWB range measurement data of " << uwb_id);
 
-  std::map<double, ros::Time> map_range_time_;
-
-  for (auto itr = map_uwbid_time_data_[uwb_id].begin(); itr != map_uwbid_time_data_[uwb_id].end(); itr++) {
-    map_range_time_[itr->second.first] = itr->first;
-  }
-
-  auto minItr = std::min_element(map_range_time_.begin(), map_range_time_.end());
-
-  ros::Time aug_time = minItr->second;
-  double aug_range = minItr->first;
-  Eigen::Vector3d aug_robot_position = map_uwbid_time_data_[uwb_id][aug_time].second;
-
-  if (loop_closure_.AddUwbFactor(uwb_id, aug_time, aug_range, aug_robot_position)) {
+  if (loop_closure_.AddUwbFactor(uwb_id, uwb_id2data_hash_[uwb_id])) {  
     ROS_INFO("Updating the map by UWB data");
     PointCloud::Ptr regenerated_map(new PointCloud);
     loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
@@ -651,28 +671,31 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
     mapper_.PublishMap();
 
     ROS_INFO("Updated the map by UWB Range Factors");
+
+    uwb_id2data_hash_[uwb_id].in_pose_graph = true;
   }
+  return;
 }
 
 void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   if (!b_use_uwb_) {
     return;
   }
-
-  // TODO: Screening before entering into this subscriber
-  auto itr = uwb_drop_status_.find(msg.id);
-  if (itr != end(uwb_drop_status_)) {
-    if (itr->second == true) {
-      map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
-      map_uwbid_time_data_[msg.id][msg.header.stamp].second
-      = localization_.GetIntegratedEstimate().translation.Eigen();
+  
+  // Store the UWB-related data into the buffer "uwb_id2data_hash_"
+  auto itr = uwb_id2data_hash_.find(msg.id);
+  if (itr != end(uwb_id2data_hash_)) {
+    if (uwb_id2data_hash_[msg.id].drop_status == true) {
+      uwb_id2data_hash_[msg.id].range.push_back(msg.range);
+      uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
+      uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+      uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
     }
-  }
+  } 
   else {
-    map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
-    map_uwbid_time_data_[msg.id][msg.header.stamp].second
-    = localization_.GetIntegratedEstimate().translation.Eigen();
+    ROS_WARN("Not registered UWB ID");
   }
+  return;
 }
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
@@ -766,6 +789,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     base_frame_pcld.header.frame_id = base_frame_id_;
     base_frame_pcld_pub_.publish(base_frame_pcld);
   }
+
 }
 
 bool BlamSlam::RestartService(blam_slam::RestartRequest &request,

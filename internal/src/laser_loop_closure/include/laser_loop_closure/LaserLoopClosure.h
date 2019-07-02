@@ -96,6 +96,36 @@ struct ArtifactInfo {
                num_updates(0){}
 };
 
+// Structure to store UWB range measurement in UwbSignalCallback
+struct UwbMeasurementInfo {
+  std::string id; // UWB HEX-ID ex) CE6B
+  std::string holder; // Robot name which carrys the UWB anchor
+  bool drop_status; // Flag of drop stats -dropped: true, -mounted: false
+  bool in_pose_graph; // Is included in the pose graph: true, not: false
+  std::vector<ros::Time> time_stamp; // Time when the ranage measurement is acquired
+  std::vector<double> range; // Range measurement data
+  std::vector<Eigen::Vector3d> robot_position; // The robot position where the range data is acquired
+  std::vector<double> dist_posekey; // The distance between robot_position and the position of the pose_key
+  std::vector<gtsam::Key> nearest_pose_key; 
+};
+
+// Structure to process UWB measurement data
+// This should be linked with only one pose key
+struct UwbDataLinkedWithKey {
+  unsigned int data_number; // Number of the range measurement data
+  double range_average;
+  std::vector<double> range; // Range measurement data
+  std::vector<Eigen::Vector3d> robot_position; // The robot position where the range data is acquired
+  std::vector<double> dist_posekey; // The distance between robot_position and the position of the pose_key
+};
+
+struct UwbRearrangedData {
+  std::vector<gtsam::Key> pose_key_list; // List of pose keys which are linked with UWB range measurement
+  std::vector<double> range_nearest_key; // UWB range data observed when the robot was located at the nearest position aganst the pose key
+  std::map<gtsam::Key, UwbDataLinkedWithKey> posekey2data;
+};
+
+
 class LaserLoopClosure {
  public:
   LaserLoopClosure();
@@ -120,14 +150,22 @@ class LaserLoopClosure {
                         const Mat66& covariance, const ros::Time& stamp,
                         unsigned int* key);
   
-  bool AddUwbFactor(const std::string uwb_id,
-                    const ros::Time& stamp,
-                    const double range,
-                    const Eigen::Vector3d robot_position);
+  bool AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data);
   
   bool DropUwbAnchor(const std::string uwb_id,
                      const ros::Time& stamp,
                      const Eigen::Vector3d robot_position);
+  
+  bool UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
+                                  gtsam::Values new_values);
+  
+  UwbRearrangedData RearrangeUwbData(UwbMeasurementInfo &uwb_data);
+
+  void ShowUwbRawData(const UwbMeasurementInfo uwb_data);
+  void ShowUwbRearrangedData(UwbRearrangedData uwb_data);
+
+  template <class T1, class T2>
+  void Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &vector2);
 
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.
@@ -323,6 +361,11 @@ class LaserLoopClosure {
   std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
+  unsigned int uwb_factor_optimizer_;
+  unsigned int uwb_number_added_rangefactor_first_;
+  unsigned int uwb_number_added_rangefactor_not_first_;
+  double uwb_minimum_range_threshold_;
+  bool display_uwb_data_;
 
   // Optimizer object, and best guess pose values.
   std::unique_ptr<RobustPGO> pgo_solver_;
