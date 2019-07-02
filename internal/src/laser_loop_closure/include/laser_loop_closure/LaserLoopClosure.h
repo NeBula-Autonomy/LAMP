@@ -307,6 +307,7 @@ class LaserLoopClosure {
   unsigned int relinearize_skip_;
   double relinearize_threshold_;
   bool publish_interactive_markers_;
+  bool load_graph_from_zip_file_;
   std::vector<unsigned int> manual_loop_keys_;
   double odom_threshold_;
   double pw_threshold_;

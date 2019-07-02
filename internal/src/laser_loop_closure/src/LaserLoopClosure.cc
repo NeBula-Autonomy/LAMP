@@ -448,14 +448,28 @@ bool LaserLoopClosure::AddBetweenFactor(
     // TODO - remove vizualization keys if it is rejected 
 
     if (!b_accept_update){
-      ROS_WARN("Returning false for add between factor - have reset, waiting for next pose update");
-      // Erase the current posegraph to make space for the backup
-      LaserLoopClosure::ErasePosegraph();  
       // Run the load function to retrieve the posegraph
-      LaserLoopClosure::Load("posegraph_backup.zip");
+      if (load_graph_from_zip_file_) {
+        LaserLoopClosure::Load("posegraph_backup.zip");
+      } else {
+        // Use stored values in nfg_backup and values_backup (from prior to a loop closure)
+          values_ = values_backup_;
+          nfg_ = nfg_backup_;
+      
+        // Update
+        try {
+          pgo_solver_->update(nfg_, values_);
+          has_changed_ = true;
+        } catch (...) {
+          ROS_ERROR("Update ERROR in AddBetweenFactors in sanity check rejection");
+          throw;
+        }
+      }
       return false;
     }
+
     ROS_INFO("Sanity check passed");
+    return true;
   }
 
   // Adding poses to stored hash maps
@@ -958,19 +972,28 @@ bool LaserLoopClosure::FindLoopClosures(
         ROS_INFO("Sanity checking output");
         closed_loop = SanityCheckForLoopClosure(translational_sanity_check_lc_, cost_old, cost);
         // TODO - remove vizualization keys if it is rejected 
-      
+
         if (!closed_loop){
           ROS_WARN("Returning false for bad loop closure - have reset, waiting for next pose update");
-          // Erase the current posegraph to make space for the backup
-          LaserLoopClosure::ErasePosegraph();
-          // Run the load function to retrieve the posegraph  
-          LaserLoopClosure::Load("posegraph_backup.zip");
-          return false;
+          if (load_graph_from_zip_file_) {
+            // Erase the current posegraph to make space for the backup
+            // Run the load function to retrieve the posegraph  
+            ErasePosegraph();
+            Load("posegraph_backup.zip");
+          } else {
+            // Take the values from the backup before loop closure
+            nfg_ = nfg_backup_;
+            values_ = values_backup_;
+          }
+          try {
+            pgo_solver_->update(nfg_, values_);
+            has_changed_ = true;
+          } catch (...) {
+            ROS_ERROR("Update ERROR in FindLoopClosures reject from sanity check ");
+            throw;
+          }
         }
       }
-      // Update backups
-      nfg_backup_ = nfg_;
-      values_backup_ = values_;
     } // end of if statement 
   } // end of for loop
 
@@ -1550,6 +1573,29 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     if (b_check_deltas_){
       ROS_INFO("Sanity checking output");
       bool check_result = SanityCheckForLoopClosure(translational_sanity_check_lc_, cost_old, cost);
+
+       if (!check_result){
+        ROS_WARN("Returning false for bad loop closure - have reset, waiting for next pose update");
+        if (load_graph_from_zip_file_) {
+          // Erase the current posegraph to make space for the backup
+          ErasePosegraph();
+          // Run the load function to retrieve the posegraph  
+          Load("posegraph_backup.zip");
+        } else {
+          // Reload from backup
+          nfg_ = nfg_backup_;
+          values_ = values_backup_;
+        }
+        try {
+          pgo_solver_->update(nfg_, values_);
+          has_changed_ = true;
+        } catch (...) {
+          ROS_ERROR("Update ERROR in AddFactors rejection from sanity check");
+          throw;
+        }
+        return false;
+      }
+
     }
 
     // flag to note change in graph
