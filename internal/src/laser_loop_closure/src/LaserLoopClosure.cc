@@ -111,6 +111,9 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Should we turn loop closure checking on or off?
   if (!pu::Get("check_for_loop_closures", check_for_loop_closures_)) return false;
 
+  // Should we load a saved graph from zip file or not?
+  if (!pu::Get("load_graph_from_zip_file", load_graph_from_zip_file_)) return false;
+
   // Should we save a backup posegraph?
   if (!pu::Get("save_posegraph_backup", save_posegraph_backup_)) return false;
 
@@ -429,9 +432,37 @@ bool LaserLoopClosure::AddBetweenFactor(
       // Erase the current posegraph to make space for the backup
       LaserLoopClosure::ErasePosegraph();  
       // Run the load function to retrieve the posegraph
-      LaserLoopClosure::Load("posegraph_backup.zip");
+      if (load_graph_from_zip_file_) {
+        LaserLoopClosure::Load("posegraph_backup.zip");
+      } else {
+          values_ = values_temp;
+          nfg_ = nfg_temp;
+      }
+      // Update
+      try {
+        pgo_solver_->update(nfg_, values_);
+        has_changed_ = true;
+      } catch (...) {
+        // redirect cout to file
+        std::ofstream nfgFile;
+        std::string home_folder(getenv("HOME"));
+        nfgFile.open(home_folder + "/Desktop/factor_graph.txt");
+        std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
+        std::cout.rdbuf(nfgFile.rdbuf());
+
+        // save entire factor graph to file and debug if loop closure is correct
+        gtsam::NonlinearFactorGraph nfg = pgo_solver_->getFactorsUnsafe();
+        nfg.print();
+        nfgFile.close();
+
+        std::cout.rdbuf(coutbuf); //reset to standard output again
+
+        ROS_ERROR("Update ERROR in AddBetweenFactors");
+        throw;
+      }
       return false;
     }
+
     ROS_INFO("Sanity check passed");
   }
 
@@ -940,14 +971,16 @@ bool LaserLoopClosure::FindLoopClosures(
           ROS_WARN("Returning false for bad loop closure - have reset, waiting for next pose update");
           // Erase the current posegraph to make space for the backup
           LaserLoopClosure::ErasePosegraph();
-          // Run the load function to retrieve the posegraph  
-          LaserLoopClosure::Load("posegraph_backup.zip");
+          // Update backups
+          if (load_graph_from_zip_file_) {
+            LaserLoopClosure::Load("posegraph_backup.zip");
+          } else {
+              nfg_backup_ = nfg_;
+              values_backup_ = values_;
+          }
           return false;
         }
       }
-      // Update backups
-      nfg_backup_ = nfg_;
-      values_backup_ = values_;
     } // end of if statement 
   } // end of for loop
 
@@ -991,15 +1024,6 @@ bool LaserLoopClosure::SanityCheckForLoopClosure(double translational_sanity_che
     
     if (cost > cost_old)
       ROS_WARN("Cost increases, rejecting");
-
-    // Updating 
-    values_ = values_backup_;
-    nfg_ = nfg_backup_;
-
-    // Save updated values
-    values_ = pgo_solver_->calculateEstimate();
-    nfg_ = pgo_solver_->getFactorsUnsafe();
-    ROS_INFO("updated stored values");
 
     return false;
   }

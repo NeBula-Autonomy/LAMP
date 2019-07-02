@@ -20,6 +20,8 @@ n_iterations_manual_loop_close: 1
 
 publish_interactive_markers: true
 
+load_graph_from_zip_file: true
+
 # Noise parameters (as precisions) for manual loop closure
 manual_lc_rot_precision: 0.0 # default 0.0 (no information)
 manual_lc_trans_precision: 10.0 # default 0.001 (~30 m sd)
