@@ -129,6 +129,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("translation_threshold_nodes", translation_threshold_nodes_))
     return false;
+  if (!pu::Get("rotation_threshold_kf", rotation_threshold_kf_))
+    return false;
   if (!pu::Get("rotation_threshold_nodes", rotation_threshold_nodes_))
     return false;
   if (!pu::Get("proximity_threshold", proximity_threshold_)) return false;
@@ -447,7 +449,7 @@ bool LaserLoopClosure::AddBetweenFactor(
   odometry_ = Pose3::identity();
 
   // Return true to store a key frame
-  if (odometry_kf_.translation().norm() > translation_threshold_kf_) {
+  if (odometry_kf_.translation().norm() > translation_threshold_kf_ || 2*acos(odometry_kf_.rotation().toQuaternion().w()) > rotation_threshold_kf_) {
     // True for a new key frame
     // Reset odometry to identity
     odometry_kf_ = Pose3::identity();
