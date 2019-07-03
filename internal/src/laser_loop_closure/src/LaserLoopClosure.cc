@@ -1738,7 +1738,10 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
   const boost::filesystem::path directory(path);
   boost::filesystem::create_directory(directory);
 
-  writeG2o(pgo_solver_->getFactorsUnsafe(), values_, path + "/graph.g2o");
+  pgo_solver_->getFactorsUnsafe().print("In save, pgo_solver_nfg_ is: ") ;
+  nfg_.print("In save, from nfg_ is: ") ;
+
+  writeG2o(pgo_solver_->getFactorsUnsafe(), pgo_solver_->calculateEstimate(), path + "/graph.g2o");
   ROS_INFO("Saved factor graph as a g2o file.");
 
   // keys.csv stores factor key, point cloud filename, and time stamp
@@ -1895,6 +1898,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   // restore pose graph from g2o file
   const GraphAndValues gv = gtsam::load3D(graphFilename);
   nfg_ = *gv.first;
+  nfg_.print("File output facrtors are: ");
   values_ = *gv.second;
   ROS_INFO_STREAM("1");
 
@@ -1916,10 +1920,10 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     return false;
   }
   nfg_.add(gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
-  ROS_INFO_STREAM("fsad");
+  
   nfg_.print("Factors are: \n");
   values_.print("Values are: \n");
-  pgo_solver_->update(nfg_, values_);
+  // pgo_solver_->update(nfg_, values_);
   ROS_INFO_STREAM("4");
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
 
@@ -2353,10 +2357,13 @@ void LaserLoopClosure::KeyedScanCallback(
 void LaserLoopClosure::PoseGraphCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
   ROS_INFO_STREAM("Loop closure pose_graph_processing");
-  if (!msg->incremental) {
-    keyed_poses_.clear();
-    odometry_edges_.clear();
-  }
+
+  // // Clear pgo_solver_
+  // OutlierRemoval* pcm =
+  //     new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
+  // pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  // pgo_solver_->print();
+
   gtsam::Values new_values;
   NonlinearFactorGraph new_factor;
 
@@ -2383,11 +2390,13 @@ void LaserLoopClosure::PoseGraphCallback(
 
 
     // if previous key exists
-    if (new_values.exists(key_ - 1)) {
+    if (values_.exists(key_ - 1)) {
+      ROS_INFO_STREAM("Previous key exists, no prior for key " << gtsam::DefaultKeyFormatter(key_) );
       new_values.insert(key_, full_pose);
     }
     // is initial key
     else {
+      ROS_INFO_STREAM("Adding prior in pose graph callback for key " << gtsam::DefaultKeyFormatter(key_) );
       LaserLoopClosure::Diagonal::shared_ptr covariance(
           LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
 
@@ -2405,6 +2414,9 @@ void LaserLoopClosure::PoseGraphCallback(
         msg_node.key, msg_node.header.stamp));
     stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(
         msg_node.header.stamp.toSec(), msg_node.key));
+    
+    // Update values so we know we have the first
+    values_.insert(key_, full_pose);
   }
 
   // Add edges to basestation posegraph
@@ -2422,10 +2434,13 @@ void LaserLoopClosure::PoseGraphCallback(
     // TODO! How do we want to get the covariance??? FIX SOON!!
     gu::MatrixNxNBase<double, 6> covariance;
     covariance.Zeros();
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 3; ++i){
       covariance(i, i) = 0.04 * 0.04; // 0.4, 0.004; 0.2 m sd
-    for (int i = 3; i < 6; ++i)
+    }
+
+    for (int i = 3; i < 6; ++i){
       covariance(i, i) = 0.01 * 0.01; // 0.1, 0.01; sqrt(0.01) rad sd
+    }
     //-------------------------------------------------------------------------
 
     if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
@@ -2433,14 +2448,17 @@ void LaserLoopClosure::PoseGraphCallback(
       Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
       bool b_edge_exists = false;
       for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
-        if (odometry_edges_[ii] == incomming_edge)
+        if (odometry_edges_[ii].first == msg_edge.key_from && odometry_edges_[ii].second == msg_edge.key_to){
           b_edge_exists = true;
+        }
       }
-      if (b_edge_exists)
+      if (b_edge_exists){
+        ROS_INFO_STREAM("Odom edge already exists for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
         continue;
-
-      odometry_edges_.emplace_back(
-          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+      }
+        
+      ROS_INFO_STREAM("Adding Odom edge for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+      odometry_edges_.emplace_back(incomming_edge);
       new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
                                           gtsam::Symbol(msg_edge.key_to),
                                           delta,
@@ -2495,33 +2513,27 @@ void LaserLoopClosure::PoseGraphCallback(
     }
   }
 
+  nfg_.add(new_factor);
+
+  std::vector<char> special_symbs{'l', 'u'}; // for artifacts
+  OutlierRemoval* pcm =
+      new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
+  pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  pgo_solver_->print();
+
   // Update
   try {
-    pgo_solver_->update(new_factor, new_values);
+    pgo_solver_->update(nfg_, values_);
     has_changed_ = true;
   } catch (...) {
-    // redirect cout to file
-    std::ofstream nfgFile;
-    std::string home_folder(getenv("HOME"));
-    nfgFile.open(home_folder + "/Desktop/factor_graph.txt");
-    std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
-    std::cout.rdbuf(nfgFile.rdbuf());
-
-    // save entire factor graph to file and debug if loop closure is correct
-    gtsam::NonlinearFactorGraph nfg = pgo_solver_->getFactorsUnsafe();
-    nfg.print();
-    nfgFile.close();
-
-    std::cout.rdbuf(coutbuf); //reset to standard output again
-
     ROS_ERROR("PGO Solver update error in AddBetweenFactors");
     throw;
   }
 
-  // Update class variables
-  values_ = pgo_solver_->calculateEstimate();
+  // // Update class variables
+  // values_ = pgo_solver_->calculateEstimate();
 
-  nfg_ = pgo_solver_->getFactorsUnsafe();
+  // nfg_ = pgo_solver_->getFactorsUnsafe();
 
   // Update key for getting the latest pose
   key_ = key_ + 1;
