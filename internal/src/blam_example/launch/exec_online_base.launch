@@ -91,7 +91,8 @@
     <node pkg="tf2_ros" 
         type="static_transform_publisher"
         name="base2world"
-        args="0 0 0 0 0 0 $(arg robot_namespace)/blam /world" />
+        args="0 0 0 0 0 0 1 $(arg robot_namespace)/blam /world" >
+    </node>
 
     <node pkg="blam_slam"
       name="loop_closure_tools"

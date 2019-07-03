@@ -97,6 +97,10 @@ class BlamSlam {
   void VisualizationTimerCallback(const ros::TimerEvent& ev);
   void UwbTimerCallback(const ros::TimerEvent& ev);
 
+  // Base Station Callbacks
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
+  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
   bool HandleLoopClosures(const PointCloud::ConstPtr& scan, bool* new_keyframe);
@@ -159,6 +163,8 @@ class BlamSlam {
   ros::Subscriber pcld_sub_;
   ros::Subscriber artifact_sub_;
   ros::Subscriber uwb_sub_;
+  std::vector<ros::Subscriber> Subscriber_posegraphList_;
+  std::vector<ros::Subscriber> Subscriber_keyedscanList_;
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
@@ -195,6 +201,10 @@ class BlamSlam {
   int largest_artifact_id_; 
   bool use_artifact_loop_closure_;
   bool b_use_uwb_;
+
+  //Basestation
+  bool b_is_basestation_;
+  std::vector<std::string> robot_names_;
 
   // Object IDs
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;

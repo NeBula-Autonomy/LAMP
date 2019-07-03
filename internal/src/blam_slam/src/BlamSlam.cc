@@ -128,6 +128,16 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("restart_pitch", restart_pitch_)) return false;
   if (!pu::Get("restart_yaw", restart_yaw_)) return false;
 
+  // check if lamp is run as basestation
+  b_is_basestation_ = false;
+  if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
+
+  // set up subscriber to all robots if run on basestation
+  if (b_is_basestation_) {
+    if (!pu::Get("robot_names", robot_names_))
+      return false;
+  }
+
   // Load dropped item ids
   if (!pu::Get("items/uwb_id", uwb_id_list_)) return false;
   for (int i = 0; i < uwb_id_list_.size(); i++) {
@@ -178,6 +188,7 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   load_graph_srv_ = nl.advertiseService("load_graph", &BlamSlam::LoadGraphService, this);
   batch_loop_closure_srv_ = nl.advertiseService("batch_loop_closure", &BlamSlam::BatchLoopClosureService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
+
   if (from_log)
     return RegisterLogCallbacks(n);
   else
@@ -195,18 +206,41 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  estimate_update_timer_ = nl.createTimer(
-      estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
-  
-  uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
+  if (!b_is_basestation_){
+    estimate_update_timer_ = nl.createTimer(
+        estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
+    
+    pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
 
-  pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+    uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
+
+    uwb_sub_ =
+        nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
+  }
 
   artifact_sub_ = nl.subscribe("artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
 
-  uwb_sub_ =
-      nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
-
+  // Create pose-graph callbacks for base station
+  if(b_is_basestation_){
+    int num_robots = robot_names_.size();
+    // init size of subscribers
+    // loop through each robot to set up subscriber
+    for (size_t i = 0; i < num_robots; i++) {
+      ros::Subscriber keyed_scan_sub = nl.subscribe<pose_graph_msgs::KeyedScan>(
+          "/" + robot_names_[i] + "/blam_slam/keyed_scans",
+          10,
+          &BlamSlam::KeyedScanCallback,
+          this);
+      ros::Subscriber pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
+          "/" + robot_names_[i] + "/blam_slam/pose_graph",
+          10,
+          &BlamSlam::PoseGraphCallback,
+          this);
+      Subscriber_posegraphList_.push_back(pose_graph_sub);
+      Subscriber_keyedscanList_.push_back(keyed_scan_sub);
+      ROS_INFO_STREAM(i);
+    }
+  }
   return CreatePublishers(n);
 }
 
@@ -872,4 +906,42 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
              pose_key, closure_key);
   }
   return true;
+}
+
+
+// BASE STATION
+void BlamSlam::KeyedScanCallback(
+    const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
+  ROS_INFO_STREAM("Keyed scan message recieved");
+
+  // Access loop closure callback
+  loop_closure_.KeyedScanCallback(msg);
+
+}
+
+void BlamSlam::PoseGraphCallback(
+    const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
+  ROS_INFO_STREAM("Pose Graph message recieved");
+
+  // Access loop closure callback
+  loop_closure_.PoseGraphCallback(msg);
+
+  // Update map
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+  mapper_.Reset();
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
+
+  // Also reset the robot's estimated position.
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  localization_.PublishPoseNoUpdate();
+
+  // Publish artifacts - should be updated from the pose-graph 
+  loop_closure_.PublishArtifacts();
+
+  // Publish map
+  mapper_.PublishMap();
 }

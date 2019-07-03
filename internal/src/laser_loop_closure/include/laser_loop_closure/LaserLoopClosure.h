@@ -212,6 +212,10 @@ class LaserLoopClosure {
   // Loads pose graph and accompanying point clouds from a zip file.
   bool Load(const std::string &zipFilename);
 
+  //Basestation callbackfunctions
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
+  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+
  private:
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -320,6 +324,7 @@ class LaserLoopClosure {
 
   //Basestation
   bool b_is_basestation_;
+  bool b_first_key_set_;
 
   // Sanity check parameters
   bool b_check_deltas_; 
@@ -363,22 +368,10 @@ class LaserLoopClosure {
   ros::Publisher erase_posegraph_pub_;
   ros::Publisher remove_factor_viz_pub_;
 
-  //Basestatiopn subscribers
-  ros::Subscriber keyed_scan_sub_;
-  ros::Subscriber pose_graph_sub_;
-  std::vector<ros::Subscriber> Subscriber_posegraphList_;
-  std::vector<ros::Subscriber> Subscriber_keyedscanList_;
-
   std::map<long unsigned int, tf::Pose> keyed_poses_;
-
-  //Basestation callbackfunctions
-  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
-  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
   
   //Function to get the gu position of all the keys
   geometry_utils::Transform3 GetPoseAtLoadedKey(const gtsam::Key &key) const;
-
-  std::vector<std::string> robot_names_;
 
   // Used for publishing pose graph only if it hasn't changed.
   bool has_changed_{true};

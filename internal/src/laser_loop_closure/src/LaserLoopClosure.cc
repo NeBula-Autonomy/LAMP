@@ -77,7 +77,8 @@ using gtsam::Vector6;
 using gtsam::ISAM2GaussNewtonParams;
 
 LaserLoopClosure::LaserLoopClosure()
-    : key_(), last_closure_key_(std::numeric_limits<int>::min()), tf_listener_(tf_buffer_) {
+    : key_(), last_closure_key_(std::numeric_limits<int>::min()), tf_listener_(tf_buffer_),
+    b_first_key_set_(false) {
   initial_noise_.setZero();
 }
 
@@ -122,12 +123,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // check if lamp is run as basestation
   b_is_basestation_ = false;
   if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
-
-  // set up subscriber to all robots if run on basestation
-  if (b_is_basestation_) {
-    if (!pu::Get("robot_names", robot_names_))
-      return false;
-  }
 
   // Load Optimization parameters.
   relinearize_skip_ = 1;
@@ -220,6 +215,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   initial_key_ = 0;
 
+  key_ = 0;
+
   // Initialize
   // Skip pgo_solver and prefix_robot init if base station
   if (b_is_basestation_) {
@@ -261,26 +258,6 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  if(b_is_basestation_){
-    int num_robots = robot_names_.size();
-    // init size of subscribers
-    // loop through each robot to set up subscriber
-    for (size_t i = 0; i < num_robots; i++) {
-      ros::Subscriber keyed_scan_sub = nl.subscribe<pose_graph_msgs::KeyedScan>(
-          "/" + robot_names_[i] + "/blam_slam/keyed_scans",
-          10,
-          &LaserLoopClosure::KeyedScanCallback,
-          this);
-      ros::Subscriber pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
-          "/" + robot_names_[i] + "/blam_slam/pose_graph",
-          10,
-          &LaserLoopClosure::PoseGraphCallback,
-          this);
-      Subscriber_posegraphList_.push_back(pose_graph_sub);
-      Subscriber_keyedscanList_.push_back(keyed_scan_sub);
-      ROS_INFO_STREAM(i);
-    }
-  }
   scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
   scan2_pub_ = nl.advertise<PointCloud>("loop_closure_scan2", 10, false);
 
@@ -1132,16 +1109,17 @@ gu::Transform3 LaserLoopClosure::GetLastPose() const {
     return ToGu(values_.at<Pose3>(key_-1));
   } else {
     ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
-    return ToGu(values_.at<Pose3>(0));
+    ROS_INFO_STREAM("Key is: " << gtsam::DefaultKeyFormatter(initial_key_));
+    return ToGu(values_.at<Pose3>(initial_key_));
   }
 }
 
 gu::Transform3 LaserLoopClosure::GetInitialPose() const {
   if (key_.index() > 1) {
-    return ToGu(values_.at<Pose3>(0));
+    return ToGu(values_.at<Pose3>(initial_key_));
   } else {
     ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
-    return ToGu(values_.at<Pose3>(0));
+    return ToGu(values_.at<Pose3>(initial_key_));
   }
 }
 
@@ -1939,6 +1917,8 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   }
   nfg_.add(gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
   ROS_INFO_STREAM("fsad");
+  nfg_.print("Factors are: \n");
+  values_.print("Values are: \n");
   pgo_solver_->update(nfg_, values_);
   ROS_INFO_STREAM("4");
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
@@ -2372,7 +2352,7 @@ void LaserLoopClosure::KeyedScanCallback(
 
 void LaserLoopClosure::PoseGraphCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
-  ROS_INFO_STREAM("message recieved");
+  ROS_INFO_STREAM("Loop closure pose_graph_processing");
   if (!msg->incremental) {
     keyed_poses_.clear();
     odometry_edges_.clear();
@@ -2399,6 +2379,9 @@ void LaserLoopClosure::PoseGraphCallback(
                                                   msg_node.pose.orientation.z));
     gtsam::Pose3 full_pose = gtsam::Pose3(pose_orientation, pose_translation);
 
+    // Check input for NaNs
+
+
     // if previous key exists
     if (new_values.exists(key_ - 1)) {
       new_values.insert(key_, full_pose);
@@ -2410,6 +2393,12 @@ void LaserLoopClosure::PoseGraphCallback(
 
       new_factor.add(MakePriorFactor(full_pose, covariance));
       new_values.insert(key_, full_pose);
+
+      // Set the first key if not already set - use this for adding between factors at start @AlexH
+      if (!b_first_key_set_){
+        initial_key_ = key_;
+        b_first_key_set_ = true;
+      }
     }
 
     keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(
@@ -2477,7 +2466,9 @@ void LaserLoopClosure::PoseGraphCallback(
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
       artifact_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
+      // TODO include artifacts in the pose-graph
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
+      // TODO include artifacts in the pose-graph
       // TODO send only incremental UWB edges (if msg.incremental is true)
       // uwb_edges_.clear();
       bool found = false;
@@ -2503,8 +2494,6 @@ void LaserLoopClosure::PoseGraphCallback(
       }
     }
   }
-  new_factor.print();
-  new_values.print();
 
   // Update
   try {
@@ -2533,6 +2522,9 @@ void LaserLoopClosure::PoseGraphCallback(
   values_ = pgo_solver_->calculateEstimate();
 
   nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  // Update key for getting the latest pose
+  key_ = key_ + 1;
 
   // publish posegraph
   has_changed_ = true;
