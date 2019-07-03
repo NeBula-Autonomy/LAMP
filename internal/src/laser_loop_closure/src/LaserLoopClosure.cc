@@ -385,6 +385,11 @@ bool LaserLoopClosure::AddBetweenFactor(
   odometry_ = odometry_.compose(new_odometry);
   odometry_kf_ = odometry_kf_.compose(new_odometry);
 
+  if (std::isnan(acos(odometry_.rotation().toQuaternion().w()))){
+    ROS_WARN("NAN rotational angle in odometry");
+    return false;
+  }
+
   if (odometry_.translation().norm() < translation_threshold_nodes_ &&  2*acos(odometry_.rotation().toQuaternion().w()) < rotation_threshold_nodes_) {
     // No new pose - translation is not enough, nor is rotation to add a new node
     return false;
