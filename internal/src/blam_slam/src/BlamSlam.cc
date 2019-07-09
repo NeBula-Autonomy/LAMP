@@ -239,8 +239,15 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
           10,
           &BlamSlam::PoseGraphCallback,
           this);
+      ros::Subscriber artifact_sub = nl.subscribe<core_msgs::Artifact>(
+          "/" + robot_names_[i] + "/blam_slam/artifact",
+          10,
+          &BlamSlam::ArtifactBaseCallback,
+          this);
+
       Subscriber_posegraphList_.push_back(pose_graph_sub);
       Subscriber_keyedscanList_.push_back(keyed_scan_sub);
+      Subscriber_artifactList_.push_back(artifact_sub);
       ROS_INFO_STREAM(i);
     }
   }
@@ -961,4 +968,11 @@ void BlamSlam::PoseGraphCallback(
 
   // Publish map
   mapper_.PublishMap();
+}
+
+void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
+  ROS_INFO_STREAM("Artifact message recieved");
+
+  // Access loop closure callback
+  loop_closure_.ArtifactBaseCallback(msg);
 }

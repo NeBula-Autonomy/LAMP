@@ -100,6 +100,7 @@ class BlamSlam {
   // Base Station Callbacks
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+  void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
 
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
@@ -165,6 +166,7 @@ class BlamSlam {
   ros::Subscriber uwb_sub_;
   std::vector<ros::Subscriber> Subscriber_posegraphList_;
   std::vector<ros::Subscriber> Subscriber_keyedscanList_;
+  std::vector<ros::Subscriber> Subscriber_artifactList_;
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;

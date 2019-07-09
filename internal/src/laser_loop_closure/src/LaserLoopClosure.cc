@@ -2363,11 +2363,7 @@ void LaserLoopClosure::PoseGraphCallback(
 
   // Add the new nodes to base station posegraph
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
-    tf::Pose pose;
-    tf::poseMsgToTF(msg_node.pose, pose);
-
-    // add to gtsam values
-
+    // add to basestation gtsam values
     key_ = gtsam::Symbol(msg_node.key);
     if (values_.exists(key_))
       continue;
@@ -2382,6 +2378,13 @@ void LaserLoopClosure::PoseGraphCallback(
 
     // Check input for NaNs
 
+    // Add UUID if an artifact or uwb node
+    if (key_.chr() == 'l') {
+      // Artifact
+      artifact_key2info_hash[key_] = msg_node.ID;
+      values_.insert(key_, full_pose);
+      continue;
+    }
 
     // if previous key exists
     if (values_.exists(key_ - 1)) {
@@ -2402,10 +2405,26 @@ void LaserLoopClosure::PoseGraphCallback(
         initial_key_ = key_;
         b_first_key_set_ = true;
       } else {
-        /*         new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
-                                            gtsam::Symbol(msg_edge.key_to),
-                                            delta,
-                                            ToGtsam(covariance))); */
+        // Add betweenfactor between the first poses of the two different graphs
+        // Calculate distance between the poses
+        gu::Transform3 init_pose = ToGu(values_.at<Pose3>(initial_key_));
+        gu::Transform3 current_pose = ToGu(values_.at<Pose3>(key_));
+        const gu::Transform3 pose_delta =
+            gu::PoseDelta(init_pose, current_pose);
+
+        // TODO! How do we want to get the covariance??? FIX SOON!!
+        gu::MatrixNxNBase<double, 6> covariance;
+        covariance.Zeros();
+        for (int i = 0; i < 3; ++i) {
+          covariance(i, i) = 0.04 * 0.04; // 0.4, 0.004; 0.2 m sd
+        }
+        for (int i = 3; i < 6; ++i) {
+          covariance(i, i) = 0.01 * 0.01; // 0.1, 0.01; sqrt(0.01) rad sd
+        }
+        //-------------------------------------------------------------------------
+
+        new_factor.add(BetweenFactor<Pose3>(
+            initial_key_, key_, ToGtsam(pose_delta), ToGtsam(covariance)));
       }
     }
 
@@ -2455,7 +2474,8 @@ void LaserLoopClosure::PoseGraphCallback(
         ROS_INFO_STREAM("Odom edge already exists for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
         continue;
       }
-        
+
+      // Add to basestation posegraph
       ROS_INFO_STREAM("Adding Odom edge for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
       odometry_edges_.emplace_back(incomming_edge);
       new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
@@ -2474,6 +2494,7 @@ void LaserLoopClosure::PoseGraphCallback(
       if (b_edge_exists)
         continue;
 
+      // Add to basestation posegraph
       loop_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
       new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
@@ -2481,10 +2502,26 @@ void LaserLoopClosure::PoseGraphCallback(
                                           delta,
                                           ToGtsam(covariance)));
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      // Check if artifact_edge already exsists on basestation
+      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
+      bool b_edge_exists = false;
+      for (size_t ii = 0; ii < artifact_edges_.size(); ++ii) {
+        if (artifact_edges_[ii] == incomming_edge)
+          b_edge_exists = true;
+      }
+      if (b_edge_exists)
+        continue;
+
+      // Add to basestation posegraph
       artifact_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));
+      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance)));
+
       // TODO include artifacts in the pose-graph
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
+    } /* else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
       // TODO include artifacts in the pose-graph
       // TODO send only incremental UWB edges (if msg.incremental is true)
       // uwb_edges_.clear();
@@ -2509,7 +2546,7 @@ void LaserLoopClosure::PoseGraphCallback(
                  msg_edge.key_from,
                  msg_edge.key_to);
       }
-    }
+    } */
   }
 
   nfg_.add(new_factor);
@@ -2542,3 +2579,5 @@ void LaserLoopClosure::PoseGraphCallback(
   PublishPoseGraph(); 
 }
 
+void LaserLoopClosure::ArtifactBaseCallback(
+    const core_msgs::Artifact::ConstPtr& msg) {}
