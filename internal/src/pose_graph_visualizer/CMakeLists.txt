@@ -79,6 +79,7 @@ target_link_libraries(${PROJECT_NAME}
   gtsam
   ${Boost_LIBRARIES}
 )
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc src/PoseGraphVisualizer.cc)
 target_link_libraries(${PROJECT_NAME}_node
@@ -88,3 +89,4 @@ target_link_libraries(${PROJECT_NAME}_node
   gtsam
   ${Boost_LIBRARIES}
 )
+add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
