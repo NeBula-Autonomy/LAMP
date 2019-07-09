@@ -814,7 +814,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
   // Don't check for loop closures against poses that are missing scans.
   if (!keyed_scans_.count(key)){
-    ROS_WARN("Key %u does not have a scan", key);
+    ROS_WARN("Key %u does not have a scan", gtsam::DefaultKeyFormatter(key));
     return false;
   }
 
@@ -837,7 +837,8 @@ bool LaserLoopClosure::FindLoopClosures(
 
   // Check that the key exists
   if (!values_.exists(key)) {
-    ROS_WARN("Key %u does not exist in find loop closures", key);
+    ROS_WARN("Key %u does not exist in find loop closures",
+             gtsam::DefaultKeyFormatter(key));
     return false;
   }
 
@@ -904,7 +905,8 @@ bool LaserLoopClosure::FindLoopClosures(
 
     // Check that the key exists
     if (!values_.exists(other_key)) {
-      ROS_WARN("Key %u does not exist in loop closure search (other key)", other_key);
+      ROS_WARN("Key %u does not exist in loop closure search (other key)",
+               gtsam::DefaultKeyFormatter(other_key));
       return false;
     }
 
@@ -1075,7 +1077,8 @@ bool LaserLoopClosure::GetMaximumLikelihoodPoints(PointCloud* points) {
 
     // Check that the key exists
     if (!values_.exists(key)) {
-      ROS_WARN("Key %u does not exist in GetMaximumLikelihoodPoints",key);
+      ROS_WARN("Key %u does not exist in GetMaximumLikelihoodPoints",
+               gtsam::DefaultKeyFormatter(key));
       return false;
     }
     const gu::Transform3 pose = ToGu(values_.at<Pose3>(key));
@@ -1912,7 +1915,8 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   first_loaded_key_ = key0;
   ROS_INFO_STREAM("3");
   if (!values_.exists(key0)){
-    ROS_WARN("Key0, %s, does not exist in Load", key0);
+    ROS_WARN("Key0, %s, does not exist in Load",
+             gtsam::DefaultKeyFormatter(key0));
     return false;
   }
   // update with prior
@@ -2012,7 +2016,10 @@ bool LaserLoopClosure::BatchLoopClosure() {
   //Store parameter values as initalized in parameters.yaml
   bool save_posegraph = save_posegraph_backup_;
   bool loop_closure_checks = check_for_loop_closures_;
+  double store_distance_for_loopclosing = distance_before_reclosing_;
 
+  // Change distance for closing loop
+  distance_before_reclosing_ = 0;
 
   //Disable save flag before doing optimization
   save_posegraph_backup_ = false;
@@ -2037,7 +2044,8 @@ bool LaserLoopClosure::BatchLoopClosure() {
   //Restore the flags as initalized in parameters.yaml
   save_posegraph_backup_ = save_posegraph;
   check_for_loop_closures_ = loop_closure_checks;
-  
+  distance_before_reclosing_ = store_distance_for_loopclosing;
+
   // Update the posegraph after looking for loop closures and performing optimization
   has_changed_ = true;
   PublishPoseGraph();
@@ -2306,7 +2314,8 @@ gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
 gu::Transform3 LaserLoopClosure::GetPoseAtKey(const gtsam::Key& key) const {
   // Get the pose at that key
   if (!values_.exists(key)) {
-    ROS_WARN("Key, %u, does not exist in GetPoseAtKey", key);
+    ROS_WARN("Key, %u, does not exist in GetPoseAtKey",
+             gtsam::DefaultKeyFormatter(key));
     return gu::Transform3();
   }
   return ToGu(values_.at<Pose3>(key));
@@ -2314,7 +2323,8 @@ gu::Transform3 LaserLoopClosure::GetPoseAtKey(const gtsam::Key& key) const {
 
 Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_key) const {
   if (!values_.exists(artifact_key)){
-    ROS_WARN("Key, %u, does not exist in GetArtifactPosition",artifact_key);
+    ROS_WARN("Key, %u, does not exist in GetArtifactPosition",
+             gtsam::DefaultKeyFormatter(artifact_key));
     return Eigen::Vector3d();
   }
   return values_.at<Pose3>(artifact_key).translation().vector();
@@ -2358,7 +2368,6 @@ void LaserLoopClosure::PoseGraphCallback(
   // pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   // pgo_solver_->print();
 
-  gtsam::Values new_values;
   NonlinearFactorGraph new_factor;
 
   // Add the new nodes to base station posegraph
@@ -2389,7 +2398,7 @@ void LaserLoopClosure::PoseGraphCallback(
     // if previous key exists
     if (values_.exists(key_ - 1)) {
       ROS_INFO_STREAM("Previous key exists, no prior for key " << gtsam::DefaultKeyFormatter(key_) );
-      new_values.insert(key_, full_pose);
+      values_.insert(key_, full_pose);
     }
     // is initial key
     else {
@@ -2398,7 +2407,7 @@ void LaserLoopClosure::PoseGraphCallback(
           LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
 
       new_factor.add(MakePriorFactor(full_pose, covariance));
-      new_values.insert(key_, full_pose);
+      values_.insert(key_, full_pose);
 
       // Set the first key if not already set - use this for adding between factors at start @AlexH
       if (!b_first_key_set_){
@@ -2433,8 +2442,6 @@ void LaserLoopClosure::PoseGraphCallback(
     stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(
         msg_node.header.stamp.toSec(), msg_node.key));
     
-    // Update values so we know we have the first
-    values_.insert(key_, full_pose);
   }
 
   // Add edges to basestation posegraph
