@@ -171,6 +171,9 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   //Get the initial key value to initialize timestamp and pointcloud msgs
   initial_key_ = loop_closure_.GetInitialKey();
 
+  // Initialize boolean to add first scan to key
+  b_add_first_scan_to_key_ = false;
+
   return true;
 }
 
@@ -426,6 +429,9 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   delta_after_load_.translation = gu::Vec3(load_graph_x_, load_graph_y_, load_graph_z_);
   delta_after_load_.rotation = gu::Rot3(load_graph_roll_, load_graph_pitch_, load_graph_yaw_);
   loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
+
+  // Bool for adding scan to key the pose added at load
+  b_add_first_scan_to_key_ = true;
 
   return true;
 }
@@ -744,6 +750,10 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
 
   // Update odometry by performing ICP.
   if (!odometry_.UpdateEstimate(*msg_filtered)) {
+    b_add_first_scan_to_key_ = true;
+  }
+
+  if (b_add_first_scan_to_key_) {
     // First update ever.
     // Transforming msg to fixed frame for non-zero initial position
     localization_.TransformPointsToFixedFrame(*msg_filtered,
@@ -758,6 +768,8 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     // Publish
     loop_closure_.PublishPoseGraph();
 
+    // Revert the first scan to key
+    b_add_first_scan_to_key_ = false;
     return;
   }
 
@@ -857,6 +869,9 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
   delta_after_restart_.translation = gu::Vec3(restart_x_, restart_y_, restart_z_);
   delta_after_restart_.rotation = gu::Rot3(restart_roll_, restart_pitch_, restart_yaw_);
   loop_closure_.AddFactorAtRestart(delta_after_restart_, covariance);
+
+  // Bool for adding scan to key the pose added at restart
+  b_add_first_scan_to_key_ = true;
 
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());

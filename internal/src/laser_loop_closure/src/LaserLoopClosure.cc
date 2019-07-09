@@ -499,13 +499,12 @@ bool LaserLoopClosure::AddBetweenFactor(
 
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber() {
-  ROS_INFO_STREAM("4");
-
-  if (initial_key_ == first_loaded_key_) {
-    initial_key_ = gtsam::Symbol('z', 0);
+  if (values_.exists(initial_key_)) {
+    initial_key_ = initial_key_ + 10000;
+    ChangeKeyNumber();
   }
-
   key_ = initial_key_;
+  return true;
 }
 
 bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, 

@@ -201,6 +201,7 @@ class BlamSlam {
   int largest_artifact_id_; 
   bool use_artifact_loop_closure_;
   bool b_use_uwb_;
+  bool b_add_first_scan_to_key_;
 
   //Basestation
   bool b_is_basestation_;
