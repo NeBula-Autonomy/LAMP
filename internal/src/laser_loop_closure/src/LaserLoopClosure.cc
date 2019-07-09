@@ -503,7 +503,7 @@ bool LaserLoopClosure::ChangeKeyNumber() {
 
   if (initial_key_ == first_loaded_key_) {
     initial_key_ = gtsam::Symbol('z', 0);
-  } 
+  }
 
   key_ = initial_key_;
 }
@@ -1916,8 +1916,10 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     ROS_WARN("Key0, %s, does not exist in Load", key0);
     return false;
   }
-  // update with prior 
-  pgo_solver_->loadGraph<Pose3>(nfg_, values_, 
+  // update with prior
+  pgo_solver_->loadGraph<Pose3>(
+      nfg_,
+      values_,
       gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
 
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
@@ -2078,7 +2080,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       node.key = keyed_pose.key;
       node.header.frame_id = fixed_frame_id_;
       node.pose = gr::ToRosPose(t);
-    
+
       if (keyed_stamps_.count(keyed_pose.key)) {
         node.header.stamp = keyed_stamps_[keyed_pose.key];
       } else {
@@ -2400,13 +2402,11 @@ void LaserLoopClosure::PoseGraphCallback(
       if (!b_first_key_set_){
         initial_key_ = key_;
         b_first_key_set_ = true;
-      }
-      else{
-        
-/*         new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
-                                    gtsam::Symbol(msg_edge.key_to),
-                                    delta,
-                                    ToGtsam(covariance))); */
+      } else {
+        /*         new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                            gtsam::Symbol(msg_edge.key_to),
+                                            delta,
+                                            ToGtsam(covariance))); */
       }
     }
 
