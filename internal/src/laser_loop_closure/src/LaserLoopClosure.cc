@@ -502,13 +502,10 @@ bool LaserLoopClosure::ChangeKeyNumber() {
   ROS_INFO_STREAM("4");
 
   if (initial_key_ == first_loaded_key_) {
-    unsigned char random = (unsigned char)rand();
-    ROS_INFO_STREAM(random);
-    key_ = gtsam::Symbol('z', 0);
-    LaserLoopClosure::ChangeKeyNumber();
-  } else {
-    key_ = initial_key_;
-  }
+    initial_key_ = gtsam::Symbol('z', 0);
+  } 
+
+  key_ = initial_key_;
 }
 
 bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, 
@@ -780,6 +777,7 @@ bool LaserLoopClosure::AddKeyScanPair(gtsam::Symbol key,
   // The first key should be treated differently; we need to use the laser
   // scan's timestamp for pose zero.
   if (initial_pose) {
+    ROS_INFO_STREAM("yey initialpose!!");
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
     keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(key, stamp));
     stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(stamp.toSec(), key));
@@ -910,7 +908,6 @@ bool LaserLoopClosure::FindLoopClosures(
       ROS_WARN("Key %u does not exist in loop closure search (other key)", other_key);
       return false;
     }
-
 
     // Get pose for the other key.
     const gu::Transform3 pose2 = ToGu(values_.at<Pose3>(other_key));
@@ -1919,12 +1916,10 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     ROS_WARN("Key0, %s, does not exist in Load", key0);
     return false;
   }
-  nfg_.add(gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
-  
-  nfg_.print("Factors are: \n");
-  values_.print("Values are: \n");
-  // pgo_solver_->update(nfg_, values_);
-  ROS_INFO_STREAM("4");
+  // update with prior 
+  pgo_solver_->loadGraph<Pose3>(nfg_, values_, 
+      gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
+
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
 
   // info_file stores factor key, point cloud filename, and time stamp
@@ -2083,13 +2078,13 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       node.key = keyed_pose.key;
       node.header.frame_id = fixed_frame_id_;
       node.pose = gr::ToRosPose(t);
+    
       if (keyed_stamps_.count(keyed_pose.key)) {
         node.header.stamp = keyed_stamps_[keyed_pose.key];
       } else {
         ROS_WARN("%s: Couldn't find timestamp for key %lu", name_.c_str(),
                  keyed_pose.key);
       }
-
       // ROS_INFO_STREAM("Symbol key is " <<
       // gtsam::DefaultKeyFormatter(sym_key)); ROS_INFO_STREAM("Symbol key
       // (directly) is "
@@ -2126,7 +2121,6 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       // TODO
       g.edges.push_back(edge);
     }
-
     for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
       edge.key_from = loop_edges_[ii].first;
       edge.key_to = loop_edges_[ii].second;
@@ -2153,7 +2147,6 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       // TODO
       g.edges.push_back(edge);
     }
-
     // Publish.
     pose_graph_pub_.publish(g);
   }
@@ -2407,6 +2400,13 @@ void LaserLoopClosure::PoseGraphCallback(
       if (!b_first_key_set_){
         initial_key_ = key_;
         b_first_key_set_ = true;
+      }
+      else{
+        
+/*         new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                    gtsam::Symbol(msg_edge.key_to),
+                                    delta,
+                                    ToGtsam(covariance))); */
       }
     }
 
