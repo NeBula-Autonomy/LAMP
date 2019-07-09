@@ -11,6 +11,8 @@ author: Yun Chang, Luca Carlone
 #define SLOW_BUT_CORRECT_BETWEENFACTOR 
 
 #include <fstream>
+#include <sstream>
+#include <math.h>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/base/Lie.h>
@@ -61,96 +63,113 @@ public:
                gtsam::Values new_values,
                gtsam::NonlinearFactorGraph& output_nfg, 
                gtsam::Values& output_values) {
-    bool odometry = false; 
-    bool loop_closure = false; 
+    bool odometry = false;
+    bool loop_closure = false;
+    bool special_odometry = false;
     bool special_loop_closure = false;
 
-    // special for LAMP
-    bool landmark_add = false; 
-    bool uwb_add = false; 
+    // current logic: odometry and loop_closure are for those handled by outlier rej
+    // mostly the betweenFactors and the PriorFactors
+    // specials are those that are not handled: the rangefactors for example (uwb)
 
+    // initialize if pose is enoty: requrires either a single value or a prior factor
     if (posesAndCovariances_odom_.trajectory_poses.size() == 0) {
-      // likely a prior factor for initialization 
-      gtsam::PriorFactor<T> prior_factor =
-          *boost::dynamic_pointer_cast<gtsam::PriorFactor<T> >(new_factors[0]);
-      initializePrior(prior_factor);
-      log<INFO>("Initialized prior and trajectory");
+      // single value no prior case 
+      if (new_values.size() == 1 && new_factors.size() == 0) {
+        if (debug_) log<INFO>("Initializing without prior");
+        initialize(new_values.keys()[0]);
+        output_values.insert(new_values);
+        return false; // nothing to optimize yet
+      // prior factor case 
+      } else if (boost::dynamic_pointer_cast<gtsam::PriorFactor<T> >(new_factors[0])) {
+        if (debug_) log<INFO>("Initializing with prior");
+        gtsam::PriorFactor<T> prior_factor =
+            *boost::dynamic_pointer_cast<gtsam::PriorFactor<T> >(new_factors[0]);
+        initializeWithPrior(prior_factor);
+        output_values.insert(new_values);
+        output_nfg.add(new_factors); // assumption is that there is only one factor in new_factors
+        return false; // noothing to optimize yet 
+      // unknow case, fail 
+      } else {
+        log<WARNING> ("Unhandled initialization case.");
+        return false; 
+      }
+      if (debug_) log<INFO>("Initialized trajectory");
+    }
 
-    } else if (new_factors.size() == 1 && new_values.size() == 1) {
-      if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[0])) {
-        // if it is a between factor 
-        gtsam::BetweenFactor<T> nfg_factor =
-              *boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[0]);
-        if (nfg_factor.front() == nfg_factor.back() - 1) {
-          odometry = true;
-        }
-      } 
-      gtsam::Symbol symb(new_values.keys()[0]);
-      if (specialSymbol(symb.chr())) {
-        special_loop_closure = true;
-        if (symb.chr() == 'l') {
-          landmark_add = true; 
-        } else if (symb.chr() == 'u') {
-          uwb_add = true; 
+    // now if the value size is one, should be an odometry
+    // (could also have a loop closure if factor size > 1)
+    if (new_values.size() == 1) {
+      if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[0]) ||
+          (boost::dynamic_pointer_cast<gtsam::PriorFactor<T> >(new_factors[0]) &&
+          boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[1]))) {
+        // specifically what outlier rejection handles
+        odometry = true; 
+      } else {
+        if (new_factors.size() < 2) {
+          special_odometry = true;
+        } else {
+          special_loop_closure = true;
         }
       }
 
     } else if (new_factors.size() == 1 && new_values.size() == 0) {
-      // check if it is a between factor
+      // check if it is a between factor for classic loop closure case
       if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[0])) {
-        gtsam::BetweenFactor<T> nfg_factor =
-              *boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[0]);
-        gtsam::Symbol symb_front(nfg_factor.front());
-        gtsam::Symbol symb_back(nfg_factor.back());
-        if (specialSymbol(symb_front.chr()) || specialSymbol(symb_back.chr())) {
-          special_loop_closure = true; // if one of the keys is special 
-
-        } else {
-          loop_closure = true;
-        }
+        loop_closure = true; 
       } else { // non-between factor (etc. range factor)
         special_loop_closure = true;
       }
 
-    } else if (new_factors.size() > 1) {
-      // check if range factor 
-      if (boost::dynamic_pointer_cast<gtsam::RangeFactor<T> >(new_factors[0])) {
-        special_loop_closure = true; // want this to optimize for uwb
-      } else if (boost::dynamic_pointer_cast<gtsam::PriorFactor<T> >(new_factors[0])) {
-        gtsam::PriorFactor<T> p_factor =
-              *boost::dynamic_pointer_cast<gtsam::PriorFactor<T> >(new_factors[0]);
-        gtsam::Symbol symb_prior(p_factor.key());
-        if (specialSymbol(symb_prior.chr())) {
-          // special symbols with priors 
-          special_loop_closure = true;
-        }
-      }
     }
+
+    // other cases will just be put through the special loop closures (which needs to be carefully considered)
 
     if (odometry) {
       // update posesAndCovariances_odom_;
       graph_utils::PoseWithCovariance<T> new_pose;
-      // extract between factor 
-      gtsam::BetweenFactor<T> nfg_factor =
-              *boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[0]);
 
-      updateOdom(nfg_factor, new_pose);
-      // TODO: compare the new pose from out pose_compose with values pose 
-      // should be the same 
+      // possible cases are that the first pose is a between factor or a prior 
+      // also possible that there are two factors (a prior and a between)
+      // (this triggers a loop closure)
+      gtsam::NonlinearFactorGraph odom_factors, lc_factors; 
+
+      if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[0])) {
+        // extract between factor 
+        gtsam::BetweenFactor<T> odom_factor =
+            *boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[0]);
+        updateOdom(odom_factor, new_pose);
+        odom_factors.add(odom_factor);
+      } else if (boost::dynamic_pointer_cast<gtsam::PriorFactor<T> >(new_factors[0])) {
+        // extract prior factor 
+        gtsam::PriorFactor<T> prior_factor =
+            *boost::dynamic_pointer_cast<gtsam::PriorFactor<T> >(new_factors[0]);
+        updateOdom(prior_factor, new_pose);
+        odom_factors.add(prior_factor);
+        if (new_factors.size() == 2 && 
+            boost::dynamic_pointer_cast<gtsam::BetweenFactor<T> >(new_factors[1])) {
+          // a prior and a between
+          lc_factors.add(new_factors[1]);
+          loop_closure = true;
+        }
+      }
 
       // - store factor in nfg_odom_
-      nfg_odom_.add(new_factors);
+      nfg_odom_.add(odom_factors);
+      new_factors = lc_factors; // this will be carried over to the loop_closure section 
 
-      // - store latest pose in values_ (note: values_ is the optimized estimate, while trajectory is the odom estimate)
-      output_values.insert(new_values);
-      output_nfg = gtsam::NonlinearFactorGraph(); // reset 
-      output_nfg.add(nfg_special_); // still need to update the class overall factorgraph 
-      output_nfg.add(nfg_good_lc_);
-      output_nfg.add(nfg_odom_);
+      if (!loop_closure) {
+        // - store latest pose in values_ (note: values_ is the optimized estimate, while trajectory is the odom estimate)
+        output_values.insert(new_values);
+        output_nfg = gtsam::NonlinearFactorGraph(); // reset 
+        output_nfg.add(nfg_odom_);
+        output_nfg.add(nfg_good_lc_);
+        output_nfg.add(nfg_special_); // still need to update the class overall factorgraph
+        return false; // no need to optimize just for odometry
+      }
+    } 
 
-      return false; // no need to optimize just for odometry 
-
-    } else if (loop_closure) { // in this case we should run consistency check to see if loop closure is good
+    if (loop_closure) { // in this case we should run consistency check to see if loop closure is good
       // * odometric consistency check (will only compare against odometry - if loop fails this, we can just drop it)
       // extract between factor 
       gtsam::BetweenFactor<T> nfg_factor =
@@ -161,7 +180,7 @@ public:
         nfg_lc_.add(new_factors); // add factor to nfg_lc_
 
       } else {
-        log<WARNING>("Discarded loop closure (inconsistent with odometry)");
+        if (debug_) log<WARNING>("Discarded loop closure (inconsistent with odometry)");
         return false; // discontinue since loop closure not consistent with odometry 
       }
       
@@ -172,35 +191,37 @@ public:
       // * optimize and update values (for now just LM add others later)
       output_nfg = gtsam::NonlinearFactorGraph(); // reset
       output_nfg.add(nfg_odom_);
-      output_nfg.add(nfg_special_);
       output_nfg.add(nfg_good_lc_);
+      output_nfg.add(nfg_special_); // still need to update the class overall factorgraph
       return true; 
 
-    } else if (special_loop_closure) {
+    } 
+
+    if (debug_) log<INFO>("Adding odom or loop closure unhandled by outlier reject");
+    if (special_odometry) {
       nfg_special_.add(new_factors);
       output_values.insert(new_values);
-      if (landmark_add || uwb_add) {
-        return false; 
-      }
       // reset graph
       output_nfg = gtsam::NonlinearFactorGraph(); // reset
-      output_nfg.add(nfg_special_);
-      output_nfg.add(nfg_good_lc_);
       output_nfg.add(nfg_odom_);
-      return true;
-
-    } else {
-      // Basically the cases not yet considered by pcm
-      output_nfg.add(new_factors);
-      output_values.insert(new_values);
-
-      // nothing added  so no optimization
-      if (new_factors.size() == 0 && new_values.size() == 0) {
-        return false; // nothing to optimize 
-      }
-      return true;
-
+      output_nfg.add(nfg_good_lc_);
+      output_nfg.add(nfg_special_); // still need to update the class overall factorgraph
+      return false;
     }
+
+    // the remainders are speical loop closure cases
+    nfg_special_.add(new_factors);
+    output_values.insert(new_values);
+    // reset graph
+    output_nfg = gtsam::NonlinearFactorGraph(); // reset
+    output_nfg.add(nfg_odom_);
+    output_nfg.add(nfg_good_lc_);
+    output_nfg.add(nfg_special_); // still need to update the class overall factorgraph
+    // nothing added  so no optimization
+    if (new_factors.size() == 0) {
+      return false; // nothing to optimize 
+    }
+    return true;
   }
 
 private:
@@ -212,7 +233,7 @@ private:
     return false; 
   }
 
-  void initializePrior(gtsam::PriorFactor<T> prior_factor) {
+  void initializeWithPrior(gtsam::PriorFactor<T> prior_factor) {
     T initial_value = prior_factor.prior();
     const int dim = graph_utils::getDim<T>();
     gtsam::Matrix covar = 
@@ -223,9 +244,24 @@ private:
     graph_utils::PoseWithCovariance<T> initial_pose; 
     initial_pose.pose = initial_value;
     initial_pose.covariance_matrix = covar; 
-    graph_utils::TrajectoryPose<T> init_trajpose; 
-    init_trajpose.pose = initial_pose; 
-    init_trajpose.id = initial_key;
+
+    // populate posesAndCovariances_odom_
+    posesAndCovariances_odom_.trajectory_poses[initial_key].pose = initial_pose;
+    posesAndCovariances_odom_.start_id = initial_key;
+    posesAndCovariances_odom_.end_id = initial_key;
+
+    nfg_odom_.add(prior_factor); // add to initial odometry
+  }
+
+  void initialize(gtsam::Key initial_key) {
+    const int dim = graph_utils::getDim<T>();
+    gtsam::Matrix covar = 
+        Eigen::MatrixXd::Zero(dim, dim); // initialize as zero
+
+    // construct initial pose with covar 
+    graph_utils::PoseWithCovariance<T> initial_pose; 
+    initial_pose.pose = T();
+    initial_pose.covariance_matrix = covar; 
 
     // populate posesAndCovariances_odom_
     posesAndCovariances_odom_.trajectory_poses[initial_key].pose = initial_pose;
@@ -241,8 +277,9 @@ private:
     // first get measurement and covariance and key from factor
     T delta = odom_factor.measured(); 
     gtsam::Matrix covar =
-        gtsam::inverse(boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
-        (odom_factor.get_noiseModel())->R()); // return covariance matrix
+        boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
+        (odom_factor.get_noiseModel())->covariance(); // return covariance matrix
+
     gtsam::Key new_key = odom_factor.back();
 
     // construct pose with covariance for odometry measurement 
@@ -256,7 +293,28 @@ private:
         posesAndCovariances_odom_.trajectory_poses.at(latest_key).pose; 
     // compose latest pose to odometry for new pose
     new_pose = last_pose.compose(odom_delta);
+    // update trajectory 
+    posesAndCovariances_odom_.end_id = new_key; // update end key 
+    // add to trajectory 
+    graph_utils::TrajectoryPose<T> new_trajectorypose; 
+    new_trajectorypose.pose = new_pose;
+    new_trajectorypose.id = new_key;
+    posesAndCovariances_odom_.trajectory_poses[new_key] = new_trajectorypose; 
+  }
 
+  void updateOdom(gtsam::PriorFactor<T> prior_factor, 
+                  graph_utils::PoseWithCovariance<T> &new_pose) {
+
+    // update odometry when a prior added (considering multirobot use )
+    gtsam::Matrix covar =
+        boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
+        (prior_factor.get_noiseModel())->covariance(); // return covariance matrix
+
+    gtsam::Key new_key = prior_factor.key();
+
+    // construct pose with covariance for new prior measurement 
+    new_pose.covariance_matrix = covar;
+    new_pose.pose = prior_factor.prior();
     // update trajectory 
     posesAndCovariances_odom_.end_id = new_key; // update end key 
     // add to trajectory 
@@ -284,27 +342,27 @@ private:
 
     // get pij_lc = (Tij_lc, Covij_lc) from factor
     pji_lc.pose = lc_factor.measured().inverse(); 
-    gtsam::Matrix R_lc = boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
-        (lc_factor.get_noiseModel())->R();
-    
-    // Check if includes rotation info 
-    bool rotation_info = true; 
+    gtsam::Matrix pji_lc_covar = boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
+        (lc_factor.get_noiseModel())->covariance();
+
+    bool rotation_info = true;
+    const int dim = graph_utils::getDim<T>();
     const int r_dim = graph_utils::getRotationDim<T>(); 
     const int t_dim = graph_utils::getTranslationDim<T>(); 
-
-    if (R_lc.block(0,0,r_dim,r_dim) == 
-        Eigen::MatrixXd::Zero(r_dim,r_dim)) {
-      rotation_info = false; 
-      R_lc.block(0,0,r_dim,r_dim) = 
-          Eigen::MatrixXd::Identity(r_dim,r_dim) * 0.0001;
+    if (std::isnan(pji_lc_covar.block(0,0,r_dim,r_dim).trace())) {
+      rotation_info = false;
+      Eigen::MatrixXd temp = Eigen::MatrixXd::Zero(dim, dim);
+      temp.block(r_dim,r_dim,t_dim,t_dim) = 
+          pji_lc_covar.block(r_dim,r_dim,t_dim,t_dim);
+      pji_lc_covar = temp; 
     }
 
-    pji_lc.covariance_matrix = gtsam::inverse(R_lc); // return covariance matrix
+    pji_lc.covariance_matrix = pji_lc_covar;
 
     // check consistency (Tij_odom,Cov_ij_odom, Tij_lc, Cov_ij_lc)
     result = pij_odom.compose(pji_lc);
-    result.pose.print("odom consistency check: ");
-    // std::cout << std::endl; 
+    // if (debug_) result.pose.print("odom consistency check: ");
+
     gtsam::Vector consistency_error = T::Logmap(result.pose);
     // check with threshold
     double threshold = odom_threshold_;
@@ -318,8 +376,7 @@ private:
           * consistency_error.tail(t_dim));
     }
 
-    // TODO: print the mahalanobis dist of the loops in matrix
-    log<INFO>("odometry consistency distance: %1%") % mahalanobis_dist; 
+    // if (debug_) log<INFO>("odometry consistency distance: %1%") % mahalanobis_dist; 
     if (mahalanobis_dist < threshold) {
       return true;
     }
@@ -336,32 +393,36 @@ private:
     gtsam::Key key2a = lc_2.front();
     gtsam::Key key2b = lc_2.back();
 
-    bool rotation_info = true; 
-    const int r_dim = graph_utils::getRotationDim<T>(); 
-    const int t_dim = graph_utils::getTranslationDim<T>();
-
     graph_utils::PoseWithCovariance<T> p1_lc_inv, p2_lc; 
     p1_lc_inv.pose = lc_1.measured().inverse();
-    gtsam::Matrix R1_lc = boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
-        (lc_1.get_noiseModel())->R();
+    gtsam::Matrix p1_lc_covar = boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
+        (lc_1.get_noiseModel())->covariance();
 
-    if (R1_lc.block(0,0,r_dim,r_dim) == Eigen::MatrixXd::Zero(r_dim,r_dim)) {
+    bool rotation_info = true;
+    const int dim = graph_utils::getDim<T>();
+    const int r_dim = graph_utils::getRotationDim<T>(); 
+    const int t_dim = graph_utils::getTranslationDim<T>(); 
+    if (std::isnan(p1_lc_covar.block(0,0,r_dim,r_dim).trace())) {
       rotation_info = false; 
-      R1_lc.block(0,0,r_dim,r_dim) = Eigen::MatrixXd::Identity(r_dim,r_dim) * 0.0001;
+      Eigen::MatrixXd temp = Eigen::MatrixXd::Zero(dim, dim);
+      temp.block(r_dim,r_dim,t_dim,t_dim) = 
+          p1_lc_covar.block(r_dim,r_dim,t_dim,t_dim);
+      p1_lc_covar = temp;
     }
-
-    p1_lc_inv.covariance_matrix = gtsam::inverse(R1_lc); 
+    p1_lc_inv.covariance_matrix = p1_lc_covar;
 
     p2_lc.pose = lc_2.measured();
-    gtsam::Matrix R2_lc = boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
-        (lc_2.get_noiseModel())->R();
+    gtsam::Matrix p2_lc_covar = boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>
+        (lc_2.get_noiseModel())->covariance();
 
-    if (R2_lc.block(0,0,r_dim,r_dim) == Eigen::MatrixXd::Zero(r_dim,r_dim)) {
+    if (std::isnan(p2_lc_covar.block(0,0,r_dim,r_dim).trace())) {
       rotation_info = false; 
-      R2_lc.block(0,0,r_dim,r_dim) = Eigen::MatrixXd::Identity(r_dim,r_dim) * 0.0001;
+      Eigen::MatrixXd temp = Eigen::MatrixXd::Zero(dim, dim);
+      temp.block(r_dim,r_dim,t_dim,t_dim) = 
+          p2_lc_covar.block(r_dim,r_dim,t_dim,t_dim);
+      p2_lc_covar = temp; 
     }
-
-    p2_lc.covariance_matrix = gtsam::inverse(R2_lc); 
+    p2_lc.covariance_matrix = p2_lc_covar;
 
     // find odometry from 1a to 2a 
     graph_utils::PoseWithCovariance<T> p1a_odom, p2a_odom, p1a2a_odom; 
@@ -388,12 +449,12 @@ private:
       mahalanobis_dist = std::sqrt(consistency_error.transpose() 
           * gtsam::inverse(result.covariance_matrix) * consistency_error);
     } else {
-      mahalanobis_dist = std::sqrt(consistency_error.tail(t_dim).transpose() 
-          * gtsam::inverse(result.covariance_matrix.block(r_dim,r_dim,t_dim,t_dim)) 
+      mahalanobis_dist = std::sqrt(consistency_error.tail(t_dim).transpose()
+          * gtsam::inverse(result.covariance_matrix.block(r_dim,r_dim,t_dim,t_dim))
           * consistency_error.tail(t_dim));
     }
 
-    log<INFO>("loop consistency distance: %1%") % mahalanobis_dist; 
+    // if (debug_) log<INFO>("loop consistency distance: %1%") % mahalanobis_dist; 
     if (mahalanobis_dist < pc_threshold_) {
       return true;
     }
@@ -437,11 +498,11 @@ private:
     }
     lc_adjacency_matrix_ = new_adj_matrix;
     lc_distance_matrix_ = new_dst_matrix;
-    log<INFO>("total loop closures registered: %1%") % lc_adjacency_matrix_.rows();
+    if (debug_) log<INFO>("total loop closures registered: %1%") % lc_adjacency_matrix_.rows();
 
     std::vector<int> max_clique_data;
     int max_clique_size = graph_utils::findMaxClique(lc_adjacency_matrix_, max_clique_data);
-    log<INFO>("number of inliers: %1%") % max_clique_size;
+    if (debug_) log<INFO>("number of inliers: %1%") % max_clique_size;
     for (size_t i = 0; i < max_clique_size; i++) {
       // std::cout << max_clique_data[i] << " "; 
       inliers.add(nfg_lc_[max_clique_data[i]]);
@@ -449,7 +510,7 @@ private:
     std::ofstream file("log/pcm_dist_matrix.txt");
     if (file.is_open()) {
       file << lc_distance_matrix_;
-    } 
+    }
   }
 };
 

@@ -5,9 +5,9 @@
 
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
-#include <gtsam/slam/BetweenFactor.h>
 
 #include "RobustPGO/max_clique_finder/findClique.h"
+#include "RobustPGO/logger.h"
 
 #include <map>
 #include <vector>
@@ -33,12 +33,10 @@ struct PoseWithCovariance {
   PoseWithCovariance compose(const PoseWithCovariance other) const {
     PoseWithCovariance<T> out; 
     gtsam::Matrix Ha, Hb;
+    
     out.pose = pose.compose(other.pose, Ha, Hb);
-
-    gtsam::Matrix tau1 = pose.AdjointMap();
-
-    out.covariance_matrix = covariance_matrix +
-        tau1 * other.covariance_matrix * tau1.transpose();
+    out.covariance_matrix = Ha * covariance_matrix * Ha.transpose() +
+        Hb * other.covariance_matrix * Hb.transpose();
 
     return out;
   }
@@ -62,18 +60,8 @@ struct PoseWithCovariance {
     gtsam::Matrix Ha, Hb;
     out.pose = pose.between(other.pose, Ha, Hb); // returns between in a frame 
 
-    if (pose.equals(other.pose)) {
-      out.covariance_matrix = 
-        Eigen::MatrixXd::Zero(pose.dimension, pose.dimension);
-      return out;
-    }
-
-    gtsam::Matrix tau1 = pose.AdjointMap();
-
-    out.covariance_matrix = tau1.inverse() * 
-        (other.covariance_matrix - covariance_matrix) * 
-        tau1.transpose().inverse();
-
+    out.covariance_matrix = other.covariance_matrix - 
+        Ha * covariance_matrix * Ha.transpose();
     bool pos_semi_def = true;
     // compute the Cholesky decomp
     Eigen::LLT<Eigen::MatrixXd> lltCovar1(out.covariance_matrix);
@@ -82,16 +70,15 @@ struct PoseWithCovariance {
     } 
 
     if (!pos_semi_def) { 
-      tau1 = other.pose.inverse().AdjointMap();
-      out.covariance_matrix = tau1.inverse() * 
-      (covariance_matrix - other.covariance_matrix) * 
-      tau1.transpose().inverse();
+      other.pose.between(pose, Ha, Hb); // returns between in a frame 
+      out.covariance_matrix = covariance_matrix - 
+          Ha * other.covariance_matrix * Ha.transpose();
 
       // Check if positive semidef 
       Eigen::LLT<Eigen::MatrixXd> lltCovar2(out.covariance_matrix);
-      if(lltCovar2.info() == Eigen::NumericalIssue){ 
-        log<WARNING>("Warning: Covariance matrix between two poses not PSD"); 
-      } 
+      // if(lltCovar2.info() == Eigen::NumericalIssue){ 
+      //   log<WARNING>("Warning: Covariance matrix between two poses not PSD"); 
+      // } 
     }
     return out;
   }
@@ -168,4 +155,5 @@ static const size_t getDim(){
 }
 
 }
+
 #endif
