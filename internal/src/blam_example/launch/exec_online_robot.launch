@@ -76,6 +76,10 @@
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
 
+      <!-- Initialization  -->
+      <rosparam file="$(env HOME)/.ros/fiducial_calibration_$(arg robot_namespace).yaml"/>
+
+      
     </node>
 
     <!-- Trotthling input cloud -->
