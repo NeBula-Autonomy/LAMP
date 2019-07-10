@@ -215,7 +215,6 @@ class LaserLoopClosure {
   //Basestation callbackfunctions
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
-  void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
 
 private:
   bool LoadParameters(const ros::NodeHandle& n);

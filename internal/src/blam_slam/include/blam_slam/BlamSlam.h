@@ -100,7 +100,7 @@ class BlamSlam {
   // Base Station Callbacks
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
-  void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
+  void ArtifactBaseCallback(const core_msgs::Artifact& msg);
 
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.

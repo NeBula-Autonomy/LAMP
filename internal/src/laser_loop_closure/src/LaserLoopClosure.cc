@@ -2583,8 +2583,5 @@ void LaserLoopClosure::PoseGraphCallback(
 
   // publish posegraph
   has_changed_ = true;
-  PublishPoseGraph(); 
+  PublishPoseGraph();
 }
-
-void LaserLoopClosure::ArtifactBaseCallback(
-    const core_msgs::Artifact::ConstPtr& msg) {}
