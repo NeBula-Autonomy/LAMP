@@ -224,6 +224,22 @@ public:
     return true;
   }
 
+  virtual bool processForcedLoopclosure(
+      gtsam::NonlinearFactorGraph new_factors, 
+      gtsam::Values new_values,
+      gtsam::NonlinearFactorGraph& output_nfg, 
+      gtsam::Values& output_values){
+    // force loop closure (without outlier rejection)
+    nfg_special_.add(new_factors);
+    output_values.insert(new_values);
+    // reset graph
+    output_nfg = gtsam::NonlinearFactorGraph(); // reset
+    output_nfg.add(nfg_odom_);
+    output_nfg.add(nfg_good_lc_);
+    output_nfg.add(nfg_special_); // still need to update the class overall factorgraph
+    return true;
+  }
+
 private:
 
   bool specialSymbol(char symb) {
@@ -288,11 +304,16 @@ private:
     odom_delta.covariance_matrix = covar; 
 
     // Now get the latest pose in trajectory and compose 
-    gtsam::Key latest_key = posesAndCovariances_odom_.end_id; 
-    graph_utils::PoseWithCovariance<T> last_pose = 
-        posesAndCovariances_odom_.trajectory_poses.at(latest_key).pose; 
+    gtsam::Key prev_key = odom_factor.front();
+    graph_utils::PoseWithCovariance<T> prev_pose;
+    try {
+      prev_pose = 
+        posesAndCovariances_odom_.trajectory_poses.at(prev_key).pose;
+    } catch (...) {
+      log<WARNING>("Attempted to add odom to non-existing key. ");
+    }
     // compose latest pose to odometry for new pose
-    new_pose = last_pose.compose(odom_delta);
+    new_pose = prev_pose.compose(odom_delta);
     // update trajectory 
     posesAndCovariances_odom_.end_id = new_key; // update end key 
     // add to trajectory 
