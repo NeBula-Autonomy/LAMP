@@ -403,8 +403,6 @@ void BlamSlam::PoseScanCallback(const core_msgs::PoseAndScanConstPtr& msg) {
   // Get the pose
   geometry_utils::Transform3 fe_pose = geometry_utils::ros::FromROS(msg->pose.pose);// Change name to include pose
 
-
-
   PointCloud::Ptr received_cloud_ptr;
   received_cloud_ptr.reset(new PointCloud);
   // sensor_msgs::PointCloud2ConstPtr pointcloud_msg;
@@ -696,6 +694,7 @@ void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
 }
 
 void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const PointCloud::Ptr& scan) {
+  ROS_INFO("Inside processPoseScanMessage");
   
   PointCloud::Ptr scan_filtered(new PointCloud);
   filter_.Filter(scan, scan_filtered);
@@ -704,6 +703,7 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
   PointCloud::Ptr scan_fixed(new PointCloud);
 
   if (!b_first_pose_scan_revieved_){
+    ROS_INFO("Frist processPoseScanMessage");
     // First update ever.
 
     // Update what the last pose added to pose graph
