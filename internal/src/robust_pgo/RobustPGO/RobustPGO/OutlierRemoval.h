@@ -14,6 +14,17 @@ public:
 				               gtsam::Values new_values,
 				               gtsam::NonlinearFactorGraph& nfg, 
 				               gtsam::Values& values){};
+
+	virtual bool processForcedLoopclosure(
+			gtsam::NonlinearFactorGraph new_factors, 
+			gtsam::Values new_values,
+			gtsam::NonlinearFactorGraph& nfg, 
+			gtsam::Values& values){}; // force a loop closure
+
+	void setQuiet() { debug_ = false; }
+
+protected:
+	bool debug_ = true;
 };
 
 #endif
