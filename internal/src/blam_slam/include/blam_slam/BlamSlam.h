@@ -46,12 +46,13 @@
 #include <blam_slam/LoadGraph.h>
 #include <blam_slam/BatchLoopClosure.h>
 
-
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_odometry/PointCloudOdometry.h>
 #include <laser_loop_closure/LaserLoopClosure.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
+
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
@@ -60,8 +61,12 @@
 #include <tf_conversions/tf_eigen.h>
 
 #include <core_msgs/Artifact.h>
+#include <core_msgs/PoseAndScan.h>
 #include <uwb_msgs/Anchor.h>
 #include <mesh_msgs/ProcessCommNode.h>
+
+#include <geometry_utils/Transform3.h>
+#include <geometry_utils/GeometryUtilsROS.h>
 
 class BlamSlam {
  public:
@@ -76,10 +81,15 @@ class BlamSlam {
   bool Initialize(const ros::NodeHandle& n, bool from_log);
 
   // Sensor message processing.
-  void ProcessPointCloudMessage(const PointCloud::ConstPtr& msg);
+  void ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const PointCloud::Ptr& scan);
 
   // UWB range measurement data processing
   void ProcessUwbRangeData(const std::string uwb_id);
+
+  // Transform a point cloud from the sensor frame into the fixed frame using
+  // the current best position estimate.
+  bool TransformPointsToFixedFrame(const PointCloud& points,
+                                   PointCloud* points_transformed) const;  
 
   int marker_id_;
   
@@ -95,6 +105,7 @@ class BlamSlam {
   bool CreatePublishers(const ros::NodeHandle& n);
 
   // Sensor callbacks.
+  void PoseScanCallback(const core_msgs::PoseAndScanConstPtr& msg);
   void PointCloudCallback(const PointCloud::ConstPtr& msg);
   void ArtifactCallback(const core_msgs::Artifact& msg);
   void UwbSignalCallback(const uwb_msgs::Anchor& msg);
@@ -106,7 +117,7 @@ class BlamSlam {
 
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
-  bool HandleLoopClosures(const PointCloud::ConstPtr& scan, bool* new_keyframe);
+  bool HandleLoopClosures(const PointCloud::ConstPtr& scan, geometry_utils::Transform3 pose_delta, bool* new_keyframe);
 
   // Generic add Factor service - for human loop closures to start
   bool AddFactorService(blam_slam::AddFactorRequest &request,
@@ -172,6 +183,7 @@ class BlamSlam {
   double attitude_sigma_;
 
   // Subscribers.
+  ros::Subscriber pose_scan_sub_;
   ros::Subscriber pcld_sub_;
   ros::Subscriber artifact_sub_;
   ros::Subscriber uwb_sub_;
@@ -224,6 +236,12 @@ class BlamSlam {
   LaserLoopClosure loop_closure_;
   PointCloudLocalization localization_;
   PointCloudMapper mapper_;
+
+  // Pose handler
+  geometry_utils::Transform3 fe_last_pose_; // Note that this never touches loop closure updates
+  bool b_first_pose_scan_revieved_;
+
+  geometry_utils::Transform3 be_current_pose_;
 };
 
 #endif

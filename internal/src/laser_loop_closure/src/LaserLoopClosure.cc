@@ -509,7 +509,6 @@ bool LaserLoopClosure::ChangeKeyNumber(){
     key_ = 10000;
 }
 
-
 bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data) {
 
   // Check whether the input UWB ID exists in the pose graph or not
@@ -575,12 +574,10 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
         static const gtsam::SharedNoiseModel& prior_noise = 
         gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
         new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(uwb_key, gtsam::Pose3(), prior_noise));
-       
       }
         break;
       case 1 :
       {
-        // TODO: 
       }
         break;
       default :
@@ -618,7 +615,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
         break;
       case 1 :
       {
-        // TODO: 
       }
         break;
       default :
@@ -632,7 +628,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
-
 
 UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_data) {
 
@@ -754,7 +749,6 @@ void LaserLoopClosure::Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &v
   vector1 = vec1_temp;
   vector2 = vec2_temp;
 }
-
 
 bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
                                      const ros::Time& stamp,
