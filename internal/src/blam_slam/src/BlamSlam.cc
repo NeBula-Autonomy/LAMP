@@ -219,10 +219,10 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 
     uwb_sub_ =
         nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
+
+    artifact_sub_ = nl.subscribe(
+        "artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
   }
-
-  artifact_sub_ = nl.subscribe("artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
-
   // Create pose-graph callbacks for base station
   if(b_is_basestation_){
     int num_robots = robot_names_.size();
@@ -240,7 +240,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
           &BlamSlam::PoseGraphCallback,
           this);
       ros::Subscriber artifact_base_sub =
-          nl.subscribe("/" + robot_names_[i] + "/blam_slam/artifact",
+          nl.subscribe("/" + robot_names_[i] + "/blam_slam/artifact_global",
                        10,
                        &BlamSlam::ArtifactBaseCallback,
                        this);
@@ -963,18 +963,39 @@ void BlamSlam::PoseGraphCallback(
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   localization_.PublishPoseNoUpdate();
 
-  // Publish artifacts - should be updated from the pose-graph 
-  loop_closure_.PublishArtifacts();
-
   // Publish map
   mapper_.PublishMap();
 }
 
-void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact& msg) {
+void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
   ROS_INFO_STREAM("Artifact message recieved");
-  ArtifactInfo artifactinfo(msg.parent_id);
-  artifactinfo.msg = msg;
+  core_msgs::Artifact artifact;
+  artifact.header = msg->header;
+  artifact.name = msg->name;
+  artifact.parent_id = msg->parent_id;
+  artifact.seq = msg->seq;
+  artifact.hotspot_name = msg->hotspot_name;
+  artifact.point = msg->point;
+  artifact.covariance = msg->covariance;
+  artifact.confidence = msg->confidence;
+  artifact.label = msg->label;
+  artifact.thumbnail = msg->thumbnail;
 
-  // Publish artifacts from basestation
+  ArtifactInfo artifactinfo(msg->parent_id);
+  artifactinfo.msg = artifact;
+
+  std::cout << "Artifact position in world is: " << artifact.point.point.x
+            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
+            << std::endl;
+  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
+
+  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
+  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
+  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
+            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
+            << std::endl;
+  std::cout << "\t Label: " << artifact.label << std::endl;
+
+  // Publish artifacts - should be updated from the pose-graph
   loop_closure_.PublishArtifacts();
 }

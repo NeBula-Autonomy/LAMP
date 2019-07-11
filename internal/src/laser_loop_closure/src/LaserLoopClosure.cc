@@ -2391,6 +2391,8 @@ void LaserLoopClosure::PoseGraphCallback(
     if (key_.chr() == 'l') {
       // Artifact
       artifact_key2info_hash[key_] = msg_node.ID;
+      std::cout << "\t Parent id in posegraphcallback: " << msg_node.ID
+                << std::endl;
       values_.insert(key_, full_pose);
       continue;
     }
