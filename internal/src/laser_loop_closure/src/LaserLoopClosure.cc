@@ -506,7 +506,7 @@ bool LaserLoopClosure::AddBetweenFactor(
 
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
-    key_ = ((10000 % key_) + 1) *10000; // set to new multiple of 10000
+    key_ = ((key_/10000) + 1) *10000; // set to new multiple of 10000
     keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, ros::Time::now()));
     stamps_keyed_.insert(std::pair<double, unsigned int>(ros::Time::now().toSec(), key_));
 
