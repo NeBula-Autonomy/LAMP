@@ -403,6 +403,25 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
   return true;
 }
 
+void BlamSlam::PoseScanCallback(const core_msgs::PoseAndScanConstPtr& msg) {
+  
+  ROS_INFO("Inside PoseScanCallback");
+
+  // Get the pose
+  geometry_utils::Transform3 fe_pose = geometry_utils::ros::FromROS(msg->pose.pose);// Change name to include pose
+
+  PointCloud::Ptr received_cloud_ptr;
+  received_cloud_ptr.reset(new PointCloud);
+  // sensor_msgs::PointCloud2ConstPtr pointcloud_msg;
+  
+  pcl::fromROSMsg( msg->scan, *received_cloud_ptr.get());
+
+  // Process pose and scan
+  ProcessPoseScanMessage(fe_pose, received_cloud_ptr);
+
+  return;
+}
+
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
   // TODO - for other front-ends
   ROS_WARN("Point Cloud Callback Not yet implemented");
