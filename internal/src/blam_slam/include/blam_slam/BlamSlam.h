@@ -186,6 +186,8 @@ class BlamSlam {
   double restart_pitch_;
   double restart_yaw_;
   
+  // Artifact prefix
+  unsigned char artifact_prefix_;
 
   // Services
   ros::ServiceServer add_factor_srv_;

@@ -192,7 +192,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("pairwise_check_threshold", pw_threshold_))
     return false;
 
-  std::vector<char> special_symbs{'l', 'u'}; // for artifacts
+  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
   OutlierRemoval* pcm =
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
@@ -1901,7 +1901,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   values_ = *gv.second;
   ROS_INFO_STREAM("1");
 
-  std::vector<char> special_symbs{'l', 'u'}; // for artifacts
+  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
   OutlierRemoval* pcm =
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
@@ -2102,7 +2102,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       // ROS_INFO_STREAM("Symbol key (int) is " << keyed_pose.key);
 
       // Add UUID if an artifact or uwb node
-      if (sym_key.chr() == 'l'){
+      if (sym_key.chr() == ('l' || 'm' || 'n' || 'o' || 'p')){
         // Artifact
         node.ID = artifact_key2info_hash[keyed_pose.key].msg.parent_id;
       }
@@ -2388,7 +2388,7 @@ void LaserLoopClosure::PoseGraphCallback(
     // Check input for NaNs
 
     // Add UUID if an artifact or uwb node
-    if (key_.chr() == 'l') {
+    if (key_.chr() == ('l' || 'm' || 'n' || 'o' || 'p')) {
       // Artifact
       artifact_key2info_hash[key_] = msg_node.ID;
       values_.insert(key_, full_pose);
@@ -2558,7 +2558,7 @@ void LaserLoopClosure::PoseGraphCallback(
 
   nfg_.add(new_factor);
 
-  std::vector<char> special_symbs{'l', 'u'}; // for artifacts
+  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
   OutlierRemoval* pcm =
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
