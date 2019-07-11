@@ -364,7 +364,7 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
   
   gu::Transform3 init_pose = loop_closure_.GetInitialPose();
-  gu::Transform3 current_pose = loop_closure_.GetCurrentPose();
+  gu::Transform3 current_pose = localization_.GetIntegratedEstimate(); // loop_closure_.GetCurrentPose();
   const gu::Transform3 pose_delta = gu::PoseDelta(init_pose, current_pose);
   loop_closure_.AddFactorAtLoad(pose_delta, covariance);
 
