@@ -506,7 +506,10 @@ bool LaserLoopClosure::AddBetweenFactor(
 
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
-    key_ = 10000;
+    key_ = ((10000 % key_) + 1) *10000; // set to new multiple of 10000
+    keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, ros::Time::now()));
+    stamps_keyed_.insert(std::pair<double, unsigned int>(ros::Time::now().toSec(), key_));
+
 }
 
 
@@ -1845,7 +1848,10 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
   const boost::filesystem::path directory(path);
   boost::filesystem::create_directory(directory);
 
-  writeG2o(pgo_solver_->getFactorsUnsafe(), values_, path + "/graph.g2o");
+  pgo_solver_->getFactorsUnsafe().print("In save, pgo_solver_nfg_ is: ") ;
+  nfg_.print("In save, from nfg_ is: ") ;
+
+  writeG2o(pgo_solver_->getFactorsUnsafe(), pgo_solver_->calculateEstimate(), path + "/graph.g2o");
   ROS_INFO("Saved factor graph as a g2o file.");
 
   // keys.csv stores factor key, point cloud filename, and time stamp
@@ -2016,8 +2022,11 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     ROS_WARN("Key0, %s, does not exist in Load", key0);
     return false;
   }
-  nfg_.add(gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
-  pgo_solver_->update(nfg_, values_);
+  
+  // update with prior 
+  pgo_solver_->loadGraph<Pose3>(nfg_, values_, 
+  gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
+
 
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
 
