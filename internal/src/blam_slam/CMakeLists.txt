@@ -54,6 +54,7 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     message_runtime
+    message_filters
     rosbag
     measurement_synchronizer
     point_cloud_filter

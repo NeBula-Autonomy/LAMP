@@ -190,7 +190,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  pose_scan_sub_ = nl.subscribe("pose_and_scan", 100000, &BlamSlam::PoseScanCallback, this);
+//  pose_scan_sub_ = nl.subscribe("pose_and_scan", 100000, &BlamSlam::PoseScanCallback, this);
 
   uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
 
@@ -200,6 +200,31 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 
   uwb_sub_ =
       nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
+
+  ROS_INFO("Creating message filters");
+
+  this->filterPointSub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld", 10);
+  this->filterPoseSub_ = new message_filters::Subscriber<geometry_msgs::PoseStamped>(nl, "fe_pose", 10);
+
+
+  this->poseScanSync_ = new message_filters::Synchronizer
+          <
+              message_filters::sync_policies::ApproximateTime
+              <
+                sensor_msgs::PointCloud2,
+                geometry_msgs::PoseStamped
+              >
+          >(
+          message_filters::sync_policies::ApproximateTime
+          <
+             sensor_msgs::PointCloud2,
+             geometry_msgs::PoseStamped
+          >(10),
+          *this->filterPointSub_,
+          *this->filterPoseSub_
+  );
+
+  this->poseScanSync_->registerCallback(&BlamSlam::PoseAndScanFilterCB, this);
 
   return CreatePublishers(n);
 }
@@ -403,24 +428,24 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
   return true;
 }
 
-void BlamSlam::PoseScanCallback(const core_msgs::PoseAndScanConstPtr& msg) {
+//void BlamSlam::PoseScanCallback(const core_msgs::PoseAndScanConstPtr& msg) {
   
-  ROS_INFO("Inside PoseScanCallback");
+//  ROS_INFO("Inside PoseScanCallback");
 
-  // Get the pose
-  geometry_utils::Transform3 fe_pose = geometry_utils::ros::FromROS(msg->pose.pose);// Change name to include pose
+//  // Get the pose
+//  geometry_utils::Transform3 fe_pose = geometry_utils::ros::FromROS(msg->pose.pose);// Change name to include pose
 
-  PointCloud::Ptr received_cloud_ptr;
-  received_cloud_ptr.reset(new PointCloud);
-  // sensor_msgs::PointCloud2ConstPtr pointcloud_msg;
+//  PointCloud::Ptr received_cloud_ptr;
+//  received_cloud_ptr.reset(new PointCloud);
+//  // sensor_msgs::PointCloud2ConstPtr pointcloud_msg;
   
-  pcl::fromROSMsg( msg->scan, *received_cloud_ptr.get());
+//  pcl::fromROSMsg( msg->scan, *received_cloud_ptr.get());
 
-  // Process pose and scan
-  ProcessPoseScanMessage(fe_pose, received_cloud_ptr);
+//  // Process pose and scan
+//  ProcessPoseScanMessage(fe_pose, received_cloud_ptr);
 
-  return;
-}
+//  return;
+//}
 
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
   // TODO - for other front-ends
@@ -710,6 +735,22 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
+}
+
+void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &pointCloud, const geometry_msgs::PoseStamped pose) {
+
+    ROS_INFO("In message filter callback");
+
+    geometry_utils::Transform3 fePose = geometry_utils::ros::FromROS(pose.pose);
+
+    PointCloud::Ptr rxCloudPtr;
+    rxCloudPtr.reset(new PointCloud);
+
+    pcl::fromROSMsg(*pointCloud, *rxCloudPtr.get());
+
+    this->ProcessPoseScanMessage(fePose, rxCloudPtr);
+
+    return;
 }
 
 void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const PointCloud::Ptr& scan) {

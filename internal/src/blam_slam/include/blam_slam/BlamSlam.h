@@ -65,6 +65,10 @@
 #include <uwb_msgs/Anchor.h>
 #include <mesh_msgs/ProcessCommNode.h>
 
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
 #include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
 
@@ -114,6 +118,8 @@ class BlamSlam {
   void EstimateTimerCallback(const ros::TimerEvent& ev);
   void VisualizationTimerCallback(const ros::TimerEvent& ev);
   void UwbTimerCallback(const ros::TimerEvent& ev);
+
+  void PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr& pointCloud, const geometry_msgs::PoseStamped pose);
 
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
@@ -242,6 +248,18 @@ class BlamSlam {
   bool b_first_pose_scan_revieved_;
 
   geometry_utils::Transform3 be_current_pose_;
+
+  message_filters::Subscriber<sensor_msgs::PointCloud2>* filterPointSub_;
+  message_filters::Subscriber<geometry_msgs::PoseStamped>* filterPoseSub_;
+  message_filters::Synchronizer
+      <
+          message_filters::sync_policies::ApproximateTime
+          <
+            sensor_msgs::PointCloud2,
+            geometry_msgs::PoseStamped
+          >
+      >* poseScanSync_;
+
 };
 
 #endif
