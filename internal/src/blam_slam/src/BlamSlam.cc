@@ -174,6 +174,26 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   // Initialize boolean to add first scan to key
   b_add_first_scan_to_key_ = false;
 
+
+  // Skipe initialize artifact unique ID if base station
+  if (b_is_basestation_) {
+    ROS_INFO("LAMP run as base_station");
+    return true;
+  }
+  //Get the artifact prefix from launchfile to set initial unique artifact ID
+  bool b_initialized_artifact_prefix_from_launchfile = true;
+  std::string artifact_prefix;
+  unsigned char artifact_prefix_converter[1];
+  if (!pu::Get("artifact_prefix", artifact_prefix)){
+     b_initialized_artifact_prefix_from_launchfile = false;
+     ROS_ERROR("Could not find node ID assosiated with robot_namespace");
+  }
+  
+  if (b_initialized_artifact_prefix_from_launchfile){
+    std::copy( artifact_prefix.begin(), artifact_prefix.end(), artifact_prefix_converter);
+    artifact_prefix_ = artifact_prefix_converter[0];
+  }
+
   return true;
 }
 
@@ -579,7 +599,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
     // New artifact - increment the id counters
     b_is_new_artifact = true;
     ++largest_artifact_id_;
-    cur_artifact_key = gtsam::Symbol('l', largest_artifact_id_);
+    cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
     std::cout << "new artifact observed, artifact id " << artifact_id 
               << " with key in pose graph " 
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;

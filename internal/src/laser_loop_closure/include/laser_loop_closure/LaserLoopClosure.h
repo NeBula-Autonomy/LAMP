@@ -319,6 +319,7 @@ private:
   double odom_threshold_;
   double pw_threshold_;
   gtsam::Symbol initial_key_;
+   gtsam::Symbol artifact_key_;
   gtsam::Symbol first_loaded_key_;
   gtsam::Symbol stored_key_;
 
