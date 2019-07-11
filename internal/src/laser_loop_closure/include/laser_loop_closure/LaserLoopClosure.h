@@ -213,8 +213,8 @@ class LaserLoopClosure {
   bool Load(const std::string &zipFilename);
 
   //Basestation callbackfunctions
-  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
-  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+  void KeyedScanBaseHandler(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
+  void PoseGraphBaseHandler(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
 
 private:
   bool LoadParameters(const ros::NodeHandle& n);

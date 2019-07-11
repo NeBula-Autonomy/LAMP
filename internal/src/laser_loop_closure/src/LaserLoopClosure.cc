@@ -209,6 +209,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
 
   LaserLoopClosure::Diagonal::shared_ptr covariance(
       LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
+  ROS_INFO_STREAM("covariance is");
+  ROS_INFO_STREAM(initial_noise_);
 
   // Set the initial odometry.
   odometry_ = Pose3::identity();
@@ -2332,8 +2334,8 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_
 
 //------------------Basestation functions:---------------------------------
 
-void LaserLoopClosure::KeyedScanCallback(
-    const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
+void LaserLoopClosure::KeyedScanBaseHandler(
+    const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
   gtsam::Symbol key = gtsam::Symbol(msg->key);
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
     ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
@@ -2358,8 +2360,8 @@ void LaserLoopClosure::KeyedScanCallback(
       std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
 }
 
-void LaserLoopClosure::PoseGraphCallback(
-    const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
+void LaserLoopClosure::PoseGraphBaseHandler(
+    const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
   ROS_INFO_STREAM("Loop closure pose_graph_processing");
 
   // // Clear pgo_solver_
@@ -2391,9 +2393,16 @@ void LaserLoopClosure::PoseGraphCallback(
     if (key_.chr() == ('l' || 'm' || 'n' || 'o' || 'p')) {
       // Artifact
       artifact_key2info_hash[key_] = msg_node.ID;
-      std::cout << "\t Parent id in posegraphcallback: " << msg_node.ID
-                << std::endl;
+      std::cout << "\t Artifact added to basestaion(PGcallback): "
+                << gtsam::DefaultKeyFormatter(key_);
+      std::cout << "\t with parent id: " << msg_node.ID << std::endl;
       values_.insert(key_, full_pose);
+
+      // Add time to each node
+      keyed_stamps_.insert(
+          std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
+      stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(
+          msg_node.header.stamp.toSec(), key_));
       continue;
     }
 
@@ -2418,6 +2427,7 @@ void LaserLoopClosure::PoseGraphCallback(
       } else {
         // Add betweenfactor between the first poses of the two different graphs
         // Calculate distance between the poses
+        // In the case of multiple maps merging together
         gu::Transform3 init_pose = ToGu(values_.at<Pose3>(initial_key_));
         gu::Transform3 current_pose = ToGu(values_.at<Pose3>(key_));
         const gu::Transform3 pose_delta =
@@ -2439,11 +2449,11 @@ void LaserLoopClosure::PoseGraphCallback(
       }
     }
 
-    keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(
-        msg_node.key, msg_node.header.stamp));
-    stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(
-        msg_node.header.stamp.toSec(), msg_node.key));
-    
+    // Add time to each node
+    keyed_stamps_.insert(
+        std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
+    stamps_keyed_.insert(
+        std::pair<double, gtsam::Symbol>(msg_node.header.stamp.toSec(), key_));
   }
 
   // Add edges to basestation posegraph
@@ -2520,7 +2530,6 @@ void LaserLoopClosure::PoseGraphCallback(
       }
       if (b_edge_exists)
         continue;
-
       // Add to basestation posegraph
       artifact_edges_.emplace_back(
           std::make_pair(msg_edge.key_from, msg_edge.key_to));

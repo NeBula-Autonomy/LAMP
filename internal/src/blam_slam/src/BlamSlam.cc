@@ -959,8 +959,7 @@ void BlamSlam::KeyedScanCallback(
   ROS_INFO_STREAM("Keyed scan message recieved");
 
   // Access loop closure callback
-  loop_closure_.KeyedScanCallback(msg);
-
+  loop_closure_.KeyedScanBaseHandler(msg);
 }
 
 void BlamSlam::PoseGraphCallback(
@@ -968,7 +967,7 @@ void BlamSlam::PoseGraphCallback(
   ROS_INFO_STREAM("Pose Graph message recieved");
 
   // Access loop closure callback
-  loop_closure_.PoseGraphCallback(msg);
+  loop_closure_.PoseGraphBaseHandler(msg);
 
   // Update map
   // We found one - regenerate the 3D map.
