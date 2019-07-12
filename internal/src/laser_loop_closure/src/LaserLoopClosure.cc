@@ -2371,11 +2371,13 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   // pgo_solver_->print();
 
   NonlinearFactorGraph new_factor;
+  gtsam::Key key_0 = gtsam::Symbol(msg->nodes[0].key);
 
   // Add the new nodes to base station posegraph
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
     // add to basestation gtsam values
     key_ = gtsam::Symbol(msg_node.key);
+
     if (values_.exists(key_))
       continue;
     gtsam::Point3 pose_translation(msg_node.pose.position.x,
@@ -2577,7 +2579,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
   // Update
   try {
-    pgo_solver_->update(nfg_, values_);
+    pgo_solver_->loadGraph(nfg_, values_, key_0); // key_0 is the initial key (it will have a prior factor)
     has_changed_ = true;
   } catch (...) {
     ROS_ERROR("PGO Solver update error in AddBetweenFactors");
