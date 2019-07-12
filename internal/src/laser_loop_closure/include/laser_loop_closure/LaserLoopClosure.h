@@ -349,6 +349,7 @@ private:
   std::unique_ptr<RobustPGO> pgo_solver_;
 
   gtsam::NonlinearFactorGraph nfg_;
+  gtsam::PriorFactor<gtsam::Pose3> prior_factor_;
   gtsam::Values values_;
 
   // Backup values

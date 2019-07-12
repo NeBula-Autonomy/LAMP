@@ -2371,11 +2371,13 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   // pgo_solver_->print();
 
   NonlinearFactorGraph new_factor;
+  // PriorFactor<Pose3> prior_factor;
 
   // Add the new nodes to base station posegraph
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
     // add to basestation gtsam values
     key_ = gtsam::Symbol(msg_node.key);
+
     if (values_.exists(key_))
       continue;
     gtsam::Point3 pose_translation(msg_node.pose.position.x,
@@ -2417,7 +2419,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       LaserLoopClosure::Diagonal::shared_ptr covariance(
           LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
 
-      new_factor.add(MakePriorFactor(full_pose, covariance));
+      prior_factor_ = MakePriorFactor(full_pose, covariance);
       values_.insert(key_, full_pose);
 
       // Set the first key if not already set - use this for adding between factors at start @AlexH
@@ -2573,11 +2575,14 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   OutlierRemoval* pcm =
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  ROS_INFO("Pre pgo_solver print");
   pgo_solver_->print();
+  nfg_.print("NFG");
 
   // Update
+  ROS_INFO("Pre loadGraph");
   try {
-    pgo_solver_->update(nfg_, values_);
+    pgo_solver_->loadGraph(nfg_, values_, prior_factor_); // Add full graph and the prior separately
     has_changed_ = true;
   } catch (...) {
     ROS_ERROR("PGO Solver update error in AddBetweenFactors");
@@ -2587,6 +2592,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   // // Update class variables
   // values_ = pgo_solver_->calculateEstimate();
 
+  // nfg_.add(prior_factor);
   // nfg_ = pgo_solver_->getFactorsUnsafe();
 
   // Update key for getting the latest pose
