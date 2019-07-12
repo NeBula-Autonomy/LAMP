@@ -2579,7 +2579,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
   // Update
   try {
-    pgo_solver_->loadGraph(nfg_, values_, key_0); // key_0 is the initial key (it will have a prior factor)
+    pgo_solver_->loadGraph<gtsam::Pose3>(nfg_, values_, key_0); // key_0 is the initial key (it will have a prior factor)
     has_changed_ = true;
   } catch (...) {
     ROS_ERROR("PGO Solver update error in AddBetweenFactors");
