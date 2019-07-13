@@ -136,7 +136,10 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("max_tolerable_fitness", max_tolerable_fitness_)) return false;
   if (!pu::Get("distance_to_skip_recent_poses", distance_to_skip_recent_poses_)) return false;
   if (!pu::Get("distance_before_reclosing", distance_before_reclosing_)) return false;
-  
+  if (!pu::Get("distance_before_batch_reclosing",
+               distance_before_batch_reclosing_))
+    return false;
+
   // Compute Skip recent poses
   skip_recent_poses_ = (int)(distance_to_skip_recent_poses_/translation_threshold_nodes_);
   poses_before_reclosing_ = (int)(distance_before_reclosing_/translation_threshold_nodes_);
@@ -2116,11 +2119,13 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
 }
 
 bool LaserLoopClosure::BatchLoopClosure() {
-
-  //Store parameter values as initalized in parameters.yaml
+  // Store parameter values as initalized in parameters.yaml in memory
   bool save_posegraph = save_posegraph_backup_;
   bool loop_closure_checks = check_for_loop_closures_;
+  double store_distance_before_reclosing = distance_before_reclosing_;
 
+  // Change the distance before reclosing a loop when doing batch loop closure
+  distance_before_reclosing_ = distance_before_batch_reclosing_;
 
   //Disable save flag before doing optimization
   save_posegraph_backup_ = false;
@@ -2144,11 +2149,12 @@ bool LaserLoopClosure::BatchLoopClosure() {
     if (found_loop){
       ROS_INFO("Loop found in batch loop closure");
     }
-  } 
-  //Restore the flags as initalized in parameters.yaml
+  }
+  // Restore the flags as initalized in parameters.yaml from memory
   save_posegraph_backup_ = save_posegraph;
   check_for_loop_closures_ = loop_closure_checks;
-  
+  distance_before_reclosing_ = store_distance_before_reclosing;
+
   // Update the posegraph after looking for loop closures and performing optimization
   has_changed_ = true;
   PublishPoseGraph();
