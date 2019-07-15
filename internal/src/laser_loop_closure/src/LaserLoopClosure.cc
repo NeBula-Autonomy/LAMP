@@ -1511,6 +1511,8 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
   if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
     ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
     artifact_key2info_hash[artifact_key] = artifact;
+  } else {
+    artifact_key2info_hash[artifact_key] = artifact;
   }
   // add to pose graph 
   bool is_manual_loop_closure = false;
@@ -2149,7 +2151,8 @@ bool LaserLoopClosure::BatchLoopClosure() {
 
   // Update the posegraph after looking for loop closures and performing optimization
   has_changed_ = true;
-  PublishPoseGraph();
+  // publish posegraph called in BlamSlam.cc
+
   if (found_loop == true)
     return true;
   else
@@ -2270,6 +2273,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
   // Default input key is 'z0' if this is the case, publish all artifacts
   if (gtsam::Symbol(artifact_key).chr() == 'z') {
     b_publish_all = true;
+    ROS_INFO("\n\n\t\tPublishing all artifacts\n\n");
   }
 
   // loop through values 
@@ -2333,6 +2337,11 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
     // Fill artifact message
     core_msgs::Artifact new_msg = artifact_key2info_hash[artifact_key].msg;
+
+    if (b_publish_all){
+      // Update the message ID
+      new_msg.id = new_msg.id + std::to_string(it->second.num_updates-1);
+    }
 
     // Fill the new message positions
     new_msg.point.point.x = artifact_position[0];
