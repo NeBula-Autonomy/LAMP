@@ -2438,12 +2438,10 @@ void LaserLoopClosure::PoseGraphBaseHandler(
         // TODO! How do we want to get the covariance??? FIX SOON!!
         gu::MatrixNxNBase<double, 6> covariance;
         covariance.Zeros();
-        for (int i = 0; i < 3; ++i) {
-          covariance(i, i) = 0.04 * 0.04; // 0.4, 0.004; 0.2 m sd
-        }
-        for (int i = 3; i < 6; ++i) {
-          covariance(i, i) = 0.01 * 0.01; // 0.1, 0.01; sqrt(0.01) rad sd
-        }
+        for (int i = 0; i < 3; ++i)
+          covariance(i, i) = 0.316 * 0.316; // 0.4, 0.004; 0.2 m sd
+        for (int i = 3; i < 6; ++i)
+          covariance(i, i) = 0.141 * 0.141; // 0.1, 0.01; sqrt(0.01) rad sd
         //-------------------------------------------------------------------------
 
         new_factor.add(BetweenFactor<Pose3>(
@@ -2473,13 +2471,10 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     // TODO! How do we want to get the covariance??? FIX SOON!!
     gu::MatrixNxNBase<double, 6> covariance;
     covariance.Zeros();
-    for (int i = 0; i < 3; ++i){
-      covariance(i, i) = 0.04 * 0.04; // 0.4, 0.004; 0.2 m sd
-    }
-
-    for (int i = 3; i < 6; ++i){
-      covariance(i, i) = 0.01 * 0.01; // 0.1, 0.01; sqrt(0.01) rad sd
-    }
+    for (int i = 0; i < 3; ++i)
+      covariance(i, i) = 0.316 * 0.316; // 0.4, 0.004; 0.2 m sd
+    for (int i = 3; i < 6; ++i)
+      covariance(i, i) = 0.141 * 0.141; // 0.1, 0.01; sqrt(0.01) rad sd
     //-------------------------------------------------------------------------
 
     if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
