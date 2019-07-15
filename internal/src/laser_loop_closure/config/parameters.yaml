@@ -77,7 +77,7 @@ translational_sanity_check_lc: 100
 translational_sanity_check_odom: 3
 
 ########################################
-b_use_uwb: true
+b_use_uwb: false
 
 # UWB range measurement noise (standard deviation)
 uwb_range_measurement_error: 2.0

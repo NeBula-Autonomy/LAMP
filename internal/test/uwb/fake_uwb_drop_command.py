@@ -6,9 +6,9 @@ from mesh_msgs.srv import *
 from mesh_msgs.msg import *
 
 def fake_drop_command(anchor_id, dropped_time):
-    rospy.wait_for_service('/husky/drop_uwb_anchor')
+    rospy.wait_for_service('/husky1/drop_uwb_anchor')
     try:
-        dropped_info = rospy.ServiceProxy('/husky/drop_uwb_anchor', ProcessCommNode)
+        dropped_info = rospy.ServiceProxy('/husky1/drop_uwb_anchor', ProcessCommNode)
         node = mesh_msgs.msg.CommNode()
         node.AnchorID = anchor_id
         node.DropTime = dropped_time

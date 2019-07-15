@@ -784,14 +784,6 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
   new_values.insert(uwb_key, pose_uwb);
 
-  // Add a PriorFactor for the UWB key
-  gtsam::Vector6 prior_precisions;
-  prior_precisions.head<3>().setConstant(10.0);
-  prior_precisions.tail<3>().setConstant(0.0);
-  static const gtsam::SharedNoiseModel& prior_noise = 
-  gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
-  new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(uwb_key, gtsam::Pose3(), prior_noise));
-
   // Add a BetweenFactor between the pose key and the UWB key
   gtsam::Vector6 precisions;
   precisions.head<3>().setConstant(0.0);
