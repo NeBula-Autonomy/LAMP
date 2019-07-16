@@ -2371,6 +2371,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   // pgo_solver_->print();
 
   NonlinearFactorGraph new_factor;
+  Values new_values;
   // PriorFactor<Pose3> prior_factor;
 
   // Add the new nodes to base station posegraph
@@ -2378,7 +2379,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     // add to basestation gtsam values
     key_ = gtsam::Symbol(msg_node.key);
 
-    if (values_.exists(key_))
+    if (values_recieved_at_base_.exists(key_))
       continue;
     gtsam::Point3 pose_translation(msg_node.pose.position.x,
                                    msg_node.pose.position.y,
@@ -2398,8 +2399,8 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       std::cout << "\t Artifact added to basestaion(PGcallback): "
                 << gtsam::DefaultKeyFormatter(key_);
       std::cout << "\t with parent id: " << msg_node.ID << std::endl;
-      values_.insert(key_, full_pose);
-
+      new_values.insert(key_, full_pose);
+      values_recieved_at_base_.insert(key_, full_pose);
       // Add time to each node
       keyed_stamps_.insert(
           std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
@@ -2409,9 +2410,10 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     }
 
     // if previous key exists
-    if (values_.exists(key_ - 1)) {
+    if (values_recieved_at_base_.exists(key_ - 1)) {
       ROS_INFO_STREAM("Previous key exists, no prior for key " << gtsam::DefaultKeyFormatter(key_) );
-      values_.insert(key_, full_pose);
+      new_values.insert(key_, full_pose);
+      values_recieved_at_base_.insert(key_, full_pose);
     }
     // is initial key
     else {
@@ -2419,21 +2421,26 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       LaserLoopClosure::Diagonal::shared_ptr covariance(
           LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
 
-      prior_factor_ = MakePriorFactor(full_pose, covariance);
-      values_.insert(key_, full_pose);
+      new_values.insert(key_, full_pose);
+      values_recieved_at_base_.insert(key_, full_pose);
 
       // Set the first key if not already set - use this for adding between factors at start @AlexH
       if (!b_first_key_set_){
         initial_key_ = key_;
         b_first_key_set_ = true;
+        prior_factor_ = MakePriorFactor(full_pose, covariance);
       } else {
         // Add betweenfactor between the first poses of the two different graphs
         // Calculate distance between the poses
         // In the case of multiple maps merging together
-        gu::Transform3 init_pose = ToGu(values_.at<Pose3>(initial_key_));
-        gu::Transform3 current_pose = ToGu(values_.at<Pose3>(key_));
+        gu::Transform3 init_pose =
+            ToGu(values_recieved_at_base_.at<Pose3>(initial_key_));
+        gu::Transform3 current_pose =
+            ToGu(values_recieved_at_base_.at<Pose3>(key_));
         const gu::Transform3 pose_delta =
             gu::PoseDelta(init_pose, current_pose);
+
+        new_factor.add(MakePriorFactor(full_pose, covariance));
 
         // TODO! How do we want to get the covariance??? FIX SOON!!
         gu::MatrixNxNBase<double, 6> covariance;
@@ -2444,8 +2451,8 @@ void LaserLoopClosure::PoseGraphBaseHandler(
           covariance(i, i) = 0.141 * 0.141; // 0.1, 0.01; sqrt(0.01) rad sd
         //-------------------------------------------------------------------------
 
-        new_factor.add(BetweenFactor<Pose3>(
-            initial_key_, key_, ToGtsam(pose_delta), ToGtsam(covariance)));
+        between_initial_factors_ = BetweenFactor<Pose3>(
+            initial_key_, key_, ToGtsam(pose_delta), ToGtsam(covariance));
       }
     }
 
@@ -2563,33 +2570,51 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       }
     } */
   }
+  if (key_.chr() == initial_key_.chr()) {
+    nfg_to_load_graph_.add(new_factor);
+    values_to_load_graph_.insert(new_values);
+  } else {
+    ROS_INFO_STREAM("it came to the end");
+    values_to_add_graph_.insert(new_values);
+    nfg_to_add_graph_.add(new_factor);
+  }
 
-  nfg_.add(new_factor);
-
+  // RobustPGO should include load multiplemaps functions, but for now we first
+  // load then add the other graph
   std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
   OutlierRemoval* pcm =
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   ROS_INFO("Pre pgo_solver print");
   pgo_solver_->print();
-  nfg_.print("NFG");
+  nfg_to_load_graph_.print("NFGload");
+  nfg_to_add_graph_.print("NFGadd");
 
   // Update
   ROS_INFO("Pre loadGraph");
   try {
-    pgo_solver_->loadGraph(nfg_, values_, prior_factor_); // Add full graph and the prior separately
+    pgo_solver_->loadGraph(
+        nfg_to_load_graph_,
+        values_to_load_graph_,
+        prior_factor_); // Add full graph and the prior separately
     has_changed_ = true;
   } catch (...) {
     ROS_ERROR("PGO Solver update error in AddBetweenFactors");
     throw;
   }
 
-  // // Update class variables
-  // values_ = pgo_solver_->calculateEstimate();
-
-  // nfg_.add(prior_factor);
-  // nfg_ = pgo_solver_->getFactorsUnsafe();
-
+  if (!values_to_add_graph_.empty()) {
+    gtsam::Symbol other_intial_key(key_.chr(), 0);
+    pgo_solver_->addGraph(
+        nfg_to_add_graph_,
+        values_to_add_graph_,
+        between_initial_factors_); // Add full graph to an existing graph
+  }
+  // Get all values and nfg to laser loop closure
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+  values_.print("from RobustPGO values");
+  nfg_.print("from RobustPGO nfg");
   // Update key for getting the latest pose
   key_ = key_ + 1;
 
