@@ -1550,7 +1550,10 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
   NonlinearFactorGraph new_factor;
   gtsam::Values new_values;
 
-  if (!is_manual_loop_closure && !linPoint.exists(key2)) {
+  // Flag to track if the artifact addition is a look closure 
+  bool b_artifact_loop_closure = !is_manual_loop_closure && linPoint.exists(key2);
+
+  if (!b_artifact_loop_closure) {
     // Adding an artifact
     if(!linPoint.exists(key1)) {
       ROS_WARN("AddFactor: Trying to add artifact factor, but key1 does not exist");
@@ -1592,9 +1595,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     // TODO get the positions of each of the poses and compute the distance
     // between them - see what the error should be - maybe a bug there
   } else {
-    factor.print("Artifact loop closure factor \n");
-    cost = factor.error(linPoint);
-    ROS_INFO_STREAM("Cost of artifact factor is: " << cost);
+    if (b_artifact_loop_closure){
+      factor.print("Artifact loop closure factor \n");
+      cost = factor.error(linPoint);
+      ROS_INFO_STREAM("Cost of artifact factor is: " << cost);
+    } else {
+      factor.print("Artifact loop connection addition factor \n");
+    }
   }
 
   // add factor to factor graph
@@ -1634,11 +1641,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
     // Send an message notifying any subscribers that we found a loop
     // closure and having the keys of the loop edge.
-    pose_graph_msgs::PoseGraphEdge edge;
-    edge.key_from = key1;
-    edge.key_to = key2;
-    edge.pose = gr::ToRosPose(ToGu(pose12));
-    loop_closure_notifier_pub_.publish(edge);
+    if (b_artifact_loop_closure || is_manual_loop_closure){
+      pose_graph_msgs::PoseGraphEdge edge;
+      edge.key_from = key1;
+      edge.key_to = key2;
+      edge.pose = gr::ToRosPose(ToGu(pose12));
+      loop_closure_notifier_pub_.publish(edge);
+    }
 
     // Update values
     values_ = result;//
