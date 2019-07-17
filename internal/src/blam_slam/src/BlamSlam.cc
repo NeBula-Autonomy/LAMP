@@ -110,6 +110,8 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("frame_id/base", base_frame_id_)) return false;
   if (!pu::Get("frame_id/artifacts_in_global", artifacts_in_global_))
     return false;
+  // Optional frame ID of second velodyne sensor.
+  pu::Get("frame_id/velodyne_two", velodyne_two_frame_id_);
 
   // Covariance for odom factors
   if (!pu::Get("noise/odom_position_sigma", position_sigma_)) return false;
@@ -165,6 +167,8 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
     }
   }
 
+  pu::Get("use_two_pclds", use_two_pclds_);
+
   return true;
 }
 
@@ -204,7 +208,16 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   
   uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
 
-  pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+  if (use_two_pclds_) {
+    ROS_INFO("Subscribing to two point cloud topics.");
+    message_filters::Subscriber<sensor_msgs::PointCloud2> pcld1_sub(nl, "pcld", 1);
+    message_filters::Subscriber<sensor_msgs::PointCloud2> pcld2_sub(nl, "pcld2", 1);
+    pcld_synchronizer = std::unique_ptr<PcldSynchronizer>(
+      new PcldSynchronizer(PcldSyncPolicy(pcld_queue_size), pcld1_sub, pcld2_sub));
+    pcld_synchronizer->registerCallback(boost::bind(&BlamSlam::TwoPointCloudCallback, this, _1, _2));
+  } else {
+    pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+  }
 
   artifact_sub_ = nl.subscribe("artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
 
@@ -411,6 +424,21 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
   uwb_id2data_hash_[request.node.AnchorID].drop_status = true;
   
   return true;
+}
+
+void BlamSlam::TwoPointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& pcld1,
+                                     const sensor_msgs::PointCloud2::ConstPtr& pcld2) {
+  sensor_msgs::PointCloud2 pcld_two;
+  // Transform second point cloud
+  if (!pcl_ros::transformPointCloud(velodyne_two_frame_id_, *pcld2, pcld_two, tf_listener_)) {
+    pcld_two = *pcld2;
+  }
+  // Merge point clouds
+  PointCloud p1, p2;
+  pcl::fromROSMsg(*pcld1, p1);
+  pcl::fromROSMsg(pcld_two, p2);
+  PointCloud::ConstPtr sum(new PointCloud(p1 + p2));
+  PointCloudCallback(sum);
 }
 
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
@@ -790,7 +818,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
 }
 
 bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
-                                blam_slam::RestartResponse &response) {    
+                              blam_slam::RestartResponse &response) {    
   ROS_INFO_STREAM(request.filename);
   // Erase the current posegraph to make space for the backup
   loop_closure_.ErasePosegraph();  
@@ -885,4 +913,3 @@ bool BlamSlam::getTransformEigenFromTF(
   }
   tf::transformTFToEigen(tf_tfm, T);
 }
-

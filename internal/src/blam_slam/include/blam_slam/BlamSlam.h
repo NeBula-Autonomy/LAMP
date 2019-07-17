@@ -52,12 +52,17 @@
 #include <point_cloud_odometry/PointCloudOdometry.h>
 #include <laser_loop_closure/LaserLoopClosure.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
 
 #include <core_msgs/Artifact.h>
 #include <uwb_msgs/Anchor.h>
@@ -96,6 +101,8 @@ class BlamSlam {
 
   // Sensor callbacks.
   void PointCloudCallback(const PointCloud::ConstPtr& msg);
+  void TwoPointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& pcld1,
+                             const sensor_msgs::PointCloud2::ConstPtr& pcld2);
   void ArtifactCallback(const core_msgs::Artifact& msg);
   void UwbSignalCallback(const uwb_msgs::Anchor& msg);
 
@@ -175,6 +182,19 @@ class BlamSlam {
   ros::Subscriber pcld_sub_;
   ros::Subscriber artifact_sub_;
   ros::Subscriber uwb_sub_;
+
+  // Whether to use two point clouds.
+  bool use_two_pclds_{false};
+  // Queue size of the approximate time policy that synchronizes the two point clouds.
+  int pcld_queue_size{10};
+  // Synchronization policy for the two point clouds.
+  typedef message_filters::sync_policies::ApproximateTime<
+    sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> PcldSyncPolicy;
+  // Synchronizer for the two point clouds.
+  typedef message_filters::Synchronizer<PcldSyncPolicy> PcldSynchronizer;
+  std::unique_ptr<PcldSynchronizer> pcld_synchronizer;
+  // Frame ID of the second velodyne sensor.
+  std::string velodyne_two_frame_id_{"velodyne_two"};
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
