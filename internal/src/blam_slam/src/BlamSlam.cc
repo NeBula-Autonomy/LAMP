@@ -408,6 +408,13 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
 
     // Also reset the robot's estimated position.
     be_current_pose_ = loop_closure_.GetLastPose();
+
+    // Visualize the pose graph updates
+    loop_closure_.PublishPoseGraph();
+
+    // Publish artifacts - from pose-graph positions
+    loop_closure_.PublishArtifacts();
+
   }else {
     ROS_INFO("No loop closures in batch loop closure");
   }
@@ -547,7 +554,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Check if the ID of the object already exists in the object hash
   if (use_artifact_loop_closure_ && artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() && 
       msg.label != "cellphone") {
-    // Take the ID for that object - no reconciliation in the pose-graph if a cell phone (for now)
+    // Take the ID for that object - no reconciliation in the pose-graph of a cell phone (for now)
     cur_artifact_key = artifact_id2key_hash[artifact_id];
     std::cout << "artifact previously observed, artifact id " << artifact_id 
               << " with key in pose graph " 

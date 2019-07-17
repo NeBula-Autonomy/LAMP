@@ -136,7 +136,10 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("max_tolerable_fitness", max_tolerable_fitness_)) return false;
   if (!pu::Get("distance_to_skip_recent_poses", distance_to_skip_recent_poses_)) return false;
   if (!pu::Get("distance_before_reclosing", distance_before_reclosing_)) return false;
-  
+  if (!pu::Get("distance_before_batch_reclosing",
+               distance_before_batch_reclosing_))
+    return false;
+
   // Compute Skip recent poses
   skip_recent_poses_ = (int)(distance_to_skip_recent_poses_/translation_threshold_nodes_);
   poses_before_reclosing_ = (int)(distance_before_reclosing_/translation_threshold_nodes_);
@@ -506,7 +509,10 @@ bool LaserLoopClosure::AddBetweenFactor(
 
 // Function to change key number for multiple robots
 bool LaserLoopClosure::ChangeKeyNumber(){
-    key_ = 10000;
+    key_ = ((key_/10000) + 1) *10000; // set to new multiple of 10000
+    keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, ros::Time::now()));
+    stamps_keyed_.insert(std::pair<double, unsigned int>(ros::Time::now().toSec(), key_));
+
 }
 
 bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data) {
@@ -771,14 +777,6 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   // Add a UWB key
   gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
   new_values.insert(uwb_key, pose_uwb);
-
-  // Add a PriorFactor for the UWB key
-  gtsam::Vector6 prior_precisions;
-  prior_precisions.head<3>().setConstant(10.0);
-  prior_precisions.tail<3>().setConstant(0.0);
-  static const gtsam::SharedNoiseModel& prior_noise = 
-  gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
-  new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(uwb_key, gtsam::Pose3(), prior_noise));
 
   // Add a BetweenFactor between the pose key and the UWB key
   gtsam::Vector6 precisions;
@@ -1507,6 +1505,8 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
   if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
     ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
     artifact_key2info_hash[artifact_key] = artifact;
+  } else {
+    artifact_key2info_hash[artifact_key] = artifact;
   }
   // add to pose graph 
   bool is_manual_loop_closure = false;
@@ -1544,7 +1544,10 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
   NonlinearFactorGraph new_factor;
   gtsam::Values new_values;
 
-  if (!is_manual_loop_closure && !linPoint.exists(key2)) {
+  // Flag to track if the artifact addition is a look closure 
+  bool b_artifact_loop_closure = !is_manual_loop_closure && linPoint.exists(key2);
+
+  if (!b_artifact_loop_closure) {
     // Adding an artifact
     if(!linPoint.exists(key1)) {
       ROS_WARN("AddFactor: Trying to add artifact factor, but key1 does not exist");
@@ -1586,9 +1589,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
     // TODO get the positions of each of the poses and compute the distance
     // between them - see what the error should be - maybe a bug there
   } else {
-    factor.print("Artifact loop closure factor \n");
-    cost = factor.error(linPoint);
-    ROS_INFO_STREAM("Cost of artifact factor is: " << cost);
+    if (b_artifact_loop_closure){
+      factor.print("Artifact loop closure factor \n");
+      cost = factor.error(linPoint);
+      ROS_INFO_STREAM("Cost of artifact factor is: " << cost);
+    } else {
+      factor.print("Artifact loop connection addition factor \n");
+    }
   }
 
   // add factor to factor graph
@@ -1628,11 +1635,13 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
     // Send an message notifying any subscribers that we found a loop
     // closure and having the keys of the loop edge.
-    pose_graph_msgs::PoseGraphEdge edge;
-    edge.key_from = key1;
-    edge.key_to = key2;
-    edge.pose = gr::ToRosPose(ToGu(pose12));
-    loop_closure_notifier_pub_.publish(edge);
+    if (b_artifact_loop_closure || is_manual_loop_closure){
+      pose_graph_msgs::PoseGraphEdge edge;
+      edge.key_from = key1;
+      edge.key_to = key2;
+      edge.pose = gr::ToRosPose(ToGu(pose12));
+      loop_closure_notifier_pub_.publish(edge);
+    }
 
     // Update values
     values_ = result;//
@@ -1839,7 +1848,10 @@ bool LaserLoopClosure::Save(const std::string &zipFilename) const {
   const boost::filesystem::path directory(path);
   boost::filesystem::create_directory(directory);
 
-  writeG2o(pgo_solver_->getFactorsUnsafe(), values_, path + "/graph.g2o");
+  pgo_solver_->getFactorsUnsafe().print("In save, pgo_solver_nfg_ is: ") ;
+  nfg_.print("In save, from nfg_ is: ") ;
+
+  writeG2o(pgo_solver_->getFactorsUnsafe(), pgo_solver_->calculateEstimate(), path + "/graph.g2o");
   ROS_INFO("Saved factor graph as a g2o file.");
 
   // keys.csv stores factor key, point cloud filename, and time stamp
@@ -2010,8 +2022,11 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
     ROS_WARN("Key0, %s, does not exist in Load", key0);
     return false;
   }
-  nfg_.add(gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
-  pgo_solver_->update(nfg_, values_);
+  
+  // update with prior 
+  pgo_solver_->loadGraph<Pose3>(nfg_, values_, 
+  gtsam::PriorFactor<Pose3>(key0, values_.at<Pose3>(key0), covariance));
+
 
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
 
@@ -2101,11 +2116,13 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
 }
 
 bool LaserLoopClosure::BatchLoopClosure() {
-
-  //Store parameter values as initalized in parameters.yaml
+  // Store parameter values as initalized in parameters.yaml in memory
   bool save_posegraph = save_posegraph_backup_;
   bool loop_closure_checks = check_for_loop_closures_;
+  double store_distance_before_reclosing = distance_before_reclosing_;
 
+  // Change the distance before reclosing a loop when doing batch loop closure
+  distance_before_reclosing_ = distance_before_batch_reclosing_;
 
   //Disable save flag before doing optimization
   save_posegraph_backup_ = false;
@@ -2129,14 +2146,16 @@ bool LaserLoopClosure::BatchLoopClosure() {
     if (found_loop){
       ROS_INFO("Loop found in batch loop closure");
     }
-  } 
-  //Restore the flags as initalized in parameters.yaml
+  }
+  // Restore the flags as initalized in parameters.yaml from memory
   save_posegraph_backup_ = save_posegraph;
   check_for_loop_closures_ = loop_closure_checks;
-  
+  distance_before_reclosing_ = store_distance_before_reclosing;
+
   // Update the posegraph after looking for loop closures and performing optimization
   has_changed_ = true;
-  PublishPoseGraph();
+  // publish posegraph called in BlamSlam.cc
+
   if (found_loop == true)
     return true;
   else
@@ -2257,6 +2276,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
   // Default input key is 'z0' if this is the case, publish all artifacts
   if (gtsam::Symbol(artifact_key).chr() == 'z') {
     b_publish_all = true;
+    ROS_INFO("\n\n\t\tPublishing all artifacts\n\n");
   }
 
   // loop through values 
@@ -2320,6 +2340,11 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
     // Fill artifact message
     core_msgs::Artifact new_msg = artifact_key2info_hash[artifact_key].msg;
+
+    if (b_publish_all){
+      // Update the message ID
+      new_msg.id = new_msg.id + std::to_string(it->second.num_updates-1);
+    }
 
     // Fill the new message positions
     new_msg.point.point.x = artifact_position[0];
