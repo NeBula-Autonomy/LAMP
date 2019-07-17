@@ -59,6 +59,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include <core_msgs/Artifact.h>
 #include <core_msgs/PoseAndScan.h>
@@ -197,6 +198,9 @@ class BlamSlam {
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
   ros::Publisher pose_pub_;
+
+  // Transform broadcasting to other nodes.
+  tf2_ros::TransformBroadcaster tfbr_;
 
   // Restart delta
   double restart_x_;

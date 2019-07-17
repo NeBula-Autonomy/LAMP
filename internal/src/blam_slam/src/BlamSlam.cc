@@ -767,6 +767,14 @@ void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &point
     ros_pose.header.stamp = pointCloud->header.stamp;
     pose_pub_.publish(ros_pose);
 
+    // Publish transform between fixed frame and localization frame.
+    geometry_msgs::TransformStamped tf;
+    tf.transform = geometry_utils::ros::ToRosTransform(be_current_pose_);
+    tf.header.stamp = pointCloud->header.stamp;
+    tf.header.frame_id = fixed_frame_id_;
+    tf.child_frame_id = base_frame_id_;
+    tfbr_.sendTransform(tf);
+
     return;
 }
 
@@ -860,14 +868,6 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
     mapper_.PublishMap();
   }   
   
-
-  // // Publish the incoming point cloud message from the base frame.
-  // if (base_frame_pcld_pub_.getNumSubscribers() != 0) {
-  //   PointCloud base_frame_pcld = *msg;
-  //   base_frame_pcld.header.frame_id = base_frame_id_;
-  //   base_frame_pcld_pub_.publish(base_frame_pcld);
-  // }
-
 }
 
 bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
