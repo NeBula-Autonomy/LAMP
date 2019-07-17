@@ -456,7 +456,7 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
 
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
   // TODO - for other front-ends
-  ROS_WARN("Point Cloud Callback Not yet implemented");
+  // ROS_WARN("Point Cloud Callback Not yet implemented");
   // use filtering etc/ to sync with odome messages, then use
   // ProcessPoseScanMessage(fe_pose, msg.scan);
   return;
@@ -746,7 +746,7 @@ void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
 
 void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &pointCloud, const geometry_msgs::PoseStamped pose) {
 
-    ROS_INFO("In message filter callback");
+    // ROS_INFO("In message filter callback");
 
     geometry_utils::Transform3 fePose = geometry_utils::ros::FromROS(pose.pose);
 
@@ -761,7 +761,7 @@ void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &point
 }
 
 void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const PointCloud::Ptr& scan) {
-  ROS_INFO("Inside processPoseScanMessage");
+  // ROS_INFO("Inside processPoseScanMessage");
   
   PointCloud::Ptr scan_filtered(new PointCloud);
   filter_.Filter(scan, scan_filtered);

@@ -13,6 +13,11 @@
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default=""/> 
 
+  <!-- LO frontend -->
+  <include file="$(find blam_example_frontend)/launch/exec_online.launch">
+    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+  </include>
+
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->
     <node pkg="blam_slam"
@@ -29,7 +34,7 @@
       <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" />
       <remap from="~uwb_signal" to="comm/uwb/anchor" />
       <remap from="~pose_and_scan" to="lo_frontend/pose_and_scan" />
-      <remap from="~fe_pose" to="lo_frontend/odometry_integrated_estimate"/>
+      <remap from="~fe_pose" to="lo_frontend/localization_integrated_estimate"/>
 
       <!-- Serives -->
       <remap from="~drop_uwb_anchor" to="drop_uwb_anchor"/>

@@ -389,8 +389,8 @@ bool LaserLoopClosure::AddBetweenFactor(
   odometry_kf_ = odometry_kf_.compose(new_odometry);
 
   if (std::isnan(acos(odometry_.rotation().toQuaternion().w()))){
-    ROS_WARN("NAN rotational angle in odometry");
-    return false;
+    ROS_WARN("NAN rotational angle in odometry, reseting to unit quaternion");
+    odometry_ = Pose3(Rot3::RzRyRx(0, 0, 0),odometry_.translation());
   }
 
   if (odometry_.translation().norm() < translation_threshold_nodes_ &&  2*acos(odometry_.rotation().toQuaternion().w()) < rotation_threshold_nodes_) {
