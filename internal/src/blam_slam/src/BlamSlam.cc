@@ -166,6 +166,9 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   visualization_update_timer_ = nl.createTimer(
       visualization_update_rate_, &BlamSlam::VisualizationTimerCallback, this);
       
+  pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(
+      "localization_integrated_estimate", 10, false);
+
   add_factor_srv_ = nl.advertiseService("add_factor", &BlamSlam::AddFactorService, this);
   remove_factor_srv_ = nl.advertiseService("remove_factor", &BlamSlam::RemoveFactorService, this);
   save_graph_srv_ = nl.advertiseService("save_graph", &BlamSlam::SaveGraphService, this);
@@ -757,6 +760,13 @@ void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &point
 
     this->ProcessPoseScanMessage(fePose, rxCloudPtr);
 
+    // Publish pose 
+    geometry_msgs::PoseStamped ros_pose;
+    ros_pose.pose = geometry_utils::ros::ToRosPose(be_current_pose_);
+    ros_pose.header.frame_id = fixed_frame_id_;
+    ros_pose.header.stamp = pointCloud->header.stamp;
+    pose_pub_.publish(ros_pose);
+
     return;
 }
 
@@ -798,11 +808,6 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
 
     return;
   }
-
-  // Containers.
-  PointCloud::Ptr msg_neighbors(new PointCloud);
-  PointCloud::Ptr msg_base(new PointCloud);
-  PointCloud::Ptr msg_fixed(new PointCloud);
 
   // Update delta 
   geometry_utils::Transform3 pose_delta = geometry_utils::PoseDelta(fe_last_pose_, fe_pose);
@@ -850,6 +855,9 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
   if (new_keyframe){
     // Visualize the pose graph and current loop closure radius.
     loop_closure_.PublishPoseGraph();
+
+    // Publish the map
+    mapper_.PublishMap();
   }   
   
 

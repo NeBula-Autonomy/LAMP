@@ -196,6 +196,7 @@ class BlamSlam {
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
+  ros::Publisher pose_pub_;
 
   // Restart delta
   double restart_x_;
