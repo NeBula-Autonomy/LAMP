@@ -2442,3 +2442,6 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_
   return values_.at<Pose3>(artifact_key).translation().vector();
 }
 
+size_t LaserLoopClosure::GetNumberStampsKeyed() const {
+  return stamps_keyed_.size();
+}

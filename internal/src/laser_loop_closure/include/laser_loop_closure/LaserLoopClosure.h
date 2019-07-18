@@ -202,6 +202,8 @@ class LaserLoopClosure {
 
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
 
+  size_t GetNumberStampsKeyed() const;
+
   // Publish pose graph for visualization.
   bool PublishPoseGraph(bool only_publish_if_changed = true);
 

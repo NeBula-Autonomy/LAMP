@@ -111,3 +111,6 @@ uwb_minimum_range_threshold: 3.0
 
 # Flag to decide whether to show uwb data or not (for debugging)
 display_uwb_data: false
+
+# Pose key number threshold to wait for accepting UWB signal
+uwb_first_key_threshold: 3
