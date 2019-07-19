@@ -212,6 +212,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
   if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
   if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
+  if (!pu::Get("uwb_outlier_rejection", uwb_outlier_rejection_)) return false;
 
   // convert initial quaternion to Roll/Pitch/Yaw
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
@@ -545,7 +546,10 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
-  UwbDataOutlierRejection(uwb_data);
+  // UWB data outlier rejection based on Hample outlier identifier
+  if (uwb_outlier_rejection_) {
+    UwbDataOutlierRejection(uwb_data);
+  }
 
   // Sort the UWB-related data stored in the buffer 
   UwbRearrangedData sorted_data = RearrangeUwbData(uwb_data);
@@ -666,17 +670,12 @@ void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
   }
 
   hampelOutlierRejection<double, double>(uwb_data.range, time_stamp, b_outlier_list);
-  for (auto itr : b_outlier_list) {
-    std::cout << itr << " ";
-  }
-  std::cout << "\n";
 
   for (int itr = 0; itr < b_outlier_list.size(); itr++) {
     int itr_back = b_outlier_list.size()-itr-1;
-    std::cout << "itr: " << itr_back << "\n";
     if (b_outlier_list[itr_back] == true) {
-      std::cout << "data No. " << itr_back << "\n";
-      std::cout << "outlier range: " << uwb_data.range[itr_back]  << "\n";
+      // std::cout << "data No. " << itr_back << "\n";
+      // std::cout << "outlier range: " << uwb_data.range[itr_back]  << "\n";
       uwb_data.time_stamp.erase(uwb_data.time_stamp.begin()+itr_back);
       uwb_data.range.erase(uwb_data.range.begin()+itr_back);
       uwb_data.robot_position.erase(uwb_data.robot_position.begin()+itr_back);
@@ -710,9 +709,7 @@ void LaserLoopClosure::hampelOutlierRejection(std::vector<TYPE_DATA> data_input,
 
     TYPE_STAMP half_window_length = 3.0*calculateMedian(diff_stamp);
 
-    std::vector<TYPE_DATA> local_ref;
-    std::vector<TYPE_DATA> local_var;
-
+    std::vector<TYPE_DATA> local_ref, local_var;
     for (int iData = 0; iData < data_size; iData++) {
         calculateLocalWindow(data_input, data_stamp, half_window_length, iData, local_ref, local_var);
     }
