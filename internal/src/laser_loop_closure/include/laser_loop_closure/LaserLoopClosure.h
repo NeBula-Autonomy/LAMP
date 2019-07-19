@@ -160,6 +160,18 @@ class LaserLoopClosure {
   bool UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
                                   gtsam::Values new_values);
   
+  void UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data);
+  template <typename TYPE_DATA, typename TYPE_STAMP>
+  void hampelOutlierRejection(std::vector<TYPE_DATA> data_input, 
+                              std::vector<TYPE_STAMP> data_stamp,
+                              std::vector<bool>& b_outlier_list);
+  template <typename TYPE_DATA, typename TYPE_STAMP>
+  void calculateLocalWindow(std::vector<TYPE_DATA> data_input, std::vector<TYPE_STAMP> data_stamp,
+                            TYPE_STAMP half_window_length, unsigned int data_index,
+                            std::vector<TYPE_DATA>& local_ref, std::vector<TYPE_DATA>& local_var);
+  template <typename TYPE>
+  TYPE calculateMedian(std::vector<TYPE> data_input);
+
   UwbRearrangedData RearrangeUwbData(UwbMeasurementInfo &uwb_data);
 
   void ShowUwbRawData(const UwbMeasurementInfo uwb_data);
