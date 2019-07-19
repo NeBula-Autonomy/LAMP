@@ -545,6 +545,8 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
+  UwbDataOutlierRejection(uwb_data);
+
   // Sort the UWB-related data stored in the buffer 
   UwbRearrangedData sorted_data = RearrangeUwbData(uwb_data);
 
@@ -662,11 +664,8 @@ void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
   for (auto itr : uwb_data.time_stamp) {
     time_stamp.push_back(itr.toSec());
   }
-  for (auto itr : time_stamp) {
-    std::cout << typeid(itr).name() << " ";
-  }
-  std::cout << "\n";
-  hampelOutlierRejection(uwb_data.range, time_stamp, b_outlier_list);
+
+  hampelOutlierRejection<double, double>(uwb_data.range, time_stamp, b_outlier_list);
   for (auto itr : b_outlier_list) {
     std::cout << itr << " ";
   }
@@ -674,7 +673,7 @@ void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
 }
 
 template <typename TYPE_DATA, typename TYPE_STAMP>
-void hampelOutlierRejection(std::vector<TYPE_DATA> data_input, 
+void LaserLoopClosure::hampelOutlierRejection(std::vector<TYPE_DATA> data_input, 
                             std::vector<TYPE_STAMP> data_stamp,
                             std::vector<bool>& b_outlier_list) {
     unsigned int data_size = data_input.size();
@@ -707,13 +706,16 @@ void hampelOutlierRejection(std::vector<TYPE_DATA> data_input,
     for (int iData = 0; iData < data_size; iData++) {
         TYPE_DATA temp = std::fabs(data_input[iData] - local_ref[iData]) - 3.0*local_var[iData];
         if (temp > 0) {
-            b_outlier_list[iData] = true;
+          b_outlier_list.push_back(true);
+        }
+        else {
+          b_outlier_list.push_back(false);
         }
     }
 }
 
 template <typename TYPE_DATA, typename TYPE_STAMP>
-void calculateLocalWindow(std::vector<TYPE_DATA> data_input, std::vector<TYPE_STAMP> data_stamp,
+void LaserLoopClosure::calculateLocalWindow(std::vector<TYPE_DATA> data_input, std::vector<TYPE_STAMP> data_stamp,
                           TYPE_STAMP half_window_length, unsigned int data_index,
                           std::vector<TYPE_DATA>& local_ref, std::vector<TYPE_DATA>& local_var) {
 
@@ -743,7 +745,7 @@ void calculateLocalWindow(std::vector<TYPE_DATA> data_input, std::vector<TYPE_ST
 }
 
 template <typename TYPE>
-TYPE calculateMedian(std::vector<TYPE> data_input) {
+TYPE LaserLoopClosure::calculateMedian(std::vector<TYPE> data_input) {
     std::sort(data_input.begin(), data_input.end());
     unsigned int data_size = data_input.size();
     TYPE median_value;
