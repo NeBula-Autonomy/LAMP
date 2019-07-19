@@ -670,6 +670,20 @@ void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
     std::cout << itr << " ";
   }
   std::cout << "\n";
+
+  for (int itr = 0; itr < b_outlier_list.size(); itr++) {
+    int itr_back = b_outlier_list.size()-itr-1;
+    std::cout << "itr: " << itr_back << "\n";
+    if (b_outlier_list[itr_back] == true) {
+      std::cout << "data No. " << itr_back << "\n";
+      std::cout << "outlier range: " << uwb_data.range[itr_back]  << "\n";
+      uwb_data.time_stamp.erase(uwb_data.time_stamp.begin()+itr_back);
+      uwb_data.range.erase(uwb_data.range.begin()+itr_back);
+      uwb_data.robot_position.erase(uwb_data.robot_position.begin()+itr_back);
+      // uwb_data.dist_posekey.erase(uwb_data.dist_posekey.begin()+itr_back);
+      uwb_data.nearest_pose_key.erase(uwb_data.nearest_pose_key.begin()+itr_back);
+    }
+  }
 }
 
 template <typename TYPE_DATA, typename TYPE_STAMP>
