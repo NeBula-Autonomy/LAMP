@@ -1569,8 +1569,8 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
   // Flag to track if the artifact addition is a look closure 
   bool b_artifact_loop_closure = !is_manual_loop_closure && linPoint.exists(key2);
 
-  if (!b_artifact_loop_closure) {
-    // Adding an artifact
+  if (!b_artifact_loop_closure && !is_manual_loop_closure) {
+    // Adding a new artifact
     if(!linPoint.exists(key1)) {
       ROS_WARN("AddFactor: Trying to add artifact factor, but key1 does not exist");
       return false;    
@@ -1585,7 +1585,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
                   new_values.at<Pose3>(key2).translation().vector().z());
   }
 
-  linPoint.insert(new_values); // insert new values
+  linPoint.insert(new_values); // insert new values (valid for all cases)
 
   // Use BetweenFactor
   // creating relative pose factor (also works for relative positions)

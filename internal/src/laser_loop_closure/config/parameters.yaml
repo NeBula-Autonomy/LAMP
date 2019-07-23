@@ -3,7 +3,7 @@
 check_for_loop_closures: true
 
 # Whether or not consolidate artifacts
-use_artifact_loop_closure: false
+use_artifact_loop_closure: true
 
 # Make true to save a backup pointcloud before every loop closure.
 save_posegraph_backup: false
