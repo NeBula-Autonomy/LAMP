@@ -255,6 +255,9 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
+  laser_lc_toggle_sub_ = nl.subscribe("laser_lc_toggle", 1, &LaserLoopClosure::LaserLCToggle, this);
+
+
   scan1_pub_ = nl.advertise<PointCloud>("loop_closure_scan1", 10, false);
   scan2_pub_ = nl.advertise<PointCloud>("loop_closure_scan2", 10, false);
 
@@ -273,6 +276,19 @@ bool LaserLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
       
   return true;
+}
+
+void LaserLoopClosure::LaserLCToggle(const std_msgs::Bool& msg){
+  
+  // Boolean to turn laser loop closures on and off
+  if (msg.data){
+    check_for_loop_closures_ = true;
+    ROS_INFO("Laser loop closure on");
+  }else{
+    check_for_loop_closures_ = false;
+    ROS_INFO("Laser loop closure off");
+  }
+
 }
 
 bool LaserLoopClosure::AddFactorAtRestart(const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance){
@@ -2436,3 +2452,6 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_
   return values_.at<Pose3>(artifact_key).translation().vector();
 }
 
+size_t LaserLoopClosure::GetNumberStampsKeyed() const {
+  return stamps_keyed_.size();
+}

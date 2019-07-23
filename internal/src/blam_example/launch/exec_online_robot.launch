@@ -23,7 +23,8 @@
     <node pkg="blam_slam"
           name="blam_slam"
           type="blam_slam_node"
-          output="screen">
+          output="screen"
+          launch-prefix="gdb -ex run --args">
 
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>

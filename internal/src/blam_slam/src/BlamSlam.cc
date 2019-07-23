@@ -136,6 +136,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_update_key_number", uwb_update_key_number_)) return false;
   if (!pu::Get("uwb_required_key_number_first", uwb_required_key_number_first_)) return false;
   if (!pu::Get("uwb_required_key_number_not_first", uwb_required_key_number_not_first_)) return false;
+  if (!pu::Get("uwb_first_key_threshold", uwb_first_key_threshold_)) return false;
 
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
@@ -726,19 +727,23 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   if (!b_use_uwb_) {
     return;
   }
-  
-  // Store the UWB-related data into the buffer "uwb_id2data_hash_"
-  auto itr = uwb_id2data_hash_.find(msg.id);
-  if (itr != end(uwb_id2data_hash_)) {
-    if (uwb_id2data_hash_[msg.id].drop_status == true) {
-      uwb_id2data_hash_[msg.id].range.push_back(msg.range);
-      uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
-      uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
-      uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
+
+  if (loop_closure_.GetNumberStampsKeyed() > uwb_first_key_threshold_) {
+    
+    // Store the UWB-related data into the buffer "uwb_id2data_hash_"
+    auto itr = uwb_id2data_hash_.find(msg.id);
+    if (itr != end(uwb_id2data_hash_)) {
+      if (uwb_id2data_hash_[msg.id].drop_status == true) {
+        uwb_id2data_hash_[msg.id].range.push_back(msg.range);
+        uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
+        uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+        uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
+
+      }
+    } 
+    else {
+      ROS_WARN("Not registered UWB ID");
     }
-  } 
-  else {
-    ROS_WARN("Not registered UWB ID");
   }
   return;
 }

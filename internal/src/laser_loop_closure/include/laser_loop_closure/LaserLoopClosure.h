@@ -64,6 +64,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
 
+#include <std_msgs/Bool.h>
 #include <core_msgs/Artifact.h>
 
 // for UWB
@@ -202,6 +203,8 @@ class LaserLoopClosure {
 
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
 
+  size_t GetNumberStampsKeyed() const;
+
   // Publish pose graph for visualization.
   bool PublishPoseGraph(bool only_publish_if_changed = true);
 
@@ -274,6 +277,7 @@ class LaserLoopClosure {
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactorAtLoad(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
 
+
   // Perform ICP between two laser scans.
   /**
    *  Is the query scan filtered and transformed. Decreases computation of filtering the same query scan
@@ -304,6 +308,9 @@ class LaserLoopClosure {
 
   // bool AddFactorService(laser_loop_closure::ManualLoopClosureRequest &request,
   //                       laser_loop_closure::ManualLoopClosureResponse &response);
+
+  // Subscribe to laster lc toggle
+  void LaserLCToggle(const std_msgs::Bool& msg);
 
   // Node name.
   std::string name_;
@@ -390,6 +397,9 @@ class LaserLoopClosure {
 
   // Artifacts and labels 
   std::unordered_map<gtsam::Key, ArtifactInfo> artifact_key2info_hash;
+
+  // Visualization publishers.
+  ros::Subscriber laser_lc_toggle_sub_;
 
   // Visualization publishers.
   ros::Publisher scan1_pub_;
