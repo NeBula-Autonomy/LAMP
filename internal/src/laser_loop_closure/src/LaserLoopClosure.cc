@@ -1613,6 +1613,7 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
   bool is_manual_loop_closure = false;
   return AddFactor(posekey, artifact_key, pose12, is_manual_loop_closure,
                    artifact_rot_precision_, artifact_trans_precision_);
+
 }
 
 bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2, 
@@ -2577,6 +2578,12 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
   ROS_INFO_STREAM("Loop closure pose_graph_processing");
 
+  // Update graph to load with other (non odom) factors, if not already initialized
+  if (values_recieved_at_base_.exists(initial_key_)){
+    nfg_to_load_graph_ = nfg_;
+    values_to_load_graph_ = values_;
+  }
+
   // // Clear pgo_solver_
   // pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
   // pgo_solver_->print();
@@ -2818,12 +2825,10 @@ void LaserLoopClosure::PoseGraphBaseHandler(
         values_to_add_graph_,
         between_initial_factors_); // Add full graph to an existing graph
   }
+
   // Get all values and nfg to laser loop closure
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
-
-  nfg_to_load_graph_ = pgo_solver_->getFactorsUnsafe();
-  values_to_load_graph_ = pgo_solver_->calculateEstimate();
   
   // values_.print("from RobustPGO values");
   // nfg_.print("from RobustPGO nfg");
@@ -2838,6 +2843,10 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     ROS_INFO("Found loop closures after pose graph callback ");
     found_loop = true;
   }
+
+
+  nfg_to_load_graph_ = pgo_solver_->getFactorsUnsafe();
+  values_to_load_graph_ = pgo_solver_->calculateEstimate();
 
   // publish posegraph
   has_changed_ = true;
