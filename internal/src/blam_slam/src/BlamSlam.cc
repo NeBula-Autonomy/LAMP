@@ -662,7 +662,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
       = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(R_artifact_position[0], 
                                                   R_artifact_position[1],
                                                   R_artifact_position[2]));
-  R_pose_A.print("Between pose is ");
+  // R_pose_A.print("Between pose is \n");
 
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
@@ -1062,8 +1062,8 @@ void BlamSlam::PoseGraphCallback(
   localization_.PublishPoseNoUpdate();
 
   // Publish Graph
-  loop_closure_.PublishPoseGraph();
-  loop_closure_.PublishArtifacts();
+  // loop_closure_.PublishPoseGraph();
+  // loop_closure_.PublishArtifacts();
 
   // Publish map
   mapper_.PublishMap();

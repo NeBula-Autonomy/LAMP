@@ -1604,7 +1604,7 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
 
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
-    ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
+    // ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
     artifact_key2info_hash[artifact_key] = artifact;
   } else {
     artifact_key2info_hash[artifact_key] = artifact;
@@ -1695,7 +1695,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       cost = factor.error(linPoint);
       ROS_INFO_STREAM("Cost of artifact factor is: " << cost);
     } else {
-      factor.print("Artifact loop connection addition factor \n");
+      factor.print("New Artifact factor \n");
     }
   }
 
@@ -2795,8 +2795,8 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
   ROS_INFO("Pre pgo_solver print");
   pgo_solver_->print();
-  nfg_to_load_graph_.print("NFGload");
-  nfg_to_add_graph_.print("NFGadd");
+  // nfg_to_load_graph_.print("NFGload");
+  // nfg_to_add_graph_.print("NFGadd");
 
   // Update
   ROS_INFO("Pre loadGraph");
@@ -2821,13 +2821,30 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   // Get all values and nfg to laser loop closure
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
-  values_.print("from RobustPGO values");
-  nfg_.print("from RobustPGO nfg");
+
+  nfg_to_load_graph_ = pgo_solver_->getFactorsUnsafe();
+  values_to_load_graph_ = pgo_solver_->calculateEstimate();
+  
+  // values_.print("from RobustPGO values");
+  // nfg_.print("from RobustPGO nfg");
   // Update key for getting the latest pose
   key_ = key_ + 1;
+
+  // Run loop closures
+  bool found_loop = false;
+  std::vector<gtsam::Symbol> closure_keys;
+  check_for_loop_closures_ = true;
+  if (FindLoopClosures(key_ - 1, &closure_keys)){
+    ROS_INFO("Found loop closures after pose graph callback ");
+    found_loop = true;
+  }
 
   // publish posegraph
   has_changed_ = true;
   PublishPoseGraph();
+
+  if (found_loop){
+    PublishArtifacts();
+  }
 }
 
