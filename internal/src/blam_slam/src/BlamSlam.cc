@@ -52,7 +52,8 @@ BlamSlam::BlamSlam()
     attitude_sigma_(0.04),
     marker_id_(0),
     largest_artifact_id_(0),
-    use_artifact_loop_closure_(false) {}
+    use_artifact_loop_closure_(false), 
+    b_is_front_end_(false) {}
 
 BlamSlam::~BlamSlam() {}
 
@@ -126,6 +127,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   // check if lamp is run as basestation
   b_is_basestation_ = false;
   if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
+  if (!pu::Get("b_is_front_end", b_is_front_end_)) return false;
 
   // set up subscriber to all robots if run on basestation
   if (b_is_basestation_) {
@@ -238,10 +240,12 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   if (!b_is_basestation_){
-    estimate_update_timer_ = nl.createTimer(
-        estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
-    
-    pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+    if (b_is_front_end_){
+      estimate_update_timer_ = nl.createTimer(
+          estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
+      
+      pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+    }
 
     uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
 
@@ -277,8 +281,31 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
       Subscriber_keyedscanList_.push_back(keyed_scan_sub);
       Subscriber_artifactList_.push_back(artifact_base_sub);
       ROS_INFO_STREAM(i);
-    }
+    }    
   }
+
+  if (!b_is_front_end_){
+    ros::Subscriber keyed_scan_sub =  nl.subscribe<pose_graph_msgs::KeyedScan>(
+        "keyed_scans_sub",
+        10,
+        &BlamSlam::KeyedScanCallback,
+        this);
+    ros::Subscriber pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
+        "pose_graph_sub",
+        10,
+        &BlamSlam::PoseGraphCallback,
+        this);
+    ros::Subscriber artifact_base_sub =
+        nl.subscribe("artifact_global_sub",
+                      10,
+                      &BlamSlam::ArtifactBaseCallback,
+                      this);
+
+    Subscriber_posegraphList_.push_back(pose_graph_sub);
+    Subscriber_keyedscanList_.push_back(keyed_scan_sub);
+    Subscriber_artifactList_.push_back(artifact_base_sub);
+  }
+
   return CreatePublishers(n);
 }
 
@@ -1033,6 +1060,10 @@ void BlamSlam::PoseGraphCallback(
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   localization_.PublishPoseNoUpdate();
+
+  // Publish Graph
+  loop_closure_.PublishPoseGraph();
+  loop_closure_.PublishArtifacts();
 
   // Publish map
   mapper_.PublishMap();

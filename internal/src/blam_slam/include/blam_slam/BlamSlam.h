@@ -220,6 +220,7 @@ class BlamSlam {
   //Basestation
   bool b_is_basestation_;
   std::vector<std::string> robot_names_;
+  bool b_is_front_end_;
 
   // Object IDs
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;

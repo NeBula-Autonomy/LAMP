@@ -1,23 +1,13 @@
 <launch>
   <arg name="robot_namespace" default="robot"/>
 
-  <!-- Velodyne topic throttle params -->
-  <arg name="vlp_throttle_freq" default="5.0"/><!-- Hz -->
-
-  <!-- Map processing params -->
-  <arg name="process_map" default="true"/>
-  <arg name="back_end_on_robot" default="true"/>
-  <arg name="map_update_freq" default="1.0"/><!-- Hz -->
-  <arg name="map_topic_input" default="blam_slam/octree_map"/>
-  <arg name="map_topic_output" default="blam_slam/octree_map_downsampled"/>
-
-  <!-- optional filename of the zip archive of a pose graph to be loaded -->
+    <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default=""/> 
 
   <group ns="$(arg robot_namespace)">
-    <!-- SLAM -->
+
     <node pkg="blam_slam"
-          name="blam_slam_fe"
+          name="blam_slam"
           type="blam_slam_node"
           output="screen">
 
@@ -29,6 +19,11 @@
       <remap from="~artifact" to="~artifact_global" />
       <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" />
       <remap from="~uwb_signal" to="comm/uwb/anchor" />
+
+      <!-- Pose graph subscriptions -->
+      <remap from="~pose_graph_sub" to="blam_slam_fe/pose_graph" />
+      <remap from="~keyed_scans_sub" to="blam_slam_fe/keyed_scans" />
+      <remap from="~artifact_global_sub" to="blam_slam_fe/artifact_global" />
 
       <!-- Serives -->
       <remap from="~drop_uwb_anchor" to="drop_uwb_anchor"/>
@@ -48,7 +43,7 @@
       </rosparam>      
 
       <!-- Flag on whether it is front=end or not -->
-      <param name="b_is_front_end" value="true" type="bool"/>
+      <param name="b_is_front_end" value="false" type="bool"/>
 
       <!-- Rates -->
       <rosparam file="$(find blam_example)/config/blam_rates.yaml"/>
@@ -80,6 +75,10 @@
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
 
+      <!-- show which to subscribe to of the robots -->
+      <rosparam file="$(find laser_loop_closure)/config/robot_names.yaml" />
+      <!-- TODO Change this to be only the robot this runs on -->
+
       <!-- The robot prefix dependent of robot_namespace -->
       <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
       <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
@@ -94,58 +93,11 @@
       <param name="artifact_prefix" value="o" if="$(eval robot_namespace == 'telemax')"/>
       <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
 
-      <!-- See if LAMP is run as basestation -->
-      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base_station')"/>
-      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base_station')"/>
+      <!-- Set LAMP to run as basestation -->
+      <param name="b_is_basestation" value="false" type="bool"/>
 
     </node>
 
-    <!-- Trotthling input cloud -->
-    <node name="point_cloud_throttler" type="throttle" pkg="topic_tools" args="messages velodyne_points $(arg vlp_throttle_freq)">
-    </node>
- 
-
-    <!-- Republish node with different frame_id -->
-    <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
-          args="standalone pcl/PassThrough">
-      <remap from="~input" to="velodyne_points"/>
-      <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
-      <remap from="~output" to="velodyne_points/transformed"/>
-      <rosparam subst_value="true">
-        filter_field_name: z
-        filter_limit_min: -100
-        filter_limit_max: 100
-        output_frame: $(arg robot_namespace)/base_link
-      </rosparam>
-    </node>
-
-
-    <!-- PC throttling and filtering -->
-    <group if="$(arg process_map)">
-        <include file="$(find blam_example)/launch/map_processing.launch">
-          <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-          <arg name="map_update_freq" value="$(arg map_update_freq)"/>
-          <arg name="map_topic_input" value="$(arg map_topic_input)"/>
-          <arg name="map_topic_output" value="$(arg map_topic_output)"/>
-        </include>
-    </group>
-
-    <!-- Convert output PoseStamped message to Odometry -->
-    <node pkg="topic_tools" type="transform" name="pose_to_odom"
-          respawn="true" output="screen"
-          args="/$(arg robot_namespace)/blam_slam/localization_integrated_estimate
-                /$(arg robot_namespace)/blam_slam/odometry
-                nav_msgs/Odometry
-                'nav_msgs.msg.Odometry(header=m.header, pose=geometry_msgs.msg.PoseWithCovariance(pose=m.pose))' --import nav_msgs geometry_msgs">
-    </node>
-
-  </group>
-
-  <!-- Run back end -->
-  <group if="$(arg back_end_on_robot)">
-    <include file="$(find blam_example)/launch/exec_online_robot_lc.launch">
-      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-    </include>
   </group>
 
 </launch>
