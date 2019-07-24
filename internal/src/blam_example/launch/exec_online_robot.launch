@@ -13,11 +13,6 @@
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default=""/> 
 
-  <!-- LO frontend -->
-  <include file="$(find blam_example_frontend)/launch/exec_online.launch">
-    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-  </include>
-
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->
     <node pkg="blam_slam"
