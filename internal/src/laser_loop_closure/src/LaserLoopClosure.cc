@@ -193,9 +193,38 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     return false;
 
   std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
-  OutlierRemoval* pcm =
-      new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
-  pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+
+    // Optimizer backend
+  bool b_use_outlier_rejection; // TODO CHANGE NAME OF BOOLEAN
+  if (!pu::Get("b_use_outlier_rejection", b_use_outlier_rejection))
+    return false;
+  if (b_use_outlier_rejection) {
+    // outlier rejection on: set up PCM params
+    double trans_threshold, rot_threshold;
+    if (!pu::Get("translation_check_threshold", trans_threshold))
+      return false;
+    if (!pu::Get("rotation_check_threshold", rot_threshold))
+      return false;
+    rpgo_params_.setPcmSimple3DParams(trans_threshold, rot_threshold, RobustPGO::Verbosity::VERBOSE);
+    std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
+    rpgo_params_.specialSymbols = special_symbs;
+  } else {
+    rpgo_params_.setNoRejection(RobustPGO::Verbosity::VERBOSE); // set no outlier rejection
+  }
+  // set solver 
+  int solver_num;
+  if (!pu::Get("solver", solver_num))
+    return false; 
+  if (solver_num == 1) {
+    rpgo_params_.solver = RobustPGO::Solver::LM;
+  } else if (solver_num == 2) {
+    rpgo_params_.solver = RobustPGO::Solver::GN;
+  } else {
+    ROS_ERROR("Unsupported solver parameter. Use 1 for LM and 2 for GN");
+  }
+
+  // Initialize solver 
+  pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
   pgo_solver_->print();
 
   // Set the initial position.
@@ -1643,14 +1672,8 @@ bool LaserLoopClosure::RemoveFactor(gtsam::Symbol key1,
 
   // 3. Remove factors and update
   std::cout << "Before remove update" << std::endl;
-  if (is_batch_loop_closure) {
-    // Only updating the factor graph to remove factors
-    pgo_solver_->removeFactorsNoUpdate(factorsToRemove);
-  } else {
-    // Running update to also do the optimization
-    pgo_solver_->update(
-        gtsam::NonlinearFactorGraph(), gtsam::Values(), factorsToRemove);
-  }
+  // Only updating the factor graph to remove factors
+  pgo_solver_->removeFactorsNoUpdate(factorsToRemove);
 
   // Update values
   values_ = pgo_solver_->calculateEstimate();
@@ -1906,7 +1929,7 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
   OutlierRemoval* pcm =
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
-  pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
   pgo_solver_->print();
   ROS_INFO_STREAM("2");
 
@@ -2367,7 +2390,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   // // Clear pgo_solver_
   // OutlierRemoval* pcm =
   //     new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
-  // pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  // pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
   // pgo_solver_->print();
 
   NonlinearFactorGraph new_factor;
@@ -2584,7 +2607,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
   OutlierRemoval* pcm =
       new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
-  pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
   ROS_INFO("Pre pgo_solver print");
   pgo_solver_->print();
   nfg_to_load_graph_.print("NFGload");

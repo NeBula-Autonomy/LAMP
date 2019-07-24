@@ -87,11 +87,8 @@
 #include <map>
 #include <vector>
 
-#include "RobustPGO/RobustPGO.h" // RobustPGO (backend solver)
-#include "RobustPGO/pcm/pcm.h"
+#include "RobustPGO/RobustSolver.h" // RobustPGO (backend solver)
 
-// 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
-#define SOLVER 1
 
 struct ArtifactInfo {
   std::string id; // this corresponds to parent_id
@@ -316,12 +313,13 @@ private:
   double relinearize_threshold_;
   bool publish_interactive_markers_;
   std::vector<unsigned int> manual_loop_keys_;
-  double odom_threshold_;
-  double pw_threshold_;
   gtsam::Symbol initial_key_;
-   gtsam::Symbol artifact_key_;
+  gtsam::Symbol artifact_key_;
   gtsam::Symbol first_loaded_key_;
   gtsam::Symbol stored_key_;
+
+  // Optimizer parameters 
+  RobustPGO::RobustSolverParams rpgo_params_;
 
   //Basestation
   bool b_is_basestation_;
@@ -346,7 +344,7 @@ private:
   unsigned int uwb_range_compensation_;
 
   // Optimizer object, and best guess pose values.
-  std::unique_ptr<RobustPGO> pgo_solver_;
+  std::unique_ptr<RobustPGO::RobustSolver> pgo_solver_;
 
   gtsam::NonlinearFactorGraph nfg_;
   gtsam::PriorFactor<gtsam::Pose3> prior_factor_;
