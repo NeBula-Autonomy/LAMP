@@ -6,7 +6,7 @@ solver: 1
 b_use_outlier_rejection: true
 
 # speed by a small fraction.
-check_for_loop_closures: true
+check_for_loop_closures: false
 
 # Whether or not consolidate artifacts
 use_artifact_loop_closure: false
