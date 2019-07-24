@@ -391,8 +391,8 @@ class LaserLoopClosure {
   unsigned int uwb_number_added_rangefactor_first_;
   unsigned int uwb_number_added_rangefactor_not_first_;
   double uwb_minimum_range_threshold_;
-  bool display_uwb_data_;
-  bool uwb_outlier_rejection_;
+  bool b_use_display_uwb_data_;
+  bool b_use_uwb_outlier_rejection_;
 
   // Optimizer object, and best guess pose values.
   std::unique_ptr<RobustPGO> pgo_solver_;

@@ -211,8 +211,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_number_added_rangefactor_first", uwb_number_added_rangefactor_first_)) return false;
   if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
   if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
-  if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
-  if (!pu::Get("uwb_outlier_rejection", uwb_outlier_rejection_)) return false;
+  if (!pu::Get("b_use_display_uwb_data", b_use_display_uwb_data_)) return false;
+  if (!pu::Get("b_use_uwb_outlier_rejection", b_use_uwb_outlier_rejection_)) return false;
 
   // convert initial quaternion to Roll/Pitch/Yaw
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
@@ -547,7 +547,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
   }
 
   // UWB data outlier rejection based on Hample outlier identifier
-  if (uwb_outlier_rejection_) {
+  if (b_use_uwb_outlier_rejection_) {
     UwbDataOutlierRejection(uwb_data);
   }
 
@@ -822,7 +822,7 @@ UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_dat
   sorted_data.range_nearest_key = range_nearest_key;
   sorted_data.posekey2data = uwb_posekey2data;
 
-  if (display_uwb_data_) {
+  if (b_use_display_uwb_data_) {
     ShowUwbRawData(uwb_data);
     ShowUwbRearrangedData(sorted_data);
   }
