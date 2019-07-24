@@ -349,11 +349,20 @@ private:
   std::unique_ptr<RobustPGO> pgo_solver_;
 
   gtsam::NonlinearFactorGraph nfg_;
+  gtsam::PriorFactor<gtsam::Pose3> prior_factor_;
+  gtsam::BetweenFactor<gtsam::Pose3> between_initial_factors_;
   gtsam::Values values_;
 
   // Backup values
   gtsam::NonlinearFactorGraph nfg_backup_;
   gtsam::Values values_backup_;
+
+  // Base values and factors
+  gtsam::Values values_recieved_at_base_;
+  gtsam::Values values_to_add_graph_;
+  gtsam::Values values_to_load_graph_;
+  gtsam::NonlinearFactorGraph nfg_to_add_graph_;
+  gtsam::NonlinearFactorGraph nfg_to_load_graph_;
 
   // Frames.
   std::string fixed_frame_id_;
