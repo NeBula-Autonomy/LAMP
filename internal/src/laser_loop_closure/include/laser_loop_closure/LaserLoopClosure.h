@@ -69,6 +69,7 @@
 #include <tf2_ros/transform_listener.h>
 
 #include <tf/transform_datatypes.h>
+#include <std_msgs/Bool.h>
 
 #include <core_msgs/Artifact.h>
 
@@ -87,8 +88,11 @@
 #include <map>
 #include <vector>
 
-#include "RobustPGO/RobustSolver.h" // RobustPGO (backend solver)
+#include "RobustPGO/RobustPGO.h" // RobustPGO (backend solver)
+#include "RobustPGO/pcm/pcm.h"
 
+// 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
+#define SOLVER 1
 
 struct ArtifactInfo {
   std::string id; // this corresponds to parent_id
@@ -98,6 +102,36 @@ struct ArtifactInfo {
                id(art_id), 
                num_updates(0){}
 };
+
+// Structure to store UWB range measurement in UwbSignalCallback
+struct UwbMeasurementInfo {
+  std::string id; // UWB HEX-ID ex) CE6B
+  std::string holder; // Robot name which carrys the UWB anchor
+  bool drop_status; // Flag of drop stats -dropped: true, -mounted: false
+  bool in_pose_graph; // Is included in the pose graph: true, not: false
+  std::vector<ros::Time> time_stamp; // Time when the ranage measurement is acquired
+  std::vector<double> range; // Range measurement data
+  std::vector<Eigen::Vector3d> robot_position; // The robot position where the range data is acquired
+  std::vector<double> dist_posekey; // The distance between robot_position and the position of the pose_key
+  std::vector<gtsam::Key> nearest_pose_key; 
+};
+
+// Structure to process UWB measurement data
+// This should be linked with only one pose key
+struct UwbDataLinkedWithKey {
+  unsigned int data_number; // Number of the range measurement data
+  double range_average;
+  std::vector<double> range; // Range measurement data
+  std::vector<Eigen::Vector3d> robot_position; // The robot position where the range data is acquired
+  std::vector<double> dist_posekey; // The distance between robot_position and the position of the pose_key
+};
+
+struct UwbRearrangedData {
+  std::vector<gtsam::Key> pose_key_list; // List of pose keys which are linked with UWB range measurement
+  std::vector<double> range_nearest_key; // UWB range data observed when the robot was located at the nearest position aganst the pose key
+  std::map<gtsam::Key, UwbDataLinkedWithKey> posekey2data;
+};
+
 
 class LaserLoopClosure {
  public:
@@ -123,14 +157,22 @@ class LaserLoopClosure {
                         const Mat66& covariance, const ros::Time& stamp,
                         gtsam::Symbol* key);
   
-  bool AddUwbFactor(const std::string uwb_id,
-                    const ros::Time& stamp,
-                    const double range,
-                    const Eigen::Vector3d robot_position);
+  bool AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data);
   
   bool DropUwbAnchor(const std::string uwb_id,
                      const ros::Time& stamp,
                      const Eigen::Vector3d robot_position);
+  
+  bool UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
+                                  gtsam::Values new_values);
+  
+  UwbRearrangedData RearrangeUwbData(UwbMeasurementInfo &uwb_data);
+
+  void ShowUwbRawData(const UwbMeasurementInfo uwb_data);
+  void ShowUwbRearrangedData(UwbRearrangedData uwb_data);
+
+  template <class T1, class T2>
+  void Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &vector2);
 
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.
@@ -165,6 +207,8 @@ class LaserLoopClosure {
   geometry_utils::Transform3 GetPoseAtKey(const gtsam::Key& key) const; 
 
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
+
+  size_t GetNumberStampsKeyed() const;
 
   // Publish pose graph for visualization.
   bool PublishPoseGraph(bool only_publish_if_changed = true);
@@ -273,6 +317,9 @@ private:
   // bool AddFactorService(laser_loop_closure::ManualLoopClosureRequest &request,
   //                       laser_loop_closure::ManualLoopClosureResponse &response);
 
+  // Subscribe to laster lc toggle
+  void LaserLCToggle(const std_msgs::Bool& msg);
+
   // Node name.
   std::string name_;
 
@@ -296,11 +343,13 @@ private:
   double distance_to_skip_recent_poses_;
   unsigned int skip_recent_poses_;
   double distance_before_reclosing_;
+  double distance_before_batch_reclosing_;
   unsigned int poses_before_reclosing_;
   unsigned int n_iterations_manual_loop_close_;
   double translation_threshold_nodes_;
   double rotation_threshold_nodes_;
   double translation_threshold_kf_;
+  double rotation_threshold_kf_;
   double proximity_threshold_;
   double max_tolerable_fitness_;
   double manual_lc_rot_precision_;
@@ -312,6 +361,7 @@ private:
   unsigned int relinearize_skip_;
   double relinearize_threshold_;
   bool publish_interactive_markers_;
+  bool load_graph_from_zip_file_;
   std::vector<unsigned int> manual_loop_keys_;
   gtsam::Symbol initial_key_;
   gtsam::Symbol artifact_key_;
@@ -342,6 +392,11 @@ private:
   std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
+  unsigned int uwb_factor_optimizer_;
+  unsigned int uwb_number_added_rangefactor_first_;
+  unsigned int uwb_number_added_rangefactor_not_first_;
+  double uwb_minimum_range_threshold_;
+  bool display_uwb_data_;
 
   // Optimizer object, and best guess pose values.
   std::unique_ptr<RobustPGO::RobustSolver> pgo_solver_;
@@ -368,6 +423,9 @@ private:
 
   // Artifacts and labels 
   std::unordered_map<gtsam::Key, ArtifactInfo> artifact_key2info_hash;
+
+  // Visualization publishers.
+  ros::Subscriber laser_lc_toggle_sub_;
 
   // Visualization publishers.
   ros::Publisher scan1_pub_;

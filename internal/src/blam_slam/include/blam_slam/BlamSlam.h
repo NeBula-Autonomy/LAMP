@@ -55,6 +55,10 @@
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
+
 #include <core_msgs/Artifact.h>
 #include <uwb_msgs/Anchor.h>
 #include <mesh_msgs/ProcessCommNode.h>
@@ -78,6 +82,9 @@ class BlamSlam {
   void ProcessUwbRangeData(const std::string uwb_id);
 
   int marker_id_;
+  
+  //listener for tf published by fiducials
+  tf::TransformListener tf_listener_;
 
  private:
   // Node initialization.
@@ -119,6 +126,9 @@ class BlamSlam {
   // Drop UWB from a robot
   bool DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
                       mesh_msgs::ProcessCommNodeResponse &response);
+  
+  // Clear UWB buffer
+  void UwbClearBuffer(const std::string uwb_id);
 
   // Service for rinning lazer loop closure again
   bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
@@ -137,8 +147,16 @@ class BlamSlam {
   void PublishArtifact(const Eigen::Vector3d& W_artifact_position,
                        const core_msgs::Artifact& msg);
 
+  bool getTransformEigenFromTF(const std::string& parent_frame,
+                               const std::string& child_frame,
+                               const ros::Time& time,
+                               Eigen::Affine3d& T);
+
   // The node's name.
   std::string name_;
+
+  std::string blam_frame_;
+  std::string world_frame_;
 
   // The intial key in the pose graph
   gtsam::Symbol initial_key_;
@@ -170,14 +188,6 @@ class BlamSlam {
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
-
-  // Load and restart delta
-  double load_graph_x_;
-  double load_graph_y_;
-  double load_graph_z_;
-  double load_graph_roll_;
-  double load_graph_pitch_;
-  double load_graph_yaw_;
 
   double restart_x_;
   double restart_y_;
@@ -215,9 +225,14 @@ class BlamSlam {
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
 
   // UWB
-  std::map<std::string, std::map<ros::Time, std::pair<double, Eigen::Vector3d>>> map_uwbid_time_data_;
-  std::map<std::string, bool> uwb_drop_status_; // true: dropped, false: on the robot
-  std::vector<std::string> uwb_id_list_;
+  std::vector<std::string> uwb_id_list_all_;
+  std::vector<std::string> uwb_id_list_drop_;
+  unsigned int uwb_skip_measurement_number_;
+  unsigned int uwb_update_key_number_;
+  unsigned int uwb_required_key_number_first_;
+  unsigned int uwb_required_key_number_not_first_;
+  unsigned int uwb_first_key_threshold_;
+  std::map<std::string, UwbMeasurementInfo> uwb_id2data_hash_;
 
   // Class objects (BlamSlam is a composite class).
   MeasurementSynchronizer synchronizer_;

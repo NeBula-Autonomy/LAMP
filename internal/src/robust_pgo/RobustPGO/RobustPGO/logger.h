@@ -11,6 +11,11 @@ author: Yun Chang
 #include <iostream>
 using namespace std;
 
+<<<<<<< HEAD
+=======
+namespace RobustPGO {
+
+>>>>>>> master
 enum log_level_t {
   WARNING,
   INFO,
@@ -30,8 +35,13 @@ public:
     return *this;
   }    
 protected:
+<<<<<<< HEAD
   log_level_t level;
   boost::format fmt;
+=======
+  boost::format fmt;
+  log_level_t level;
+>>>>>>> master
 };
 }//namespace log_impl
 
@@ -41,4 +51,9 @@ log_impl::formatted_log_t log(const char* msg) {
   return log_impl::formatted_log_t( level, msg );
 }
 
+<<<<<<< HEAD
+=======
+}
+
+>>>>>>> master
 #endif 

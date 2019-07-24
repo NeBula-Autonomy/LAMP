@@ -77,6 +77,7 @@
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
 
+<<<<<<< HEAD
       <!-- The robot prefix dependent of robot_namespace -->
       <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
       <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
@@ -95,6 +96,12 @@
       <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base')"/>
       <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base')"/>
 
+=======
+      <!-- Initialization  -->
+      <rosparam file="$(env HOME)/.ros/fiducial_calibration_$(arg robot_namespace).yaml"/>
+
+      
+>>>>>>> master
     </node>
 
     <!-- Trotthling input cloud -->

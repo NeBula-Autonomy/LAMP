@@ -878,6 +878,16 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.z = 1.0f;
     m.type = visualization_msgs::Marker::CYLINDER;
   }
+  if (artifact_label == "cellphone") {
+    std::cout << "cellphone marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.2f;
+    m.scale.x = 0.35f;
+    m.scale.y = 0.7f;
+    m.scale.z = 0.1f;
+    m.type = visualization_msgs::Marker::CUBE;
+  }
 }
 
 void PoseGraphVisualizer::VisualizeArtifacts() {

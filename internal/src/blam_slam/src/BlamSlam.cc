@@ -59,6 +59,8 @@ BlamSlam::~BlamSlam() {}
 bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
   name_ = ros::names::append(n.getNamespace(), "BlamSlam");
 
+  initial_key_ = 0;
+
   if (!filter_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud filter.", name_.c_str());
     return false;
@@ -114,13 +116,6 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("noise/odom_attitude_sigma", attitude_sigma_)) return false;
 
   //Load and restart deltas
-  if (!pu::Get("load_graph_x", load_graph_x_)) return false;
-  if (!pu::Get("load_graph_y", load_graph_y_)) return false;
-  if (!pu::Get("load_graph_z", load_graph_z_)) return false;
-  if (!pu::Get("load_graph_roll", load_graph_roll_)) return false;
-  if (!pu::Get("load_graph_pitch", load_graph_pitch_)) return false;
-  if (!pu::Get("load_graph_yaw", load_graph_yaw_)) return false;
-
   if (!pu::Get("restart_x", restart_x_)) return false;
   if (!pu::Get("restart_y", restart_y_)) return false;
   if (!pu::Get("restart_z", restart_z_)) return false;
@@ -138,16 +133,29 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
       return false;
   }
 
-  // Load dropped item ids
-  if (!pu::Get("items/uwb_id", uwb_id_list_)) return false;
-  for (int i = 0; i < uwb_id_list_.size(); i++) {
-    uwb_drop_status_[uwb_id_list_[i]] = false;
+  // Load uwb information
+  if (!pu::Get("uwb/all", uwb_id_list_all_)) return false;
+  if (!pu::Get("uwb/drop", uwb_id_list_drop_)) return false;
+  for (auto itr = uwb_id_list_all_.begin(); itr != uwb_id_list_all_.end(); itr++) {
+    UwbMeasurementInfo uwb_data;
+    uwb_data.id = *itr;
+    uwb_data.drop_status = true;  // This should be false. (after the enhancement of UWB firmware)
+    uwb_id2data_hash_[*itr] = uwb_data;
+    uwb_id2data_hash_[*itr].in_pose_graph = false;
+  }
+  for (auto itr = uwb_id_list_drop_.begin(); itr != uwb_id_list_drop_.end(); itr++) {
+    uwb_id2data_hash_[*itr].holder = name_.c_str();
+    uwb_id2data_hash_[*itr].drop_status = false;  // This sentence will be removed.
   }
 
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
-  if (!pu::Get("b_use_uwb", b_use_uwb_))
-    return false;
+  if (!pu::Get("b_use_uwb", b_use_uwb_)) return false;
+  if (!pu::Get("uwb_skip_measurement_number", uwb_skip_measurement_number_)) return false;
+  if (!pu::Get("uwb_update_key_number", uwb_update_key_number_)) return false;
+  if (!pu::Get("uwb_required_key_number_first", uwb_required_key_number_first_)) return false;
+  if (!pu::Get("uwb_required_key_number_not_first", uwb_required_key_number_not_first_)) return false;
+  if (!pu::Get("uwb_first_key_threshold", uwb_first_key_threshold_)) return false;
 
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
@@ -303,7 +311,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
     return true;
   }
 
-  // Get last node pose before doing loop closure 
+  // Get last node pose before doing loop closure
   gu::Transform3 last_key_pose;
   last_key_pose = loop_closure_.GetLastPose();
 
@@ -378,7 +386,7 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
     response.success = false;
     return true;
   }
-  bool is_batch_loop_closure = false;
+  bool is_batch_loop_closure = false; // TODO check if we need this
   response.success = loop_closure_.RemoveFactor(
     static_cast<gtsam::Symbol>(id_from),
     static_cast<gtsam::Symbol>(id_to),
@@ -449,36 +457,51 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
     covariance(i, i) = attitude_sigma_*attitude_sigma_; //0.4, 0.004; 0.2 m sd
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
+  
+  gu::Transform3 init_pose = loop_closure_.GetInitialPose();
+  gu::Transform3 current_pose = localization_.GetIntegratedEstimate(); // loop_closure_.GetCurrentPose();
+  const gu::Transform3 pose_delta = gu::PoseDelta(init_pose, current_pose);
+  loop_closure_.AddFactorAtLoad(pose_delta, covariance);
 
-  // Obtain the second robot's initial pose from the tf
-  //TODO: Kamak: write a callback function to get the tf
-  // compute the delta and put it in this format.
-  delta_after_load_.translation = gu::Vec3(load_graph_x_, load_graph_y_, load_graph_z_);
-  delta_after_load_.rotation = gu::Rot3(load_graph_roll_, load_graph_pitch_, load_graph_yaw_);
-  loop_closure_.AddFactorAtLoad(delta_after_load_, covariance);
-
-  // Bool for adding scan to key the pose added at load
-  b_add_first_scan_to_key_ = true;
-
+  // Also reset the robot's estimated position.
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   return true;
 }
 
 bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
                                 blam_slam::BatchLoopClosureResponse &response) {
  
-  std::cout << "Looking for any loop closures..." << std::endl;
+  std::cout << "BATCH LOOP CLOSURE. Looking for any loop closures..." << std::endl;
 
   response.success = loop_closure_.BatchLoopClosure();
   // We found one - regenerate the 3D map.
   PointCloud::Ptr regenerated_map(new PointCloud);
   loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  mapper_.Reset();
-  PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(regenerated_map, unused.get());
+  if (response.success){
+    ROS_INFO("Found Loop Closures in batch loop closure");
+  
+    // We found one - regenerate the 3D map.
+    PointCloud::Ptr regenerated_map(new PointCloud);
+    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+    mapper_.Reset();
+    PointCloud::Ptr unused(new PointCloud);
+    mapper_.InsertPoints(regenerated_map, unused.get());
+
+    // Also reset the robot's estimated position.
+    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+
+    // Visualize the pose graph updates
+    loop_closure_.PublishPoseGraph();
+
+    // Publish artifacts - from pose-graph positions
+    loop_closure_.PublishArtifacts();
+
+
+  }else {
+    ROS_INFO("No loop closures in batch loop closure");
+  }
   return true; 
 }
 
@@ -491,7 +514,7 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
 
   loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, aug_robot_position);
 
-  uwb_drop_status_[request.node.AnchorID] = true;
+  uwb_id2data_hash_[request.node.AnchorID].drop_status = true;
   
   return true;
 }
@@ -588,7 +611,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Check if the ID of the object already exists in the object hash
   if (use_artifact_loop_closure_ && artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() && 
       msg.label != "cellphone") {
-    // Take the ID for that object - no reconciliation in the pose-graph if a cell phone (for now)
+    // Take the ID for that object - no reconciliation in the pose-graph of a cell phone (for now)
     cur_artifact_key = artifact_id2key_hash[artifact_id];
     std::cout << "artifact previously observed, artifact id " << artifact_id 
               << " with key in pose graph " 
@@ -676,52 +699,59 @@ void BlamSlam::UwbTimerCallback(const ros::TimerEvent& ev) {
     return;
   }
 
-  // Show range data for debug
-  for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
-    ROS_DEBUG_STREAM("UWB-ID: " + itr->first);
-    for (auto itr_child = (itr->second).begin(); itr_child != (itr->second).end(); itr_child++) {
-      ROS_DEBUG_STREAM("time = " << itr_child->first << ", range = " << itr_child->second.first);
-    }
-  }
+  for (auto itr = uwb_id2data_hash_.begin(); itr != uwb_id2data_hash_.end(); itr++) {
+    std::string uwb_id = itr->first;
+    UwbMeasurementInfo data = itr->second;
 
-  for (auto itr = map_uwbid_time_data_.begin(); itr != map_uwbid_time_data_.end(); itr++) {
-    if (!itr->second.empty()) {
-      auto itr_end = (itr->second).end();
-      itr_end--;
-      auto time_diff = ros::Time::now() - itr_end->first;
-      ROS_WARN("Time difference is %f s",time_diff.toSec());
-      if (time_diff.toSec() > 20.0) {
-        if (itr->second.size() > 4) {
-          ProcessUwbRangeData(itr->first);
+    if (data.range.size() > uwb_skip_measurement_number_) {
 
-          itr->second.clear();
+      // Calculate the pose key number difference between the latest pose key and the pose key linked with UWB
+      auto latest_pose_key = loop_closure_.GetKeyAtTime(ros::Time::now());
+      auto latest_obs_key = loop_closure_.GetKeyAtTime(data.time_stamp.back());
+      int key_diff = gtsam::symbolIndex(latest_pose_key) - gtsam::symbolIndex(latest_obs_key);
+
+      // Check whether enough number of pose key is passed or not
+      if (key_diff >= uwb_update_key_number_) {
+        
+        // Count the number of pose keys linked with UWB
+        // If it's the first time observation, at least three keys are necessary to localize the UWB anchor
+        unsigned int required_key_number;
+        if (uwb_id2data_hash_[uwb_id].in_pose_graph == false) {
+          required_key_number = uwb_required_key_number_first_;
+        }
+        else {
+          required_key_number = uwb_required_key_number_not_first_;
+        }
+
+        auto pose_key_list = data.nearest_pose_key;
+        pose_key_list.erase(std::unique(pose_key_list.begin(), pose_key_list.end()), pose_key_list.end());
+        if (pose_key_list.size() >= required_key_number) {
+          ProcessUwbRangeData(uwb_id);
+          UwbClearBuffer(uwb_id);
         }
         else {
           ROS_INFO("Number of range measurement is NOT enough");
-          itr->second.clear();
         }
-        
       }
     }
   }
+  return;
 }
+
+void BlamSlam::UwbClearBuffer(const std::string uwb_id) {
+  // Clear the UWB data buffer after processing the data and adding RangeFactor
+  uwb_id2data_hash_[uwb_id].range.clear();
+  uwb_id2data_hash_[uwb_id].time_stamp.clear();
+  uwb_id2data_hash_[uwb_id].robot_position.clear();
+  uwb_id2data_hash_[uwb_id].dist_posekey.clear();
+  uwb_id2data_hash_[uwb_id].nearest_pose_key.clear();
+}
+
 
 void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
   ROS_INFO_STREAM("Start to process UWB range measurement data of " << uwb_id);
 
-  std::map<double, ros::Time> map_range_time_;
-
-  for (auto itr = map_uwbid_time_data_[uwb_id].begin(); itr != map_uwbid_time_data_[uwb_id].end(); itr++) {
-    map_range_time_[itr->second.first] = itr->first;
-  }
-
-  auto minItr = std::min_element(map_range_time_.begin(), map_range_time_.end());
-
-  ros::Time aug_time = minItr->second;
-  double aug_range = minItr->first;
-  Eigen::Vector3d aug_robot_position = map_uwbid_time_data_[uwb_id][aug_time].second;
-
-  if (loop_closure_.AddUwbFactor(uwb_id, aug_time, aug_range, aug_robot_position)) {
+  if (loop_closure_.AddUwbFactor(uwb_id, uwb_id2data_hash_[uwb_id])) {  
     ROS_INFO("Updating the map by UWB data");
     PointCloud::Ptr regenerated_map(new PointCloud);
     loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
@@ -740,7 +770,10 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
     mapper_.PublishMap();
 
     ROS_INFO("Updated the map by UWB Range Factors");
+
+    uwb_id2data_hash_[uwb_id].in_pose_graph = true;
   }
+  return;
 }
 
 void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
@@ -748,20 +781,24 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
     return;
   }
 
-  // TODO: Screening before entering into this subscriber
-  auto itr = uwb_drop_status_.find(msg.id);
-  if (itr != end(uwb_drop_status_)) {
-    if (itr->second == true) {
-      map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
-      map_uwbid_time_data_[msg.id][msg.header.stamp].second
-      = localization_.GetIntegratedEstimate().translation.Eigen();
+  if (loop_closure_.GetNumberStampsKeyed() > uwb_first_key_threshold_) {
+    
+    // Store the UWB-related data into the buffer "uwb_id2data_hash_"
+    auto itr = uwb_id2data_hash_.find(msg.id);
+    if (itr != end(uwb_id2data_hash_)) {
+      if (uwb_id2data_hash_[msg.id].drop_status == true) {
+        uwb_id2data_hash_[msg.id].range.push_back(msg.range);
+        uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
+        uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+        uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
+
+      }
+    } 
+    else {
+      ROS_WARN("Not registered UWB ID");
     }
   }
-  else {
-    map_uwbid_time_data_[msg.id][msg.header.stamp].first = msg.range;
-    map_uwbid_time_data_[msg.id][msg.header.stamp].second
-    = localization_.GetIntegratedEstimate().translation.Eigen();
-  }
+  return;
 }
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
@@ -801,6 +838,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   }
 
   // Containers.
+  PointCloud::Ptr msg_transformed(new PointCloud);
   PointCloud::Ptr msg_neighbors(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
@@ -952,69 +990,19 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan,
   return true;
 }
 
-
-// BASE STATION
-void BlamSlam::KeyedScanCallback(
-    const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
-  ROS_INFO_STREAM("Keyed scan message recieved");
-
-  // Access loop closure callback
-  loop_closure_.KeyedScanBaseHandler(msg);
+bool BlamSlam::getTransformEigenFromTF(
+    const std::string& parent_frame,
+    const std::string& child_frame,
+    const ros::Time& time,
+    Eigen::Affine3d& T) {
+  ros::Duration timeout(3.0);
+  tf::StampedTransform tf_tfm;
+  try {
+    tf_listener_.waitForTransform(parent_frame, child_frame, time, timeout);
+    tf_listener_.lookupTransform(parent_frame, child_frame, time, tf_tfm);
+  } catch (tf::TransformException& ex) {
+    ROS_FATAL("%s", ex.what());
+  }
+  tf::transformTFToEigen(tf_tfm, T);
 }
 
-void BlamSlam::PoseGraphCallback(
-    const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
-  ROS_INFO_STREAM("Pose Graph message recieved");
-
-  // Access loop closure callback
-  loop_closure_.PoseGraphBaseHandler(msg);
-
-  // Update map
-  // We found one - regenerate the 3D map.
-  PointCloud::Ptr regenerated_map(new PointCloud);
-  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
-
-  mapper_.Reset();
-  PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(regenerated_map, unused.get());
-
-  // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-  localization_.PublishPoseNoUpdate();
-
-  // Publish map
-  mapper_.PublishMap();
-}
-
-void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
-  ROS_INFO_STREAM("Artifact message recieved");
-  core_msgs::Artifact artifact;
-  artifact.header = msg->header;
-  artifact.name = msg->name;
-  artifact.parent_id = msg->parent_id;
-  artifact.seq = msg->seq;
-  artifact.hotspot_name = msg->hotspot_name;
-  artifact.point = msg->point;
-  artifact.covariance = msg->covariance;
-  artifact.confidence = msg->confidence;
-  artifact.label = msg->label;
-  artifact.thumbnail = msg->thumbnail;
-
-  ArtifactInfo artifactinfo(msg->parent_id);
-  artifactinfo.msg = artifact;
-
-  std::cout << "Artifact position in world is: " << artifact.point.point.x
-            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
-            << std::endl;
-  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
-
-  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
-  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
-  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
-            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
-            << std::endl;
-  std::cout << "\t Label: " << artifact.label << std::endl;
-
-  // Publish artifacts - should be updated from the pose-graph
-  loop_closure_.PublishArtifacts();
-}
