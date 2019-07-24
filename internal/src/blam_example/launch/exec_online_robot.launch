@@ -18,8 +18,7 @@
     <node pkg="blam_slam"
           name="blam_slam"
           type="blam_slam_node"
-          output="screen"
-          launch-prefix="gdb -ex run --args">
+          output="screen">
 
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
@@ -92,8 +91,8 @@
       <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
 
       <!-- See if LAMP is run as basestation -->
-      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base')"/>
-      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base')"/>
+      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base_station')"/>
+      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base_station')"/>
 
     </node>
 
@@ -105,14 +104,14 @@
     <!-- Republish node with different frame_id -->
     <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
           args="standalone pcl/PassThrough">
-      <!-- <remap from="~input" to="velodyne_points"/> -->
-      <remap from="~input" to="velodyne_points_throttle"/>
+      <remap from="~input" to="velodyne_points"/>
+      <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
       <remap from="~output" to="velodyne_points/transformed"/>
       <rosparam subst_value="true">
         filter_field_name: z
         filter_limit_min: -100
         filter_limit_max: 100
-        output_frame: $(arg robot_namespace)/base_link
+        output_frame: $(arg robot_namespace)/blam/base_link
       </rosparam>
     </node>
 

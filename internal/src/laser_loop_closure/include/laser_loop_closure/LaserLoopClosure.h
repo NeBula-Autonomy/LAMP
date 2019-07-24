@@ -88,11 +88,7 @@
 #include <map>
 #include <vector>
 
-#include "RobustPGO/RobustPGO.h" // RobustPGO (backend solver)
-#include "RobustPGO/pcm/pcm.h"
-
-// 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
-#define SOLVER 1
+#include "RobustPGO/RobustSolver.h"
 
 struct ArtifactInfo {
   std::string id; // this corresponds to parent_id

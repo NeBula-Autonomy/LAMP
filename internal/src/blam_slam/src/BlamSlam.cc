@@ -838,7 +838,6 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   }
 
   // Containers.
-  PointCloud::Ptr msg_transformed(new PointCloud);
   PointCloud::Ptr msg_neighbors(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
@@ -1006,3 +1005,72 @@ bool BlamSlam::getTransformEigenFromTF(
   tf::transformTFToEigen(tf_tfm, T);
 }
 
+// BASE STATION
+void BlamSlam::KeyedScanCallback(
+    const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
+  ROS_INFO_STREAM("Keyed scan message recieved");
+
+  // Access loop closure callback
+  loop_closure_.KeyedScanBaseHandler(msg);
+}
+
+void BlamSlam::PoseGraphCallback(
+    const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
+  ROS_INFO_STREAM("Pose Graph message recieved");
+
+  // Access loop closure callback
+  loop_closure_.PoseGraphBaseHandler(msg);
+
+  // Update map
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+  mapper_.Reset();
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
+
+  // Also reset the robot's estimated position.
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  localization_.PublishPoseNoUpdate();
+
+  // Publish map
+  mapper_.PublishMap();
+}
+
+void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
+  ROS_INFO_STREAM("Artifact message recieved");
+  core_msgs::Artifact artifact;
+  artifact.header = msg->header;
+  artifact.name = msg->name;
+  artifact.parent_id = msg->parent_id;
+  artifact.seq = msg->seq;
+  artifact.hotspot_name = msg->hotspot_name;
+  artifact.point = msg->point;
+  artifact.covariance = msg->covariance;
+  artifact.confidence = msg->confidence;
+  artifact.label = msg->label;
+  artifact.thumbnail = msg->thumbnail;
+
+  ArtifactInfo artifactinfo(msg->parent_id);
+  artifactinfo.msg = artifact;
+
+  std::cout << "Artifact position in world is: " << artifact.point.point.x
+            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
+            << std::endl;
+  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
+
+  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
+  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
+  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
+            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
+            << std::endl;
+  std::cout << "\t Label: " << artifact.label << std::endl;
+
+  // Publish artifacts - should be updated from the pose-graph
+  loop_closure_.PublishArtifacts();
+}
+
+size_t LaserLoopClosure::GetNumberStampsKeyed() const {
+  return stamps_keyed_.size();
+}
