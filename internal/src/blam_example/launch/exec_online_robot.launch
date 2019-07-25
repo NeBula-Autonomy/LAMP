@@ -6,6 +6,7 @@
 
   <!-- Map processing params -->
   <arg name="process_map" default="true"/>
+  <arg name="back_end_on_robot" default="true"/>
   <arg name="map_update_freq" default="1.0"/><!-- Hz -->
   <arg name="map_topic_input" default="blam_slam/octree_map"/>
   <arg name="map_topic_output" default="blam_slam/octree_map_downsampled"/>
@@ -16,18 +17,20 @@
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->
     <node pkg="blam_slam"
-          name="blam_slam"
+          name="blam_slam_fe"
           type="blam_slam_node"
-          output="screen"
-          launch-prefix="gdb -ex run --args">
+          output="screen">
 
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
+      <!-- Loop closures -->
+      <param name="check_for_loop_closures" value="false"/>
+
       <!-- Topics -->
       <remap from="~pcld" to="velodyne_points/transformed"/>
       <remap from="~artifact" to="~artifact_global" />
-      <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" />
+      <!-- <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" /> -->
       <remap from="~uwb_signal" to="comm/uwb/anchor" />
 
       <!-- Serives -->
@@ -46,6 +49,9 @@
         odom_position_sigma: 0.6324
         odom_attitude_sigma: 0.316
       </rosparam>      
+
+      <!-- Flag on whether it is front=end or not -->
+      <param name="b_is_front_end" value="true" type="bool"/>
 
       <!-- Rates -->
       <rosparam file="$(find blam_example)/config/blam_rates.yaml"/>
@@ -92,8 +98,8 @@
       <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
 
       <!-- See if LAMP is run as basestation -->
-      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base')"/>
-      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base')"/>
+      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base_station')"/>
+      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base_station')"/>
 
     </node>
 
@@ -105,8 +111,8 @@
     <!-- Republish node with different frame_id -->
     <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
           args="standalone pcl/PassThrough">
-      <!-- <remap from="~input" to="velodyne_points"/> -->
-      <remap from="~input" to="velodyne_points_throttle"/>
+      <remap from="~input" to="velodyne_points"/>
+      <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
       <remap from="~output" to="velodyne_points/transformed"/>
       <rosparam subst_value="true">
         filter_field_name: z
@@ -136,14 +142,13 @@
                 'nav_msgs.msg.Odometry(header=m.header, pose=geometry_msgs.msg.PoseWithCovariance(pose=m.pose))' --import nav_msgs geometry_msgs">
     </node>
 
-    <!-- BLAM frame/process manager -->
-    <node pkg="blam_slam"
-          name="blam_manager"
-          type="reinit_blam.py">
-      <param name="map_frame" value="$(arg robot_namespace)/map"/>
-      <param name="blam_frame" value="$(arg robot_namespace)/blam"/>
-    </node>
+  </group>
 
+  <!-- Run back end -->
+  <group if="$(arg back_end_on_robot)">
+    <include file="$(find blam_example)/launch/exec_online_robot_lc.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include>
   </group>
 
 </launch>

@@ -52,7 +52,8 @@ BlamSlam::BlamSlam()
     attitude_sigma_(0.04),
     marker_id_(0),
     largest_artifact_id_(0),
-    use_artifact_loop_closure_(false) {}
+    use_artifact_loop_closure_(false), 
+    b_is_front_end_(false) {}
 
 BlamSlam::~BlamSlam() {}
 
@@ -126,6 +127,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   // check if lamp is run as basestation
   b_is_basestation_ = false;
   if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
+  if (!pu::Get("b_is_front_end", b_is_front_end_)) return false;
 
   // set up subscriber to all robots if run on basestation
   if (b_is_basestation_) {
@@ -238,10 +240,12 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   if (!b_is_basestation_){
-    estimate_update_timer_ = nl.createTimer(
-        estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
-    
-    pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+    if (b_is_front_end_){
+      estimate_update_timer_ = nl.createTimer(
+          estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
+      
+      pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+    }
 
     uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
 
@@ -277,8 +281,31 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
       Subscriber_keyedscanList_.push_back(keyed_scan_sub);
       Subscriber_artifactList_.push_back(artifact_base_sub);
       ROS_INFO_STREAM(i);
-    }
+    }    
   }
+
+  if (!b_is_front_end_){
+    ros::Subscriber keyed_scan_sub =  nl.subscribe<pose_graph_msgs::KeyedScan>(
+        "keyed_scans_sub",
+        10,
+        &BlamSlam::KeyedScanCallback,
+        this);
+    ros::Subscriber pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
+        "pose_graph_sub",
+        10,
+        &BlamSlam::PoseGraphCallback,
+        this);
+    ros::Subscriber artifact_base_sub =
+        nl.subscribe("artifact_global_sub",
+                      10,
+                      &BlamSlam::ArtifactBaseCallback,
+                      this);
+
+    Subscriber_posegraphList_.push_back(pose_graph_sub);
+    Subscriber_keyedscanList_.push_back(keyed_scan_sub);
+    Subscriber_artifactList_.push_back(artifact_base_sub);
+  }
+
   return CreatePublishers(n);
 }
 
@@ -635,7 +662,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
       = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(R_artifact_position[0], 
                                                   R_artifact_position[1],
                                                   R_artifact_position[2]));
-  R_pose_A.print("Between pose is ");
+  // R_pose_A.print("Between pose is \n");
 
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
@@ -838,7 +865,6 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
   }
 
   // Containers.
-  PointCloud::Ptr msg_transformed(new PointCloud);
   PointCloud::Ptr msg_neighbors(new PointCloud);
   PointCloud::Ptr msg_base(new PointCloud);
   PointCloud::Ptr msg_fixed(new PointCloud);
@@ -1006,3 +1032,76 @@ bool BlamSlam::getTransformEigenFromTF(
   tf::transformTFToEigen(tf_tfm, T);
 }
 
+// BASE STATION
+void BlamSlam::KeyedScanCallback(
+    const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
+  ROS_INFO_STREAM("Keyed scan message recieved");
+
+  // Access loop closure callback
+  loop_closure_.KeyedScanBaseHandler(msg);
+}
+
+void BlamSlam::PoseGraphCallback(
+    const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
+  ROS_INFO_STREAM("Pose Graph message recieved");
+
+  // Access loop closure callback
+  loop_closure_.PoseGraphBaseHandler(msg);
+
+  // Update map
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+  mapper_.Reset();
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
+
+  // Also reset the robot's estimated position.
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  localization_.PublishPoseNoUpdate();
+
+  // Publish Graph
+  // loop_closure_.PublishPoseGraph();
+  // loop_closure_.PublishArtifacts();
+
+  // Publish map
+  mapper_.PublishMap();
+}
+
+void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
+  ROS_INFO_STREAM("Artifact message recieved");
+  core_msgs::Artifact artifact;
+  artifact.header = msg->header;
+  artifact.name = msg->name;
+  artifact.parent_id = msg->parent_id;
+  artifact.seq = msg->seq;
+  artifact.hotspot_name = msg->hotspot_name;
+  artifact.point = msg->point;
+  artifact.covariance = msg->covariance;
+  artifact.confidence = msg->confidence;
+  artifact.label = msg->label;
+  artifact.thumbnail = msg->thumbnail;
+
+  ArtifactInfo artifactinfo(msg->parent_id);
+  artifactinfo.msg = artifact;
+
+  std::cout << "Artifact position in world is: " << artifact.point.point.x
+            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
+            << std::endl;
+  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
+
+  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
+  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
+  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
+            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
+            << std::endl;
+  std::cout << "\t Label: " << artifact.label << std::endl;
+
+  // Publish artifacts - should be updated from the pose-graph
+  loop_closure_.PublishArtifacts();
+}
+
+size_t LaserLoopClosure::GetNumberStampsKeyed() const {
+  return stamps_keyed_.size();
+}

@@ -214,10 +214,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_range_measurement_error", uwb_range_measurement_error_)) return false;
   if (!pu::Get("uwb_range_compensation", uwb_range_compensation_)) return false;
   // Robust Optimizer
-  if (!pu::Get("odometry_check_threshold", odom_threshold_))
-    return false;
-  if (!pu::Get("pairwise_check_threshold", pw_threshold_))
-    return false;
   if (!pu::Get("uwb_factor_optimizer", uwb_factor_optimizer_)) return false;
   if (!pu::Get("uwb_number_added_rangefactor_first", uwb_number_added_rangefactor_first_)) return false;
   if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
@@ -1608,15 +1604,17 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
 
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
-    ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
+    // ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
     artifact_key2info_hash[artifact_key] = artifact;
   } else {
+    ROS_INFO("Existing artifact detected");
     artifact_key2info_hash[artifact_key] = artifact;
   }
   // add to pose graph 
   bool is_manual_loop_closure = false;
   return AddFactor(posekey, artifact_key, pose12, is_manual_loop_closure,
                    artifact_rot_precision_, artifact_trans_precision_);
+
 }
 
 bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2, 
@@ -1666,6 +1664,10 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
                   new_values.at<Pose3>(key2).translation().vector().x(),
                   new_values.at<Pose3>(key2).translation().vector().y(),
                   new_values.at<Pose3>(key2).translation().vector().z());
+
+    // Add timestamps (don't want to reference this with time, so just one way)
+    keyed_stamps_.insert(
+        std::pair<gtsam::Symbol, ros::Time>(key_, artifact_key2info_hash[key2].msg.header.stamp));
   }
 
   linPoint.insert(new_values); // insert new values (valid for all cases)
@@ -1699,7 +1701,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
       cost = factor.error(linPoint);
       ROS_INFO_STREAM("Cost of artifact factor is: " << cost);
     } else {
-      factor.print("Artifact loop connection addition factor \n");
+      factor.print("New Artifact factor \n");
     }
   }
 
@@ -2113,9 +2115,6 @@ bool LaserLoopClosure::Load(const std::string &zipFilename) {
   values_ = *gv.second;
   ROS_INFO_STREAM("1");
 
-  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
-  OutlierRemoval* pcm =
-      new PCM<Pose3>(odom_threshold_, pw_threshold_, special_symbs);
   pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
   pgo_solver_->print();
   ROS_INFO_STREAM("2");
@@ -2316,7 +2315,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       // ROS_INFO_STREAM("Symbol key (int) is " << keyed_pose.key);
 
       // Add UUID if an artifact or uwb node
-      if (sym_key.chr() == ('l' || 'm' || 'n' || 'o' || 'p')){
+      if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p'){
         // Artifact
         node.ID = artifact_key2info_hash[keyed_pose.key].msg.parent_id;
       }
@@ -2550,5 +2549,317 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_
     return Eigen::Vector3d();
   }
   return values_.at<Pose3>(artifact_key).translation().vector();
+}
+
+//------------------Basestation functions:---------------------------------
+
+void LaserLoopClosure::KeyedScanBaseHandler(
+    const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
+  gtsam::Symbol key = gtsam::Symbol(msg->key);
+  if (keyed_scans_.find(key) != keyed_scans_.end()) {
+    ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
+    return;
+  }
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr scan(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromROSMsg(msg->scan, *scan);
+
+  // The first key should be treated differently; we need to use the laser
+  // scan's timestamp for pose zero.
+  if (key == 0) {
+    const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
+    keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(key, stamp));
+    stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(stamp.toSec(), key));
+  }
+
+  // ROS_INFO_STREAM("AddKeyScanPair " << key);
+
+  // Add the key and scan.
+  keyed_scans_.insert(
+      std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+}
+
+void LaserLoopClosure::PoseGraphBaseHandler(
+    const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
+  ROS_INFO_STREAM("Loop closure pose_graph_processing");
+
+  // Update graph to load with other (non odom) factors, if not already initialized
+  if (values_recieved_at_base_.exists(initial_key_)){
+    ROS_INFO("updating graph in PoseGraphBaseHandler from new factors");
+    nfg_to_load_graph_ = nfg_;
+    values_to_load_graph_ = values_;
+  }
+
+  // // Clear pgo_solver_
+  // pgo_solver_.reset(new RobustPGO(pcm, SOLVER, special_symbs));
+  // pgo_solver_->print();
+
+  NonlinearFactorGraph new_factor;
+  Values new_values;
+  // PriorFactor<Pose3> prior_factor;
+
+  // Add the new nodes to base station posegraph
+  for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
+    // add to basestation gtsam values
+    key_ = gtsam::Symbol(msg_node.key);
+
+    if (values_recieved_at_base_.exists(key_))
+      continue;
+    gtsam::Point3 pose_translation(msg_node.pose.position.x,
+                                   msg_node.pose.position.y,
+                                   msg_node.pose.position.z);
+    gtsam::Rot3 pose_orientation(Rot3::quaternion(msg_node.pose.orientation.w,
+                                                  msg_node.pose.orientation.x,
+                                                  msg_node.pose.orientation.y,
+                                                  msg_node.pose.orientation.z));
+    gtsam::Pose3 full_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    // Check input for NaNs
+
+    // Add UUID if an artifact or uwb node
+    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p') {
+      // Artifact
+      // artifact_key2info_hash[key_] = msg_node.ID;
+      std::cout << "\t Artifact added to basestaion(PGcallback): "
+                << gtsam::DefaultKeyFormatter(key_);
+      std::cout << "\t with parent id: " << msg_node.ID << std::endl;
+      new_values.insert(key_, full_pose);
+      values_recieved_at_base_.insert(key_, full_pose);
+      // Add time to each node
+      keyed_stamps_.insert(
+          std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
+      stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(
+          msg_node.header.stamp.toSec(), key_));
+      continue;
+    }
+
+    // if previous key exists
+    if (values_recieved_at_base_.exists(key_ - 1)) {
+      ROS_INFO_STREAM("Previous key exists, no prior for key " << gtsam::DefaultKeyFormatter(key_) );
+      new_values.insert(key_, full_pose);
+      values_recieved_at_base_.insert(key_, full_pose);
+    }
+    // is initial key
+    else {
+      ROS_INFO_STREAM("Adding prior in pose graph callback for key " << gtsam::DefaultKeyFormatter(key_) );
+      LaserLoopClosure::Diagonal::shared_ptr covariance(
+          LaserLoopClosure::Diagonal::Sigmas(initial_noise_));
+
+      new_values.insert(key_, full_pose);
+      values_recieved_at_base_.insert(key_, full_pose);
+
+      // Set the first key if not already set - use this for adding between factors at start @AlexH
+      if (!b_first_key_set_){
+        initial_key_ = key_;
+        b_first_key_set_ = true;
+        prior_factor_ = MakePriorFactor(full_pose, covariance);
+      } else {
+        // Add betweenfactor between the first poses of the two different graphs
+        // Calculate distance between the poses
+        // In the case of multiple maps merging together
+        gu::Transform3 init_pose =
+            ToGu(values_recieved_at_base_.at<Pose3>(initial_key_));
+        gu::Transform3 current_pose =
+            ToGu(values_recieved_at_base_.at<Pose3>(key_));
+        const gu::Transform3 pose_delta =
+            gu::PoseDelta(init_pose, current_pose);
+
+        new_factor.add(MakePriorFactor(full_pose, covariance));
+
+        // TODO! How do we want to get the covariance??? FIX SOON!!
+        gu::MatrixNxNBase<double, 6> covariance;
+        covariance.Zeros();
+        for (int i = 0; i < 3; ++i)
+          covariance(i, i) = 0.316 * 0.316; // 0.4, 0.004; 0.2 m sd
+        for (int i = 3; i < 6; ++i)
+          covariance(i, i) = 0.141 * 0.141; // 0.1, 0.01; sqrt(0.01) rad sd
+        //-------------------------------------------------------------------------
+
+        between_initial_factors_ = BetweenFactor<Pose3>(
+            initial_key_, key_, ToGtsam(pose_delta), ToGtsam(covariance));
+      }
+    }
+
+    // Add time to each node
+    keyed_stamps_.insert(
+        std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
+    stamps_keyed_.insert(
+        std::pair<double, gtsam::Symbol>(msg_node.header.stamp.toSec(), key_));
+  }
+
+  // Add edges to basestation posegraph
+  for (const auto &msg_edge : msg->edges) {
+    gtsam::Point3 delta_translation(msg_edge.pose.position.x,
+                                    msg_edge.pose.position.y,
+                                    msg_edge.pose.position.z);
+    gtsam::Rot3 delta_orientation(
+        Rot3::quaternion(msg_edge.pose.orientation.w,
+                         msg_edge.pose.orientation.x,
+                         msg_edge.pose.orientation.y,
+                         msg_edge.pose.orientation.z));
+    gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
+
+    // TODO! How do we want to get the covariance??? FIX SOON!!
+    gu::MatrixNxNBase<double, 6> covariance;
+    covariance.Zeros();
+    for (int i = 0; i < 3; ++i)
+      covariance(i, i) = 0.316 * 0.316; // 0.4, 0.004; 0.2 m sd
+    for (int i = 3; i < 6; ++i)
+      covariance(i, i) = 0.141 * 0.141; // 0.1, 0.01; sqrt(0.01) rad sd
+    //-------------------------------------------------------------------------
+
+    if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
+      // Check if odometry_edge already exsists on basestation
+      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
+      bool b_edge_exists = false;
+      for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
+        if (odometry_edges_[ii].first == msg_edge.key_from && odometry_edges_[ii].second == msg_edge.key_to){
+          b_edge_exists = true;
+        }
+      }
+      if (b_edge_exists){
+        ROS_INFO_STREAM("Odom edge already exists for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+        continue;
+      }
+
+      // Add to basestation posegraph
+      ROS_INFO_STREAM("Adding Odom edge for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+      odometry_edges_.emplace_back(incomming_edge);
+      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance)));
+
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+      // Check if loop_edge already exsists on basestation
+      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
+      bool b_edge_exists = false;
+      for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
+        if (loop_edges_[ii] == incomming_edge)
+          b_edge_exists = true;
+      }
+      if (b_edge_exists)
+        continue;
+
+      // Add to basestation posegraph
+      loop_edges_.emplace_back(
+          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance)));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      // Check if artifact_edge already exsists on basestation
+      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
+      bool b_edge_exists = false;
+      for (size_t ii = 0; ii < artifact_edges_.size(); ++ii) {
+        if (artifact_edges_[ii] == incomming_edge)
+          b_edge_exists = true;
+      }
+      if (b_edge_exists)
+        continue;
+      // Add to basestation posegraph
+      artifact_edges_.emplace_back(
+          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance)));
+
+      // TODO include artifacts in the pose-graph
+    } /* else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
+      // TODO include artifacts in the pose-graph
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
+            edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_.emplace_back(
+            std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
+                           static_cast<gtsam::Symbol>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+      }
+    } */
+  }
+  if (key_.chr() == initial_key_.chr()) {
+    nfg_to_load_graph_.add(new_factor);
+    values_to_load_graph_.insert(new_values);
+  } else {
+    ROS_INFO_STREAM("it came to the end");
+    values_to_add_graph_.insert(new_values);
+    nfg_to_add_graph_.add(new_factor);
+  }
+
+  // RobustPGO should include load multiplemaps functions, but for now we first
+  // load then add the other graph
+  pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
+  ROS_INFO("Pre pgo_solver print");
+  pgo_solver_->print();
+  // nfg_to_load_graph_.print("NFGload");
+  // nfg_to_add_graph_.print("NFGadd");
+
+  // Update
+  ROS_INFO("Pre loadGraph");
+  try {
+    pgo_solver_->loadGraph(
+        nfg_to_load_graph_,
+        values_to_load_graph_,
+        prior_factor_); // Add full graph and the prior separately
+    has_changed_ = true;
+  } catch (...) {
+    ROS_ERROR("PGO Solver update error in AddBetweenFactors");
+    throw;
+  }
+
+  if (!values_to_add_graph_.empty()) {
+    gtsam::Symbol other_intial_key(key_.chr(), 0);
+    pgo_solver_->addGraph(
+        nfg_to_add_graph_,
+        values_to_add_graph_,
+        between_initial_factors_); // Add full graph to an existing graph
+  }
+
+  // Get all values and nfg to laser loop closure
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+  
+  // values_.print("from RobustPGO values");
+  // nfg_.print("from RobustPGO nfg");
+  // Update key for getting the latest pose
+  key_ = key_ + 1;
+
+  // Run loop closures
+  bool found_loop = false;
+  std::vector<gtsam::Symbol> closure_keys;
+  check_for_loop_closures_ = true;
+  if (FindLoopClosures(key_ - 1, &closure_keys)){
+    ROS_INFO("Found loop closures after pose graph callback ");
+    found_loop = true;
+  }
+
+
+  nfg_to_load_graph_ = pgo_solver_->getFactorsUnsafe();
+  values_to_load_graph_ = pgo_solver_->calculateEstimate();
+
+  // publish posegraph
+  has_changed_ = true;
+  PublishPoseGraph();
+
+  if (found_loop){
+    PublishArtifacts();
+  }
 }
 

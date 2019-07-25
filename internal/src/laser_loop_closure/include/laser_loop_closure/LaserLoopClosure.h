@@ -88,11 +88,7 @@
 #include <map>
 #include <vector>
 
-#include "RobustPGO/RobustPGO.h" // RobustPGO (backend solver)
-#include "RobustPGO/pcm/pcm.h"
-
-// 1 for LevenbergMarquardt, 2 for GaussNewton, 3 for SESync (WIP)
-#define SOLVER 1
+#include "RobustPGO/RobustSolver.h"
 
 struct ArtifactInfo {
   std::string id; // this corresponds to parent_id
@@ -422,7 +418,7 @@ private:
   std::string base_frame_id_;
 
   // Artifacts and labels 
-  std::unordered_map<gtsam::Key, ArtifactInfo> artifact_key2info_hash;
+  std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash;
 
   // Visualization publishers.
   ros::Subscriber laser_lc_toggle_sub_;

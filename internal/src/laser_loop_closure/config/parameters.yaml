@@ -6,10 +6,10 @@ solver: 1
 b_use_outlier_rejection: true
 
 # speed by a small fraction.
-check_for_loop_closures: true
+check_for_loop_closures: false
 
 # Whether or not consolidate artifacts
-use_artifact_loop_closure: false
+use_artifact_loop_closure: true
 
 # Make true to save a backup pointcloud before every loop closure.
 save_posegraph_backup: false

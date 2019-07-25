@@ -33,6 +33,7 @@ inline geometry_msgs::Point tfpoint2msg(const tf::Vector3 &v) {
 geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(
     long unsigned int key,
     const std::map<long unsigned int, tf::Pose>& poses) const {
+      ROS_INFO("In getPositionMsg");
   return tfpoint2msg(poses.at(key).getOrigin());
 }
 
@@ -162,7 +163,8 @@ void PoseGraphVisualizer::PoseGraphCallback(
     // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
 
     // Add UUID if an artifact or uwb node
-    if (sym_key.chr() == 'l') {
+    if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p') { 
+      ROS_INFO_STREAM("Have an artifact node with key " << gtsam::DefaultKeyFormatter(sym_key));
       // Artifact
       keyed_artifact_poses_[msg_node.key] = pose;
 
@@ -622,8 +624,18 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       const auto key1 = artifact_edges_[ii].first;
       const auto key2 = artifact_edges_[ii].second;
 
+      if (keyed_artifact_poses_.find(key2) == keyed_artifact_poses_.end()){
+        ROS_WARN("Artifact key doesn't exist when trying to add edge");
+        continue;
+      }
+
+      ROS_INFO_STREAM("Artifact edge key 1 is " << gtsam::DefaultKeyFormatter(key1) << " to " << gtsam::DefaultKeyFormatter(key2));
+
       m.points.push_back(GetPositionMsg(key1, keyed_poses_));
+      ROS_INFO("Have key 1");
+      
       m.points.push_back(GetPositionMsg(key2, keyed_artifact_poses_));
+      ROS_INFO("Have key 2");
     }
     artifact_edge_pub_.publish(m);
   }
@@ -784,7 +796,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       ROS_INFO_STREAM("Artifact key is " << key);
       ROS_INFO_STREAM("Artifact hash key is "
                       << gtsam::DefaultKeyFormatter(key));
-      if (gtsam::Symbol(key).chr() != 'l') {
+      if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p') {
         ROS_WARN("ERROR - have a non-landmark ID");
         ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
         continue;
@@ -914,7 +926,7 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     gtsam::Key key(artifact_id2key_hash_[it->first]);
     ROS_INFO_STREAM("Artifact hash key is "
                     << gtsam::DefaultKeyFormatter(key));
-    if (gtsam::Symbol(key).chr() != 'l') {
+    if (gtsam::Symbol(key).chr() != ('l' || 'm' || 'n' || 'o' || 'p')) {
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
       continue;
