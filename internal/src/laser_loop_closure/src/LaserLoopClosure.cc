@@ -1607,6 +1607,7 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
     // ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
     artifact_key2info_hash[artifact_key] = artifact;
   } else {
+    ROS_INFO("Existing artifact detected");
     artifact_key2info_hash[artifact_key] = artifact;
   }
   // add to pose graph 
@@ -1663,6 +1664,10 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
                   new_values.at<Pose3>(key2).translation().vector().x(),
                   new_values.at<Pose3>(key2).translation().vector().y(),
                   new_values.at<Pose3>(key2).translation().vector().z());
+
+    // Add timestamps (don't want to reference this with time, so just one way)
+    keyed_stamps_.insert(
+        std::pair<gtsam::Symbol, ros::Time>(key_, artifact_key2info_hash[key2].msg.header.stamp));
   }
 
   linPoint.insert(new_values); // insert new values (valid for all cases)
@@ -2310,7 +2315,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       // ROS_INFO_STREAM("Symbol key (int) is " << keyed_pose.key);
 
       // Add UUID if an artifact or uwb node
-      if (sym_key.chr() == ('l' || 'm' || 'n' || 'o' || 'p')){
+      if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p'){
         // Artifact
         node.ID = artifact_key2info_hash[keyed_pose.key].msg.parent_id;
       }
@@ -2580,6 +2585,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
   // Update graph to load with other (non odom) factors, if not already initialized
   if (values_recieved_at_base_.exists(initial_key_)){
+    ROS_INFO("updating graph in PoseGraphBaseHandler from new factors");
     nfg_to_load_graph_ = nfg_;
     values_to_load_graph_ = values_;
   }
@@ -2611,9 +2617,9 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     // Check input for NaNs
 
     // Add UUID if an artifact or uwb node
-    if (key_.chr() == ('l' || 'm' || 'n' || 'o' || 'p')) {
+    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p') {
       // Artifact
-      artifact_key2info_hash[key_] = msg_node.ID;
+      // artifact_key2info_hash[key_] = msg_node.ID;
       std::cout << "\t Artifact added to basestaion(PGcallback): "
                 << gtsam::DefaultKeyFormatter(key_);
       std::cout << "\t with parent id: " << msg_node.ID << std::endl;

@@ -418,7 +418,7 @@ private:
   std::string base_frame_id_;
 
   // Artifacts and labels 
-  std::unordered_map<gtsam::Key, ArtifactInfo> artifact_key2info_hash;
+  std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash;
 
   // Visualization publishers.
   ros::Subscriber laser_lc_toggle_sub_;
