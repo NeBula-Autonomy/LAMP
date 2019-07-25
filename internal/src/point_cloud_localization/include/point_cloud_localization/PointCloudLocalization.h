@@ -88,6 +88,9 @@ class PointCloudLocalization {
   // Publish for first pose
   void PublishPoseNoUpdate();
 
+  // Update timestamp
+  void UpdateTimestamp(ros::Time stamp);
+
 private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);

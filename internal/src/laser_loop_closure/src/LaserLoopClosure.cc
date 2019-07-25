@@ -2288,7 +2288,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
 
     for (const auto& keyed_pose : values_) {
       if (!values_.exists(keyed_pose.key)) {
-        ROS_WARN("Key, %u, does not exist in PublishPoseGraph pose graph pub", keyed_pose.key);
+        ROS_WARN("Key, %lu, does not exist in PublishPoseGraph pose graph pub", keyed_pose.key);
         return false;
       }
       gu::Transform3 t = ToGu(values_.at<Pose3>(keyed_pose.key));
@@ -2308,7 +2308,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       }
 
       // ROS_INFO_STREAM("Symbol key is " <<
-      // gtsam::DefaultKeyFormatter(sym_key)); ROS_INFO_STREAM("Symbol key
+      // gtsam::DefaultKeyFormatter(sym_key)); 
+      // ROS_INFO_STREAM("Symbol key
       // (directly) is "
       //                 << gtsam::DefaultKeyFormatter(keyed_pose.key));
 
@@ -2408,7 +2409,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
       // Update all artifacts - loop through all - the default
       // Get position and label 
       ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(it->first));
-      artifact_position = GetArtifactPosition(it->first);
+      artifact_position = GetArtifactPosition(gtsam::Key(it->first));
       artifact_label = it->second.msg.label;
       // Get the artifact key
       artifact_key = it->first;
@@ -2535,17 +2536,17 @@ gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
 gu::Transform3 LaserLoopClosure::GetPoseAtKey(const gtsam::Key& key) const {
   // Get the pose at that key
   if (!values_.exists(key)) {
-    ROS_WARN("Key, %u, does not exist in GetPoseAtKey",
-             gtsam::DefaultKeyFormatter(key));
+    ROS_WARN("Key does not exist in GetPoseAtKey");
+    ROS_INFO_STREAM("Bad key is: " << gtsam::DefaultKeyFormatter(key));
     return gu::Transform3();
   }
   return ToGu(values_.at<Pose3>(key));
 }
 
-Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key artifact_key) const {
+Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key& artifact_key) const {
   if (!values_.exists(artifact_key)){
-    ROS_WARN("Key, %u, does not exist in GetArtifactPosition",
-             gtsam::DefaultKeyFormatter(artifact_key));
+    ROS_WARN("Key does not exist in GetArtifactPosition");
+    ROS_INFO_STREAM("Bad key is: " << gtsam::DefaultKeyFormatter(artifact_key));
     return Eigen::Vector3d();
   }
   return values_.at<Pose3>(artifact_key).translation().vector();
@@ -2718,7 +2719,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
         }
       }
       if (b_edge_exists){
-        ROS_INFO_STREAM("Odom edge already exists for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+        // ROS_INFO_STREAM("Odom edge already exists for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
         continue;
       }
 

@@ -174,7 +174,7 @@ private:
   // Proximity threshold used by LaserLoopClosureNode.
   double proximity_threshold_{1};
 
-  long unsigned int key_{0};
+  gtsam::Symbol key_{0};
 };
 
 #endif

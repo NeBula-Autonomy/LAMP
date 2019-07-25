@@ -202,7 +202,7 @@ class LaserLoopClosure {
   // Get pose at an input key 
   geometry_utils::Transform3 GetPoseAtKey(const gtsam::Key& key) const; 
 
-  Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
+  Eigen::Vector3d GetArtifactPosition(const gtsam::Key& artifact_key) const;
 
   size_t GetNumberStampsKeyed() const;
 

@@ -268,7 +268,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
           this);
       ros::Subscriber pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
           "/" + robot_names_[i] + "/blam_slam/pose_graph",
-          10,
+          1,
           &BlamSlam::PoseGraphCallback,
           this);
       ros::Subscriber artifact_base_sub =
@@ -648,8 +648,8 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   } else {
     // New artifact - increment the id counters
     b_is_new_artifact = true;
-    ++largest_artifact_id_;
     cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
+    ++largest_artifact_id_;
     std::cout << "new artifact observed, artifact id " << artifact_id 
               << " with key in pose graph " 
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
@@ -1059,6 +1059,7 @@ void BlamSlam::PoseGraphCallback(
 
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  localization_.UpdateTimestamp(msg->header.stamp);
   localization_.PublishPoseNoUpdate();
 
   // Publish Graph
