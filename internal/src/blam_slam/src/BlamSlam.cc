@@ -36,6 +36,7 @@
 
 #include <blam_slam/BlamSlam.h>
 #include <geometry_utils/Transform3.h>
+#include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/Marker.h>
@@ -184,6 +185,8 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   // Initialize boolean to add first scan to key
   b_add_first_scan_to_key_ = false;
 
+  // Initialize pose update to read from pose graph
+  b_new_pose_available_ = true;
 
   // Skipe initialize artifact unique ID if base station
   if (b_is_basestation_) {
@@ -271,6 +274,11 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
           1,
           &BlamSlam::PoseGraphCallback,
           this);
+      ros::Subscriber pose_update_sub = nl.subscribe<geometry_msgs::PoseStamped>(
+          "/" + robot_names_[i] + "/blam_slam/localization_incremental_estimate",
+          10,
+          &BlamSlam::PoseUpdateCallback,
+          this);
       ros::Subscriber artifact_base_sub =
           nl.subscribe("/" + robot_names_[i] + "/blam_slam/artifact_global",
                        10,
@@ -278,6 +286,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
                        this);
 
       Subscriber_posegraphList_.push_back(pose_graph_sub);
+      Subscriber_poseList_.push_back(pose_update_sub);
       Subscriber_keyedscanList_.push_back(keyed_scan_sub);
       Subscriber_artifactList_.push_back(artifact_base_sub);
       ROS_INFO_STREAM(i);
@@ -300,8 +309,13 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
                       10,
                       &BlamSlam::ArtifactBaseCallback,
                       this);
-
+    ros::Subscriber pose_update_sub =
+        nl.subscribe("localization_incremental_estimate_sub",
+                      10,
+                      &BlamSlam::PoseUpdateCallback,
+                      this);
     Subscriber_posegraphList_.push_back(pose_graph_sub);
+    Subscriber_poseList_.push_back(pose_update_sub);
     Subscriber_keyedscanList_.push_back(keyed_scan_sub);
     Subscriber_artifactList_.push_back(artifact_base_sub);
   }
@@ -1061,7 +1075,7 @@ void BlamSlam::PoseGraphCallback(
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
   localization_.UpdateTimestamp(msg->header.stamp);
   localization_.PublishPoseNoUpdate();
-
+  b_new_pose_available_ = true;
   // Publish Graph
   // loop_closure_.PublishPoseGraph();
   // loop_closure_.PublishArtifacts();
@@ -1069,6 +1083,8 @@ void BlamSlam::PoseGraphCallback(
   // Publish map
   mapper_.PublishMap();
 }
+
+
 
 void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
   ROS_INFO_STREAM("Artifact message recieved");
@@ -1101,6 +1117,24 @@ void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
 
   // Publish artifacts - should be updated from the pose-graph
   loop_closure_.PublishArtifacts();
+}
+
+void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+
+  // ROS_INFO("new pose update received from frontend");
+
+  // Set the pose estimate to the latest pose graph node if there is a new one
+  if (b_new_pose_available_) {
+    current_pose_est_ = loop_closure_.GetLastPose();
+    b_new_pose_available_ = false;
+  }
+
+  // update with the pose delta
+  current_pose_est_ = gu::PoseUpdate(current_pose_est_, gu::ros::FromROS(msg->pose));
+  localization_.SetIntegratedEstimate(current_pose_est_);
+
+  // Publish the updated pose
+  localization_.PublishPoseNoUpdate();
 }
 
 size_t LaserLoopClosure::GetNumberStampsKeyed() const {

@@ -6,10 +6,10 @@ solver: 1
 b_use_outlier_rejection: true
 
 # speed by a small fraction.
-check_for_loop_closures: false
+check_for_loop_closures: true
 
 # Whether or not consolidate artifacts
-use_artifact_loop_closure: true
+use_artifact_loop_closure: false
 
 # Make true to save a backup pointcloud before every loop closure.
 save_posegraph_backup: false
@@ -83,7 +83,7 @@ translational_sanity_check_lc: 100
 translational_sanity_check_odom: 3
 
 ########################################
-b_use_uwb: false
+b_use_uwb: true
 
 # UWB range measurement noise (standard deviation)
 uwb_range_measurement_error: 2.0

@@ -24,17 +24,14 @@
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
-      <!-- Loop closures -->
-      <param name="check_for_loop_closures" value="false"/>
-
       <!-- Topics -->
       <remap from="~pcld" to="velodyne_points/transformed"/>
       <remap from="~artifact" to="~artifact_global" />
       <!-- <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" /> -->
-      <remap from="~uwb_signal" to="comm/uwb/anchor" />
+      <remap from="~uwb_signal" to="no_comm/uwb/anchor" />
 
       <!-- Serives -->
-      <remap from="~drop_uwb_anchor" to="drop_uwb_anchor"/>
+      <remap from="~drop_uwb_anchor" to="no_drop_uwb_anchor"/>
 
       <!-- Initial pose -->
       <rosparam param="init">
@@ -78,7 +75,7 @@
       <rosparam file="$(find point_cloud_visualizer)/config/parameters.yaml"/>
 
       <!-- Loop closure -->
-      <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/parameters_fe.yaml"/>
 
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
@@ -147,6 +144,13 @@
   <!-- Run back end -->
   <group if="$(arg back_end_on_robot)">
     <include file="$(find blam_example)/launch/exec_online_robot_lc.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include>
+  </group>
+
+  <!-- Run Pose Graph Merger -->
+  <group if="$(arg back_end_on_robot)">
+    <include file="$(find pose_graph_merger)/launch/pose_graph_merger.launch">
       <arg name="robot_namespace" value="$(arg robot_namespace)"/>
     </include>
   </group>

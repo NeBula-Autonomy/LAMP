@@ -108,6 +108,7 @@ class BlamSlam {
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
   void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
+  void PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);;
 
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
@@ -185,6 +186,7 @@ class BlamSlam {
   std::vector<ros::Subscriber> Subscriber_posegraphList_;
   std::vector<ros::Subscriber> Subscriber_keyedscanList_;
   std::vector<ros::Subscriber> Subscriber_artifactList_;
+  std::vector<ros::Subscriber> Subscriber_poseList_;
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
@@ -221,6 +223,10 @@ class BlamSlam {
   bool b_is_basestation_;
   std::vector<std::string> robot_names_;
   bool b_is_front_end_;
+
+  // Pose updating
+  bool b_new_pose_available_;
+  geometry_utils::Transform3 current_pose_est_;
 
   // Object IDs
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
