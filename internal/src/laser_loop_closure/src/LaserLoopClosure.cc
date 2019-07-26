@@ -1037,6 +1037,9 @@ bool LaserLoopClosure::FindLoopClosures(
   bool closed_loop = false;
   bool b_only_allow_one_loop = false; // TODO make this a parameter
 
+  // Make new factor 
+  NonlinearFactorGraph new_factor;
+
   for (const auto& keyed_pose : values_) {
     const gtsam::Symbol other_key = keyed_pose.key;
 
@@ -1083,6 +1086,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
       gu::Transform3 delta; // (Using BetweenFactor)
       LaserLoopClosure::Mat66 covariance;
+        
 
       if (PerformICP(transformedPointCloud,
                      scan2,
@@ -1102,24 +1106,10 @@ bool LaserLoopClosure::FindLoopClosures(
         has_changed_ = true;
 
         // We found a loop closure. Add it to the pose graph.
-        NonlinearFactorGraph new_factor;
         new_factor.add(BetweenFactor<Pose3>(
             key, other_key, ToGtsam(delta), ToGtsam(covariance)));
 
-        // Compute cost before optimization
-        NonlinearFactorGraph nfg_temp = pgo_solver_->getFactorsUnsafe();
-        nfg_temp.add(new_factor);
-        cost_old = nfg_temp.error(
-            values_); // Assume values is up to date - no new values
-
-        // Optimization
-        pgo_solver_->update(new_factor, Values());
         closed_loop = true;
-        last_closure_key_ = key;
-
-        // Get updated cost
-        nfg_temp = pgo_solver_->getFactorsUnsafe();
-        cost = nfg_temp.error(pgo_solver_->getLinearizationPoint());
 
         // Store for visualization and output.
         loop_edges_.push_back(std::make_pair(key, other_key));
@@ -1136,42 +1126,59 @@ bool LaserLoopClosure::FindLoopClosures(
         // break if a successful loop closure
         // break;
       }
+    }
+  }// end of for loop
 
-      // Get values
-      values_ = pgo_solver_->calculateEstimate();
+  if (closed_loop){
+    // Compute cost before optimization
+    NonlinearFactorGraph nfg_temp = pgo_solver_->getFactorsUnsafe();
+    nfg_temp.add(new_factor);
+    cost_old = nfg_temp.error(
+        values_); // Assume values is up to date - no new values
 
-      // Update factors
-      nfg_ = pgo_solver_->getFactorsUnsafe();
+    // Optimization
+    pgo_solver_->update(new_factor);
+    
+    last_closure_key_ = key;
 
-      // Check the change in pose to see if it exceeds criteria
-      if (b_check_deltas_ && closed_loop) {
-        ROS_INFO("Sanity checking output");
-        closed_loop = SanityCheckForLoopClosure(translational_sanity_check_lc_, cost_old, cost);
-        // TODO - remove vizualization keys if it is rejected 
+    // Get updated cost
+    nfg_temp = pgo_solver_->getFactorsUnsafe();
+    cost = nfg_temp.error(pgo_solver_->getLinearizationPoint());
 
-        if (!closed_loop){
-          ROS_WARN("Returning false for bad loop closure - have reset, waiting for next pose update");
-          if (load_graph_from_zip_file_) {
-            // Erase the current posegraph to make space for the backup
-            // Run the load function to retrieve the posegraph  
-            ErasePosegraph();
-            Load("posegraph_backup.zip");
-          } else {
-            // Take the values from the backup before loop closure
-            nfg_ = nfg_backup_;
-            values_ = values_backup_;
-          }
-          try {
-            pgo_solver_->update(nfg_, values_);
-            has_changed_ = true;
-          } catch (...) {
-            ROS_ERROR("Update ERROR in FindLoopClosures reject from sanity check ");
-            throw;
-          }
+    // Get values
+    values_ = pgo_solver_->calculateEstimate();
+
+    // Update factors
+    nfg_ = pgo_solver_->getFactorsUnsafe();
+
+    // Check the change in pose to see if it exceeds criteria
+    if (b_check_deltas_ && closed_loop) {
+      ROS_INFO("Sanity checking output");
+      closed_loop = SanityCheckForLoopClosure(translational_sanity_check_lc_, cost_old, cost);
+      // TODO - remove vizualization keys if it is rejected 
+
+      if (!closed_loop){
+        ROS_WARN("Returning false for bad loop closure - have reset, waiting for next pose update");
+        if (load_graph_from_zip_file_) {
+          // Erase the current posegraph to make space for the backup
+          // Run the load function to retrieve the posegraph  
+          ErasePosegraph();
+          Load("posegraph_backup.zip");
+        } else {
+          // Take the values from the backup before loop closure
+          nfg_ = nfg_backup_;
+          values_ = values_backup_;
+        }
+        try {
+          pgo_solver_->update(nfg_, values_);
+          has_changed_ = true;
+        } catch (...) {
+          ROS_ERROR("Update ERROR in FindLoopClosures reject from sanity check ");
+          throw;
         }
       }
     } // end of if statement 
-  } // end of for loop
+  } // end of closed loop if statement
 
   return closed_loop;
 }
@@ -2340,7 +2347,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
 
       // factors is protected, can maybe make a getter function inside it?
       // const auto& measured = nfg_.factors_[ii].measured();
-      // Get edge transform and covariance
+      // Get covariance
       // TODO
       g.edges.push_back(edge);
     }
@@ -2349,6 +2356,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       edge.key_from = loop_edges_[ii].first;
       edge.key_to = loop_edges_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+
+
       // Get edge transform and covariance
       // TODO
       g.edges.push_back(edge);
