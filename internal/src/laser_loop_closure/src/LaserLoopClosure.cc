@@ -1096,6 +1096,9 @@ bool LaserLoopClosure::FindLoopClosures(
                      &covariance,
                      true,
                      inputCoordinateFrame)) {
+
+        ROS_INFO("Loop closure found");
+        ROS_INFO_STREAM("Key between " << gtsam::DefaultKeyFormatter(key) << " and " << gtsam::DefaultKeyFormatter(other_key));
         // Save the backup pose graph
         if (save_posegraph_backup_ && !pose_graph_saved_) {
           LaserLoopClosure::Save("posegraph_backup.zip");
@@ -1130,6 +1133,9 @@ bool LaserLoopClosure::FindLoopClosures(
   }// end of for loop
 
   if (closed_loop){
+
+    ROS_INFO_STREAM("\n\n\t\tOptimiztion for " << new_factor.size() << " loop closure factors\n\n");
+
     // Compute cost before optimization
     NonlinearFactorGraph nfg_temp = pgo_solver_->getFactorsUnsafe();
     nfg_temp.add(new_factor);
