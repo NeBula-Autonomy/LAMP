@@ -2470,6 +2470,8 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
     if (b_publish_all){
       // Update the message ID
       new_msg.id = new_msg.id + std::to_string(it->second.num_updates-1);
+      // Update the time
+      new_msg.header.stamp = ros::Time::now();
     }
 
     // Fill the new message positions
