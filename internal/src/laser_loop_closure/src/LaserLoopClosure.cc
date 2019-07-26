@@ -220,11 +220,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
   if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
 
-
-  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
-
     // Optimizer backend
-  bool b_use_outlier_rejection; // TODO CHANGE NAME OF BOOLEAN
+  bool b_use_outlier_rejection;
   if (!pu::Get("b_use_outlier_rejection", b_use_outlier_rejection))
     return false;
   if (b_use_outlier_rejection) {
@@ -235,11 +232,11 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     if (!pu::Get("rotation_check_threshold", rot_threshold))
       return false;
     rpgo_params_.setPcmSimple3DParams(trans_threshold, rot_threshold, RobustPGO::Verbosity::VERBOSE);
-    std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
-    rpgo_params_.specialSymbols = special_symbs;
   } else {
     rpgo_params_.setNoRejection(RobustPGO::Verbosity::VERBOSE); // set no outlier rejection
   }
+  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
+  rpgo_params_.specialSymbols = special_symbs;
   // set solver 
   int solver_num;
   if (!pu::Get("solver", solver_num))
