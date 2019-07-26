@@ -1121,7 +1121,7 @@ void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
 
 void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
-  ROS_INFO("new pose update received from frontend");
+  // ROS_INFO("new pose update received from frontend");
 
   // Set the pose estimate to the latest pose graph node if there is a new one
   if (b_new_pose_available_) {
