@@ -779,9 +779,14 @@ UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_dat
 
   std::vector<double> range_nearest_key;
   for (auto itr = pose_key_list.begin(); itr != pose_key_list.end(); itr++) {
-    range_nearest_key.push_back(uwb_posekey2data[*itr].range[0]);
+    if (uwb_posekey2data[*itr].range.size() == 0) {
+      pose_key_list.erase(itr);
+    }
+    else {
+      range_nearest_key.push_back(uwb_posekey2data[*itr].range[0]);
+    }
   }
-  
+
   UwbRearrangedData sorted_data;
   Sort2Vectors<double, gtsam::Key>(range_nearest_key, pose_key_list);
   sorted_data.pose_key_list = pose_key_list;
