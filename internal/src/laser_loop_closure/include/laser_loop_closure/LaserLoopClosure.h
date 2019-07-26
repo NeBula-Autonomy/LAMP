@@ -459,7 +459,7 @@ private:
   std::map<Edge, gtsam::Pose3> edge_poses_;
   std::map<Edge, LaserLoopClosure::Mat66> covariance_betweenfactor_;
   std::map<Edge, double> edge_ranges_;
-  std::map<Edge, gtsam::noiseModel::Base::shared_ptr> error_rangefactor_;
+  std::map<Edge, double> error_rangefactor_;
 
   // For filtering laser scans prior to ICP.
   PointCloudFilter filter_;

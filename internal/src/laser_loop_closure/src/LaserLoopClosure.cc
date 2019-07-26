@@ -64,6 +64,7 @@ namespace gr = gu::ros;
 namespace pu = parameter_utils;
 
 using gtsam::BetweenFactor;
+using gtsam::RangeFactor;
 using gtsam::ISAM2; // TODO - remove these
 using gtsam::ISAM2Params;
 using gtsam::NonlinearFactorGraph;
@@ -659,7 +660,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
           Edge edge_range = std::make_pair(pose_key, uwb_key);
           uwb_edges_.push_back(edge_range);
           edge_ranges_[edge_range] = range;
-          error_rangefactor_[edge_range] = rangeNoise;
+          error_rangefactor_[edge_range] = sigmaR;
           ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
                           << gtsam::DefaultKeyFormatter(pose_key) << " and "
                           << gtsam::DefaultKeyFormatter(uwb_key));
@@ -2382,8 +2383,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       edge.key_from = uwb_edges_[ii].first;
       edge.key_to = uwb_edges_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::UWB;
-      // Get edge transform and covariance
-      // TODO
+      edge.range = edge_ranges_[uwb_edges_[ii]];
+      edge.range_error = error_rangefactor_[uwb_edges_[ii]];
       g.edges.push_back(edge);
     }
 
@@ -2809,10 +2810,14 @@ void LaserLoopClosure::PoseGraphBaseHandler(
         ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
                  msg_edge.key_from,
                  msg_edge.key_to);
-        // new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
-        //                                   gtsam::Symbol(msg_edge.key_to),
-        //                                   delta,
-        //                                   ToGtsam(covariance)));
+        double range = msg_edge.range;
+        double sigmaR = msg_edge.range_error;
+        gtsam::noiseModel::Base::shared_ptr rangeNoise = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
+
+        new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          range,
+                                          rangeNoise));
       }
     }
   }

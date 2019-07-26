@@ -102,7 +102,6 @@
 
       <!-- Set LAMP to run as basestation -->
       <param name="b_is_basestation" value="false" type="bool"/>
-      <param name="b_use_uwb" value="false" type="bool"/>
 
     </node>
 
