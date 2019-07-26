@@ -151,4 +151,11 @@
     </include>
   </group>
 
+  <!-- Run Pose Graph Merger -->
+  <group if="$(arg back_end_on_robot)">
+    <include file="$(find pose_graph_merger)/launch/pose_graph_merger.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include>
+  </group>
+
 </launch>

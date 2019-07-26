@@ -28,6 +28,9 @@
       <remap from="~keyed_scans_sub" to="blam_slam_fe/keyed_scans" />
       <remap from="~artifact_global_sub" to="blam_slam_fe/artifact_global" />
 
+      <!-- Pose Graph Publishing -->
+      <remap from="~pose_graph" to="~pose_graph_lc" />
+
       <!-- Serives -->
       <remap from="~drop_uwb_anchor" to="drop_uwb_anchor"/>
 
