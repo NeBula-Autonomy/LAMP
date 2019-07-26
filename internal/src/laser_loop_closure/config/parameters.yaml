@@ -1,7 +1,3 @@
-# Toggle loop closures on or off. Setting this to off will increase run-time
-# speed by a small fraction.
-check_for_loop_closures: true
-
 # Whether or not consolidate artifacts
 use_artifact_loop_closure: false
 
