@@ -2857,7 +2857,6 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   // Run loop closures
   bool found_loop = false;
   std::vector<gtsam::Symbol> closure_keys;
-  check_for_loop_closures_ = true;
   if (FindLoopClosures(key_ - 1, &closure_keys)){
     ROS_INFO("Found loop closures after pose graph callback ");
     found_loop = true;
