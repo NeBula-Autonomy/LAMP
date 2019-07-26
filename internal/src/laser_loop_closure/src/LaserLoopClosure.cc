@@ -659,7 +659,10 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
           gtsam::Key pose_key = sorted_data.pose_key_list[counter];
           counter++;
           new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-          uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+          Edge edge_range = std::make_pair(pose_key, uwb_key);
+          uwb_edges_.push_back(edge_range);
+          edge_ranges_[edge_range] = range;
+          error_rangefactor_[edge_range] = rangeNoise;
           ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
                           << gtsam::DefaultKeyFormatter(pose_key) << " and "
                           << gtsam::DefaultKeyFormatter(uwb_key));
@@ -2618,7 +2621,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     // Check input for NaNs
 
     // Add UUID if an artifact or uwb node
-    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p') {
+    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p' || key_.chr() == 'u') {
       // Artifact
       // artifact_key2info_hash[key_] = msg_node.ID;
       std::cout << "\t Artifact added to basestaion(PGcallback): "
@@ -2768,8 +2771,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
                                           ToGtsam(covariance)));
 
       // TODO include artifacts in the pose-graph
-    } /* else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
-      // TODO include artifacts in the pose-graph
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
       // TODO send only incremental UWB edges (if msg.incremental is true)
       // uwb_edges_.clear();
       bool found = false;
@@ -2792,8 +2794,12 @@ void LaserLoopClosure::PoseGraphBaseHandler(
         ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
                  msg_edge.key_from,
                  msg_edge.key_to);
+        // new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
+        //                                   gtsam::Symbol(msg_edge.key_to),
+        //                                   delta,
+        //                                   ToGtsam(covariance)));
       }
-    } */
+    }
   }
   if (key_.chr() == initial_key_.chr()) {
     nfg_to_load_graph_.add(new_factor);
