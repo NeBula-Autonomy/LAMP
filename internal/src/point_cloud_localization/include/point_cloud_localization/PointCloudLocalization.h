@@ -89,7 +89,7 @@ class PointCloudLocalization {
   void PublishPoseNoUpdate();
 
   // Update timestamp
-  void UpdateTimestamp(ros::Time stamp);
+  void UpdateTimestamp(ros::Time& stamp);
 
 private:
   // Node initialization.

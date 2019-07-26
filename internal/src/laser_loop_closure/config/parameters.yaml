@@ -35,7 +35,7 @@ laser_lc_rot_sigma: 0.01 #0.316 # default 0.01
 laser_lc_trans_sigma: 0.01 #0.6324 # default 0.04 
 
 # Noise parameters (as precisions) for artifacts 
-artifact_rot_precision: 0.0001
+artifact_rot_precision: 0.0
 artifact_trans_precision: 0.005
 
 # Amount of translational distance the sensor must travel before adding a new
@@ -83,7 +83,7 @@ translational_sanity_check_lc: 100
 translational_sanity_check_odom: 3
 
 ########################################
-b_use_uwb: true
+b_use_uwb: false
 
 # UWB range measurement noise (standard deviation)
 uwb_range_measurement_error: 2.0

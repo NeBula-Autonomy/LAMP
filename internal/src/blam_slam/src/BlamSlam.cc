@@ -276,7 +276,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
           this);
       ros::Subscriber pose_update_sub = nl.subscribe<geometry_msgs::PoseStamped>(
           "/" + robot_names_[i] + "/blam_slam/localization_incremental_estimate",
-          10,
+          1,
           &BlamSlam::PoseUpdateCallback,
           this);
       ros::Subscriber artifact_base_sub =
@@ -1073,7 +1073,8 @@ void BlamSlam::PoseGraphCallback(
 
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-  localization_.UpdateTimestamp(msg->header.stamp);
+  ros::Time stamp = msg->header.stamp;
+  localization_.UpdateTimestamp(stamp);
   localization_.PublishPoseNoUpdate();
   b_new_pose_available_ = true;
   // Publish Graph
@@ -1132,6 +1133,10 @@ void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& ms
   // update with the pose delta
   current_pose_est_ = gu::PoseUpdate(current_pose_est_, gu::ros::FromROS(msg->pose));
   localization_.SetIntegratedEstimate(current_pose_est_);
+
+  // Update the timestamp
+  ros::Time stamp = msg->header.stamp;
+  localization_.UpdateTimestamp(stamp);
 
   // Publish the updated pose
   localization_.PublishPoseNoUpdate();

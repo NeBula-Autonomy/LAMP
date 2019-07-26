@@ -2810,43 +2810,55 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       }
     } */
   }
-  if (key_.chr() == initial_key_.chr()) {
-    nfg_to_load_graph_.add(new_factor);
-    values_to_load_graph_.insert(new_values);
-  } else {
-    ROS_INFO_STREAM("it came to the end");
-    values_to_add_graph_.insert(new_values);
-    nfg_to_add_graph_.add(new_factor);
+
+  if (new_factor.size() == 1 && new_values.size() == 1 && key_.chr() == initial_key_.chr()){
+    // Only an odom addition, just run update
+    ROS_INFO("\n\nAdding just an odom factor - no opt\n\n");
+    pgo_solver_->update(new_factor, new_values);
+  } 
+  else {
+    // Full graph or new graph
+    ROS_INFO("\n\nAdding full graph - opt\n\n");
+    if (key_.chr() == initial_key_.chr()) {
+      nfg_to_load_graph_.add(new_factor);
+      values_to_load_graph_.insert(new_values);
+    } else {
+      ROS_INFO_STREAM("it came to the end");
+      values_to_add_graph_.insert(new_values);
+      nfg_to_add_graph_.add(new_factor);
+    }
+
+    // RobustPGO should include load multiplemaps functions, but for now we first
+    // load then add the other graph
+    pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
+    ROS_INFO("Pre pgo_solver print");
+    pgo_solver_->print();
+    // nfg_to_load_graph_.print("NFGload");
+    // nfg_to_add_graph_.print("NFGadd");
+
+    // Update
+    ROS_INFO("Pre loadGraph");
+    try {
+      pgo_solver_->loadGraph(
+          nfg_to_load_graph_,
+          values_to_load_graph_,
+          prior_factor_); // Add full graph and the prior separately
+      has_changed_ = true;
+    } catch (...) {
+      ROS_ERROR("PGO Solver update error in AddBetweenFactors");
+      throw;
+    }
+
+    if (!values_to_add_graph_.empty()) {
+      gtsam::Symbol other_intial_key(key_.chr(), 0);
+      pgo_solver_->addGraph(
+          nfg_to_add_graph_,
+          values_to_add_graph_,
+          between_initial_factors_); // Add full graph to an existing graph
+    }
+
   }
 
-  // RobustPGO should include load multiplemaps functions, but for now we first
-  // load then add the other graph
-  pgo_solver_.reset(new RobustPGO::RobustSolver(rpgo_params_));
-  ROS_INFO("Pre pgo_solver print");
-  pgo_solver_->print();
-  // nfg_to_load_graph_.print("NFGload");
-  // nfg_to_add_graph_.print("NFGadd");
-
-  // Update
-  ROS_INFO("Pre loadGraph");
-  try {
-    pgo_solver_->loadGraph(
-        nfg_to_load_graph_,
-        values_to_load_graph_,
-        prior_factor_); // Add full graph and the prior separately
-    has_changed_ = true;
-  } catch (...) {
-    ROS_ERROR("PGO Solver update error in AddBetweenFactors");
-    throw;
-  }
-
-  if (!values_to_add_graph_.empty()) {
-    gtsam::Symbol other_intial_key(key_.chr(), 0);
-    pgo_solver_->addGraph(
-        nfg_to_add_graph_,
-        values_to_add_graph_,
-        between_initial_factors_); // Add full graph to an existing graph
-  }
 
   // Get all values and nfg to laser loop closure
   values_ = pgo_solver_->calculateEstimate();
