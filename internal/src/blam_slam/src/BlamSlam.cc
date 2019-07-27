@@ -138,7 +138,8 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
   XmlRpc::XmlRpcValue uwb_list;
   if (!pu::Get("uwb_list", uwb_list)) return false;
-  if (!pu::Get("uwb_drop/"+getRobotName(n), uwb_id_list_drop_)) return false;
+  std::vector<std::string> uwb_id_list_drop;
+  if (!pu::Get("uwb_drop/"+getRobotName(n), uwb_id_list_drop)) return false;
   for (int i = 0; i < uwb_list.size(); i++) {
     UwbMeasurementInfo uwb_data;
     std::string uwb_id = uwb_list[i]["id"];
@@ -147,7 +148,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
     uwb_id2data_hash_[uwb_id] = uwb_data;
     uwb_id2data_hash_[uwb_id].in_pose_graph = false;
   }
-  for (auto itr = uwb_id_list_drop_.begin(); itr != uwb_id_list_drop_.end(); itr++) {
+  for (auto itr = uwb_id_list_drop.begin(); itr != uwb_id_list_drop.end(); itr++) {
     uwb_id2data_hash_[*itr].holder = getRobotName(n);
     uwb_id2data_hash_[*itr].drop_status = false;  // This sentence will be removed.
   }

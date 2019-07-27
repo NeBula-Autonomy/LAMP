@@ -1,13 +1,8 @@
-# uwb:
-#   all: ["9789", "D3AE", "15A5", "5102", "1BBB", "0F84", "95A7", "CB89", "9A11", "C7A8", "D620", "0F12"]
-#   drop: ["15A5", "1BBB", "5102"]
-
 uwb_drop:
-  husky1: ["15A5", "1BBB", "5102"]
-  husky2: []
+  husky1: []
+  husky2: ["15A5", "1BBB", "5102"]
   husky3: []
   telemax: []
-
 
 uwb_list:
   - id: "9789"
@@ -34,3 +29,9 @@ uwb_list:
     gtsam_key: 10
   - id: "0F12"
     gtsam_key: 11
+  - id: "440F"
+    gtsam_key: 12
+  - id: "9598"
+    gtsam_key: 13
+  - id: "C6A5"
+    gtsam_key: 14
