@@ -152,6 +152,8 @@ class BlamSlam {
                                const std::string& child_frame,
                                const ros::Time& time,
                                Eigen::Affine3d& T);
+  
+  std::string getRobotName(const ros::NodeHandle& n);
 
   // The node's name.
   std::string name_;

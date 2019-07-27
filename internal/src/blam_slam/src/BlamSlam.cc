@@ -1049,6 +1049,21 @@ bool BlamSlam::getTransformEigenFromTF(
   tf::transformTFToEigen(tf_tfm, T);
 }
 
+std::string BlamSlam::getRobotName(const ros::NodeHandle& n) {
+  std::string str_ns = n.getNamespace();
+  int index_start;
+  int index_end;
+  int count = 0;
+  for (int i=0; i<str_ns.size(); i++) {
+    if (str_ns.substr(i,1) == "/") {
+      if (count == 0) {index_start = i+1; count++;}
+      else if (count == 1) {index_end = i-1;}
+    }
+  }
+  int str_ns_length = index_end - index_start + 1;
+  return str_ns.substr(index_start, str_ns_length);
+}
+
 // BASE STATION
 void BlamSlam::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
