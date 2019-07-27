@@ -480,6 +480,7 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   response.success = loop_closure_.Load(request.filename);
 
   // change the key number for the second robot
+  // This also resets key_ in loop_closure_
   loop_closure_.ChangeKeyNumber();
 
   // Regenerate the 3D map from the loaded posegraph
@@ -491,6 +492,7 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   mapper_.InsertPoints(regenerated_map, unused.get());
 
   // TODO: Double check this
+  // TODO: Do we need initial_key_ here?
   initial_key_ = loop_closure_.GetInitialKey();
   gu::MatrixNxNBase<double, 6> covariance;
   covariance.Zeros();
@@ -499,7 +501,7 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
   
-  gu::Transform3 init_pose = loop_closure_.GetInitialPose();
+  gu::Transform3 init_pose = loop_closure_.GetInitialLoadedPose();
   gu::Transform3 current_pose = localization_.GetIntegratedEstimate(); // loop_closure_.GetCurrentPose();
   const gu::Transform3 pose_delta = gu::PoseDelta(init_pose, current_pose);
   loop_closure_.AddFactorAtLoad(pose_delta, covariance);
@@ -949,7 +951,8 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
                                 blam_slam::RestartResponse &response) {    
   ROS_INFO_STREAM(request.filename);
   // Erase the current posegraph to make space for the backup
-  loop_closure_.ErasePosegraph();  
+  loop_closure_.ErasePosegraph();
+
   // Run the load function to retrieve the posegraph
   response.success = loop_closure_.Load(request.filename);
 
