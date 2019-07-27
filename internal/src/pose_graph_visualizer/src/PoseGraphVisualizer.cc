@@ -934,7 +934,7 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     gtsam::Key key(artifact_id2key_hash_[it->first]);
     ROS_INFO_STREAM("Artifact hash key is "
                     << gtsam::DefaultKeyFormatter(key));
-    if (gtsam::Symbol(key).chr() != ('l' || 'm' || 'n' || 'o' || 'p')) {
+    if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p') {
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
       continue;
