@@ -227,6 +227,54 @@ void PoseGraphVisualizer::PoseGraphCallback(
                  msg_edge.key_from,
                  msg_edge.key_to);
       }
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_range_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<long unsigned int>(msg_edge.key_from) &&
+            edge.second == static_cast<long unsigned int>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_range_.emplace_back(
+            std::make_pair(static_cast<long unsigned int>(msg_edge.key_from),
+                           static_cast<long unsigned int>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+      }
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_between_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<long unsigned int>(msg_edge.key_from) &&
+            edge.second == static_cast<long unsigned int>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_between_.emplace_back(
+            std::make_pair(static_cast<long unsigned int>(msg_edge.key_from),
+                           static_cast<long unsigned int>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+      }
     }
   }
 
@@ -657,6 +705,22 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     for (size_t ii = 0; ii < uwb_edges_.size(); ++ii) {
       const auto key1 = uwb_edges_[ii].first;
       const auto key2 = uwb_edges_[ii].second;
+
+      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
+      m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));
+      ROS_INFO("PGV sends UWB edge %u", ii);
+    }
+    for (size_t ii = 0; ii < uwb_edges_range_.size(); ++ii) {
+      const auto key1 = uwb_edges_range_[ii].first;
+      const auto key2 = uwb_edges_range_[ii].second;
+
+      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
+      m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));
+      ROS_INFO("PGV sends UWB edge %u", ii);
+    }
+    for (size_t ii = 0; ii < uwb_edges_between_.size(); ++ii) {
+      const auto key1 = uwb_edges_between_[ii].first;
+      const auto key2 = uwb_edges_between_[ii].second;
 
       m.points.push_back(GetPositionMsg(key1, keyed_poses_));
       m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));

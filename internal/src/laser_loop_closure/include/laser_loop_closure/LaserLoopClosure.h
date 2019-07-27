@@ -454,8 +454,9 @@ private:
   std::vector<Edge> loop_edges_;
   std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
-  // std::vector<std::pair<unsigned int, gtsam::Key>> uwb_edges_;
   std::vector<Edge> uwb_edges_;
+  std::vector<Edge> uwb_edges_range_;
+  std::vector<Edge> uwb_edges_between_;
   std::map<Edge, gtsam::Pose3> edge_poses_;
   std::map<Edge, LaserLoopClosure::Mat66> covariance_betweenfactor_;
   std::map<Edge, double> edge_ranges_;

@@ -168,6 +168,8 @@ private:
   std::vector<Edge> loop_edges_;
   std::vector<Edge> artifact_edges_;
   std::vector<Edge> uwb_edges_;
+  std::vector<Edge> uwb_edges_range_;
+  std::vector<Edge> uwb_edges_between_;
 
   bool publish_interactive_markers_{true};
 

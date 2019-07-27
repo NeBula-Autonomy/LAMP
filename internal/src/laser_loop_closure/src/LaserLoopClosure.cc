@@ -659,6 +659,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
           new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
           Edge edge_range = std::make_pair(pose_key, uwb_key);
           uwb_edges_.push_back(edge_range);
+          uwb_edges_range_.push_back(edge_range);
           edge_ranges_[edge_range] = range;
           error_rangefactor_[edge_range] = sigmaR;
           ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
@@ -712,7 +713,11 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
           gtsam::Key pose_key = sorted_data.pose_key_list[counter];
           counter++;
           new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-          uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+          Edge edge_range = std::make_pair(pose_key, uwb_key);
+          uwb_edges_.push_back(edge_range);
+          uwb_edges_range_.push_back(edge_range);
+          edge_ranges_[edge_range] = range;
+          error_rangefactor_[edge_range] = sigmaR;
           ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
                           << gtsam::DefaultKeyFormatter(pose_key) << " and "
                           << gtsam::DefaultKeyFormatter(uwb_key));
@@ -2393,6 +2398,24 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       g.edges.push_back(edge);
     }
 
+    for (size_t ii = 0; ii < uwb_edges_range_.size(); ++ii) {
+      edge.key_from = uwb_edges_range_[ii].first;
+      edge.key_to = uwb_edges_range_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB;
+      edge.range = edge_ranges_[uwb_edges_range_[ii]];
+      edge.range_error = error_rangefactor_[uwb_edges_range_[ii]];
+      g.edges.push_back(edge);
+    }
+
+    for (size_t ii = 0; ii < uwb_edges_.size(); ++ii) {
+      edge.key_from = uwb_edges_[ii].first;
+      edge.key_to = uwb_edges_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB;
+      edge.range = edge_ranges_[uwb_edges_[ii]];
+      edge.range_error = error_rangefactor_[uwb_edges_[ii]];
+      g.edges.push_back(edge);
+    }
+
     // Publish.
     pose_graph_pub_.publish(g);
   }
@@ -2823,6 +2846,70 @@ void LaserLoopClosure::PoseGraphBaseHandler(
                                           gtsam::Symbol(msg_edge.key_to),
                                           range,
                                           rangeNoise));
+      }
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_range_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
+            edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_range_.emplace_back(
+            std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
+                           static_cast<gtsam::Symbol>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+        double range = msg_edge.range;
+        double sigmaR = msg_edge.range_error;
+        gtsam::noiseModel::Base::shared_ptr rangeNoise = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
+
+        new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          range,
+                                          rangeNoise));
+      }
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_between_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
+            edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_between_.emplace_back(
+            std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
+                           static_cast<gtsam::Symbol>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+        // double range = msg_edge.range;
+        // double sigmaR = msg_edge.range_error;
+        // gtsam::noiseModel::Base::shared_ptr rangeNoise = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
+
+        // new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
+        //                                   gtsam::Symbol(msg_edge.key_to),
+        //                                   range,
+        //                                   rangeNoise));
       }
     }
   }
