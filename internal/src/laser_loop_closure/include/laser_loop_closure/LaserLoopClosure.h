@@ -454,7 +454,6 @@ private:
   std::vector<Edge> loop_edges_;
   std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
-  std::vector<Edge> uwb_edges_;
   std::vector<Edge> uwb_edges_range_;
   std::vector<Edge> uwb_edges_between_;
   std::map<Edge, gtsam::Pose3> edge_poses_;
