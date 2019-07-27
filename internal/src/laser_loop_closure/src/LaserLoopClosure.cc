@@ -226,6 +226,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     auto uwb_id = static_cast<std::string>(uwb_list[i]["id"]);
     uwb_id2keynumber_hash_[uwb_id] = static_cast<int>(uwb_list[i]["gtsam_key"]);
   }
+  if (!pu::Get("b_use_display_uwb_data", b_use_display_uwb_data_)) return false;
+  if (!pu::Get("b_use_uwb_outlier_rejection", b_use_uwb_outlier_rejection_)) return false;
 
     // Optimizer backend
   bool b_use_outlier_rejection;
@@ -630,6 +632,11 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
 
+  // UWB data outlier rejection based on Hample outlier identifier
+  if (b_use_uwb_outlier_rejection_) {
+    UwbDataOutlierRejection(uwb_data);
+  }
+
   // Sort the UWB-related data stored in the buffer 
   UwbRearrangedData sorted_data = RearrangeUwbData(uwb_data);
 
@@ -746,6 +753,115 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 }
 
 
+void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
+  std::vector<bool> b_outlier_list;
+  std::vector<double> time_stamp;
+  for (auto itr : uwb_data.time_stamp) {
+    time_stamp.push_back(itr.toSec());
+  }
+
+  hampelOutlierRejection<double, double>(uwb_data.range, time_stamp, b_outlier_list);
+
+  for (int itr = 0; itr < b_outlier_list.size(); itr++) {
+    int itr_back = b_outlier_list.size()-itr-1;
+    if (b_outlier_list[itr_back] == true) {
+      // std::cout << "data No. " << itr_back << "\n";
+      // std::cout << "outlier range: " << uwb_data.range[itr_back]  << "\n";
+      uwb_data.time_stamp.erase(uwb_data.time_stamp.begin()+itr_back);
+      uwb_data.range.erase(uwb_data.range.begin()+itr_back);
+      uwb_data.robot_position.erase(uwb_data.robot_position.begin()+itr_back);
+      // uwb_data.dist_posekey.erase(uwb_data.dist_posekey.begin()+itr_back);
+      uwb_data.nearest_pose_key.erase(uwb_data.nearest_pose_key.begin()+itr_back);
+    }
+  }
+}
+
+template <typename TYPE_DATA, typename TYPE_STAMP>
+void LaserLoopClosure::hampelOutlierRejection(std::vector<TYPE_DATA> data_input, 
+                            std::vector<TYPE_STAMP> data_stamp,
+                            std::vector<bool>& b_outlier_list) {
+    unsigned int data_size = data_input.size();
+
+    std::vector<TYPE_STAMP> sorted_stamp = data_stamp;
+    std::sort(sorted_stamp.begin(), sorted_stamp.end());
+
+    TYPE_STAMP median_stamp;
+    median_stamp = calculateMedian(sorted_stamp);
+
+    std::vector<TYPE_STAMP> stamp_temp1 = sorted_stamp;
+    std::vector<TYPE_STAMP> stamp_temp2 = sorted_stamp;
+    std::vector<TYPE_STAMP> diff_stamp;
+    stamp_temp1.erase(stamp_temp1.begin());
+    stamp_temp2.pop_back();
+
+    for (int iData = 0; iData < stamp_temp1.size(); iData++) {
+        diff_stamp.push_back(stamp_temp1[iData] - stamp_temp2[iData]);
+    }
+
+    TYPE_STAMP half_window_length = 3.0*calculateMedian(diff_stamp);
+
+    std::vector<TYPE_DATA> local_ref, local_var;
+    for (int iData = 0; iData < data_size; iData++) {
+        calculateLocalWindow(data_input, data_stamp, half_window_length, iData, local_ref, local_var);
+    }
+
+    for (int iData = 0; iData < data_size; iData++) {
+        TYPE_DATA temp = std::fabs(data_input[iData] - local_ref[iData]) - 3.0*local_var[iData];
+        if (temp > 0) {
+          b_outlier_list.push_back(true);
+        }
+        else {
+          b_outlier_list.push_back(false);
+        }
+    }
+}
+
+template <typename TYPE_DATA, typename TYPE_STAMP>
+void LaserLoopClosure::calculateLocalWindow(std::vector<TYPE_DATA> data_input, std::vector<TYPE_STAMP> data_stamp,
+                          TYPE_STAMP half_window_length, unsigned int data_index,
+                          std::vector<TYPE_DATA>& local_ref, std::vector<TYPE_DATA>& local_var) {
+
+    // Index related to local window
+    std::vector<int> index_local;
+    std::vector<TYPE_STAMP> data_in_window;
+    int data_size = data_stamp.size();
+    for (int iData = 0; iData < data_size; iData++) {
+        if (data_stamp[data_index] - half_window_length <= data_stamp[iData]
+            && data_stamp[data_index] + half_window_length >= data_stamp[iData]) {
+            index_local.push_back(iData);
+            data_in_window.push_back(data_input[iData]);
+        }
+    }
+
+    // Calculate local nominal data reference value
+    TYPE_DATA local_ref_temp = calculateMedian(data_in_window);
+    local_ref.push_back(local_ref_temp);
+
+    std::vector<TYPE_DATA> diff_ref;
+    for (int iData = 0; iData < data_in_window.size(); iData++) {
+        diff_ref.push_back(std::fabs(data_in_window[iData] - local_ref_temp));
+    }
+
+    // Calculate local scale of natural variation
+    local_var.push_back(1.4826*calculateMedian(diff_ref));
+}
+
+template <typename TYPE>
+TYPE LaserLoopClosure::calculateMedian(std::vector<TYPE> data_input) {
+    std::sort(data_input.begin(), data_input.end());
+    unsigned int data_size = data_input.size();
+    TYPE median_value;
+    // Calculate median
+    if (data_size % 2) {
+        median_value = data_input[(data_size+1)/2-1];
+    }
+    else {
+        median_value = (data_input[data_size/2-1]+data_input[data_size/2])/2;
+    }
+    return median_value;
+}
+
+
 UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_data) {
 
   // Recalculate the nearest pose key at the range measurement timing
@@ -802,7 +918,7 @@ UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_dat
   sorted_data.range_nearest_key = range_nearest_key;
   sorted_data.posekey2data = uwb_posekey2data;
 
-  if (display_uwb_data_) {
+  if (b_use_display_uwb_data_) {
     ShowUwbRawData(uwb_data);
     ShowUwbRearrangedData(sorted_data);
   }
