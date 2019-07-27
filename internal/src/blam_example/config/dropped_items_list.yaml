@@ -1,3 +1,36 @@
-uwb:
-  all: ["9789", "D3AE", "15A5", "5102", "1BBB", "0F84", "95A7", "CB89", "9A11", "C7A8", "D620", "0F12"]
-  drop: ["15A5", "1BBB", "5102"]
+# uwb:
+#   all: ["9789", "D3AE", "15A5", "5102", "1BBB", "0F84", "95A7", "CB89", "9A11", "C7A8", "D620", "0F12"]
+#   drop: ["15A5", "1BBB", "5102"]
+
+uwb_drop:
+  husky1: ["15A5", "1BBB", "5102"]
+  husky2: []
+  husky3: []
+  telemax: []
+
+
+uwb_list:
+  - id: "9789"
+    gtsam_key: 0
+  - id: "D3AE"
+    gtsam_key: 1
+  - id: "15A5"
+    gtsam_key: 2
+  - id: "5102"
+    gtsam_key: 3
+  - id: "1BBB"
+    gtsam_key: 4
+  - id: "0F84"
+    gtsam_key: 5
+  - id: "95A7"
+    gtsam_key: 6
+  - id: "CB89"
+    gtsam_key: 7
+  - id: "9A11"
+    gtsam_key: 8
+  - id: "C7A8"
+    gtsam_key: 9
+  - id: "D620"
+    gtsam_key: 10
+  - id: "0F12"
+    gtsam_key: 11

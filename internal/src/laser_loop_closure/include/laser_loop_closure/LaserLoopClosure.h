@@ -389,6 +389,7 @@ private:
   // UWB parameters
   std::unordered_map<std::string, gtsam::Key> uwb_id2key_hash_;
   std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
+  std::unordered_map<std::string, int> uwb_id2keynumber_hash_;
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
   unsigned int uwb_factor_optimizer_;

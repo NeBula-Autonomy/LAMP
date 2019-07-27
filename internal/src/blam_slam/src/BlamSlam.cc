@@ -136,18 +136,19 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
       return false;
   }
 
-  // Load uwb information
-  if (!pu::Get("uwb/all", uwb_id_list_all_)) return false;
-  if (!pu::Get("uwb/drop", uwb_id_list_drop_)) return false;
-  for (auto itr = uwb_id_list_all_.begin(); itr != uwb_id_list_all_.end(); itr++) {
+  XmlRpc::XmlRpcValue uwb_list;
+  if (!pu::Get("uwb_list", uwb_list)) return false;
+  if (!pu::Get("uwb_drop/"+getRobotName(n), uwb_id_list_drop_)) return false;
+  for (int i = 0; i < uwb_list.size(); i++) {
     UwbMeasurementInfo uwb_data;
-    uwb_data.id = *itr;
+    std::string uwb_id = uwb_list[i]["id"];
+    uwb_data.id = uwb_id;
     uwb_data.drop_status = true;  // This should be false. (after the enhancement of UWB firmware)
-    uwb_id2data_hash_[*itr] = uwb_data;
-    uwb_id2data_hash_[*itr].in_pose_graph = false;
+    uwb_id2data_hash_[uwb_id] = uwb_data;
+    uwb_id2data_hash_[uwb_id].in_pose_graph = false;
   }
   for (auto itr = uwb_id_list_drop_.begin(); itr != uwb_id_list_drop_.end(); itr++) {
-    uwb_id2data_hash_[*itr].holder = name_.c_str();
+    uwb_id2data_hash_[*itr].holder = getRobotName(n);
     uwb_id2data_hash_[*itr].drop_status = false;  // This sentence will be removed.
   }
 

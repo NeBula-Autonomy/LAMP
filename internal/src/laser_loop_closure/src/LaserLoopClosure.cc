@@ -220,6 +220,12 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
   if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
   if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
+  XmlRpc::XmlRpcValue uwb_list;
+  if (!pu::Get("uwb_list", uwb_list)) return false;
+  for (int i=0; i<uwb_list.size(); i++) {
+    auto uwb_id = static_cast<std::string>(uwb_list[i]["id"]);
+    uwb_id2keynumber_hash_[uwb_id] = static_cast<int>(uwb_list[i]["gtsam_key"]);
+  }
 
     // Optimizer backend
   bool b_use_outlier_rejection;
@@ -619,7 +625,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     uwb_key = uwb_id2key_hash_[uwb_id];
   }
   else {
-    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
+    uwb_key = gtsam::Symbol('u', uwb_id2keynumber_hash_[uwb_id]);
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
@@ -875,7 +881,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     uwb_key = uwb_id2key_hash_[uwb_id];
   }
   else {
-    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
+    uwb_key = gtsam::Symbol('u', uwb_id2keynumber_hash_[uwb_id]);
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
