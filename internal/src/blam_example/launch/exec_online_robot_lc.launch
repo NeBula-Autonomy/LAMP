@@ -22,6 +22,7 @@
       <remap from="~artifact" to="~artifact_global" />
       <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" />
       <remap from="~uwb_signal" to="comm/uwb/anchor" />
+      <remap from="~localization_integrated_estimate" to="~localization_integrated_estimate_lc" />
 
       <!-- Pose graph subscriptions -->
       <remap from="~pose_graph_sub" to="blam_slam_fe/pose_graph" />
