@@ -61,13 +61,13 @@ class LoopClosureTools:
                     print('Successfully added a factor between %i and %i to the graph.' % (key_from, key_to))
                 else:
                     print('An error occurred while trying to add a factor between %i and %i.' % (key_from, key_to))
-                    highlight_edge(key_from, key_to, False)
+                    highlight_edge(prefix_from, key_from, prefix_to, key_to, False)
             else:
                 print('Aborted manual loop closure.')
-                highlight_edge(key_from, key_to, False)  # remove edge visualization  # remove edge visualization
+                highlight_edge(prefix_from, key_from, prefix_to, key_to, False)  # remove edge visualization  # remove edge visualization
         else:
             print('Error: One or more of the keys %i and %i do not exist.' % (key_from, key_to))
-            highlight_edge(key_from, key_to, False)  # remove edge visualization  # remove edge visualization
+            highlight_edge(prefix_from, key_from, prefix_to, key_to, False)  # remove edge visualization  # remove edge visualization
 
     def load_graph_clbk(self, msg):
         rospy.loginfo("Load graph command received")

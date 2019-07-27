@@ -33,7 +33,10 @@ inline geometry_msgs::Point tfpoint2msg(const tf::Vector3 &v) {
 geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(
     long unsigned int key,
     const std::map<long unsigned int, tf::Pose>& poses) const {
-      ROS_INFO("In getPositionMsg");
+  ROS_INFO("In getPositionMsg");
+  if (poses.find(key) == poses.end()) {
+    ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
+  }
   return tfpoint2msg(poses.at(key).getOrigin());
 }
 
@@ -584,6 +587,7 @@ void PoseGraphVisualizer::MakeMenuMarker(const tf::Pose &position,
 void PoseGraphVisualizer::VisualizePoseGraph() {
   // Publish odometry edges.
   if (odometry_edge_pub_.getNumSubscribers() > 0) {
+    ROS_INFO("Odometry Edges");
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
@@ -608,6 +612,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
   // Publish loop closure edges.
   if (loop_edge_pub_.getNumSubscribers() > 0) {
+    ROS_INFO("Loop Edges");
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
@@ -632,6 +637,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
   // Publish artifact edges.
   if (artifact_edge_pub_.getNumSubscribers() > 0) {
+    ROS_INFO("Artifact Edges");
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
@@ -666,6 +672,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
   // Publish UWB edges.
   if (uwb_edge_pub_.getNumSubscribers() > 0) {
+    ROS_INFO("UWB Edges");
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
@@ -854,6 +861,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
   // Interactive markers.
   if (publish_interactive_markers_) {
+    ROS_INFO("Pose Graph Nodes");
     for (const auto &keyed_pose : keyed_poses_) {
       gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.first);
       std::string robot_id = std::string(key_id);
@@ -958,7 +966,7 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     gtsam::Key key(artifact_id2key_hash_[it->first]);
     ROS_INFO_STREAM("Artifact hash key is "
                     << gtsam::DefaultKeyFormatter(key));
-    if (gtsam::Symbol(key).chr() != ('l' || 'm' || 'n' || 'o' || 'p')) {
+    if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p') {
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
       continue;

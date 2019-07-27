@@ -601,8 +601,8 @@ bool LaserLoopClosure::AddBetweenFactor(
 bool LaserLoopClosure::ChangeKeyNumber() {
   if (values_.exists(initial_key_)) {
     initial_key_ = initial_key_ + ((initial_key_.index()/10000)+1)*10000;
-    ChangeKeyNumber();
   }
+  // Set key to initial key
   key_ = initial_key_;
   keyed_stamps_.insert(std::pair<unsigned int, ros::Time>(key_, ros::Time::now()));
   stamps_keyed_.insert(std::pair<double, unsigned int>(ros::Time::now().toSec(), key_));
@@ -1313,6 +1313,15 @@ gu::Transform3 LaserLoopClosure::GetInitialPose() const {
   } else {
     ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
     return ToGu(values_.at<Pose3>(initial_key_));
+  }
+}
+
+gu::Transform3 LaserLoopClosure::GetInitialLoadedPose() const {
+  if (key_.index() > 1) {
+    return ToGu(values_.at<Pose3>(first_loaded_key_));
+  } else {
+    ROS_WARN("%s: The graph only contains its initial pose.", name_.c_str());
+    return ToGu(values_.at<Pose3>(first_loaded_key_));
   }
 }
 
@@ -2431,8 +2440,8 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
             it != artifact_key2info_hash.end(); it++ ) {
 
     ROS_INFO_STREAM("Artifact hash key is " << gtsam::DefaultKeyFormatter(it->first));
-    std::string label = "l";
-    if ((std::string(gtsam::Symbol(it->first)).compare(0,1,label)) != 0){
+    gtsam::Symbol art_key = gtsam::Symbol(it->first);
+    if (!(art_key.chr() == 'l' || art_key.chr() == 'm' || art_key.chr() == 'n' || art_key.chr() == 'o' || art_key.chr() == 'p')){
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(it->first));
       continue;
