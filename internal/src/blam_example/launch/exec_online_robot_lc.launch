@@ -14,9 +14,6 @@
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
-      <!-- Loop closures -->
-      <param name="check_for_loop_closures" value="true"/>
-
       <!-- Topics -->
       <remap from="~pcld" to="velodyne_points/transformed"/>
       <remap from="~artifact" to="~artifact_global" />
