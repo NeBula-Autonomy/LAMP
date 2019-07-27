@@ -889,13 +889,27 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   new_values.insert(uwb_key, pose_uwb);
 
   // Add a BetweenFactor between the pose key and the UWB key
-  gtsam::Vector6 precisions;
-  precisions.head<3>().setConstant(0.0);
-  precisions.tail<3>().setConstant(4.0);
-  static const gtsam::SharedNoiseModel& noise = 
-  gtsam::noiseModel::Diagonal::Precisions(precisions);
+  // gtsam::Vector6 precisions;
+  // precisions.head<3>().setConstant(0.0);
+  // precisions.tail<3>().setConstant(4.0);
+  // static const gtsam::SharedNoiseModel& noise = 
+  // gtsam::noiseModel::Diagonal::Precisions(precisions);
+  // // TODO
+  // new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
+
+  gu::MatrixNxNBase<double, 6> covariance;
+  covariance.Zeros();
+  for (int i = 0; i < 3; ++i)
+    covariance(i, i) = 1000000; // rotation
+  for (int i = 3; i < 6; ++i)
+    covariance(i, i) = 0.25; // translation
   // TODO
-  new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
+  new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), ToGtsam(covariance)));
+
+  Edge edge_uwb = std::make_pair(pose_key, uwb_key);
+  uwb_edges_between_.push_back(edge_uwb);
+  edge_poses_[edge_uwb] = gtsam::Pose3();
+  covariance_betweenfactor_[edge_uwb] = covariance;
 
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
@@ -2409,8 +2423,8 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       edge.key_from = uwb_edges_between_[ii].first;
       edge.key_to = uwb_edges_between_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN;
-      edge.range = edge_ranges_[uwb_edges_between_[ii]];
-      edge.range_error = error_rangefactor_[uwb_edges_between_[ii]];
+      // Tocleanup! will find it from nfg_ not edge_poses_
+      edge.pose = gr::ToRosPose(ToGu(edge_poses_[uwb_edges_between_[ii]]));
       g.edges.push_back(edge);
     }
 
@@ -2868,14 +2882,20 @@ void LaserLoopClosure::PoseGraphBaseHandler(
         ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
                  msg_edge.key_from,
                  msg_edge.key_to);
-        // double range = msg_edge.range;
-        // double sigmaR = msg_edge.range_error;
-        // gtsam::noiseModel::Base::shared_ptr rangeNoise = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
-
-        // new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
-        //                                   gtsam::Symbol(msg_edge.key_to),
-        //                                   range,
-        //                                   rangeNoise));
+        
+        // TODO! How do we want to get the covariance??? FIX SOON!!
+        gu::MatrixNxNBase<double, 6> covariance_uwb;
+        covariance_uwb.Zeros();
+        for (int i = 0; i < 3; ++i)
+          covariance_uwb(i, i) = 1000000; // rotation
+        for (int i = 3; i < 6; ++i)
+          covariance_uwb(i, i) = 0.25; // translation
+        
+        new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance_uwb)));
+        
       }
     }
   }
