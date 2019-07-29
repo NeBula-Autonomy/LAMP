@@ -119,7 +119,7 @@ private:
   // Keep a list of keyed laser scans, poses and timestamps.
   std::map<long unsigned int, PointCloud::ConstPtr> keyed_scans_;
   std::map<long unsigned int, tf::Pose> keyed_poses_;
-  std::map<gtsam::Key, tf::Pose> keyed_artifact_poses_;
+  std::map<long unsigned int, tf::Pose> keyed_artifact_poses_;
   std::map<long unsigned int, tf::Pose> keyed_uwb_poses_;
   std::map<long unsigned int, ros::Time> keyed_stamps_;
   std::map<double, long unsigned int> stamps_keyed_;
@@ -174,7 +174,7 @@ private:
   // Proximity threshold used by LaserLoopClosureNode.
   double proximity_threshold_{1};
 
-  long unsigned int key_{0};
+  gtsam::Symbol key_{0};
 };
 
 #endif

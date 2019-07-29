@@ -36,6 +36,7 @@
 
 #include <blam_slam/BlamSlam.h>
 #include <geometry_utils/Transform3.h>
+#include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/Marker.h>
@@ -53,7 +54,9 @@ BlamSlam::BlamSlam()
     marker_id_(0),
     largest_artifact_id_(0),
     b_first_pose_scan_revieved_(false),
-    use_artifact_loop_closure_(false) {}
+    use_artifact_loop_closure_(false), 
+    use_two_vlps_(false),
+    b_is_front_end_(false) {}
 
 BlamSlam::~BlamSlam() {}
 
@@ -114,6 +117,17 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("restart_pitch", restart_pitch_)) return false;
   if (!pu::Get("restart_yaw", restart_yaw_)) return false;
 
+  // check if lamp is run as basestation
+  b_is_basestation_ = false;
+  if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
+  if (!pu::Get("b_is_front_end", b_is_front_end_)) return false;
+
+  // set up subscriber to all robots if run on basestation
+  if (b_is_basestation_) {
+    if (!pu::Get("robot_names", robot_names_))
+      return false;
+  }
+
   // Load uwb information
   if (!pu::Get("uwb/all", uwb_id_list_all_)) return false;
   if (!pu::Get("uwb/drop", uwb_id_list_drop_)) return false;
@@ -137,7 +151,11 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_required_key_number_first", uwb_required_key_number_first_)) return false;
   if (!pu::Get("uwb_required_key_number_not_first", uwb_required_key_number_not_first_)) return false;
   if (!pu::Get("uwb_first_key_threshold", uwb_first_key_threshold_)) return false;
-
+  
+  if (!pu::Get("use_two_vlps", use_two_vlps_)){ROS_INFO("No setting for VLPs, use 1");};
+  ROS_INFO_STREAM("VLP setting is, use two? " << use_two_vlps_);
+  
+  
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
     if (loop_closure_.Load(graph_filename)) {
@@ -155,6 +173,34 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
     } else {
       ROS_ERROR_STREAM("Failed to load graph from " << graph_filename);
     }
+  }
+
+  //Get the initial key value to initialize timestamp and pointcloud msgs
+  initial_key_ = loop_closure_.GetInitialKey();
+
+  // Initialize boolean to add first scan to key
+  b_add_first_scan_to_key_ = false;
+
+  // Initialize pose update to read from pose graph
+  b_new_pose_available_ = true;
+
+  // Skipe initialize artifact unique ID if base station
+  if (b_is_basestation_) {
+    ROS_INFO("LAMP run as base_station");
+    return true;
+  }
+  //Get the artifact prefix from launchfile to set initial unique artifact ID
+  bool b_initialized_artifact_prefix_from_launchfile = true;
+  std::string artifact_prefix;
+  unsigned char artifact_prefix_converter[1];
+  if (!pu::Get("artifact_prefix", artifact_prefix)){
+     b_initialized_artifact_prefix_from_launchfile = false;
+     ROS_ERROR("Could not find node ID assosiated with robot_namespace");
+  }
+  
+  if (b_initialized_artifact_prefix_from_launchfile){
+    std::copy( artifact_prefix.begin(), artifact_prefix.end(), artifact_prefix_converter);
+    artifact_prefix_ = artifact_prefix_converter[0];
   }
 
   return true;
@@ -177,6 +223,7 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   load_graph_srv_ = nl.advertiseService("load_graph", &BlamSlam::LoadGraphService, this);
   batch_loop_closure_srv_ = nl.advertiseService("batch_loop_closure", &BlamSlam::BatchLoopClosureService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
+
   if (from_log)
     return RegisterLogCallbacks(n);
   else
@@ -194,16 +241,92 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-//  pose_scan_sub_ = nl.subscribe("pose_and_scan", 100000, &BlamSlam::PoseScanCallback, this);
+  if (!b_is_basestation_){
+    if (b_is_front_end_){
+      estimate_update_timer_ = nl.createTimer(
+          estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
+      
+      if (use_two_vlps_) {
+        ROS_INFO("Subscribing to two point cloud topics.");
+        pcld1_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld", 10);
+        pcld2_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld2", 10);
+        pcld_synchronizer = std::unique_ptr<PcldSynchronizer>(
+          new PcldSynchronizer(PcldSyncPolicy(pcld_queue_size_), *pcld1_sub_, *pcld2_sub_));
+        pcld_synchronizer->registerCallback(&BlamSlam::TwoPointCloudCallback, this);
+      } else {
+        pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+      }
+    }
 
-  uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
+    uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
 
-  pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+    uwb_sub_ =
+        nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
 
-  artifact_sub_ = nl.subscribe("artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
+    artifact_sub_ = nl.subscribe(
+        "artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
+  }
+  // Create pose-graph callbacks for base station
+  if(b_is_basestation_){
+    int num_robots = robot_names_.size();
+    // init size of subscribers
+    // loop through each robot to set up subscriber
+    for (size_t i = 0; i < num_robots; i++) {
+      ros::Subscriber keyed_scan_sub = nl.subscribe<pose_graph_msgs::KeyedScan>(
+          "/" + robot_names_[i] + "/blam_slam/keyed_scans",
+          10,
+          &BlamSlam::KeyedScanCallback,
+          this);
+      ros::Subscriber pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
+          "/" + robot_names_[i] + "/blam_slam/pose_graph",
+          1,
+          &BlamSlam::PoseGraphCallback,
+          this);
+      ros::Subscriber pose_update_sub = nl.subscribe<geometry_msgs::PoseStamped>(
+          "/" + robot_names_[i] + "/blam_slam/localization_incremental_estimate",
+          1,
+          &BlamSlam::PoseUpdateCallback,
+          this);
+      ros::Subscriber artifact_base_sub =
+          nl.subscribe("/" + robot_names_[i] + "/blam_slam/artifact_global",
+                       10,
+                       &BlamSlam::ArtifactBaseCallback,
+                       this);
 
-  uwb_sub_ =
-      nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
+      Subscriber_posegraphList_.push_back(pose_graph_sub);
+      Subscriber_poseList_.push_back(pose_update_sub);
+      Subscriber_keyedscanList_.push_back(keyed_scan_sub);
+      Subscriber_artifactList_.push_back(artifact_base_sub);
+      ROS_INFO_STREAM(i);
+    }    
+  }
+
+  if (!b_is_front_end_){
+    ros::Subscriber keyed_scan_sub =  nl.subscribe<pose_graph_msgs::KeyedScan>(
+        "keyed_scans_sub",
+        10,
+        &BlamSlam::KeyedScanCallback,
+        this);
+    ros::Subscriber pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
+        "pose_graph_sub",
+        10,
+        &BlamSlam::PoseGraphCallback,
+        this);
+    ros::Subscriber artifact_base_sub =
+        nl.subscribe("artifact_global_sub",
+                      10,
+                      &BlamSlam::ArtifactBaseCallback,
+                      this);
+    ros::Subscriber pose_update_sub =
+        nl.subscribe("localization_incremental_estimate_sub",
+                      10,
+                      &BlamSlam::PoseUpdateCallback,
+                      this);
+    Subscriber_posegraphList_.push_back(pose_graph_sub);
+    Subscriber_poseList_.push_back(pose_update_sub);
+    Subscriber_keyedscanList_.push_back(keyed_scan_sub);
+    Subscriber_artifactList_.push_back(artifact_base_sub);
+  }
 
   ROS_INFO("Creating message filters");
 
@@ -245,6 +368,16 @@ bool BlamSlam::CreatePublishers(const ros::NodeHandle& n) {
 
 bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
                                 blam_slam::AddFactorResponse &response) {
+ 
+  //Convert from string and int to gtsam::Symbol 
+  unsigned char prefix_from = request.prefix_from[0];
+  unsigned int key_from = request.key_from;
+  gtsam::Symbol id_from (prefix_from,key_from);
+
+  unsigned char prefix_to = request.prefix_to[0]; 
+  unsigned int key_to = request.key_to;
+  gtsam::Symbol id_to (prefix_to,key_to);
+  
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
     ROS_WARN("Cannot add factor because the request is not confirmed.");
@@ -261,8 +394,8 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   pose_from_to.print("Between pose is ");
 
   response.success = loop_closure_.AddManualLoopClosure(
-    static_cast<unsigned int>(request.key_from),
-    static_cast<unsigned int>(request.key_to),
+    static_cast<gtsam::Symbol>(id_from),
+    static_cast<gtsam::Symbol>(id_to),
     pose_from_to);
   response.confirm = false;
   if (response.success){
@@ -310,15 +443,28 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 
 bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
                                    blam_slam::RemoveFactorResponse &response) {
+    
+  //Convert from string and int to gtsam::Symbol 
+  unsigned char prefix_from = request.prefix_from[0];
+  unsigned int key_from = request.key_from;
+  gtsam::Symbol id_from (prefix_from,key_from);
+
+  unsigned char prefix_to = request.prefix_to[0]; 
+  unsigned int key_to = request.key_to;
+  gtsam::Symbol id_to (prefix_to,key_to);
+
+
   // TODO - bring the service creation into this node?
   if (!request.confirmed) {
     ROS_WARN("Cannot remove factor because the request is not confirmed.");
     response.success = false;
     return true;
   }
-  response.success =
-      loop_closure_.RemoveFactor(static_cast<unsigned int>(request.key_from),
-                                 static_cast<unsigned int>(request.key_to));
+  bool is_batch_loop_closure = false; // TODO check if we need this
+  response.success = loop_closure_.RemoveFactor(
+    static_cast<gtsam::Symbol>(id_from),
+    static_cast<gtsam::Symbol>(id_to),
+    is_batch_loop_closure);
   if (response.success){
     std::cout << "removing factor from pose graph succeeded" << std::endl;
   }else{
@@ -361,8 +507,14 @@ bool BlamSlam::SaveGraphService(blam_slam::SaveGraphRequest &request,
 bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
                                 blam_slam::LoadGraphResponse &response) {
   std::cout << "Loading graph..." << std::endl;
+  // TODO: If robot namespace is same as loaded, then erase
   loop_closure_.ErasePosegraph();
+
   response.success = loop_closure_.Load(request.filename);
+
+  // change the key number for the second robot
+  // This also resets key_ in loop_closure_
+  loop_closure_.ChangeKeyNumber();
 
   // Regenerate the 3D map from the loaded posegraph
   PointCloud::Ptr regenerated_map(new PointCloud);
@@ -371,10 +523,10 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   mapper_.Reset();
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(regenerated_map, unused.get());
-  // change the key number for the second robot to 10000
-  loop_closure_.ChangeKeyNumber();
 
-  initial_key_ = loop_closure_.GetKey();
+  // TODO: Double check this
+  // TODO: Do we need initial_key_ here?
+  initial_key_ = loop_closure_.GetInitialKey();
   gu::MatrixNxNBase<double, 6> covariance;
   covariance.Zeros();
   for (int i = 0; i < 3; ++i)
@@ -382,8 +534,8 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
   
-  gu::Transform3 init_pose = loop_closure_.GetInitialPose();
-  gu::Transform3 current_pose = loop_closure_.GetCurrentPose();
+  gu::Transform3 init_pose = loop_closure_.GetInitialLoadedPose();
+  gu::Transform3 current_pose = localization_.GetIntegratedEstimate(); // loop_closure_.GetCurrentPose();
   const gu::Transform3 pose_delta = gu::PoseDelta(init_pose, current_pose);
   loop_closure_.AddFactorAtLoad(pose_delta, covariance);
 
@@ -398,6 +550,9 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   std::cout << "BATCH LOOP CLOSURE. Looking for any loop closures..." << std::endl;
 
   response.success = loop_closure_.BatchLoopClosure();
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
   if (response.success){
     ROS_INFO("Found Loop Closures in batch loop closure");
@@ -439,24 +594,16 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
   return true;
 }
 
-//void BlamSlam::PoseScanCallback(const core_msgs::PoseAndScanConstPtr& msg) {
-  
-//  ROS_INFO("Inside PoseScanCallback");
+void BlamSlam::TwoPointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& pcld1,
+                                     const sensor_msgs::PointCloud2::ConstPtr& pcld2) {
 
-//  // Get the pose
-//  geometry_utils::Transform3 fe_pose = geometry_utils::ros::FromROS(msg->pose.pose);// Change name to include pose
-
-//  PointCloud::Ptr received_cloud_ptr;
-//  received_cloud_ptr.reset(new PointCloud);
-//  // sensor_msgs::PointCloud2ConstPtr pointcloud_msg;
-  
-//  pcl::fromROSMsg( msg->scan, *received_cloud_ptr.get());
-
-//  // Process pose and scan
-//  ProcessPoseScanMessage(fe_pose, received_cloud_ptr);
-
-//  return;
-//}
+  // Merge point clouds
+  PointCloud p1, p2;
+  pcl::fromROSMsg(*pcld1, p1);
+  pcl::fromROSMsg(*pcld2, p2);
+  PointCloud::ConstPtr sum(new PointCloud(p1 + p2));
+  PointCloudCallback(sum);
+}
 
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
   // TODO - for other front-ends
@@ -568,8 +715,8 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   } else {
     // New artifact - increment the id counters
     b_is_new_artifact = true;
+    cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
     ++largest_artifact_id_;
-    cur_artifact_key = gtsam::Symbol('l', largest_artifact_id_);
     std::cout << "new artifact observed, artifact id " << artifact_id 
               << " with key in pose graph " 
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
@@ -582,7 +729,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
       = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(R_artifact_position[0], 
                                                   R_artifact_position[1],
                                                   R_artifact_position[2]));
-  R_pose_A.print("Between pose is ");
+  // R_pose_A.print("Between pose is \n");
 
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
@@ -876,10 +1023,11 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
 }
 
 bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
-                                blam_slam::RestartResponse &response) {    
+                              blam_slam::RestartResponse &response) {    
   ROS_INFO_STREAM(request.filename);
   // Erase the current posegraph to make space for the backup
-  loop_closure_.ErasePosegraph();  
+  loop_closure_.ErasePosegraph();
+
   // Run the load function to retrieve the posegraph
   response.success = loop_closure_.Load(request.filename);
 
@@ -899,10 +1047,14 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = position_sigma_*position_sigma_; //0.1, 0.01; sqrt(0.01) rad sd
 
+
   // This will add a between factor after obtaining the delta between poses.
   delta_after_restart_.translation = gu::Vec3(restart_x_, restart_y_, restart_z_);
   delta_after_restart_.rotation = gu::Rot3(restart_roll_, restart_pitch_, restart_yaw_);
   loop_closure_.AddFactorAtRestart(delta_after_restart_, covariance);
+
+  // Bool for adding scan to key the pose added at restart
+  b_add_first_scan_to_key_ = true;
 
   // Also reset the robot's estimated position.
   be_current_pose_ = loop_closure_.GetLastPose();
@@ -916,7 +1068,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan, geometry_uti
     return false;
   }
 
-  unsigned int pose_key;
+  gtsam::Symbol pose_key;
   // Add the new pose to the pose graph (BetweenFactor)
   // TODO rename to attitude and position sigma
   gu::MatrixNxNBase<double, 6> covariance;
@@ -946,7 +1098,7 @@ bool BlamSlam::HandleLoopClosures(const PointCloud::ConstPtr& scan, geometry_uti
     return false;
   }
 
-  std::vector<unsigned int> closure_keys;
+  std::vector<gtsam::Symbol> closure_keys;
   if (!loop_closure_.FindLoopClosures(pose_key, &closure_keys)) {
     return false;
   }
@@ -980,4 +1132,104 @@ bool BlamSlam::getTransformEigenFromTF(
     ROS_FATAL("%s", ex.what());
   }
   tf::transformTFToEigen(tf_tfm, T);
+}
+
+// BASE STATION
+void BlamSlam::KeyedScanCallback(
+    const pose_graph_msgs::KeyedScan::ConstPtr &msg) {
+  ROS_INFO_STREAM("Keyed scan message recieved");
+
+  // Access loop closure callback
+  loop_closure_.KeyedScanBaseHandler(msg);
+}
+
+void BlamSlam::PoseGraphCallback(
+    const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
+  ROS_INFO_STREAM("Pose Graph message recieved");
+
+  // Access loop closure callback
+  loop_closure_.PoseGraphBaseHandler(msg);
+
+  // Update map
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+  mapper_.Reset();
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
+
+  // Also reset the robot's estimated position.
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  ros::Time stamp = msg->header.stamp;
+  localization_.UpdateTimestamp(stamp);
+  localization_.PublishPoseNoUpdate();
+  b_new_pose_available_ = true;
+  // Publish Graph
+  // loop_closure_.PublishPoseGraph();
+  // loop_closure_.PublishArtifacts();
+
+  // Publish map
+  mapper_.PublishMap();
+}
+
+
+
+void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
+  ROS_INFO_STREAM("Artifact message recieved");
+  core_msgs::Artifact artifact;
+  artifact.header = msg->header;
+  artifact.name = msg->name;
+  artifact.parent_id = msg->parent_id;
+  artifact.seq = msg->seq;
+  artifact.hotspot_name = msg->hotspot_name;
+  artifact.point = msg->point;
+  artifact.covariance = msg->covariance;
+  artifact.confidence = msg->confidence;
+  artifact.label = msg->label;
+  artifact.thumbnail = msg->thumbnail;
+
+  ArtifactInfo artifactinfo(msg->parent_id);
+  artifactinfo.msg = artifact;
+
+  std::cout << "Artifact position in world is: " << artifact.point.point.x
+            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
+            << std::endl;
+  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
+
+  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
+  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
+  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
+            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
+            << std::endl;
+  std::cout << "\t Label: " << artifact.label << std::endl;
+
+  // Publish artifacts - should be updated from the pose-graph
+  loop_closure_.PublishArtifacts();
+}
+
+void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+
+  // ROS_INFO("new pose update received from frontend");
+
+  // Set the pose estimate to the latest pose graph node if there is a new one
+  if (b_new_pose_available_) {
+    current_pose_est_ = loop_closure_.GetLastPose();
+    b_new_pose_available_ = false;
+  }
+
+  // update with the pose delta
+  current_pose_est_ = gu::PoseUpdate(current_pose_est_, gu::ros::FromROS(msg->pose));
+  localization_.SetIntegratedEstimate(current_pose_est_);
+
+  // Update the timestamp
+  ros::Time stamp = msg->header.stamp;
+  localization_.UpdateTimestamp(stamp);
+
+  // Publish the updated pose
+  localization_.PublishPoseNoUpdate();
+}
+
+size_t LaserLoopClosure::GetNumberStampsKeyed() const {
+  return stamps_keyed_.size();
 }

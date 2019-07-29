@@ -317,3 +317,8 @@ void PointCloudLocalization::PublishPoseNoUpdate() {
   PublishPose(incremental_estimate_, incremental_estimate_pub_);
   PublishPose(integrated_estimate_, integrated_estimate_pub_);
 }
+
+void PointCloudLocalization::UpdateTimestamp(ros::Time& stamp) {
+  stamp_ = stamp;
+}
+

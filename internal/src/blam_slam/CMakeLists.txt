@@ -42,6 +42,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   tf_conversions
+  pose_graph_merger
 )
 
 add_service_files(FILES AddFactor.srv RemoveFactor.srv SaveGraph.srv Restart.srv LoadGraph.srv BatchLoopClosure.srv)
@@ -72,6 +73,7 @@ catkin_package(
     uwb_msgs
     mesh_msgs
     geometry_msgs
+    pose_graph_merger
   DEPENDS
     Boost
 )

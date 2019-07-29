@@ -71,12 +71,33 @@
       <!-- Point cloud visualization -->
       <rosparam file="$(find point_cloud_visualizer)/config/parameters.yaml"/>
 
-      <!-- Loop closure -->
-      <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+      <!-- General Setup and Loop closure -->
+      <rosparam file="$(find laser_loop_closure)/config/setup_parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/pose_graph_parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/loop_closure_parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/uwb_parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/robustness_parameters.yaml"/>
 
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
 
+      <!-- The robot prefix dependent of robot_space -->
+      <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
+      <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
+      <param name="robot_prefix" value="c" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax')"/>
+      <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
+
+      <!-- The artifact prefix dependent of robot_namespace -->
+      <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
+      <param name="artifact_prefix" value="m" if="$(eval robot_namespace == 'husky2')"/>
+      <param name="artifact_prefix" value="n" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="artifact_prefix" value="o" if="$(eval robot_namespace == 'telemax')"/>
+      <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
+
+      <!-- See if LAMP is run as basestation -->
+      <param name="b_is_basestation" value="true" type="bool" if="$(eval robot_namespace == 'base_station')"/>
+      <param name="b_is_basestation" value="false" type="bool" unless="$(eval robot_namespace == 'base_station')"/>
 
     </node>
 

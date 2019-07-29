@@ -1,0 +1,125 @@
+# Toggle loop closures on or off. Setting this to off will increase run-time
+# Solver used in backend. 1 for LM, 2 for GN
+solver: 1
+
+# Toggle outlier rejection
+b_use_outlier_rejection: false
+
+# speed by a small fraction.
+check_for_loop_closures: false
+
+# Whether or not consolidate artifacts
+use_artifact_loop_closure: false
+
+# Use two velodynes?
+use_two_vlps: true
+
+# Make true to save a backup pointcloud before every loop closure.
+save_posegraph_backup: false
+
+# Number of keyes between each saved backup
+keys_between_each_posegraph_backup: 50
+
+# Default parameters for the ISAM2 data structure.
+relinearize_skip: 1 # - keep this at 1 - to encourage relinearization
+relinearize_threshold: 0.0001 # Make this smaller (was at 0.01)
+
+# Number of iterations of the isam2 update when doing manual loop closures
+n_iterations_manual_loop_close: 1
+
+publish_interactive_markers: true
+
+# Noise parameters (as precisions) for manual loop closure
+manual_lc_rot_precision: 0.0 # default 0.0 (no information)
+manual_lc_trans_precision: 10.0 # default 0.001 (~30 m sd)
+
+# Noise parameters (as variances) for Laser loop closure
+laser_lc_rot_sigma: 0.01 #0.316 # default 0.01
+laser_lc_trans_sigma: 0.01 #0.6324 # default 0.04 
+
+# Noise parameters (as precisions) for artifacts 
+artifact_rot_precision: 0.0001
+artifact_trans_precision: 0.005
+
+# Amount of translational distance the sensor must travel before adding a new
+# pose to the pose graph. This helps keep the graph sparse so that loop closures
+# are fast.
+translation_threshold_kf: 1.0 # For adding keyframes 
+translation_threshold_nodes: 1.0  # For adding nodes to pose graph 
+rotation_threshold_nodes: 30.5  # (rad) rotation before adding new poses 
+rotation_threshold_kf: 30.5 # (rad) rotation before adding new poses 
+
+# When searching through old poses for loop closures, only consider old poses
+# that are within this distance of the current pose.
+proximity_threshold: 4
+
+# To compute a loop closure we perform ICP between the current scan and laser
+# scans captured from nearby poses. In order to be considered a loop closure,
+# the ICP "fitness score" must be less than this number.
+max_tolerable_fitness: 5.0
+
+# Don't attempt loop closures with poses in the graph that were collected within
+# this translational distance (m) from the current pose.
+distance_to_skip_recent_poses: 20 #10 # 200
+
+# If a loop has recently been closed, don't close a new one for at least this
+# amount of translational distance (m).
+distance_before_reclosing: 20 #10
+
+# If a batchloop has recently been closed, don't close a new one for at least this
+# amount of translational distance (m).
+distance_before_batch_reclosing: 0 #3
+
+# outlier rejection thresholds (distances)
+translation_check_threshold: 0.1 # 10 centimeters
+rotation_check_threshold: 0.1 # ~5.7 degrees
+# TODO make these dynamic with the translation threshold for nodes
+
+########################################
+# Turn on sanity checks
+b_check_deltas: false
+# Use zip file for backup or from memory?
+load_graph_from_zip_file: false
+
+# Sanity check thresholds
+translational_sanity_check_lc: 100
+translational_sanity_check_odom: 3
+
+########################################
+b_use_uwb: false
+
+# UWB range measurement noise (standard deviation)
+uwb_range_measurement_error: 2.0
+
+# Selection of UWB range measurement compensation
+# 0 - No compensation
+# 1 - TODO
+uwb_range_compensation: 0
+
+# Optimizer selection for UWB factors: 0 - ISAM2, 1 - LM
+uwb_factor_optimizer: 1
+
+# Number of range measurement which is necessary to add a new UWB factor
+uwb_skip_measurement_number: 5
+
+# Pose key number for checking whether there are enough number of range measurements or not
+uwb_update_key_number: 2
+
+# Rquired number of pose keys linked with UWB range measurement
+uwb_required_key_number_first: 3
+uwb_required_key_number_not_first: 1
+
+# Number of range factors added at the first observation
+uwb_number_added_rangefactor_first: 3
+
+# Number of range factors added aganst an existing UWB key in the pose graph
+uwb_number_added_rangefactor_not_first: 1
+
+# Range added into the pose graph should be longer than the following value
+uwb_minimum_range_threshold: 3.0
+
+# Flag to decide whether to show uwb data or not (for debugging)
+display_uwb_data: false
+
+# Pose key number threshold to wait for accepting UWB signal
+uwb_first_key_threshold: 3
