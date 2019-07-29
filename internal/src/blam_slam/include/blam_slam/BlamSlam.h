@@ -104,6 +104,12 @@ class BlamSlam {
   void VisualizationTimerCallback(const ros::TimerEvent& ev);
   void UwbTimerCallback(const ros::TimerEvent& ev);
 
+  // Base Station Callbacks
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
+  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+  void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
+  void PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
   bool HandleLoopClosures(const PointCloud::ConstPtr& scan, bool* new_keyframe);
@@ -154,12 +160,14 @@ class BlamSlam {
   std::string world_frame_;
 
   // The intial key in the pose graph
-  unsigned int initial_key_;
+  gtsam::Symbol initial_key_;
 
   // The delta between where LAMP was last saved, and where it is restarted.
   geometry_utils::Transform3 delta_after_restart_;
 
-   // Update rates and callback timers.
+  geometry_utils::Transform3 delta_after_load_;
+
+  // Update rates and callback timers.
   double estimate_update_rate_;
   double visualization_update_rate_;
   double uwb_update_rate_;
@@ -175,11 +183,14 @@ class BlamSlam {
   ros::Subscriber pcld_sub_;
   ros::Subscriber artifact_sub_;
   ros::Subscriber uwb_sub_;
+  std::vector<ros::Subscriber> Subscriber_posegraphList_;
+  std::vector<ros::Subscriber> Subscriber_keyedscanList_;
+  std::vector<ros::Subscriber> Subscriber_artifactList_;
+  std::vector<ros::Subscriber> Subscriber_poseList_;
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
 
-  // Restart delta
   double restart_x_;
   double restart_y_;
   double restart_z_;
@@ -187,6 +198,8 @@ class BlamSlam {
   double restart_pitch_;
   double restart_yaw_;
   
+  // Artifact prefix
+  unsigned char artifact_prefix_;
 
   // Services
   ros::ServiceServer add_factor_srv_;
@@ -204,6 +217,16 @@ class BlamSlam {
   int largest_artifact_id_; 
   bool use_artifact_loop_closure_;
   bool b_use_uwb_;
+  bool b_add_first_scan_to_key_;
+
+  //Basestation
+  bool b_is_basestation_;
+  std::vector<std::string> robot_names_;
+  bool b_is_front_end_;
+
+  // Pose updating
+  bool b_new_pose_available_;
+  geometry_utils::Transform3 current_pose_est_;
 
   // Object IDs
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;

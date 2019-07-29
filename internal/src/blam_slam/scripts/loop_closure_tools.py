@@ -42,31 +42,32 @@ class LoopClosureTools:
 
     def add_factor_clbk(self, msg):
         rospy.loginfo("Add factor command received")
+        prefix_from = msg.prefix_from
         key_from = msg.key_from
+        prefix_to = msg.prefix_to
         key_to = msg.key_to
         quat = transforms3d.euler.euler2quat(msg.roll, msg.pitch, msg.yaw)
         add_factor_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/add_factor', AddFactor)
         highlight_edge = rospy.ServiceProxy(self.robot_namespace + '/pose_graph_visualizer/highlight_edge', HighlightEdge)
-        response = highlight_edge(key_from, key_to, True)
-
+        response = highlight_edge(prefix_from, key_from, prefix_to, key_to, True)
         if response.success:
             while not self.confirmation_received:
                 pass
             self.set_confirmation_received_to_false()
             if self.confirmation_status:
-                highlight_edge(key_from, key_to, False)  # remove edge visualization
-                response = add_factor_service(key_from, key_to, quat[0], quat[1], quat[2], quat[3], True)
+                highlight_edge(prefix_from, key_from, prefix_to, key_to, False)  # remove edge visualization
+                response = add_factor_service(prefix_from, key_from, prefix_to, key_to, quat[0], quat[1], quat[2], quat[3], True)
                 if response.success:
                     print('Successfully added a factor between %i and %i to the graph.' % (key_from, key_to))
                 else:
                     print('An error occurred while trying to add a factor between %i and %i.' % (key_from, key_to))
-                    highlight_edge(key_from, key_to, False)
+                    highlight_edge(prefix_from, key_from, prefix_to, key_to, False)
             else:
                 print('Aborted manual loop closure.')
-                highlight_edge(key_from, key_to, False)  # remove edge visualization  # remove edge visualization
+                highlight_edge(prefix_from, key_from, prefix_to, key_to, False)  # remove edge visualization  # remove edge visualization
         else:
             print('Error: One or more of the keys %i and %i do not exist.' % (key_from, key_to))
-            highlight_edge(key_from, key_to, False)  # remove edge visualization  # remove edge visualization
+            highlight_edge(prefix_from, key_from, prefix_to, key_to, False)  # remove edge visualization  # remove edge visualization
 
     def load_graph_clbk(self, msg):
         rospy.loginfo("Load graph command received")
@@ -79,18 +80,20 @@ class LoopClosureTools:
 
     def remove_factor_clbk(self, msg):
         rospy.loginfo("Remove factor command received")
+        prefix_from = msg.prefix_from
         key_from = msg.key_from
+        prefix_to = msg.prefix_to
         key_to = msg.key_to
         remove_factor_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/remove_factor', RemoveFactor)
         highlight_edge = rospy.ServiceProxy(self.robot_namespace + '/pose_graph_visualizer/highlight_edge', HighlightEdge)
-        response = highlight_edge(key_from, key_to, True)
+        response = highlight_edge(prefix_from, key_from, prefix_to, key_to, True)
         if response.success:
             while not self.confirmation_received:
                 pass
             self.set_confirmation_received_to_false()
             if self.confirmation_status:
-                highlight_edge(key_from, key_to, False)  # remove edge visualization
-                response = remove_factor_service(key_from, key_to, True)
+                highlight_edge(prefix_from, key_from, prefix_to, key_to, False)  # remove edge visualization
+                response = remove_factor_service(prefix_from, key_from, prefix_to, key_to, True)
                 if response.success:
                     print('Successfully removed a factor between %i and %i from the graph.' % (key_from, key_to))
                 else:
