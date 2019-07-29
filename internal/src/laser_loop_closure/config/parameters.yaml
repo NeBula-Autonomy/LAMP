@@ -11,6 +11,9 @@ check_for_loop_closures: true
 # Whether or not consolidate artifacts
 use_artifact_loop_closure: false
 
+# Use two velodynes?
+use_two_vlps: true
+
 # Make true to save a backup pointcloud before every loop closure.
 save_posegraph_backup: false
 

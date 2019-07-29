@@ -54,6 +54,7 @@ BlamSlam::BlamSlam()
     marker_id_(0),
     largest_artifact_id_(0),
     use_artifact_loop_closure_(false), 
+    use_two_vlps_(false),
     b_is_front_end_(false) {}
 
 BlamSlam::~BlamSlam() {}
@@ -159,7 +160,11 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_required_key_number_first", uwb_required_key_number_first_)) return false;
   if (!pu::Get("uwb_required_key_number_not_first", uwb_required_key_number_not_first_)) return false;
   if (!pu::Get("uwb_first_key_threshold", uwb_first_key_threshold_)) return false;
-
+  
+  if (!pu::Get("use_two_vlps", use_two_vlps_)){ROS_INFO("No setting for VLPs, use 1");};
+  ROS_INFO_STREAM("VLP setting is, use two? " << use_two_vlps_);
+  
+  
   std::string graph_filename;
   if (pu::Get("load_graph", graph_filename) && !graph_filename.empty()) {
     if (loop_closure_.Load(graph_filename)) {
@@ -247,7 +252,16 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
       estimate_update_timer_ = nl.createTimer(
           estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
       
-      pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+      if (use_two_vlps_) {
+        ROS_INFO("Subscribing to two point cloud topics.");
+        pcld1_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld", 10);
+        pcld2_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld2", 10);
+        pcld_synchronizer = std::unique_ptr<PcldSynchronizer>(
+          new PcldSynchronizer(PcldSyncPolicy(pcld_queue_size_), *pcld1_sub_, *pcld2_sub_));
+        pcld_synchronizer->registerCallback(&BlamSlam::TwoPointCloudCallback, this);
+      } else {
+        pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+      }
     }
 
     uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
@@ -560,6 +574,17 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
   uwb_id2data_hash_[request.node.AnchorID].drop_status = true;
   
   return true;
+}
+
+void BlamSlam::TwoPointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& pcld1,
+                                     const sensor_msgs::PointCloud2::ConstPtr& pcld2) {
+
+  // Merge point clouds
+  PointCloud p1, p2;
+  pcl::fromROSMsg(*pcld1, p1);
+  pcl::fromROSMsg(*pcld2, p2);
+  PointCloud::ConstPtr sum(new PointCloud(p1 + p2));
+  PointCloudCallback(sum);
 }
 
 void BlamSlam::PointCloudCallback(const PointCloud::ConstPtr& msg) {
@@ -948,7 +973,7 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
 }
 
 bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
-                                blam_slam::RestartResponse &response) {    
+                              blam_slam::RestartResponse &response) {    
   ROS_INFO_STREAM(request.filename);
   // Erase the current posegraph to make space for the backup
   loop_closure_.ErasePosegraph();

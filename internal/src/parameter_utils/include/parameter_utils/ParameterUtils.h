@@ -58,18 +58,18 @@ bool Get(const std::string& s, M& p) {
 
   std::string r;
   if (!ros::param::search(s, r)) {
-    ROS_ERROR("%s: Failed to search for parameter '%s'.", name.c_str(),
+    ROS_WARN("%s: Failed to search for parameter '%s'.", name.c_str(),
               s.c_str());
     return false;
   }
 
   if (!ros::param::has(r)) {
-    ROS_ERROR("%s: Missing required parameter '%s'.", name.c_str(), s.c_str());
+    ROS_WARN("%s: Missing required parameter '%s'.", name.c_str(), s.c_str());
     return false;
   }
 
   if (!ros::param::get(r, p)) {
-    ROS_ERROR("%s: Failed to get parameter '%s'.", name.c_str(), s.c_str());
+    ROS_WARN("%s: Failed to get parameter '%s'.", name.c_str(), s.c_str());
     return false;
   }
 

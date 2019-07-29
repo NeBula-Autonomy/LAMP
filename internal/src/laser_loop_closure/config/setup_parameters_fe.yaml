@@ -2,6 +2,9 @@
 # Overall Setup parameters
 #######################################
 
+# Use two velodynes?
+use_two_vlps: false
+
 # Toggle auto loop closures on or off.
 check_for_loop_closures: false
 

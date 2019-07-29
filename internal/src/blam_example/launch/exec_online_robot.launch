@@ -26,6 +26,7 @@
 
       <!-- Topics -->
       <remap from="~pcld" to="velodyne_points/transformed"/>
+      <remap from="~pcld2" to="velodyne_front/velodyne_points/transformed"/>
       <remap from="~artifact" to="~artifact_global" />
       <!-- <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" /> -->
       <remap from="~uwb_signal" to="no_comm/uwb/anchor" />
@@ -107,6 +108,8 @@
     <!-- Trotthling input cloud -->
     <node name="point_cloud_throttler" type="throttle" pkg="topic_tools" args="messages velodyne_points $(arg vlp_throttle_freq)">
     </node>
+    <node name="point_cloud_throttler_front" type="throttle" pkg="topic_tools" args="messages velodyne_front/velodyne_points $(arg vlp_throttle_freq)">
+    </node>
  
 
     <!-- Republish node with different frame_id -->
@@ -115,6 +118,20 @@
       <remap from="~input" to="velodyne_points"/>
       <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
       <remap from="~output" to="velodyne_points/transformed"/>
+      <rosparam subst_value="true">
+        filter_field_name: z
+        filter_limit_min: -100
+        filter_limit_max: 100
+        output_frame: $(arg robot_namespace)/base_link
+      </rosparam>
+    </node>
+
+    <!-- Republish node with different frame_id -->
+    <node pkg="nodelet" type="nodelet" name="transform_points_base_link_front"
+          args="standalone pcl/PassThrough">
+      <remap from="~input" to="velodyne_front/velodyne_points"/>
+      <!-- <remap from="~input" to="velodyne_front/velodyne_points_throttle"/> -->
+      <remap from="~output" to="velodyne_front/velodyne_points/transformed"/>
       <rosparam subst_value="true">
         filter_field_name: z
         filter_limit_min: -100
