@@ -219,7 +219,6 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_number_added_rangefactor_first", uwb_number_added_rangefactor_first_)) return false;
   if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
   if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
-  if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
   XmlRpc::XmlRpcValue uwb_list;
   if (!pu::Get("uwb_list", uwb_list)) return false;
   for (int i=0; i<uwb_list.size(); i++) {
