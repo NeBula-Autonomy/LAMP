@@ -74,8 +74,12 @@
       <!-- Point cloud visualization -->
       <rosparam file="$(find point_cloud_visualizer)/config/parameters.yaml"/>
 
-      <!-- Loop closure -->
-      <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+      <!-- General Setup and Loop closure -->
+      <rosparam file="$(find laser_loop_closure)/config/setup_parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/pose_graph_parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/loop_closure_parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/uwb_parameters.yaml"/>
+      <rosparam file="$(find laser_loop_closure)/config/robustness_parameters.yaml"/>
 
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
