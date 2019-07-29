@@ -52,12 +52,17 @@
 #include <point_cloud_odometry/PointCloudOdometry.h>
 #include <laser_loop_closure/LaserLoopClosure.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
 
 #include <core_msgs/Artifact.h>
 #include <uwb_msgs/Anchor.h>
@@ -96,6 +101,8 @@ class BlamSlam {
 
   // Sensor callbacks.
   void PointCloudCallback(const PointCloud::ConstPtr& msg);
+  void TwoPointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& pcld1,
+                             const sensor_msgs::PointCloud2::ConstPtr& pcld2);
   void ArtifactCallback(const core_msgs::Artifact& msg);
   void UwbSignalCallback(const uwb_msgs::Anchor& msg);
 
@@ -187,6 +194,20 @@ class BlamSlam {
   std::vector<ros::Subscriber> Subscriber_keyedscanList_;
   std::vector<ros::Subscriber> Subscriber_artifactList_;
   std::vector<ros::Subscriber> Subscriber_poseList_;
+
+  // Whether to use two point clouds.
+  bool use_two_vlps_{false};
+  // Queue size of the approximate time policy that synchronizes the two point clouds.
+  int pcld_queue_size_{10};
+  // Filters
+  message_filters::Subscriber<sensor_msgs::PointCloud2>* pcld1_sub_;
+  message_filters::Subscriber<sensor_msgs::PointCloud2>* pcld2_sub_;
+  // Synchronization policy for the two point clouds.
+  typedef message_filters::sync_policies::ApproximateTime<
+    sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> PcldSyncPolicy;
+  // Synchronizer for the two point clouds.
+  typedef message_filters::Synchronizer<PcldSyncPolicy> PcldSynchronizer;
+  std::unique_ptr<PcldSynchronizer> pcld_synchronizer;
 
   // Publishers
   ros::Publisher base_frame_pcld_pub_;

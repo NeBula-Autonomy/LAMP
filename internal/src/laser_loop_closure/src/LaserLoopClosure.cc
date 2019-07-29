@@ -467,7 +467,7 @@ bool LaserLoopClosure::AddBetweenFactor(
   odometry_kf_ = odometry_kf_.compose(new_odometry);
 
   if (std::isnan(acos(odometry_.rotation().toQuaternion().w()))){
-    ROS_WARN("NAN rotational angle in odometry");
+    ROS_INFO("NAN rotational angle in odometry - resetting to identity");
     return false;
   }
 

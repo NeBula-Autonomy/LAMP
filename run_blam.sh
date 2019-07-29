@@ -1,8 +1,8 @@
 #!/bin/bash
 SESSION=BLAM
-WORKSPACE=~/opshack_ws
+WORKSPACE=~/localizer_blam/internal
 # BAGFILE=/home/costar/Data/full_tunnel_hand-carry_no_rs_2_2019-01-19-laser_imu.bag
-BAGFILE=/home/costar/Data/2019-03-28-EagleMine/husky_2019-03-28-21-37-59/husky_lidar_out.bag
+BAGFILE=~/data/*.bag
 
 ## Start up
 tmux -2 new-session -d -s $SESSION
