@@ -65,7 +65,7 @@ distance_before_reclosing: 20 #10
 
 # If a batchloop has recently been closed, don't close a new one for at least this
 # amount of translational distance (m).
-distance_before_batch_reclosing: 0 #3
+distance_before_batch_reclosing: 3 #3
 
 # outlier rejection thresholds (distances)
 translation_check_threshold: 0.1 # 10 centimeters
