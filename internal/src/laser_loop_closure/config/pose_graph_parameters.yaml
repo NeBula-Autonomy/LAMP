@@ -1,0 +1,17 @@
+#######################################
+# PARAMETERS FOR POSE GRAPH
+#######################################
+
+# Default parameters for the ISAM2 data structure.
+relinearize_skip: 1 # - keep this at 1 - to encourage relinearization
+relinearize_threshold: 0.0001 # Make this smaller (was at 0.01)
+
+# Amount of translational distance the sensor must travel before adding a new
+# pose to the pose graph. This helps keep the graph sparse so that loop closures
+# are fast.
+translation_threshold_kf: 1.0 # For adding keyframes 
+translation_threshold_nodes: 1.0  # For adding nodes to pose graph 
+rotation_threshold_nodes: 30.5  # (rad) rotation before adding new poses 
+rotation_threshold_kf: 30.5 # (rad) rotation before adding new poses 
+
+
