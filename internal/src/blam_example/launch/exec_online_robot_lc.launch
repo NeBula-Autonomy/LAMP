@@ -25,7 +25,7 @@
       <remap from="~pose_graph_sub" to="blam_slam_fe/pose_graph" />
       <remap from="~keyed_scans_sub" to="blam_slam_fe/keyed_scans" />
       <remap from="~artifact_global_sub" to="blam_slam_fe/artifact_global" />
-      <remap from="~localization_incremental_estimate_sub" to="blam_slam_fe/localization_incremental_estimate" />
+      <!-- <remap from="~localization_incremental_estimate_sub" to="blam_slam_fe/localization_incremental_estimate" /> -->
 
       <!-- Pose Graph Publishing -->
       <remap from="~pose_graph" to="~pose_graph_lc" />

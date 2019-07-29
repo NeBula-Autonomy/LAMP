@@ -2,7 +2,7 @@
   <arg name="robot_namespace" default="robot"/>
 
   <!-- Velodyne topic throttle params -->
-  <arg name="vlp_throttle_freq" default="5.0"/><!-- Hz -->
+  <arg name="vlp_throttle_freq" default="10.0"/><!-- Hz -->
 
   <!-- Map processing params -->
   <arg name="process_map" default="true"/>

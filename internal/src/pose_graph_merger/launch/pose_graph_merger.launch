@@ -1,0 +1,13 @@
+<launch>
+  <arg name="robot_namespace" default="robot"/>
+
+  <group ns="$(arg robot_namespace)">
+   <node name="pose_graph_merger" pkg="pose_graph_merger" type="pose_graph_merger_node" output="screen" respawn="false">
+        <!-- Topics -->
+        <!-- <remap from="~blam_slam_fe/pose_graph" to="blam_slam_fe/pose_graph"/>
+        <remap from="~blam_slam/pose_graph_lc" to="blam_slam/pose_graph_lc" />
+        <remap from="~blam_slam/pose_graph" to="blam_slam/pose_graph" /> -->
+    </node>
+ </group>
+
+</launch>

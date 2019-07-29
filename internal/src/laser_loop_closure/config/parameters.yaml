@@ -36,7 +36,7 @@ laser_lc_trans_sigma: 0.01 #0.6324 # default 0.04
 
 # Noise parameters (as precisions) for artifacts 
 artifact_rot_precision: 0.0
-artifact_trans_precision: 0.005
+artifact_trans_precision: 1.0 #0.005
 
 # Amount of translational distance the sensor must travel before adding a new
 # pose to the pose graph. This helps keep the graph sparse so that loop closures
@@ -65,7 +65,7 @@ distance_before_reclosing: 20 #10
 
 # If a batchloop has recently been closed, don't close a new one for at least this
 # amount of translational distance (m).
-distance_before_batch_reclosing: 0 #3
+distance_before_batch_reclosing: 3 #3
 
 # outlier rejection thresholds (distances)
 translation_check_threshold: 0.1 # 10 centimeters

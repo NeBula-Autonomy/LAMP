@@ -2447,7 +2447,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
   if (pose_graph_pub_.getNumSubscribers() > 0) {
     pose_graph_msgs::PoseGraph g;
     g.header.frame_id = fixed_frame_id_;
-    g.header.stamp = ros::Time::now ();
+    g.header.stamp = keyed_stamps_[key_ - 1]; // Get timestamp from latest keyed pose
 
     // Flag on whether it is incremental or not
     // TODO make incremental Pose Graph publishing
