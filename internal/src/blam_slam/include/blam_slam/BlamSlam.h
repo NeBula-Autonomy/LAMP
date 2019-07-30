@@ -159,6 +159,8 @@ class BlamSlam {
                                const std::string& child_frame,
                                const ros::Time& time,
                                Eigen::Affine3d& T);
+  
+  std::string getRobotName(const ros::NodeHandle& n);
 
   // The node's name.
   std::string name_;
@@ -253,8 +255,6 @@ class BlamSlam {
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
 
   // UWB
-  std::vector<std::string> uwb_id_list_all_;
-  std::vector<std::string> uwb_id_list_drop_;
   unsigned int uwb_skip_measurement_number_;
   unsigned int uwb_update_key_number_;
   unsigned int uwb_required_key_number_first_;

@@ -2,6 +2,12 @@
 # PARAMETERS FOR UWB
 ########################################
 
+# Flag to activate UWB data outlier rejection
+b_use_uwb_outlier_rejection: true
+
+# Flag to decide whether to show uwb data or not (for debugging)
+b_use_display_uwb_data: false
+
 # UWB range measurement noise (standard deviation)
 uwb_range_measurement_error: 2.0
 
@@ -31,9 +37,6 @@ uwb_number_added_rangefactor_not_first: 1
 
 # Range added into the pose graph should be longer than the following value
 uwb_minimum_range_threshold: 3.0
-
-# Flag to decide whether to show uwb data or not (for debugging)
-display_uwb_data: false
 
 # Pose key number threshold to wait for accepting UWB signal
 uwb_first_key_threshold: 3
