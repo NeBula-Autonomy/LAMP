@@ -64,6 +64,7 @@ namespace gr = gu::ros;
 namespace pu = parameter_utils;
 
 using gtsam::BetweenFactor;
+using gtsam::RangeFactor;
 using gtsam::ISAM2; // TODO - remove these
 using gtsam::ISAM2Params;
 using gtsam::NonlinearFactorGraph;
@@ -218,7 +219,14 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("uwb_number_added_rangefactor_first", uwb_number_added_rangefactor_first_)) return false;
   if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
   if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
-  if (!pu::Get("display_uwb_data", display_uwb_data_)) return false;
+  XmlRpc::XmlRpcValue uwb_list;
+  if (!pu::Get("uwb_list", uwb_list)) return false;
+  for (int i=0; i<uwb_list.size(); i++) {
+    auto uwb_id = static_cast<std::string>(uwb_list[i]["id"]);
+    uwb_id2keynumber_hash_[uwb_id] = static_cast<int>(uwb_list[i]["gtsam_key"]);
+  }
+  if (!pu::Get("b_use_display_uwb_data", b_use_display_uwb_data_)) return false;
+  if (!pu::Get("b_use_uwb_outlier_rejection", b_use_uwb_outlier_rejection_)) return false;
 
     // Optimizer backend
   bool b_use_outlier_rejection;
@@ -617,9 +625,14 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     uwb_key = uwb_id2key_hash_[uwb_id];
   }
   else {
-    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
+    uwb_key = gtsam::Symbol('u', uwb_id2keynumber_hash_[uwb_id]);
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
+  }
+
+  // UWB data outlier rejection based on Hample outlier identifier
+  if (b_use_uwb_outlier_rejection_) {
+    UwbDataOutlierRejection(uwb_data);
   }
 
   // Sort the UWB-related data stored in the buffer 
@@ -655,7 +668,10 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
           gtsam::Key pose_key = sorted_data.pose_key_list[counter];
           counter++;
           new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-          uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+          Edge edge_range = std::make_pair(pose_key, uwb_key);
+          uwb_edges_range_.push_back(edge_range);
+          edge_ranges_[edge_range] = range;
+          error_rangefactor_[edge_range] = sigmaR;
           ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
                           << gtsam::DefaultKeyFormatter(pose_key) << " and "
                           << gtsam::DefaultKeyFormatter(uwb_key));
@@ -706,7 +722,10 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
           gtsam::Key pose_key = sorted_data.pose_key_list[counter];
           counter++;
           new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
-          uwb_edges_.push_back(std::make_pair(pose_key, uwb_key));
+          Edge edge_range = std::make_pair(pose_key, uwb_key);
+          uwb_edges_range_.push_back(edge_range);
+          edge_ranges_[edge_range] = range;
+          error_rangefactor_[edge_range] = sigmaR;
           ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
                           << gtsam::DefaultKeyFormatter(pose_key) << " and "
                           << gtsam::DefaultKeyFormatter(uwb_key));
@@ -729,6 +748,119 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
 
+<<<<<<< HEAD
+=======
+
+void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
+  std::vector<bool> b_outlier_list;
+  std::vector<double> time_stamp;
+  for (auto itr : uwb_data.time_stamp) {
+    time_stamp.push_back(itr.toSec());
+  }
+
+  hampelOutlierRejection<double, double>(uwb_data.range, time_stamp, b_outlier_list);
+
+  for (int itr = 0; itr < b_outlier_list.size(); itr++) {
+    int itr_back = b_outlier_list.size()-itr-1;
+    if (b_outlier_list[itr_back] == true) {
+      // std::cout << "data No. " << itr_back << "\n";
+      // std::cout << "outlier range: " << uwb_data.range[itr_back]  << "\n";
+      uwb_data.time_stamp.erase(uwb_data.time_stamp.begin()+itr_back);
+      uwb_data.range.erase(uwb_data.range.begin()+itr_back);
+      uwb_data.robot_position.erase(uwb_data.robot_position.begin()+itr_back);
+      // uwb_data.dist_posekey.erase(uwb_data.dist_posekey.begin()+itr_back);
+      uwb_data.nearest_pose_key.erase(uwb_data.nearest_pose_key.begin()+itr_back);
+    }
+  }
+}
+
+template <typename TYPE_DATA, typename TYPE_STAMP>
+void LaserLoopClosure::hampelOutlierRejection(std::vector<TYPE_DATA> data_input, 
+                            std::vector<TYPE_STAMP> data_stamp,
+                            std::vector<bool>& b_outlier_list) {
+    unsigned int data_size = data_input.size();
+
+    std::vector<TYPE_STAMP> sorted_stamp = data_stamp;
+    std::sort(sorted_stamp.begin(), sorted_stamp.end());
+
+    TYPE_STAMP median_stamp;
+    median_stamp = calculateMedian(sorted_stamp);
+
+    std::vector<TYPE_STAMP> stamp_temp1 = sorted_stamp;
+    std::vector<TYPE_STAMP> stamp_temp2 = sorted_stamp;
+    std::vector<TYPE_STAMP> diff_stamp;
+    stamp_temp1.erase(stamp_temp1.begin());
+    stamp_temp2.pop_back();
+
+    for (int iData = 0; iData < stamp_temp1.size(); iData++) {
+        diff_stamp.push_back(stamp_temp1[iData] - stamp_temp2[iData]);
+    }
+
+    TYPE_STAMP half_window_length = 3.0*calculateMedian(diff_stamp);
+
+    std::vector<TYPE_DATA> local_ref, local_var;
+    for (int iData = 0; iData < data_size; iData++) {
+        calculateLocalWindow(data_input, data_stamp, half_window_length, iData, local_ref, local_var);
+    }
+
+    for (int iData = 0; iData < data_size; iData++) {
+        TYPE_DATA temp = std::fabs(data_input[iData] - local_ref[iData]) - 3.0*local_var[iData];
+        if (temp > 0) {
+          b_outlier_list.push_back(true);
+        }
+        else {
+          b_outlier_list.push_back(false);
+        }
+    }
+}
+
+template <typename TYPE_DATA, typename TYPE_STAMP>
+void LaserLoopClosure::calculateLocalWindow(std::vector<TYPE_DATA> data_input, std::vector<TYPE_STAMP> data_stamp,
+                          TYPE_STAMP half_window_length, unsigned int data_index,
+                          std::vector<TYPE_DATA>& local_ref, std::vector<TYPE_DATA>& local_var) {
+
+    // Index related to local window
+    std::vector<int> index_local;
+    std::vector<TYPE_STAMP> data_in_window;
+    int data_size = data_stamp.size();
+    for (int iData = 0; iData < data_size; iData++) {
+        if (data_stamp[data_index] - half_window_length <= data_stamp[iData]
+            && data_stamp[data_index] + half_window_length >= data_stamp[iData]) {
+            index_local.push_back(iData);
+            data_in_window.push_back(data_input[iData]);
+        }
+    }
+
+    // Calculate local nominal data reference value
+    TYPE_DATA local_ref_temp = calculateMedian(data_in_window);
+    local_ref.push_back(local_ref_temp);
+
+    std::vector<TYPE_DATA> diff_ref;
+    for (int iData = 0; iData < data_in_window.size(); iData++) {
+        diff_ref.push_back(std::fabs(data_in_window[iData] - local_ref_temp));
+    }
+
+    // Calculate local scale of natural variation
+    local_var.push_back(1.4826*calculateMedian(diff_ref));
+}
+
+template <typename TYPE>
+TYPE LaserLoopClosure::calculateMedian(std::vector<TYPE> data_input) {
+    std::sort(data_input.begin(), data_input.end());
+    unsigned int data_size = data_input.size();
+    TYPE median_value;
+    // Calculate median
+    if (data_size % 2) {
+        median_value = data_input[(data_size+1)/2-1];
+    }
+    else {
+        median_value = (data_input[data_size/2-1]+data_input[data_size/2])/2;
+    }
+    return median_value;
+}
+
+
+>>>>>>> master
 UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_data) {
 
   // Recalculate the nearest pose key at the range measurement timing
@@ -771,16 +903,21 @@ UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_dat
 
   std::vector<double> range_nearest_key;
   for (auto itr = pose_key_list.begin(); itr != pose_key_list.end(); itr++) {
-    range_nearest_key.push_back(uwb_posekey2data[*itr].range[0]);
+    if (uwb_posekey2data[*itr].range.size() == 0) {
+      pose_key_list.erase(itr);
+    }
+    else {
+      range_nearest_key.push_back(uwb_posekey2data[*itr].range[0]);
+    }
   }
-  
+
   UwbRearrangedData sorted_data;
   Sort2Vectors<double, gtsam::Key>(range_nearest_key, pose_key_list);
   sorted_data.pose_key_list = pose_key_list;
   sorted_data.range_nearest_key = range_nearest_key;
   sorted_data.posekey2data = uwb_posekey2data;
 
-  if (display_uwb_data_) {
+  if (b_use_display_uwb_data_) {
     ShowUwbRawData(uwb_data);
     ShowUwbRearrangedData(sorted_data);
   }
@@ -859,7 +996,7 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
     uwb_key = uwb_id2key_hash_[uwb_id];
   }
   else {
-    uwb_key = gtsam::Symbol('u', uwb_id2key_hash_.size());
+    uwb_key = gtsam::Symbol('u', uwb_id2keynumber_hash_[uwb_id]);
     uwb_id2key_hash_[uwb_id] = uwb_key;
     uwb_key2id_hash_[uwb_key] = uwb_id;
   }
@@ -873,13 +1010,27 @@ bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
   new_values.insert(uwb_key, pose_uwb);
 
   // Add a BetweenFactor between the pose key and the UWB key
-  gtsam::Vector6 precisions;
-  precisions.head<3>().setConstant(0.0);
-  precisions.tail<3>().setConstant(4.0);
-  static const gtsam::SharedNoiseModel& noise = 
-  gtsam::noiseModel::Diagonal::Precisions(precisions);
+  // gtsam::Vector6 precisions;
+  // precisions.head<3>().setConstant(0.0);
+  // precisions.tail<3>().setConstant(4.0);
+  // static const gtsam::SharedNoiseModel& noise = 
+  // gtsam::noiseModel::Diagonal::Precisions(precisions);
+  // // TODO
+  // new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
+
+  gu::MatrixNxNBase<double, 6> covariance;
+  covariance.Zeros();
+  for (int i = 0; i < 3; ++i)
+    covariance(i, i) = 1000000; // rotation
+  for (int i = 3; i < 6; ++i)
+    covariance(i, i) = 0.25; // translation
   // TODO
-  new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
+  new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), ToGtsam(covariance)));
+
+  Edge edge_uwb = std::make_pair(pose_key, uwb_key);
+  uwb_edges_between_.push_back(edge_uwb);
+  edge_poses_[edge_uwb] = gtsam::Pose3();
+  covariance_betweenfactor_[edge_uwb] = covariance;
 
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
@@ -2380,12 +2531,21 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       g.edges.push_back(edge);
     }
 
-    for (size_t ii = 0; ii < uwb_edges_.size(); ++ii) {
-      edge.key_from = uwb_edges_[ii].first;
-      edge.key_to = uwb_edges_[ii].second;
-      edge.type = pose_graph_msgs::PoseGraphEdge::UWB;
-      // Get edge transform and covariance
-      // TODO
+    for (size_t ii = 0; ii < uwb_edges_range_.size(); ++ii) {
+      edge.key_from = uwb_edges_range_[ii].first;
+      edge.key_to = uwb_edges_range_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
+      edge.range = edge_ranges_[uwb_edges_range_[ii]];
+      edge.range_error = error_rangefactor_[uwb_edges_range_[ii]];
+      g.edges.push_back(edge);
+    }
+
+    for (size_t ii = 0; ii < uwb_edges_between_.size(); ++ii) {
+      edge.key_from = uwb_edges_between_[ii].first;
+      edge.key_to = uwb_edges_between_[ii].second;
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN;
+      // Tocleanup! will find it from nfg_ not edge_poses_
+      edge.pose = gr::ToRosPose(ToGu(edge_poses_[uwb_edges_between_[ii]]));
       g.edges.push_back(edge);
     }
 
@@ -2638,7 +2798,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     // Check input for NaNs
 
     // Add UUID if an artifact or uwb node
-    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p') {
+    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p' || key_.chr() == 'u') {
       // Artifact
       // artifact_key2info_hash[key_] = msg_node.ID;
       std::cout << "\t Artifact added to basestaion(PGcallback): "
@@ -2788,12 +2948,11 @@ void LaserLoopClosure::PoseGraphBaseHandler(
                                           ToGtsam(covariance)));
 
       // TODO include artifacts in the pose-graph
-    } /* else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB) {
-      // TODO include artifacts in the pose-graph
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
       // TODO send only incremental UWB edges (if msg.incremental is true)
       // uwb_edges_.clear();
       bool found = false;
-      for (const auto& edge : uwb_edges_) {
+      for (const auto& edge : uwb_edges_range_) {
         // cast to long unsigned int to ensure comparisons are correct
         if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
             edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
@@ -2806,14 +2965,60 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       }
       // avoid duplicate UWB edges
       if (!found) {
-        uwb_edges_.emplace_back(
+        uwb_edges_range_.emplace_back(
             std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
                            static_cast<gtsam::Symbol>(msg_edge.key_to)));
         ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
                  msg_edge.key_from,
                  msg_edge.key_to);
+        double range = msg_edge.range;
+        double sigmaR = msg_edge.range_error;
+        gtsam::noiseModel::Base::shared_ptr rangeNoise = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
+
+        new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          range,
+                                          rangeNoise));
       }
-    } */
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_between_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
+            edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_between_.emplace_back(
+            std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
+                           static_cast<gtsam::Symbol>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+        
+        // TODO! How do we want to get the covariance??? FIX SOON!!
+        gu::MatrixNxNBase<double, 6> covariance_uwb;
+        covariance_uwb.Zeros();
+        for (int i = 0; i < 3; ++i)
+          covariance_uwb(i, i) = 1000000; // rotation
+        for (int i = 3; i < 6; ++i)
+          covariance_uwb(i, i) = 0.25; // translation
+        
+        new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance_uwb)));
+        
+      }
+    }
   }
 
   if (new_factor.size() == 1 && new_values.size() == 1 && key_.chr() == initial_key_.chr()){

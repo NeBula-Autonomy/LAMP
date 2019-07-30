@@ -139,18 +139,20 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
       return false;
   }
 
-  // Load uwb information
-  if (!pu::Get("uwb/all", uwb_id_list_all_)) return false;
-  if (!pu::Get("uwb/drop", uwb_id_list_drop_)) return false;
-  for (auto itr = uwb_id_list_all_.begin(); itr != uwb_id_list_all_.end(); itr++) {
+  XmlRpc::XmlRpcValue uwb_list;
+  if (!pu::Get("uwb_list", uwb_list)) return false;
+  std::vector<std::string> uwb_id_list_drop;
+  if (!pu::Get("uwb_drop/"+getRobotName(n), uwb_id_list_drop)) return false;
+  for (int i = 0; i < uwb_list.size(); i++) {
     UwbMeasurementInfo uwb_data;
-    uwb_data.id = *itr;
+    std::string uwb_id = uwb_list[i]["id"];
+    uwb_data.id = uwb_id;
     uwb_data.drop_status = true;  // This should be false. (after the enhancement of UWB firmware)
-    uwb_id2data_hash_[*itr] = uwb_data;
-    uwb_id2data_hash_[*itr].in_pose_graph = false;
+    uwb_id2data_hash_[uwb_id] = uwb_data;
+    uwb_id2data_hash_[uwb_id].in_pose_graph = false;
   }
-  for (auto itr = uwb_id_list_drop_.begin(); itr != uwb_id_list_drop_.end(); itr++) {
-    uwb_id2data_hash_[*itr].holder = name_.c_str();
+  for (auto itr = uwb_id_list_drop.begin(); itr != uwb_id_list_drop.end(); itr++) {
+    uwb_id2data_hash_[*itr].holder = getRobotName(n);
     uwb_id2data_hash_[*itr].drop_status = false;  // This sentence will be removed.
   }
 
@@ -1306,6 +1308,21 @@ bool BlamSlam::getTransformEigenFromTF(
     ROS_FATAL("%s", ex.what());
   }
   tf::transformTFToEigen(tf_tfm, T);
+}
+
+std::string BlamSlam::getRobotName(const ros::NodeHandle& n) {
+  std::string str_ns = n.getNamespace();
+  int index_start;
+  int index_end;
+  int count = 0;
+  for (int i=0; i<str_ns.size(); i++) {
+    if (str_ns.substr(i,1) == "/") {
+      if (count == 0) {index_start = i+1; count++;}
+      else if (count == 1) {index_end = i-1;}
+    }
+  }
+  int str_ns_length = index_end - index_start + 1;
+  return str_ns.substr(index_start, str_ns_length);
 }
 
 // BASE STATION

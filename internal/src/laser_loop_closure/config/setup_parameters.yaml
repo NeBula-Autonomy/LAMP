@@ -18,7 +18,7 @@ b_use_outlier_rejection: true
 use_artifact_loop_closure: false
 
 # Use UWB 
-b_use_uwb: false
+b_use_uwb: true
 
 # Turn on sanity checks
 b_check_deltas: false
