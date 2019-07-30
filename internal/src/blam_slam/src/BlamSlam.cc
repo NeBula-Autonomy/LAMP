@@ -255,7 +255,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  if (!b_is_basestation_){
+  if (!b_is_basestation_ && !b_use_lo_frontend_){ // NOTE THIS NEEDS TO BE CHANGED IF MORE FLEXIBILITY IS DESIRED
     if (b_is_front_end_){
       estimate_update_timer_ = nl.createTimer(
           estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
@@ -270,15 +270,16 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
       } else {
         pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
       }
+    } else {
+
+      uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
+
+      uwb_sub_ =
+          nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
+
+      artifact_sub_ = nl.subscribe(
+          "artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
     }
-
-    uwb_update_timer_ = nl.createTimer(uwb_update_rate_, &BlamSlam::UwbTimerCallback, this);
-
-    uwb_sub_ =
-        nl.subscribe("uwb_signal", 1000, &BlamSlam::UwbSignalCallback, this);
-
-    artifact_sub_ = nl.subscribe(
-        "artifact_relative", 10, &BlamSlam::ArtifactCallback, this);
   }
   // Create pose-graph callbacks for base station
   if(b_is_basestation_){
