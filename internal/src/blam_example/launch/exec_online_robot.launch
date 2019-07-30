@@ -35,6 +35,7 @@
 
       <!-- Front end callbacks -->
       <remap from="~pose_and_scan" to="lo_frontend/pose_and_scan" />
+      <remap from="~pcld_sync" to="velodyne_points/transformed"/>
       <remap from="~fe_pose" to="lo_frontend/localization_integrated_estimate"/>
 
       <!-- Serives -->

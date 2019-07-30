@@ -52,10 +52,7 @@
 #include <laser_loop_closure/LaserLoopClosure.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
-<<<<<<< HEAD
 
-=======
->>>>>>> master
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
@@ -93,6 +90,7 @@ class BlamSlam {
   bool Initialize(const ros::NodeHandle& n, bool from_log);
 
   // Sensor message processing.
+  void ProcessPointCloudMessage(const PointCloud::ConstPtr& msg);
   void ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const PointCloud::Ptr& scan);
 
   // UWB range measurement data processing
@@ -138,6 +136,7 @@ class BlamSlam {
 
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
+  bool HandleLoopClosures(const PointCloud::ConstPtr& scan, bool* new_keyframe);
   bool HandleLoopClosures(const PointCloud::ConstPtr& scan, geometry_utils::Transform3 pose_delta, bool* new_keyframe);
 
   // Generic add Factor service - for human loop closures to start
@@ -264,10 +263,11 @@ class BlamSlam {
   bool b_use_uwb_;
   bool b_add_first_scan_to_key_;
 
-  //Basestation
+  //Basestation/back-end/mid-end
   bool b_is_basestation_;
   std::vector<std::string> robot_names_;
   bool b_is_front_end_;
+  bool b_use_lo_frontend_{false}; 
 
   // Pose updating
   bool b_new_pose_available_;
@@ -299,7 +299,8 @@ class BlamSlam {
   bool b_first_pose_scan_revieved_;
 
   geometry_utils::Transform3 be_current_pose_;
-
+  
+  // Pose and Scan filters
   message_filters::Subscriber<sensor_msgs::PointCloud2>* filterPointSub_;
   message_filters::Subscriber<geometry_msgs::PoseStamped>* filterPoseSub_;
   message_filters::Synchronizer
