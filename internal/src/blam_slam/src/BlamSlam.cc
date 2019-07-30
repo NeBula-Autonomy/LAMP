@@ -167,6 +167,8 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   
   if (!pu::Get("use_two_vlps", use_two_vlps_)){ROS_INFO("No setting for VLPs, use 1");};
   ROS_INFO_STREAM("VLP setting is, use two? " << use_two_vlps_);
+
+  pu::Get("b_publish_tfs", b_publish_tfs_);
   
   
   std::string graph_filename;
@@ -952,12 +954,14 @@ void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &point
     pose_pub_.publish(ros_pose);
 
     // Publish transform between fixed frame and localization frame.
-    geometry_msgs::TransformStamped tf;
-    tf.transform = geometry_utils::ros::ToRosTransform(be_current_pose_);
-    tf.header.stamp = pointCloud->header.stamp;
-    tf.header.frame_id = fixed_frame_id_;
-    tf.child_frame_id = base_frame_id_;
-    tfbr_.sendTransform(tf);
+    if (b_publish_tfs_){
+      geometry_msgs::TransformStamped tf;
+      tf.transform = geometry_utils::ros::ToRosTransform(be_current_pose_);
+      tf.header.stamp = pointCloud->header.stamp;
+      tf.header.frame_id = fixed_frame_id_;
+      tf.child_frame_id = base_frame_id_;
+      tfbr_.sendTransform(tf);
+    }
 
     return;
 }

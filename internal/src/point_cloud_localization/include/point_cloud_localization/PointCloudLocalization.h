@@ -143,6 +143,9 @@ private:
   bool transform_thresholding_;
   double max_translation_;
   double max_rotation_;
+
+  // To not publish tfs
+  bool b_publish_tfs_{false};
 };
 
 #endif

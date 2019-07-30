@@ -127,6 +127,8 @@ bool PointCloudOdometry::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("icp/max_translation", max_translation_)) return false;
   if (!pu::Get("icp/max_rotation", max_rotation_)) return false;
 
+  pu::Get("b_publish_tfs", b_publish_tfs_);
+
   return true;
 }
 
@@ -228,12 +230,14 @@ bool PointCloudOdometry::UpdateICP() {
   PublishPoints(reference_, reference_pub_);
 
   // Convert transform between fixed frame and odometry frame.
-  geometry_msgs::TransformStamped tf;
-  tf.transform = gr::ToRosTransform(integrated_estimate_);
-  tf.header.stamp = stamp_;
-  tf.header.frame_id = fixed_frame_id_;
-  tf.child_frame_id = odometry_frame_id_;
-  tfbr_.sendTransform(tf);
+  if (b_publish_tfs_) {
+    geometry_msgs::TransformStamped tf;
+    tf.transform = gr::ToRosTransform(integrated_estimate_);
+    tf.header.stamp = stamp_;
+    tf.header.frame_id = fixed_frame_id_;
+    tf.child_frame_id = odometry_frame_id_;
+    tfbr_.sendTransform(tf);
+  }
 
   return true;
 }

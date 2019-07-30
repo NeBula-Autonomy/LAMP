@@ -106,6 +106,9 @@ class PointCloudOdometry {
   // For initialization.
   bool initialized_;
 
+  // To not publish tfs
+  bool b_publish_tfs_{false};
+
   // Point cloud containers.
   PointCloud::Ptr query_;
   PointCloud::Ptr reference_;
