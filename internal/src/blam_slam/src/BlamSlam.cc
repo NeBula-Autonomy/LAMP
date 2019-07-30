@@ -41,6 +41,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/Marker.h>
 #include <math.h>
+#include <ctime>
 
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
@@ -1086,18 +1087,35 @@ void BlamSlam::KeyedScanCallback(
 void BlamSlam::PoseGraphCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr &msg) {
   ROS_INFO_STREAM("Pose Graph message recieved");
+  clock_t start, fstart, cur_time;
+	start = clock();  
 
   // Access loop closure callback
-  loop_closure_.PoseGraphBaseHandler(msg);
+  bool found_loop;
+  loop_closure_.PoseGraphBaseHandler(msg, &found_loop);
 
   // Update map
-  // We found one - regenerate the 3D map.
-  PointCloud::Ptr regenerated_map(new PointCloud);
-  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+  if (found_loop) {
+    // Found loop closure - regenerate the 3D map.
+    PointCloud::Ptr regenerated_map(new PointCloud);
+    loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
-  mapper_.Reset();
-  PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(regenerated_map, unused.get());
+    mapper_.Reset();
+    PointCloud::Ptr unused(new PointCloud);
+    fstart = clock();
+    mapper_.InsertPoints(regenerated_map, unused.get());
+  }
+  else {
+    // No loop closure - add latest keyed scan to map only.
+    PointCloud::Ptr incremental_map(new PointCloud);
+    loop_closure_.GetLatestPoints(incremental_map.get());
+
+    PointCloud::Ptr unused(new PointCloud);
+    fstart = clock();
+    mapper_.InsertPoints(incremental_map, unused.get());
+  }
+  cur_time = clock() - fstart;
+  ROS_INFO_STREAM("InsertPoints completed in " << (float)cur_time/CLOCKS_PER_SEC << " seconds");
 
   // Also reset the robot's estimated position.
   localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
@@ -1111,9 +1129,9 @@ void BlamSlam::PoseGraphCallback(
 
   // Publish map
   mapper_.PublishMap();
+	cur_time = clock() - start;
+  ROS_INFO_STREAM("PoseGraphCallback completed in " << (float)cur_time/CLOCKS_PER_SEC << " seconds");
 }
-
-
 
 void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
   ROS_INFO_STREAM("Artifact message recieved");

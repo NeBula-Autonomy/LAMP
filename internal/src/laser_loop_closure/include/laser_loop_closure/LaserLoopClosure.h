@@ -183,6 +183,9 @@ class LaserLoopClosure {
   // the pose graph.
   bool GetMaximumLikelihoodPoints(PointCloud* map);
 
+  // Get the points from the latest pose only.
+  bool GetLatestPoints(PointCloud* points);
+
   // Get the most recent pose in the pose graph.
   geometry_utils::Transform3 GetLastPose() const;
   gtsam::Symbol GetKey() const;
@@ -254,7 +257,7 @@ class LaserLoopClosure {
 
   //Basestation callbackfunctions
   void KeyedScanBaseHandler(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
-  void PoseGraphBaseHandler(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
+  void PoseGraphBaseHandler(const pose_graph_msgs::PoseGraph::ConstPtr& msg, bool* found_loop);
 
 private:
   bool LoadParameters(const ros::NodeHandle& n);
