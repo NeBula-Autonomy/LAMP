@@ -28,6 +28,7 @@
       <remap from="~artifact" to="~artifact_global" />
       <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" />
       <remap from="~uwb_signal" to="comm/uwb/anchor" />
+      <remap from="~fe_pose" to="lo_frontend/odometry_integrated_estimate"/>
 
       <!-- Serives -->
       <remap from="~drop_uwb_anchor" to="drop_uwb_anchor"/>

@@ -14,10 +14,12 @@
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default=""/> 
 
+  <arg name="lamp_name" default="blam_slam_fe"/>
+
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->
     <node pkg="blam_slam"
-          name="blam_slam_fe"
+          name="$(arg lamp_name)"
           type="blam_slam_node"
           output="screen">
 
@@ -30,6 +32,11 @@
       <remap from="~artifact" to="~artifact_global" />
       <!-- <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" /> -->
       <remap from="~uwb_signal" to="no_comm/uwb/anchor" />
+
+      <!-- Front end callbacks -->
+      <remap from="~pose_and_scan" to="lo_frontend/pose_and_scan" />
+      <remap from="~pcld_sync" to="velodyne_points/transformed"/>
+      <remap from="~fe_pose" to="lo_frontend/localization_integrated_estimate"/>
 
       <!-- Serives -->
       <remap from="~drop_uwb_anchor" to="no_drop_uwb_anchor"/>
@@ -105,6 +112,16 @@
 
     </node>
 
+    <!-- PC throttling and filtering -->
+    <group if="$(arg process_map)">
+      <include file="$(find blam_example)/launch/map_processing.launch">
+        <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+        <arg name="map_update_freq" value="$(arg map_update_freq)"/>
+        <arg name="map_topic_input" value="$(arg map_topic_input)"/>
+        <arg name="map_topic_output" value="$(arg map_topic_output)"/>
+      </include>
+    </group>
+
     <!-- Trotthling input cloud -->
     <node name="point_cloud_throttler" type="throttle" pkg="topic_tools" args="messages velodyne_points $(arg vlp_throttle_freq)">
     </node>
@@ -139,17 +156,6 @@
         output_frame: $(arg robot_namespace)/base_link
       </rosparam>
     </node>
-
-
-    <!-- PC throttling and filtering -->
-    <group if="$(arg process_map)">
-        <include file="$(find blam_example)/launch/map_processing.launch">
-          <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-          <arg name="map_update_freq" value="$(arg map_update_freq)"/>
-          <arg name="map_topic_input" value="$(arg map_topic_input)"/>
-          <arg name="map_topic_output" value="$(arg map_topic_output)"/>
-        </include>
-    </group>
 
     <!-- Convert output PoseStamped message to Odometry -->
     <node pkg="topic_tools" type="transform" name="pose_to_odom"

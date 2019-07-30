@@ -55,6 +55,7 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     message_runtime
+    message_filters
     rosbag
     measurement_synchronizer
     point_cloud_filter
@@ -107,13 +108,13 @@ target_link_libraries(${PROJECT_NAME}_node
 )
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
-add_executable(${PROJECT_NAME}_offline src/${PROJECT_NAME}_offline.cc)
-target_link_libraries(${PROJECT_NAME}_offline
-  ${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES}
-  gtsam
-)
+#add_executable(${PROJECT_NAME}_offline src/${PROJECT_NAME}_offline.cc)
+#target_link_libraries(${PROJECT_NAME}_offline
+#  ${PROJECT_NAME}
+#  ${catkin_LIBRARIES}
+#  ${Boost_LIBRARIES}
+#  gtsam
+#)
 
 if (CATKIN_ENABLE_TESTING)
   add_subdirectory(test)

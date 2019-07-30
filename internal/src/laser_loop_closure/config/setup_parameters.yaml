@@ -2,11 +2,14 @@
 # Overall Setup parameters
 #######################################
 
+# Toggle auto loop closures on or off.
+check_for_loop_closures: true
+
 # Use two velodynes?
 use_two_vlps: false
 
-# Toggle auto loop closures on or off.
-check_for_loop_closures: true
+# Use the lo_frontend
+b_use_lo_frontend: false
 
 # Toggle outlier rejection
 b_use_outlier_rejection: true

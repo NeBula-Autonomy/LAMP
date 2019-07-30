@@ -475,8 +475,8 @@ bool LaserLoopClosure::AddBetweenFactor(
   odometry_kf_ = odometry_kf_.compose(new_odometry);
 
   if (std::isnan(acos(odometry_.rotation().toQuaternion().w()))){
-    ROS_INFO("NAN rotational angle in odometry - resetting to identity");
-    return false;
+    ROS_WARN("NAN rotational angle in odometry, reseting to unit quaternion");
+    odometry_ = Pose3(Rot3::RzRyRx(0, 0, 0),odometry_.translation());
   }
 
   if (odometry_.translation().norm() < translation_threshold_nodes_ &&  2*acos(odometry_.rotation().toQuaternion().w()) < rotation_threshold_nodes_) {
@@ -617,7 +617,6 @@ bool LaserLoopClosure::ChangeKeyNumber() {
   return true;
 }
 
-
 bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data) {
 
   // Check whether the input UWB ID exists in the pose graph or not
@@ -695,7 +694,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
         break;
       case 1 :
       {
-        // TODO: 
       }
         break;
       default :
@@ -736,7 +734,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
         break;
       case 1 :
       {
-        // TODO: 
       }
         break;
       default :
@@ -750,7 +747,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
-
 
 void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
   std::vector<bool> b_outlier_list;
