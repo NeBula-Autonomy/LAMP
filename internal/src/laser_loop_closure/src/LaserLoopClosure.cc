@@ -748,8 +748,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
 
-<<<<<<< HEAD
-=======
 
 void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
   std::vector<bool> b_outlier_list;
@@ -860,7 +858,6 @@ TYPE LaserLoopClosure::calculateMedian(std::vector<TYPE> data_input) {
 }
 
 
->>>>>>> master
 UwbRearrangedData LaserLoopClosure::RearrangeUwbData(UwbMeasurementInfo &uwb_data) {
 
   // Recalculate the nearest pose key at the range measurement timing
