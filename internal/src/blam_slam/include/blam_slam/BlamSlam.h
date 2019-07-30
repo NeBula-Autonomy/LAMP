@@ -271,6 +271,8 @@ class BlamSlam {
   bool b_is_front_end_;
   bool b_use_lo_frontend_{false}; 
 
+  bool b_publish_tfs_{false};
+
   // Pose updating
   bool b_new_pose_available_;
   geometry_utils::Transform3 current_pose_est_;

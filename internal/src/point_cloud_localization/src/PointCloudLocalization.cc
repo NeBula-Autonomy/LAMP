@@ -122,6 +122,8 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("localization/max_translation", max_translation_)) return false;
   if (!pu::Get("localization/max_rotation", max_rotation_)) return false;
 
+  pu::Get("b_publish_tfs", b_publish_tfs_);
+
   return true;
 }
 
@@ -155,12 +157,14 @@ void PointCloudLocalization::SetIntegratedEstimate(
   integrated_estimate_ = integrated_estimate;
 
   // Publish transform between fixed frame and localization frame.
-  geometry_msgs::TransformStamped tf;
-  tf.transform = gr::ToRosTransform(integrated_estimate_);
-  tf.header.stamp = stamp_;
-  tf.header.frame_id = fixed_frame_id_;
-  tf.child_frame_id = base_frame_id_;
-  tfbr_.sendTransform(tf);
+  if (b_publish_tfs_) {
+    geometry_msgs::TransformStamped tf;
+    tf.transform = gr::ToRosTransform(integrated_estimate_);
+    tf.header.stamp = stamp_;
+    tf.header.frame_id = fixed_frame_id_;
+    tf.child_frame_id = base_frame_id_;
+    tfbr_.sendTransform(tf);
+  }
 }
 
 bool PointCloudLocalization::MotionUpdate(
@@ -277,12 +281,14 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   PublishPoints(*aligned_query, aligned_pub_);
 
   // Publish transform between fixed frame and localization frame.
-  geometry_msgs::TransformStamped tf;
-  tf.transform = gr::ToRosTransform(integrated_estimate_);
-  tf.header.stamp = stamp_;
-  tf.header.frame_id = fixed_frame_id_;
-  tf.child_frame_id = base_frame_id_;
-  tfbr_.sendTransform(tf);
+  if (b_publish_tfs_){
+    geometry_msgs::TransformStamped tf;
+    tf.transform = gr::ToRosTransform(integrated_estimate_);
+    tf.header.stamp = stamp_;
+    tf.header.frame_id = fixed_frame_id_;
+    tf.child_frame_id = base_frame_id_;
+    tfbr_.sendTransform(tf);
+  }
 
   return true;
 }

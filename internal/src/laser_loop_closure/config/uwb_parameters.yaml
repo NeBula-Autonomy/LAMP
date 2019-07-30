@@ -32,8 +32,8 @@ uwb_required_key_number_not_first: 1
 # Number of range factors added at the first observation
 uwb_number_added_rangefactor_first: 3
 
-# Number of range factors added aganst an existing UWB key in the pose graph
-uwb_number_added_rangefactor_not_first: 1
+# Number of range factors added against an existing UWB key in the pose graph
+uwb_number_added_rangefactor_not_first: 3
 
 # Range added into the pose graph should be longer than the following value
 uwb_minimum_range_threshold: 3.0

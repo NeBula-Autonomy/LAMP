@@ -16,6 +16,9 @@
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
+      <!-- tf pub -->
+      <param name="b_publish_tfs" value="false"/>
+
       <!-- Topics -->
       <remap from="~artifact" to="~artifact_global" />
       <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" />

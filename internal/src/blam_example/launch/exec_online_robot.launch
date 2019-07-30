@@ -26,6 +26,9 @@
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
+      <!-- tf pub -->
+      <param name="b_publish_tfs" value="false"/>
+
       <!-- Topics -->
       <remap from="~pcld" to="velodyne_points/transformed"/>
       <remap from="~pcld2" to="velodyne_front/velodyne_points/transformed"/>
