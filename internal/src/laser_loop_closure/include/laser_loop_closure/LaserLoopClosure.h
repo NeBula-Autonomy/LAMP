@@ -162,6 +162,18 @@ class LaserLoopClosure {
   bool UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
                                   gtsam::Values new_values);
   
+  void UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data);
+  template <typename TYPE_DATA, typename TYPE_STAMP>
+  void hampelOutlierRejection(std::vector<TYPE_DATA> data_input, 
+                              std::vector<TYPE_STAMP> data_stamp,
+                              std::vector<bool>& b_outlier_list);
+  template <typename TYPE_DATA, typename TYPE_STAMP>
+  void calculateLocalWindow(std::vector<TYPE_DATA> data_input, std::vector<TYPE_STAMP> data_stamp,
+                            TYPE_STAMP half_window_length, unsigned int data_index,
+                            std::vector<TYPE_DATA>& local_ref, std::vector<TYPE_DATA>& local_var);
+  template <typename TYPE>
+  TYPE calculateMedian(std::vector<TYPE> data_input);
+
   UwbRearrangedData RearrangeUwbData(UwbMeasurementInfo &uwb_data);
 
   void ShowUwbRawData(const UwbMeasurementInfo uwb_data);
@@ -389,13 +401,15 @@ private:
   // UWB parameters
   std::unordered_map<std::string, gtsam::Key> uwb_id2key_hash_;
   std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
+  std::unordered_map<std::string, int> uwb_id2keynumber_hash_;
   double uwb_range_measurement_error_;
   unsigned int uwb_range_compensation_;
   unsigned int uwb_factor_optimizer_;
   unsigned int uwb_number_added_rangefactor_first_;
   unsigned int uwb_number_added_rangefactor_not_first_;
   double uwb_minimum_range_threshold_;
-  bool display_uwb_data_;
+  bool b_use_display_uwb_data_;
+  bool b_use_uwb_outlier_rejection_;
 
   // Optimizer object, and best guess pose values.
   std::unique_ptr<RobustPGO::RobustSolver> pgo_solver_;
@@ -457,9 +471,12 @@ private:
   std::vector<Edge> loop_edges_;
   std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
-  std::vector<std::pair<unsigned int, gtsam::Key>> uwb_edges_;
+  std::vector<Edge> uwb_edges_range_;
+  std::vector<Edge> uwb_edges_between_;
   std::map<Edge, gtsam::Pose3> edge_poses_;
   std::map<Edge, LaserLoopClosure::Mat66> covariance_betweenfactor_;
+  std::map<Edge, double> edge_ranges_;
+  std::map<Edge, double> error_rangefactor_;
 
   // For filtering laser scans prior to ICP.
   PointCloudFilter filter_;
