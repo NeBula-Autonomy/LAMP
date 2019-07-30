@@ -3,6 +3,7 @@ uwb_drop:
   husky2: ["15A5", "1BBB", "5102"]
   husky3: []
   telemax: []
+  robot: []
 
 uwb_list:
   - id: "9789"
