@@ -748,7 +748,6 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
   return (UwbLoopClosureOptimization(new_factor, new_values));
 }
 
-
 void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
   std::vector<bool> b_outlier_list;
   std::vector<double> time_stamp;

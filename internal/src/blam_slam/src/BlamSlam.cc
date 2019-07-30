@@ -950,13 +950,13 @@ void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &point
     ros_pose.header.stamp = pointCloud->header.stamp;
     pose_pub_.publish(ros_pose);
 
-    // // Publish transform between fixed frame and localization frame.
-    // geometry_msgs::TransformStamped tf;
-    // tf.transform = geometry_utils::ros::ToRosTransform(be_current_pose_);
-    // tf.header.stamp = pointCloud->header.stamp;
-    // tf.header.frame_id = fixed_frame_id_;
-    // tf.child_frame_id = base_frame_id_;
-    // tfbr_.sendTransform(tf);
+    // Publish transform between fixed frame and localization frame.
+    geometry_msgs::TransformStamped tf;
+    tf.transform = geometry_utils::ros::ToRosTransform(be_current_pose_);
+    tf.header.stamp = pointCloud->header.stamp;
+    tf.header.frame_id = fixed_frame_id_;
+    tf.child_frame_id = base_frame_id_;
+    tfbr_.sendTransform(tf);
 
     return;
 }
