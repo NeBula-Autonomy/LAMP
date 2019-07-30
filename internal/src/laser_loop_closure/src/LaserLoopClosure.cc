@@ -319,6 +319,12 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   // Set the initial odometry.
   odometry_ = Pose3::identity();
 
+   // Timestamp to keys initialization 
+  ros::Time stamp = ros::Time::now();
+  keyed_stamps_.insert(std::pair<gtsam::Symbol, ros::Time>(initial_key_, stamp));
+  stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(stamp.toSec(), initial_key_));
+
+
   return true;
 }
 
