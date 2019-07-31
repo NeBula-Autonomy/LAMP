@@ -1426,6 +1426,59 @@ bool LaserLoopClosure::GetMaximumLikelihoodPoints(PointCloud* points) {
   }
 }
 
+bool LaserLoopClosure::GetLatestPoints(PointCloud* points) {
+  if (points == NULL) {
+    ROS_ERROR("%s: Output point cloud container is null.", name_.c_str());
+    return false;
+  }
+  points->points.clear();
+
+  gtsam::Symbol target_key; 
+  bool first = true; 
+
+  // Iterate over poses in the graph, transforming their corresponding laser
+  // scans into world frame and appending them to the output.
+  for (const auto& keyed_pose : values_) {
+    const gtsam::Symbol key = keyed_pose.key;
+
+    // Check if this pose is a keyframe. If it's not, it won't have a scan
+    // associated to it and we should continue.
+    if (!keyed_scans_.count(key))
+      continue;
+
+    // Check that the key exists
+    if (!values_.exists(key)) {
+      ROS_WARN("Key %u does not exist in GetMaximumLikelihoodPoints",
+               gtsam::DefaultKeyFormatter(key));
+      return false;
+    }
+
+    // first keyframe 
+    if (first) {
+      target_key = key;
+      first = false;
+      continue; 
+    }
+
+    // check if current keyframe is more recent
+    if (keyed_stamps_[key].sec > keyed_stamps_[target_key].sec) {
+      target_key = key;
+    }
+  }
+
+  const gu::Transform3 pose = ToGu(values_.at<Pose3>(target_key));
+  Eigen::Matrix4d b2w;
+  b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
+  b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
+
+  // Transform the body-frame scan into world frame.
+  PointCloud scan_world;
+  pcl::transformPointCloud(*keyed_scans_[target_key], scan_world, b2w);
+
+  // Append the world-frame point cloud to the output.
+  *points += scan_world;
+}
+
 gtsam::Symbol LaserLoopClosure::GetKey() const {
   return key_;
 }
@@ -2763,7 +2816,8 @@ void LaserLoopClosure::KeyedScanBaseHandler(
 }
 
 void LaserLoopClosure::PoseGraphBaseHandler(
-    const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
+    const pose_graph_msgs::PoseGraph::ConstPtr& msg,
+    bool* found_loop) {
   ROS_INFO_STREAM("Loop closure pose_graph_processing");
 
   // Update graph to load with other (non odom) factors, if not already initialized
@@ -3082,11 +3136,11 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   key_ = key_ + 1;
 
   // Run loop closures
-  bool found_loop = false;
+  *found_loop = false;
   std::vector<gtsam::Symbol> closure_keys;
   if (FindLoopClosures(key_ - 1, &closure_keys)){
     ROS_INFO("Found loop closures after pose graph callback ");
-    found_loop = true;
+    *found_loop = true;
   }
 
 
