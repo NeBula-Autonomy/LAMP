@@ -173,6 +173,9 @@ class BlamSlam {
   void PublishArtifact(const Eigen::Vector3d& W_artifact_position,
                        const core_msgs::Artifact& msg);
 
+  // Publish pose when using LO Frontend
+  void PublishPoseWithLoFrontend();
+
   bool getTransformEigenFromTF(const std::string& parent_frame,
                                const std::string& child_frame,
                                const ros::Time& time,

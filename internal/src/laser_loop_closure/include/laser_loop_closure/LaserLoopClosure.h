@@ -218,6 +218,9 @@ class LaserLoopClosure {
   // Get pose at an input time
   gtsam::Key GetKeyAtTime(const ros::Time& stamp) const;
 
+  // Get time at the last key
+  ros::Time GetTimeAtLastKey();
+
   // Get pose at an input key 
   geometry_utils::Transform3 GetPoseAtKey(const gtsam::Key& key) const; 
 

@@ -3156,7 +3156,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   has_changed_ = true;
   PublishPoseGraph();
 
-  if (found_loop){
+  if (*found_loop){
     ROS_INFO("Found loop in poseGraphBaseHandler, publishing artifacts");
     PublishArtifacts();
   }
@@ -3165,5 +3165,13 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
 size_t LaserLoopClosure::GetNumberStampsKeyed() const {
   return stamps_keyed_.size();
+}
+
+ros::Time LaserLoopClosure::GetTimeAtLastKey() {
+  if (keyed_stamps_.count(key_-1) != 0){
+    return keyed_stamps_[key_-1];
+  } else {
+    return ros::Time::now();
+  }
 }
 
