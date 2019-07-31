@@ -121,6 +121,7 @@ class BlamSlam {
                              const sensor_msgs::PointCloud2::ConstPtr& pcld2);
   void ArtifactCallback(const core_msgs::Artifact& msg);
   void UwbSignalCallback(const uwb_msgs::Anchor& msg);
+  void RepubPoseGraphCallback(const std_msgs::Empty& msg);
 
   // Timer callbacks.
   void EstimateTimerCallback(const ros::TimerEvent& ev);
@@ -173,7 +174,10 @@ class BlamSlam {
   void PublishArtifact(const Eigen::Vector3d& W_artifact_position,
                        const core_msgs::Artifact& msg);
 
-  // Publish pose when using LO Frontend
+  // Send signal to republish the pose graph from the front end
+  void SendRepubPoseGraphFlag();  
+  
+// Publish pose when using LO Frontend
   void PublishPoseWithLoFrontend();
 
   bool getTransformEigenFromTF(const std::string& parent_frame,
@@ -214,6 +218,7 @@ class BlamSlam {
   ros::Subscriber pcld_sub_;
   ros::Subscriber artifact_sub_;
   ros::Subscriber uwb_sub_;
+  ros::Subscriber repub_pg_sub_;
   std::vector<ros::Subscriber> Subscriber_posegraphList_;
   std::vector<ros::Subscriber> Subscriber_keyedscanList_;
   std::vector<ros::Subscriber> Subscriber_artifactList_;
@@ -236,6 +241,7 @@ class BlamSlam {
   // Publishers
   ros::Publisher base_frame_pcld_pub_;
   ros::Publisher pose_pub_;
+  ros::Publisher repub_pg_sig_pub_;
 
   // Transform broadcasting to other nodes.
   tf2_ros::TransformBroadcaster tfbr_;

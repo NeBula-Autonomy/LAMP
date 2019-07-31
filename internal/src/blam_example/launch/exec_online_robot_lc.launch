@@ -30,6 +30,8 @@
       <remap from="~keyed_scans_sub" to="blam_slam_fe/keyed_scans" />
       <remap from="~artifact_global_sub" to="blam_slam_fe/artifact_global" />
       <!-- <remap from="~localization_incremental_estimate_sub" to="blam_slam_fe/localization_incremental_estimate" /> -->
+      
+      <remap from="~repub_pg_signal_out" to="blam_slam_fe/repub_pg_signal_in"/>
 
       <!-- Back end, so no changing messsages from the frontend or raw lidar -->
 

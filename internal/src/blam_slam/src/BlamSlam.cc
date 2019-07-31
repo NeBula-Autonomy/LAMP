@@ -262,6 +262,9 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
     if (b_is_front_end_){
       estimate_update_timer_ = nl.createTimer(
           estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
+
+      repub_pg_sub_ =
+          nl.subscribe("repub_pg_signal_in", 1, &BlamSlam::RepubPoseGraphCallback, this);
       
       if (use_two_vlps_) {
         ROS_INFO("Subscribing to two point cloud topics.");
@@ -380,6 +383,9 @@ bool BlamSlam::CreatePublishers(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
+  repub_pg_sig_pub_ =
+          nl.advertise<std_msgs::Empty>("repub_pg_signal_out", 1, false);
+
   base_frame_pcld_pub_ =
       nl.advertise<PointCloud>("base_frame_point_cloud", 10, false);
 
@@ -425,7 +431,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   }
 
   // Update the map from the loop closures
-  std::cout << "Updating the map" << std::endl;
+  ROS_INFO("Updating the map");
   PointCloud::Ptr regenerated_map(new PointCloud);
   loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
@@ -484,7 +490,10 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   // Publish updated map
   mapper_.PublishMap();
 
-  std::cout << "Updated the map" << std::endl;
+  // Get update from front-end
+  SendRepubPoseGraphFlag();
+
+  ROS_INFO("Updated the map");
 
   return true;
 }
@@ -1007,6 +1016,18 @@ void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
 }
 
+void BlamSlam::RepubPoseGraphCallback(const std_msgs::Empty& msg){
+  ROS_INFO("Publishing pose graph again from triggered message");
+  loop_closure_.PublishPoseGraph(false);
+  localization_.PublishPoseNoUpdate();
+}
+
+void BlamSlam::SendRepubPoseGraphFlag(){
+  ROS_INFO("Sending signal to front-end to publish pose-graph");
+  std_msgs::Empty msg;
+  repub_pg_sig_pub_.publish(msg);
+}
+
 void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &pointCloud, const geometry_msgs::PoseStamped pose) {
 
     // ROS_INFO("In message filter callback");
@@ -1156,7 +1177,6 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     base_frame_pcld.header.frame_id = base_frame_id_;
     base_frame_pcld_pub_.publish(base_frame_pcld);
   }
-
 }
 
 void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const PointCloud::Ptr& scan) {
@@ -1556,5 +1576,4 @@ void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& ms
   // // Publish the updated pose
   // localization_.PublishPoseNoUpdate();
 }
-
 

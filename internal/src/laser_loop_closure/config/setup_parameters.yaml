@@ -3,7 +3,7 @@
 #######################################
 
 # Toggle auto loop closures on or off.
-check_for_loop_closures: False
+check_for_loop_closures: false
 
 # Use two velodynes?
 use_two_vlps: false

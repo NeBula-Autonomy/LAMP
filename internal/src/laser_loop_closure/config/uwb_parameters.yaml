@@ -26,8 +26,8 @@ uwb_skip_measurement_number: 5
 uwb_update_key_number: 2
 
 # Rquired number of pose keys linked with UWB range measurement
-uwb_required_key_number_first: 3
-uwb_required_key_number_not_first: 1
+uwb_required_key_number_first: 5
+uwb_required_key_number_not_first: 3
 
 # Number of range factors added at the first observation
 uwb_number_added_rangefactor_first: 3
