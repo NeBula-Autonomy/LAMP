@@ -909,7 +909,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   if (!b_use_uwb_) {
     return;
   }
-
+  ROS_INFO("In UWB Callback");
   if (loop_closure_.GetNumberStampsKeyed() > uwb_first_key_threshold_) {
     
     // Store the UWB-related data into the buffer "uwb_id2data_hash_"
@@ -918,7 +918,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
       if (uwb_id2data_hash_[msg.id].drop_status == true) {
         uwb_id2data_hash_[msg.id].range.push_back(msg.range);
         uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
-        uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen());
+        uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen()); // Maybe should use tfs for this? If we are in the middle of a loop closure?
         uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
 
       }
@@ -1352,6 +1352,7 @@ void BlamSlam::PoseGraphCallback(
 
   // Update map
   if (found_loop) {
+    ROS_INFO("Found Loop closure, regenerating the map");
     // Found loop closure - regenerate the 3D map.
     PointCloud::Ptr regenerated_map(new PointCloud);
     loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
@@ -1362,13 +1363,18 @@ void BlamSlam::PoseGraphCallback(
     mapper_.InsertPoints(regenerated_map, unused.get());
   }
   else {
+    ROS_INFO("No Loop closure, updating the map");
     // No loop closure - add latest keyed scan to map only.
     PointCloud::Ptr incremental_map(new PointCloud);
-    loop_closure_.GetLatestPoints(incremental_map.get());
-
-    PointCloud::Ptr unused(new PointCloud);
+    // gtsam::Symbol key_points = GetKeyAtTime(msg->header.stamp); // Get the latest 
+    // GetLatestPointsFromKey(incremental_map.get(), key_points);
     fstart = clock();
-    mapper_.InsertPoints(incremental_map, unused.get());
+    
+    if (loop_closure_.GetLatestPoints(incremental_map.get())){
+      PointCloud::Ptr unused(new PointCloud);
+      mapper_.InsertPoints(incremental_map, unused.get());
+    }
+
   }
   cur_time = clock() - fstart;
   ROS_INFO_STREAM("InsertPoints completed in " << (float)cur_time/CLOCKS_PER_SEC << " seconds");
@@ -1444,6 +1450,4 @@ void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& ms
   localization_.PublishPoseNoUpdate();
 }
 
-size_t LaserLoopClosure::GetNumberStampsKeyed() const {
-  return stamps_keyed_.size();
-}
+

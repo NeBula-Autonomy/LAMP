@@ -197,6 +197,7 @@ class LaserLoopClosure {
 
   // Get the points from the latest pose only.
   bool GetLatestPoints(PointCloud* points);
+  bool GetLatestPointsFromKey(PointCloud* points, gtsam::Symbol key);
 
   // Get the most recent pose in the pose graph.
   geometry_utils::Transform3 GetLastPose() const;
