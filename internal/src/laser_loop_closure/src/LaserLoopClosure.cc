@@ -1426,57 +1426,89 @@ bool LaserLoopClosure::GetMaximumLikelihoodPoints(PointCloud* points) {
   }
 }
 
-bool LaserLoopClosure::GetLatestPoints(PointCloud* points) {
-  if (points == NULL) {
-    ROS_ERROR("%s: Output point cloud container is null.", name_.c_str());
+bool LaserLoopClosure::GetLatestPointsFromKey(PointCloud* points, gtsam::Symbol key){
+
+  ROS_INFO_STREAM("Target key in GetLatestPoints is " << gtsam::DefaultKeyFormatter(key));
+
+  // Check that the key exists
+  if (!values_.exists(key) || keyed_scans_.count(key) == 0) {
+    ROS_INFO_STREAM("Key does not exist in GetLatestPointsFromKey. Key is: " << gtsam::DefaultKeyFormatter(key));
     return false;
   }
-  points->points.clear();
 
-  gtsam::Symbol target_key; 
-  bool first = true; 
-
-  // Iterate over poses in the graph, transforming their corresponding laser
-  // scans into world frame and appending them to the output.
-  for (const auto& keyed_pose : values_) {
-    const gtsam::Symbol key = keyed_pose.key;
-
-    // Check if this pose is a keyframe. If it's not, it won't have a scan
-    // associated to it and we should continue.
-    if (!keyed_scans_.count(key))
-      continue;
-
-    // Check that the key exists
-    if (!values_.exists(key)) {
-      ROS_WARN("Key %u does not exist in GetMaximumLikelihoodPoints",
-               gtsam::DefaultKeyFormatter(key));
-      return false;
-    }
-
-    // first keyframe 
-    if (first) {
-      target_key = key;
-      first = false;
-      continue; 
-    }
-
-    // check if current keyframe is more recent
-    if (keyed_stamps_[key].sec > keyed_stamps_[target_key].sec) {
-      target_key = key;
-    }
-  }
-
-  const gu::Transform3 pose = ToGu(values_.at<Pose3>(target_key));
+  const gu::Transform3 pose = ToGu(values_.at<Pose3>(key));
   Eigen::Matrix4d b2w;
   b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
   b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
 
   // Transform the body-frame scan into world frame.
   PointCloud scan_world;
-  pcl::transformPointCloud(*keyed_scans_[target_key], scan_world, b2w);
+  pcl::transformPointCloud(*keyed_scans_[key], scan_world, b2w);
 
   // Append the world-frame point cloud to the output.
   *points += scan_world;
+}
+
+bool LaserLoopClosure::GetLatestPoints(PointCloud* points) {
+  if (points == NULL) {
+    ROS_ERROR("%s: Output point cloud container is null.", name_.c_str());
+    return false;
+  }
+  ROS_INFO("In Get latest Points");
+  points->points.clear();
+
+  if (!values_.exists(key_-1) || keyed_scans_.count(key_-1) == 0){
+    ROS_INFO_STREAM("Key does not exist in GetLatestPoints. Key is: " << gtsam::DefaultKeyFormatter(key_-1));
+    return false;
+  }
+
+  // gtsam::Symbol target_key; 
+  // bool first = true; 
+
+  // // Iterate over poses in the graph, transforming their corresponding laser
+  // // scans into world frame and appending them to the output.
+  // for (const auto& keyed_pose : values_) {
+  //   const gtsam::Symbol key = keyed_pose.key;
+
+  //   // Check if this pose is a keyframe. If it's not, it won't have a scan
+  //   // associated to it and we should continue.
+  //   if (!keyed_scans_.count(key))
+  //     continue;
+
+  //   // Check that the key exists
+  //   if (!values_.exists(key)) {
+  //     ROS_WARN("Key %u does not exist in GetMaximumLikelihoodPoints",
+  //              gtsam::DefaultKeyFormatter(key));
+  //     return false;
+  //   }
+
+  //   // first keyframe 
+  //   if (first) {
+  //     target_key = key;
+  //     first = false;
+  //     continue; 
+  //   }
+
+  //   // check if current keyframe is more recent
+  //   if (keyed_stamps_[key].sec > keyed_stamps_[target_key].sec) {
+  //     target_key = key;
+  //   }
+  // }
+  // ROS_INFO_STREAM("Target key in GetLatestPoints is " << gtsam::DefaultKeyFormatter(target_key));
+
+  const gu::Transform3 pose = ToGu(values_.at<Pose3>(key_-1));
+  Eigen::Matrix4d b2w;
+  b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
+  b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
+
+  // Transform the body-frame scan into world frame.
+  PointCloud scan_world;
+  pcl::transformPointCloud(*keyed_scans_[key_-1], scan_world, b2w);
+
+  // Append the world-frame point cloud to the output.
+  *points += scan_world;
+
+  return true;
 }
 
 gtsam::Symbol LaserLoopClosure::GetKey() const {
@@ -2625,6 +2657,8 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
     ROS_INFO("\n\n\t\tPublishing all artifacts\n\n");
   }
 
+  ROS_INFO_STREAM("size of artifact key to info hash is " << artifact_key2info_hash.size());
+
   // loop through values 
   for (auto it = artifact_key2info_hash.begin();
             it != artifact_key2info_hash.end(); it++ ) {
@@ -2730,33 +2764,38 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 }
 
 gtsam::Key LaserLoopClosure::GetKeyAtTime(const ros::Time& stamp) const {
-  // ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
+  ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
 
   auto iterTime = stamps_keyed_.lower_bound(stamp.toSec()); // First key that is not less than timestamp 
 
-  // std::cout << "Got iterator at lower_bound. Input: " << stamp.toSec() << ", found " << iterTime->first << std::endl;
+  std::cout << "Got iterator at lower_bound. Input: " << stamp.toSec() << ", found " << iterTime->first << std::endl;
 
   // TODO - interpolate - currently just take one
   double t2 = iterTime->first;
+
+  if (iterTime == stamps_keyed_.begin()){
+    ROS_WARN("Only one value in the graph - using that");
+    return iterTime->second;
+  }
   double t1 = std::prev(iterTime,1)->first; 
 
-  // std::cout << "Time 1 is: " << t1 << ", Time 2 is: " << t2 << std::endl;
+  std::cout << "Time 1 is: " << t1 << ", Time 2 is: " << t2 << std::endl;
 
   gtsam::Symbol key;
 
   if (t2-stamp.toSec() < stamp.toSec() - t1) {
     // t2 is closer - use that key
-    // std::cout << "Selecting later time: " << t2 << std::endl;
+    std::cout << "Selecting later time: " << t2 << std::endl;
     key = iterTime->second;
   } else {
     // t1 is closer - use that key
-    // std::cout << "Selecting earlier time: " << t1 << std::endl;
+    std::cout << "Selecting earlier time: " << t1 << std::endl;
     key = std::prev(iterTime,1)->second;
     iterTime--;
   }
-  // std::cout << "Key is: " << key << std::endl;
+  std::cout << "Key is: " << key << std::endl;
   if (iterTime == std::prev(stamps_keyed_.begin())){
-    // ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
+    ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
     iterTime++;
     // iterTime = stamps_keyed_.begin();
     key = iterTime->second;
@@ -3152,7 +3191,13 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   PublishPoseGraph();
 
   if (found_loop){
+    ROS_INFO("Found loop in poseGraphBaseHandler, publishing artifacts");
     PublishArtifacts();
   }
+  ROS_INFO("Exiting poseGraphBaseHandler");
+}
+
+size_t LaserLoopClosure::GetNumberStampsKeyed() const {
+  return stamps_keyed_.size();
 }
 
