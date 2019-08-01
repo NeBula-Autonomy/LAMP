@@ -2838,23 +2838,218 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
   NonlinearFactorGraph new_factor;
   Values new_values;
+  std::map<gtsam::Symbol, gtsam::Pose3> new_edge_to_transform;
+  std::map<gtsam::Symbol, gtsam::Symbol> new_edge_to_parent_node;
   // PriorFactor<Pose3> prior_factor;
 
+  ROS_INFO("\n\tAdding edges from pose-graph\n");
+  // Add edges to basestation posegraph
+  for (const auto &msg_edge : msg->edges) {
+    gtsam::Point3 delta_translation(msg_edge.pose.position.x,
+                                    msg_edge.pose.position.y,
+                                    msg_edge.pose.position.z);
+    gtsam::Rot3 delta_orientation(
+        Rot3::quaternion(msg_edge.pose.orientation.w,
+                         msg_edge.pose.orientation.x,
+                         msg_edge.pose.orientation.y,
+                         msg_edge.pose.orientation.z));
+    gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
+
+    // TODO! How do we want to get the covariance??? FIX SOON!!
+    gu::MatrixNxNBase<double, 6> covariance;
+    covariance.Zeros();
+    for (int i = 0; i < 3; ++i)
+      covariance(i, i) = 0.316 * 0.316; // 0.4, 0.004; 0.2 m sd
+    for (int i = 3; i < 6; ++i)
+      covariance(i, i) = 0.141 * 0.141; // 0.1, 0.01; sqrt(0.01) rad sd
+    //-------------------------------------------------------------------------
+
+    if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
+      // Check if odometry_edge already exsists on basestation
+      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
+      bool b_edge_exists = false;
+      for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
+        if (odometry_edges_[ii].first == msg_edge.key_from && odometry_edges_[ii].second == msg_edge.key_to){
+          b_edge_exists = true;
+        }
+      }
+      if (b_edge_exists){
+        // ROS_INFO_STREAM("Odom edge already exists for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+        continue;
+      }
+
+      // Add edge to new edges
+      new_edge_to_transform[gtsam::Symbol(msg_edge.key_to)] = delta;
+      new_edge_to_parent_node[gtsam::Symbol(msg_edge.key_to)] = gtsam::Symbol(msg_edge.key_from);
+
+      // Add to basestation posegraph
+      ROS_INFO_STREAM("Adding Odom edge for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+      odometry_edges_.emplace_back(incomming_edge);
+      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance)));
+
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+      // Check if loop_edge already exsists on basestation
+      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
+      bool b_edge_exists = false;
+      for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
+        if (loop_edges_[ii] == incomming_edge)
+          b_edge_exists = true;
+      }
+      if (b_edge_exists)
+        continue;
+
+      // Add to basestation posegraph
+      loop_edges_.emplace_back(
+          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance)));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      // Check if artifact_edge already exsists on basestation
+      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
+      bool b_edge_exists = false;
+      for (size_t ii = 0; ii < artifact_edges_.size(); ++ii) {
+        if (artifact_edges_[ii] == incomming_edge)
+          b_edge_exists = true;
+      }
+      if (b_edge_exists)
+        continue;
+
+      // Add edge to new edges
+      new_edge_to_transform[gtsam::Symbol(msg_edge.key_to)] = delta;
+      new_edge_to_parent_node[gtsam::Symbol(msg_edge.key_to)] = gtsam::Symbol(msg_edge.key_from);
+
+      // Add to basestation posegraph
+      artifact_edges_.emplace_back(
+          std::make_pair(msg_edge.key_from, msg_edge.key_to));
+      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance)));
+
+      // TODO include artifacts in the pose-graph
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_range_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
+            edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_range_.emplace_back(
+            std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
+                           static_cast<gtsam::Symbol>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+        double range = msg_edge.range;
+        double sigmaR = msg_edge.range_error;
+        gtsam::noiseModel::Base::shared_ptr rangeNoise = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
+
+        new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          range,
+                                          rangeNoise));
+      }
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+      // TODO send only incremental UWB edges (if msg.incremental is true)
+      // uwb_edges_.clear();
+      bool found = false;
+      for (const auto& edge : uwb_edges_between_) {
+        // cast to long unsigned int to ensure comparisons are correct
+        if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
+            edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
+          found = true;
+          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
+                    msg_edge.key_from,
+                    msg_edge.key_to);
+          break;
+        }
+      }
+      
+      // Add edge to new edges
+      new_edge_to_transform[gtsam::Symbol(msg_edge.key_to)] = delta;
+      new_edge_to_parent_node[gtsam::Symbol(msg_edge.key_to)] = gtsam::Symbol(msg_edge.key_from);
+
+      // avoid duplicate UWB edges
+      if (!found) {
+        uwb_edges_between_.emplace_back(
+            std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
+                           static_cast<gtsam::Symbol>(msg_edge.key_to)));
+        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
+                 msg_edge.key_from,
+                 msg_edge.key_to);
+        
+        // TODO! How do we want to get the covariance??? FIX SOON!!
+        gu::MatrixNxNBase<double, 6> covariance_uwb;
+        covariance_uwb.Zeros();
+        for (int i = 0; i < 3; ++i)
+          covariance_uwb(i, i) = 1000000; // rotation
+        for (int i = 3; i < 6; ++i)
+          covariance_uwb(i, i) = 0.25; // translation
+        
+        new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                          gtsam::Symbol(msg_edge.key_to),
+                                          delta,
+                                          ToGtsam(covariance_uwb)));
+        
+      }
+    }
+  }
+
+  //-----------------------------------------------//
+  ROS_INFO("\n\tAdding new nodes\n");
   // Add the new nodes to base station posegraph
   for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
-    // add to basestation gtsam values
+    // Get key 
     key_ = gtsam::Symbol(msg_node.key);
 
     if (values_recieved_at_base_.exists(key_))
       continue;
-    gtsam::Point3 pose_translation(msg_node.pose.position.x,
+
+    // Have a new node
+    ROS_INFO("Have new node ");
+    gtsam::Pose3 full_pose;
+
+    // Check if the previous node exists 
+    if (!values_recieved_at_base_.exists(new_edge_to_parent_node[key_])){
+      ROS_INFO_STREAM("Node with key " << gtsam::DefaultKeyFormatter(new_edge_to_parent_node[key_]) << " that connects to new node at key " << gtsam::DefaultKeyFormatter(key_)  << " has not yet been received");
+      ROS_WARN("Using pose from node");
+      gtsam::Point3 pose_translation(msg_node.pose.position.x,
                                    msg_node.pose.position.y,
                                    msg_node.pose.position.z);
-    gtsam::Rot3 pose_orientation(Rot3::quaternion(msg_node.pose.orientation.w,
-                                                  msg_node.pose.orientation.x,
-                                                  msg_node.pose.orientation.y,
-                                                  msg_node.pose.orientation.z));
-    gtsam::Pose3 full_pose = gtsam::Pose3(pose_orientation, pose_translation);
+      gtsam::Rot3 pose_orientation(Rot3::quaternion(msg_node.pose.orientation.w,
+                                                    msg_node.pose.orientation.x,
+                                                    msg_node.pose.orientation.y,
+                                                    msg_node.pose.orientation.z));
+      full_pose = gtsam::Pose3(pose_orientation, pose_translation);
+    } else {
+      ROS_INFO("Using edge to get pose");
+
+      // Get the old pose from the graph 
+      gtsam::Pose3 from_pose = values_.at<Pose3>(new_edge_to_parent_node[key_]);
+
+      // Get the delta
+      gtsam::Pose3 delta = new_edge_to_transform[key_];
+
+      // Compose the delta
+      full_pose = from_pose.compose(delta);
+
+      // TODO - this only handles the odometry case - not artifacts or UWB etc. 
+    }
 
     // Check input for NaNs
 
@@ -2929,159 +3124,6 @@ void LaserLoopClosure::PoseGraphBaseHandler(
         std::pair<double, gtsam::Symbol>(msg_node.header.stamp.toSec(), key_));
   }
 
-  // Add edges to basestation posegraph
-  for (const auto &msg_edge : msg->edges) {
-    gtsam::Point3 delta_translation(msg_edge.pose.position.x,
-                                    msg_edge.pose.position.y,
-                                    msg_edge.pose.position.z);
-    gtsam::Rot3 delta_orientation(
-        Rot3::quaternion(msg_edge.pose.orientation.w,
-                         msg_edge.pose.orientation.x,
-                         msg_edge.pose.orientation.y,
-                         msg_edge.pose.orientation.z));
-    gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
-
-    // TODO! How do we want to get the covariance??? FIX SOON!!
-    gu::MatrixNxNBase<double, 6> covariance;
-    covariance.Zeros();
-    for (int i = 0; i < 3; ++i)
-      covariance(i, i) = 0.316 * 0.316; // 0.4, 0.004; 0.2 m sd
-    for (int i = 3; i < 6; ++i)
-      covariance(i, i) = 0.141 * 0.141; // 0.1, 0.01; sqrt(0.01) rad sd
-    //-------------------------------------------------------------------------
-
-    if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
-      // Check if odometry_edge already exsists on basestation
-      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
-      bool b_edge_exists = false;
-      for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
-        if (odometry_edges_[ii].first == msg_edge.key_from && odometry_edges_[ii].second == msg_edge.key_to){
-          b_edge_exists = true;
-        }
-      }
-      if (b_edge_exists){
-        // ROS_INFO_STREAM("Odom edge already exists for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
-        continue;
-      }
-
-      // Add to basestation posegraph
-      ROS_INFO_STREAM("Adding Odom edge for key " << gtsam::DefaultKeyFormatter(msg_edge.key_from) << " to key " << gtsam::DefaultKeyFormatter(msg_edge.key_to));
-      odometry_edges_.emplace_back(incomming_edge);
-      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
-                                          gtsam::Symbol(msg_edge.key_to),
-                                          delta,
-                                          ToGtsam(covariance)));
-
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
-      // Check if loop_edge already exsists on basestation
-      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
-      bool b_edge_exists = false;
-      for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
-        if (loop_edges_[ii] == incomming_edge)
-          b_edge_exists = true;
-      }
-      if (b_edge_exists)
-        continue;
-
-      // Add to basestation posegraph
-      loop_edges_.emplace_back(
-          std::make_pair(msg_edge.key_from, msg_edge.key_to));
-      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
-                                          gtsam::Symbol(msg_edge.key_to),
-                                          delta,
-                                          ToGtsam(covariance)));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
-      // Check if artifact_edge already exsists on basestation
-      Edge incomming_edge = std::make_pair(msg_edge.key_from, msg_edge.key_to);
-      bool b_edge_exists = false;
-      for (size_t ii = 0; ii < artifact_edges_.size(); ++ii) {
-        if (artifact_edges_[ii] == incomming_edge)
-          b_edge_exists = true;
-      }
-      if (b_edge_exists)
-        continue;
-      // Add to basestation posegraph
-      artifact_edges_.emplace_back(
-          std::make_pair(msg_edge.key_from, msg_edge.key_to));
-      new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
-                                          gtsam::Symbol(msg_edge.key_to),
-                                          delta,
-                                          ToGtsam(covariance)));
-
-      // TODO include artifacts in the pose-graph
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
-      // TODO send only incremental UWB edges (if msg.incremental is true)
-      // uwb_edges_.clear();
-      bool found = false;
-      for (const auto& edge : uwb_edges_range_) {
-        // cast to long unsigned int to ensure comparisons are correct
-        if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
-            edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
-          found = true;
-          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
-                    msg_edge.key_from,
-                    msg_edge.key_to);
-          break;
-        }
-      }
-      // avoid duplicate UWB edges
-      if (!found) {
-        uwb_edges_range_.emplace_back(
-            std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
-                           static_cast<gtsam::Symbol>(msg_edge.key_to)));
-        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
-                 msg_edge.key_from,
-                 msg_edge.key_to);
-        double range = msg_edge.range;
-        double sigmaR = msg_edge.range_error;
-        gtsam::noiseModel::Base::shared_ptr rangeNoise = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
-
-        new_factor.add(RangeFactor<Pose3, Pose3>(gtsam::Symbol(msg_edge.key_from),
-                                          gtsam::Symbol(msg_edge.key_to),
-                                          range,
-                                          rangeNoise));
-      }
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
-      // TODO send only incremental UWB edges (if msg.incremental is true)
-      // uwb_edges_.clear();
-      bool found = false;
-      for (const auto& edge : uwb_edges_between_) {
-        // cast to long unsigned int to ensure comparisons are correct
-        if (edge.first == static_cast<gtsam::Symbol>(msg_edge.key_from) &&
-            edge.second == static_cast<gtsam::Symbol>(msg_edge.key_to)) {
-          found = true;
-          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
-                    msg_edge.key_from,
-                    msg_edge.key_to);
-          break;
-        }
-      }
-      // avoid duplicate UWB edges
-      if (!found) {
-        uwb_edges_between_.emplace_back(
-            std::make_pair(static_cast<gtsam::Symbol>(msg_edge.key_from),
-                           static_cast<gtsam::Symbol>(msg_edge.key_to)));
-        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
-                 msg_edge.key_from,
-                 msg_edge.key_to);
-        
-        // TODO! How do we want to get the covariance??? FIX SOON!!
-        gu::MatrixNxNBase<double, 6> covariance_uwb;
-        covariance_uwb.Zeros();
-        for (int i = 0; i < 3; ++i)
-          covariance_uwb(i, i) = 1000000; // rotation
-        for (int i = 3; i < 6; ++i)
-          covariance_uwb(i, i) = 0.25; // translation
-        
-        new_factor.add(BetweenFactor<Pose3>(gtsam::Symbol(msg_edge.key_from),
-                                          gtsam::Symbol(msg_edge.key_to),
-                                          delta,
-                                          ToGtsam(covariance_uwb)));
-        
-      }
-    }
-  }
-
   if (new_factor.size() == 1 && new_values.size() == 1 && key_.chr() == initial_key_.chr()){
     // Only an odom addition, just run update
     ROS_INFO("\n\nAdding just an odom factor - no opt\n\n");
@@ -3148,7 +3190,6 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     *found_loop = true;
   }
 
-
   nfg_to_load_graph_ = pgo_solver_->getFactorsUnsafe();
   values_to_load_graph_ = pgo_solver_->calculateEstimate();
 
@@ -3156,7 +3197,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   has_changed_ = true;
   PublishPoseGraph();
 
-  if (found_loop){
+  if (*found_loop){
     ROS_INFO("Found loop in poseGraphBaseHandler, publishing artifacts");
     PublishArtifacts();
   }
@@ -3165,5 +3206,13 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
 size_t LaserLoopClosure::GetNumberStampsKeyed() const {
   return stamps_keyed_.size();
+}
+
+ros::Time LaserLoopClosure::GetTimeAtLastKey() {
+  if (keyed_stamps_.count(key_-1) != 0){
+    return keyed_stamps_[key_-1];
+  } else {
+    return ros::Time::now();
+  }
 }
 

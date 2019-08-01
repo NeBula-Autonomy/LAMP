@@ -262,6 +262,9 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
     if (b_is_front_end_){
       estimate_update_timer_ = nl.createTimer(
           estimate_update_rate_, &BlamSlam::EstimateTimerCallback, this);
+
+      repub_pg_sub_ =
+          nl.subscribe("repub_pg_signal_in", 1, &BlamSlam::RepubPoseGraphCallback, this);
       
       if (use_two_vlps_) {
         ROS_INFO("Subscribing to two point cloud topics.");
@@ -380,6 +383,9 @@ bool BlamSlam::CreatePublishers(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
+  repub_pg_sig_pub_ =
+          nl.advertise<std_msgs::Empty>("repub_pg_signal_out", 1, false);
+
   base_frame_pcld_pub_ =
       nl.advertise<PointCloud>("base_frame_point_cloud", 10, false);
 
@@ -425,7 +431,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   }
 
   // Update the map from the loop closures
-  std::cout << "Updating the map" << std::endl;
+  ROS_INFO("Updating the map");
   PointCloud::Ptr regenerated_map(new PointCloud);
   loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
 
@@ -433,25 +439,47 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(regenerated_map, unused.get());
 
-  // Get new pose
-  // New key pose of last pose key
-  gu::Transform3 new_key_pose = loop_closure_.GetLastPose();
-  // Update to the pose of the last key
   // Current estimate
   gu::Transform3 new_pose;
-  if (b_use_lo_frontend_){
-    new_pose = be_current_pose_;
+
+  // Get new pose
+  if (!b_is_front_end_){
+    // No updates between poses, just get from graph
+    new_pose = loop_closure_.GetLastPose();
   } else {
-    new_pose = localization_.GetIntegratedEstimate();
+    // New key pose of last pose key
+    gu::Transform3 new_key_pose = loop_closure_.GetLastPose();
+    // Update to the pose of the last key
+    if (b_use_lo_frontend_){
+      new_pose = be_current_pose_;
+    } else {
+      new_pose = localization_.GetIntegratedEstimate();
+    }
+    
+    
+    ROS_INFO_STREAM("After manual LC, old pose is " << new_pose.translation);
+    ROS_INFO_STREAM("After manual LC, last node pose " << new_key_pose.translation);
+
+    // Delta translation
+    new_pose.translation = new_pose.translation + (new_key_pose.translation - last_key_pose.translation);
+    // Delta rotation
+    new_pose.rotation = new_pose.rotation*(new_key_pose.rotation*last_key_pose.rotation.Trans());
   }
-  // Delta translation
-  new_pose.translation = new_pose.translation + (new_key_pose.translation - last_key_pose.translation);
-  // Delta rotation
-  new_pose.rotation = new_pose.rotation*(new_key_pose.rotation*last_key_pose.rotation.Trans());
+
+  ROS_INFO_STREAM("After manual LC,  pose is " << new_pose.translation);
 
   // Also reset the robot's estimated position.
-  be_current_pose_ = new_pose;
-  localization_.SetIntegratedEstimate(new_pose);
+  if (b_use_lo_frontend_){
+    be_current_pose_ = new_pose;
+    PublishPoseWithLoFrontend();
+  } else {
+    localization_.SetIntegratedEstimate(new_pose);
+    
+    // Publish localization pose messages
+    ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+    localization_.UpdateTimestamp(stamp);
+    localization_.PublishPoseNoUpdate();
+  }
 
   // Sends pose graph to visualizer node, if graph has changed.
   loop_closure_.PublishPoseGraph();
@@ -462,7 +490,10 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
   // Publish updated map
   mapper_.PublishMap();
 
-  std::cout << "Updated the map" << std::endl;
+  // Get update from front-end
+  SendRepubPoseGraphFlag();
+
+  ROS_INFO("Updated the map");
 
   return true;
 }
@@ -507,8 +538,17 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
   mapper_.InsertPoints(regenerated_map, unused.get());
 
   // Also reset the robot's estimated position.
-  be_current_pose_ = loop_closure_.GetLastPose();
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+  if (b_use_lo_frontend_){
+    be_current_pose_ = loop_closure_.GetLastPose();
+    PublishPoseWithLoFrontend();
+  } else {
+    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+    
+    // Publish localization pose messages
+    ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+    localization_.UpdateTimestamp(stamp);
+    localization_.PublishPoseNoUpdate();
+  }
 
   // Visualize the pose graph and current loop closure radius.
   loop_closure_.PublishPoseGraph();
@@ -567,8 +607,18 @@ bool BlamSlam::LoadGraphService(blam_slam::LoadGraphRequest &request,
   loop_closure_.AddFactorAtLoad(pose_delta, covariance);
 
   // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-  be_current_pose_ = loop_closure_.GetLastPose();
+  if (b_use_lo_frontend_){
+    be_current_pose_ = loop_closure_.GetLastPose();
+    PublishPoseWithLoFrontend();
+  } else {
+    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+    
+    // Publish localization pose messages
+    ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+    localization_.UpdateTimestamp(stamp);
+    localization_.PublishPoseNoUpdate();
+  }
+
   return true;
 }
 
@@ -594,8 +644,17 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
     mapper_.InsertPoints(regenerated_map, unused.get());
 
     // Also reset the robot's estimated position.
-    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-    be_current_pose_ = loop_closure_.GetLastPose();
+    if (b_use_lo_frontend_){
+      be_current_pose_ = loop_closure_.GetLastPose();
+      PublishPoseWithLoFrontend();
+    } else {
+      localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+      
+      // Publish localization pose messages
+      ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+      localization_.UpdateTimestamp(stamp);
+      localization_.PublishPoseNoUpdate();
+    }
 
     // Visualize the pose graph updates
     loop_closure_.PublishPoseGraph();
@@ -796,20 +855,34 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
     // Current estimate
     gu::Transform3 new_pose;
 
-    if (b_use_lo_frontend_){
-      new_pose = be_current_pose_;
+    if (!b_is_front_end_){
+      // No updates between poses, just get from graph
+      new_pose = loop_closure_.GetLastPose();
     } else {
-      new_pose = localization_.GetIntegratedEstimate();
+      if (b_use_lo_frontend_){
+        new_pose = be_current_pose_;
+      } else {
+        new_pose = localization_.GetIntegratedEstimate();
+      }
+      // Delta translation from the loop closure change to the last pose node
+      new_pose.translation = new_pose.translation + (new_key_pose.translation - last_key_pose.translation);
+      // Delta rotation
+      new_pose.rotation = new_pose.rotation*(new_key_pose.rotation*last_key_pose.rotation.Trans());
     }
-    // Delta translation from the loop closure change to the last pose node
-    new_pose.translation = new_pose.translation + (new_key_pose.translation - last_key_pose.translation);
-    // Delta rotation
-    new_pose.rotation = new_pose.rotation*(new_key_pose.rotation*last_key_pose.rotation.Trans());
 
     // Update localization
     // Also reset the robot's estimated position.
-    be_current_pose_ = new_pose;
-    localization_.SetIntegratedEstimate(new_pose);
+    if (b_use_lo_frontend_){
+      be_current_pose_ = new_pose;
+      PublishPoseWithLoFrontend();
+    } else {
+      localization_.SetIntegratedEstimate(new_pose);
+      
+      // Publish localization pose messages
+      ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+      localization_.UpdateTimestamp(stamp);
+      localization_.PublishPoseNoUpdate();
+    }
 
     // Visualize the pose graph updates
     loop_closure_.PublishPoseGraph();
@@ -889,8 +962,17 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
     mapper_.InsertPoints(regenerated_map, unused.get());
 
     // Also reset the robot's estimated position.
-    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-    be_current_pose_ = loop_closure_.GetLastPose();
+    if (b_use_lo_frontend_){
+      be_current_pose_ = loop_closure_.GetLastPose();
+      PublishPoseWithLoFrontend();
+    } else {
+      localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+      
+      // Publish localization pose messages
+      ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+      localization_.UpdateTimestamp(stamp);
+      localization_.PublishPoseNoUpdate();
+    }
 
     // Visualize the pose graph and current loop closure radius.
     loop_closure_.PublishPoseGraph();
@@ -934,6 +1016,18 @@ void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
 }
 
+void BlamSlam::RepubPoseGraphCallback(const std_msgs::Empty& msg){
+  ROS_INFO("Publishing pose graph again from triggered message");
+  loop_closure_.PublishPoseGraph(false);
+  localization_.PublishPoseNoUpdate();
+}
+
+void BlamSlam::SendRepubPoseGraphFlag(){
+  ROS_INFO("Sending signal to front-end to publish pose-graph");
+  std_msgs::Empty msg;
+  repub_pg_sig_pub_.publish(msg);
+}
+
 void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &pointCloud, const geometry_msgs::PoseStamped pose) {
 
     // ROS_INFO("In message filter callback");
@@ -948,11 +1042,7 @@ void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &point
     this->ProcessPoseScanMessage(fePose, rxCloudPtr);
 
     // Publish pose 
-    geometry_msgs::PoseStamped ros_pose;
-    ros_pose.pose = geometry_utils::ros::ToRosPose(be_current_pose_);
-    ros_pose.header.frame_id = fixed_frame_id_;
-    ros_pose.header.stamp = pointCloud->header.stamp;
-    pose_pub_.publish(ros_pose);
+    PublishPoseWithLoFrontend();
 
     // Publish transform between fixed frame and localization frame.
     if (b_publish_tfs_){
@@ -965,6 +1055,16 @@ void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &point
     }
 
     return;
+}
+
+void BlamSlam::PublishPoseWithLoFrontend(){
+  // Publish pose 
+  geometry_msgs::PoseStamped ros_pose;
+  ros_pose.pose = geometry_utils::ros::ToRosPose(be_current_pose_);
+  ros_pose.header.frame_id = fixed_frame_id_;
+  // ros_pose.header.stamp = pointCloud->header.stamp;
+  ros_pose.header.stamp = ros::Time::now(); // TO FIX
+  pose_pub_.publish(ros_pose);
 }
 
 void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
@@ -989,6 +1089,8 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
     loop_closure_.AddKeyScanPair(initial_key_, msg, true);
 
     // Publish localization pose messages
+    ros::Time stamp = pcl_conversions::fromPCL(msg->header.stamp);
+    localization_.UpdateTimestamp(stamp);
     localization_.PublishPoseNoUpdate();
 
     // Publish
@@ -1049,6 +1151,17 @@ void BlamSlam::ProcessPointCloudMessage(const PointCloud::ConstPtr& msg) {
       // Also reset the robot's estimated position.
       localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
     }
+  }
+
+  // Also reset the robot's estimated position.
+  if (b_use_lo_frontend_){
+    be_current_pose_ = loop_closure_.GetLastPose();
+    PublishPoseWithLoFrontend();
+  } else {
+    // Publish localization pose messages
+    ros::Time stamp = pcl_conversions::fromPCL(msg->header.stamp);
+    localization_.UpdateTimestamp(stamp);
+    localization_.PublishPoseNoUpdate();
   }
 
   // Only publish the pose-graph if there is a new keyframe TODO consider changing to publishing for each new node 
@@ -1147,6 +1260,11 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
     }
   }
 
+  // Also reset the robot's estimated position.
+  if (b_use_lo_frontend_){
+    PublishPoseWithLoFrontend();
+  }
+
   // Only publish the pose-graph if there is a new keyframe TODO consider changing to publishing for each new node 
   if (new_keyframe){
     // Visualize the pose graph and current loop closure radius.
@@ -1155,7 +1273,7 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
     // Publish the map
     mapper_.PublishMap();
   }   
-  
+
 }
 
 bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
@@ -1192,9 +1310,18 @@ bool BlamSlam::RestartService(blam_slam::RestartRequest &request,
   // Bool for adding scan to key the pose added at restart
   b_add_first_scan_to_key_ = true;
 
-  // Also reset the robot's estimated position.
-  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-  be_current_pose_ = loop_closure_.GetLastPose();
+    // Also reset the robot's estimated position.
+    if (b_use_lo_frontend_){
+      be_current_pose_ = loop_closure_.GetLastPose();
+      PublishPoseWithLoFrontend();
+    } else {
+      localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+      
+      // Publish localization pose messages
+      ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+      localization_.UpdateTimestamp(stamp);
+      localization_.PublishPoseNoUpdate(); // Maybe need to update the timestamp here
+    }
   return true;
 }
 
@@ -1430,24 +1557,23 @@ void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
 
 void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
-  // ROS_INFO("new pose update received from frontend");
+  // // ROS_INFO("new pose update received from frontend");
 
-  // Set the pose estimate to the latest pose graph node if there is a new one
-  if (b_new_pose_available_) {
-    current_pose_est_ = loop_closure_.GetLastPose();
-    b_new_pose_available_ = false;
-  }
+  // // Set the pose estimate to the latest pose graph node if there is a new one
+  // if (b_new_pose_available_) {
+  //   current_pose_est_ = loop_closure_.GetLastPose();
+  //   b_new_pose_available_ = false;
+  // }
 
-  // update with the pose delta
-  current_pose_est_ = gu::PoseUpdate(current_pose_est_, gu::ros::FromROS(msg->pose));
-  localization_.SetIntegratedEstimate(current_pose_est_);
+  // // update with the pose delta
+  // current_pose_est_ = gu::PoseUpdate(current_pose_est_, gu::ros::FromROS(msg->pose));
+  // localization_.SetIntegratedEstimate(current_pose_est_);
 
-  // Update the timestamp
-  ros::Time stamp = msg->header.stamp;
-  localization_.UpdateTimestamp(stamp);
+  // // Update the timestamp
+  // ros::Time stamp = msg->header.stamp;
+  // localization_.UpdateTimestamp(stamp);
 
-  // Publish the updated pose
-  localization_.PublishPoseNoUpdate();
+  // // Publish the updated pose
+  // localization_.PublishPoseNoUpdate();
 }
-
 

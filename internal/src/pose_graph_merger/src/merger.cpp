@@ -114,18 +114,18 @@ void Merger::on_slow_pose_msg(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     ROS_INFO_STREAM("Recevived slow pose");
     ROS_INFO_STREAM("Slow timestamp is " << msg->header.stamp.toSec());
     
-    if (!b_block_slow_pose_update){ // blocked if updated in fast_pose callback
-        this->last_slow_pose_ = gu::ros::FromROS(msg->pose);
+    // if (!b_block_slow_pose_update){ // blocked if updated in fast_pose callback
+    this->last_slow_pose_ = gu::ros::FromROS(msg->pose);
 
-        // Store the fast pose when we get the slow pose
-        if (b_received_first_fast_pose_){
-            fast_pose_at_slow_ = get_pose_at_time(msg->header.stamp);
-            // Assume that there will be many fast poses before the first slow pose
-            clean_up_map(msg->header.stamp);
-        }
-
-        b_received_first_slow_pose_ = true;
+    // Store the fast pose when we get the slow pose
+    if (b_received_first_fast_pose_){
+        fast_pose_at_slow_ = get_pose_at_time(msg->header.stamp);
+        // Assume that there will be many fast poses before the first slow pose
+        clean_up_map(msg->header.stamp);
     }
+
+    b_received_first_slow_pose_ = true;
+    // }
     
 }
 
