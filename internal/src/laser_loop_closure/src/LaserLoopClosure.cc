@@ -3047,7 +3047,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
       if (!values_.exists(new_edge_to_parent_node[key_])){
         ROS_WARN("Key doesn't exist in values_");
-        ROS_INFO_STREAM("Key " << new_edge_to_parent_node[key_] << " is the key that does not exist");
+        ROS_INFO_STREAM("Node with key " << gtsam::DefaultKeyFormatter(new_edge_to_parent_node[key_]) << " that connects to new node at key " << gtsam::DefaultKeyFormatter(key_)  << " has not yet been received in values_");
         ROS_INFO("Checking new_values");
         if (!new_values.exists(new_edge_to_parent_node[key_])){
           ROS_WARN("Key doesn't exist in new_values, using pose from node message");
@@ -3068,7 +3068,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       } else {
         ROS_INFO("Getting from pose from values_");
         from_pose = values_.at<Pose3>(new_edge_to_parent_node[key_]);
-      }
+      }b_build_pose_from_edge
 
       if (b_build_pose_from_edge){
         // Get the old pose from the graph 
