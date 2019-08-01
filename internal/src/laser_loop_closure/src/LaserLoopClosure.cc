@@ -3063,6 +3063,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
           b_build_pose_from_edge = false;
 
         } else {
+          ROS_INFO_STREAM("New values has a pose at key " << gtsam::DefaultKeyFormatter(new_edge_to_parent_node[key_]));
           from_pose = new_values.at<Pose3>(new_edge_to_parent_node[key_]);
         }
       } else {
