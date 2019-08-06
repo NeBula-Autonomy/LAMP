@@ -15,7 +15,7 @@ b_use_lo_frontend: false
 b_use_outlier_rejection: true
 
 # Whether or not consolidate artifacts
-use_artifact_loop_closure: false
+use_artifact_loop_closure: true
 
 # Use UWB 
 b_use_uwb: true
