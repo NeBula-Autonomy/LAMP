@@ -140,20 +140,27 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
       return false;
   }
 
+  if (!pu::Get("b_uwb_test_data_collection", b_uwb_test_data_collection_)) return false;
+  robot_name_ = getRobotName(n);
   XmlRpc::XmlRpcValue uwb_list;
   if (!pu::Get("uwb_list", uwb_list)) return false;
   std::vector<std::string> uwb_id_list_drop;
-  if (!pu::Get("uwb_drop/"+getRobotName(n), uwb_id_list_drop)) return false;
+  if (!pu::Get("uwb_drop/"+robot_name_, uwb_id_list_drop)) return false;
   for (int i = 0; i < uwb_list.size(); i++) {
     UwbMeasurementInfo uwb_data;
     std::string uwb_id = uwb_list[i]["id"];
     uwb_data.id = uwb_id;
-    uwb_data.drop_status = true;  // This should be false. (after the enhancement of UWB firmware)
+    if (b_uwb_test_data_collection_) {
+      uwb_data.drop_status = true;
+    }
+    else {
+      uwb_data.drop_status = false;
+    }
     uwb_id2data_hash_[uwb_id] = uwb_data;
     uwb_id2data_hash_[uwb_id].in_pose_graph = false;
   }
   for (auto itr = uwb_id_list_drop.begin(); itr != uwb_id_list_drop.end(); itr++) {
-    uwb_id2data_hash_[*itr].holder = getRobotName(n);
+    uwb_id2data_hash_[*itr].holder = robot_name_;
     uwb_id2data_hash_[*itr].drop_status = false;  // This sentence will be removed.
   }
 
@@ -681,7 +688,13 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
     aug_robot_position = localization_.GetIntegratedEstimate().translation.Eigen();
   }
 
-  loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, aug_robot_position);
+  Eigen::Affine3d T;
+  const std::string parent_frame = "/world";
+  const std::string child_frame = "/"+robot_name_+"/base_link";
+  getTransformEigenFromTF(parent_frame, child_frame, ros::Time::now(), T);
+  Eigen::Matrix3d T_rot = T.rotation();
+
+  loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, T_rot, aug_robot_position);
 
   uwb_id2data_hash_[request.node.AnchorID].drop_status = true;
   
@@ -991,18 +1004,17 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   if (!b_use_uwb_) {
     return;
   }
-  ROS_INFO("In UWB Callback");
   if (loop_closure_.GetNumberStampsKeyed() > uwb_first_key_threshold_) {
     
     // Store the UWB-related data into the buffer "uwb_id2data_hash_"
     auto itr = uwb_id2data_hash_.find(msg.id);
     if (itr != end(uwb_id2data_hash_)) {
       if (uwb_id2data_hash_[msg.id].drop_status == true) {
+        ROS_INFO("In UWB Callback");
         uwb_id2data_hash_[msg.id].range.push_back(msg.range);
         uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
         uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen()); // Maybe should use tfs for this? If we are in the middle of a loop closure?
         uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
-
       }
     } 
     else {

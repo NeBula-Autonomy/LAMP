@@ -157,6 +157,7 @@ class LaserLoopClosure {
   
   bool DropUwbAnchor(const std::string uwb_id,
                      const ros::Time& stamp,
+                     const Eigen::Matrix3d T_rot,
                      const Eigen::Vector3d robot_position);
   
   bool UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
@@ -410,13 +411,16 @@ private:
   std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
   std::unordered_map<std::string, int> uwb_id2keynumber_hash_;
   double uwb_range_measurement_error_;
-  unsigned int uwb_range_compensation_;
+  unsigned int uwb_adding_range_option_;
   unsigned int uwb_factor_optimizer_;
   unsigned int uwb_number_added_rangefactor_first_;
   unsigned int uwb_number_added_rangefactor_not_first_;
   double uwb_minimum_range_threshold_;
+  double uwb_maximum_range_threshold_;
   bool b_use_display_uwb_data_;
   bool b_use_uwb_outlier_rejection_;
+  bool b_uwb_add_betweenfactor_;
+  Eigen::Vector3d uwb_dropped_position_;
 
   // Optimizer object, and best guess pose values.
   std::unique_ptr<RobustPGO::RobustSolver> pgo_solver_;
