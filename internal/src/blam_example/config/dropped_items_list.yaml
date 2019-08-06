@@ -1,6 +1,6 @@
 uwb_drop:
-  husky1: []
-  husky2: ["15A5", "1BBB", "5102"]
+  husky1: ["15A5", "1BBB", "5102", "CB89"]
+  husky2: []
   husky3: []
   telemax: []
   robot: []

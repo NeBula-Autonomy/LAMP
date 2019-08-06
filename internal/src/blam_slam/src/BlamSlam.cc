@@ -274,7 +274,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
           new PcldSynchronizer(PcldSyncPolicy(pcld_queue_size_), *pcld1_sub_, *pcld2_sub_));
         pcld_synchronizer->registerCallback(&BlamSlam::TwoPointCloudCallback, this);
       } else {
-        pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+        pcld_sub_ = nl.subscribe("pcld", 10, &BlamSlam::PointCloudCallback, this);
       }
     } else {
 
