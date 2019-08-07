@@ -2801,12 +2801,7 @@ void LaserLoopClosure::updateInlierLoopEdges() {
   std::unordered_map < gtsam::Key, std::vector<Edge> > edges; 
   for (size_t i = 0; i < nfg_.size(); i++) {
     if (nfg_[i] != NULL && nfg_[i]->keys().size() == 2) {
-      if (edges.find(nfg_[i]->front()) != edges.end()) {
-        edges[nfg_[i]->front()] = std::vector<Edge>{std::make_pair(
-            nfg_[i]->front(), nfg_[i]->back())};
-      } else {
-        edges[nfg_[i]->front()].push_back(std::make_pair(nfg_[i]->front(), nfg_[i]->back()));
-      }
+      edges[nfg_[i]->front()].push_back(std::make_pair(nfg_[i]->front(), nfg_[i]->back()));
     }
   }
   // now update loop edges 

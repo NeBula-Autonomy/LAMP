@@ -12,12 +12,12 @@ use_two_vlps: false
 b_use_lo_frontend: false
 
 # Toggle outlier rejection
-b_use_outlier_rejection: false
+b_use_outlier_rejection: true
 
 # Whether or not consolidate artifacts
 use_artifact_loop_closure: false
 
-# Use UWB 
+# Use UWB
 b_use_uwb: true
 
 # Turn on sanity checks
