@@ -339,6 +339,9 @@ private:
   // Subscribe to laster lc toggle
   void LaserLCToggle(const std_msgs::Bool& msg);
 
+  // Update loop edges based on iniers 
+  void updateInlierLoopEdges();
+
   // Node name.
   std::string name_;
 
@@ -480,6 +483,7 @@ private:
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
+  std::vector<Edge> inlier_loop_edges_;
   std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
   std::vector<Edge> uwb_edges_range_;

@@ -2586,6 +2586,9 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
   
   has_changed_ = false;
 
+  // update inliers 
+  updateInlierLoopEdges();
+
   // Construct and send the pose graph.
   if (pose_graph_pub_.getNumSubscribers() > 0) {
     pose_graph_msgs::PoseGraph g;
@@ -2655,9 +2658,9 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       g.edges.push_back(edge);
     }
 
-    for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
-      edge.key_from = loop_edges_[ii].first;
-      edge.key_to = loop_edges_[ii].second;
+    for (size_t ii = 0; ii < inlier_loop_edges_.size(); ++ii) {
+      edge.key_from = inlier_loop_edges_[ii].first;
+      edge.key_to = inlier_loop_edges_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
 
 
@@ -2881,6 +2884,28 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key& artifact
     return Eigen::Vector3d();
   }
   return values_.at<Pose3>(artifact_key).translation().vector();
+}
+
+// Update loop edges based on iniers 
+void LaserLoopClosure::updateInlierLoopEdges() {
+  // first get the edges corresponding to each key 
+  std::unordered_map < gtsam::Key, std::vector<Edge> > edges; 
+  for (size_t i = 0; i < nfg_.size(); i++) {
+    if (nfg_[i] != NULL && nfg_[i]->keys().size() == 2) {
+      edges[nfg_[i]->front()].push_back(std::make_pair(nfg_[i]->front(), nfg_[i]->back()));
+    }
+  }
+  // now update loop edges 
+  inlier_loop_edges_.clear(); 
+  for (size_t i  = 0; i < loop_edges_.size(); i++) {
+    gtsam::Key front_key = loop_edges_[i].first; 
+    if (edges.find(front_key) != edges.end()) {
+      if (std::find(edges[front_key].begin(), edges[front_key].end(), 
+          loop_edges_[i]) != edges[front_key].end()) {
+        inlier_loop_edges_.push_back(loop_edges_[i]);
+      }
+    }
+  }
 }
 
 //------------------Basestation functions:---------------------------------

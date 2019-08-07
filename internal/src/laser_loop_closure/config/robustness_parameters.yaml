@@ -3,7 +3,7 @@
 ###
 # outlier rejection thresholds (distances)
 translation_check_threshold: 0.1 # 10 centimeters
-rotation_check_threshold: 0.1 # ~5.7 degrees
+rotation_check_threshold: 0.01 # ~0.57 degrees
 # TODO make these dynamic with the translation threshold for nodes
 
 ########################################
