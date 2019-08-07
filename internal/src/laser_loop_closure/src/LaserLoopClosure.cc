@@ -2796,7 +2796,7 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key& artifact
 }
 
 // Update loop edges based on iniers 
-void updateInlierLoopEdges() {
+void LaserLoopClosure::updateInlierLoopEdges() {
   // first get the edges corresponding to each key 
   std::unordered_map < gtsam::Key, std::vector<Edge> > edges; 
   for (size_t i = 0; i < nfg_.size(); i++) {
