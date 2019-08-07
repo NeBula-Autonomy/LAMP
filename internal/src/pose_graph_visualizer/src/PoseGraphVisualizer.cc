@@ -894,9 +894,9 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   m.pose.orientation.y = 0.0;
   m.pose.orientation.z = 0.0;
   m.pose.orientation.w = 1.0;
-  m.scale.x = 0.35f;
-  m.scale.y = 0.35f;
-  m.scale.z = 0.35f;
+  m.scale.x = 0.95f;
+  m.scale.y = 0.95f;
+  m.scale.z = 0.95f;
   m.color.a = 1.0f;
 
   if (artifact_label == "backpack") {
@@ -925,19 +925,19 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.color.r = 1.0f;
     m.color.g = 1.0f;
     m.color.b = 1.0f;
-    m.scale.x = 1.0f;
-    m.scale.y = 1.0f;
-    m.scale.z = 1.0f;
+    m.scale.x = 1.2f;
+    m.scale.y = 1.2f;
+    m.scale.z = 1.2f;
     m.type = visualization_msgs::Marker::CYLINDER;
   }
   if (artifact_label == "cellphone") {
     std::cout << "cellphone marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 0.0f;
-    m.color.b = 0.2f;
-    m.scale.x = 0.35f;
-    m.scale.y = 0.7f;
-    m.scale.z = 0.1f;
+    m.color.b = 0.7f;
+    m.scale.x = 0.55f;
+    m.scale.y = 1.2f;
+    m.scale.z = 0.3f;
     m.type = visualization_msgs::Marker::CUBE;
   }
 }
