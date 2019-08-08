@@ -91,6 +91,9 @@
 
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
+    
+      <!--AprilTags -->
+      <rosparam file="$(find blam_slam)/config/apriltag_parameters.yaml"/>
 
       <!-- show which to subscribe to of the robots -->
       <rosparam file="$(find laser_loop_closure)/config/robot_names.yaml" />
