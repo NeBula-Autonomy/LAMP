@@ -189,6 +189,7 @@ class BlamSlam {
 
   // The node's name.
   std::string name_;
+  std::string robot_name_;
 
   std::string blam_frame_;
   std::string world_frame_;
@@ -301,6 +302,7 @@ class BlamSlam {
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
 
   // UWB
+  bool b_uwb_test_data_collection_;
   unsigned int uwb_skip_measurement_number_;
   unsigned int uwb_update_key_number_;
   unsigned int uwb_required_key_number_first_;
