@@ -132,34 +132,6 @@
     </node>
  
 
-    <!-- Republish node with different frame_id -->
-    <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
-          args="standalone pcl/PassThrough">
-      <remap from="~input" to="velodyne_points"/>
-      <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
-      <remap from="~output" to="velodyne_points/transformed"/>
-      <rosparam subst_value="true">
-        filter_field_name: z
-        filter_limit_min: -100
-        filter_limit_max: 100
-        output_frame: $(arg robot_namespace)/base_link
-      </rosparam>
-    </node>
-
-    <!-- Republish node with different frame_id -->
-    <node pkg="nodelet" type="nodelet" name="transform_points_base_link_front"
-          args="standalone pcl/PassThrough">
-      <remap from="~input" to="velodyne_front/velodyne_points"/>
-      <!-- <remap from="~input" to="velodyne_front/velodyne_points_throttle"/> -->
-      <remap from="~output" to="velodyne_front/velodyne_points/transformed"/>
-      <rosparam subst_value="true">
-        filter_field_name: z
-        filter_limit_min: -100
-        filter_limit_max: 100
-        output_frame: $(arg robot_namespace)/base_link
-      </rosparam>
-    </node>
-
     <!-- Convert output PoseStamped message to Odometry -->
     <node pkg="topic_tools" type="transform" name="pose_to_odom"
           respawn="true" output="screen"
