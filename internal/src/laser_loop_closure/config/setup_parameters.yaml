@@ -3,7 +3,7 @@
 #######################################
 
 # Toggle auto loop closures on or off.
-check_for_loop_closures: true
+check_for_loop_closures: false
 
 # Use two velodynes?
 use_two_vlps: false
@@ -15,7 +15,7 @@ b_use_lo_frontend: false
 b_use_outlier_rejection: false
 
 # Whether or not consolidate artifacts
-use_artifact_loop_closure: false
+use_artifact_loop_closure: true
 
 # Use UWB 
 b_use_uwb: true
