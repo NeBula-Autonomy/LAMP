@@ -19,7 +19,7 @@ artifact_trans_precision: 0.01 #0.005
 
 # Noise parameters (as precisions) for fiducials 
 fiducial_rot_precision: 0.0
-fiducial_trans_precision: 22222222222.0
+fiducial_trans_precision: 2.0
 
 # When searching through old poses for loop closures, only consider old poses
 # that are within this distance of the current pose.
