@@ -138,7 +138,6 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("aprilTag26_y", aprilTag26_y_)) return false;
   if (!pu::Get("aprilTag26_z", aprilTag26_z_)) return false;
 
-
   // check if lamp is run as basestation
   b_is_basestation_ = false;
   if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;

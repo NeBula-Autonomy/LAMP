@@ -374,6 +374,8 @@ private:
   double manual_lc_trans_precision_;
   double artifact_rot_precision_;
   double artifact_trans_precision_;
+  double fiducial_trans_precision_;
+  double fiducial_rot_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
   unsigned int relinearize_skip_;

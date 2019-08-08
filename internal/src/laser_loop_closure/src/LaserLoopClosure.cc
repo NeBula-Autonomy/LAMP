@@ -160,6 +160,9 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("artifact_rot_precision", artifact_rot_precision_)) return false; 
   if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false; 
 
+  if(!pu::Get("fiducial_trans_precision", fiducial_trans_precision_)) return false;
+  if(!pu::Get("fiducial_rot_precision", fiducial_rot_precision_)) return false;
+
   // Load ICP parameters.
   if (!pu::Get("icp/tf_epsilon", icp_tf_epsilon_)) return false;
   if (!pu::Get("icp/corr_dist", icp_corr_dist_)) return false;
@@ -1836,8 +1839,8 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, 
                  artifact_rot_precision_, artifact_trans_precision_);
   if (fiducial) {
     gtsam::Vector6 precisions;                       // inverse of variances
-    precisions.head<3>().setConstant(0.0); // TODO: define in params
-    precisions.tail<3>().setConstant(0.0); // TODO: define in params
+    precisions.head<3>().setConstant(fiducial_rot_precision_); // TODO: define in params
+    precisions.tail<3>().setConstant(fiducial_trans_precision_); // TODO: define in params
     static const gtsam::SharedNoiseModel& noise =
         gtsam::noiseModel::Diagonal::Precisions(precisions);
     gtsam::NonlinearFactorGraph prior_factor;
