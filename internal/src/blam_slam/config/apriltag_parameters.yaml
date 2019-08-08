@@ -1,0 +1,12 @@
+#Load AprilTag GT coordinates
+aprilTag4_x: 0.005
+aprilTag4_y: 0.0
+aprilTag4_z: 0.605
+
+aprilTag6_x: 0.005
+aprilTag6_y: 0.0
+aprilTag6_z: 0.281
+
+aprilTag26_x: 25
+aprilTag26_y: 0.5
+aprilTag26_z: 0.5
