@@ -369,8 +369,8 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   ROS_INFO("Creating message filters");
 
   if (b_use_lo_frontend_){
-    this->filterPointSub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld_sync", 10);
-    this->filterPoseSub_ = new message_filters::Subscriber<geometry_msgs::PoseStamped>(nl, "fe_pose", 10);
+    this->filterPointSub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld_sync", 100);
+    this->filterPoseSub_ = new message_filters::Subscriber<geometry_msgs::PoseStamped>(nl, "fe_pose", 100);
 
 
     this->poseScanSync_ = new message_filters::Synchronizer
@@ -385,7 +385,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
             <
               sensor_msgs::PointCloud2,
               geometry_msgs::PoseStamped
-            >(10),
+            >(100),
             *this->filterPointSub_,
             *this->filterPoseSub_
     );

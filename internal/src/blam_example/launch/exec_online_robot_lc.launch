@@ -58,6 +58,9 @@
       <!-- Flag on whether it is front=end or not -->
       <param name="b_is_front_end" value="false" type="bool"/>
 
+      <!-- Flag on whether to use the front end -->
+      <param name="b_use_lo_frontend" value="false" type="bool"/>
+      
       <!-- Rates -->
       <rosparam file="$(find blam_example)/config/blam_rates.yaml"/>
 
