@@ -128,6 +128,17 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("restart_pitch", restart_pitch_)) return false;
   if (!pu::Get("restart_yaw", restart_yaw_)) return false;
 
+  if (!pu::Get("aprilTag4_x", aprilTag4_x_)) return false;
+  if (!pu::Get("aprilTag4_y", aprilTag4_y_)) return false;
+  if (!pu::Get("aprilTag4_z", aprilTag4_z_)) return false;
+  if (!pu::Get("aprilTag6_x", aprilTag6_x_)) return false;
+  if (!pu::Get("aprilTag6_y", aprilTag6_y_)) return false;
+  if (!pu::Get("aprilTag6_z", aprilTag6_z_)) return false;
+  if (!pu::Get("aprilTag26_x", aprilTag26_x_)) return false;
+  if (!pu::Get("aprilTag26_y", aprilTag26_y_)) return false;
+  if (!pu::Get("aprilTag26_z", aprilTag26_z_)) return false;
+
+
   // check if lamp is run as basestation
   b_is_basestation_ = false;
   if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
@@ -819,12 +830,23 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
-
-  bool result = loop_closure_.AddArtifact(
-    pose_key,
-    cur_artifact_key,
-    R_pose_A, 
-    artifactinfo);
+  bool result;
+  if (msg.parent_id == "AprilTag26" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(aprilTag26_x_, aprilTag26_y_, aprilTag26_z_);
+    result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
+  } else if (msg.parent_id == "AprilTag4" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(aprilTag4_x_, aprilTag4_y_, aprilTag4_z_);
+    result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
+  } else if (msg.parent_id == "AprilTag6" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(aprilTag6_x_, aprilTag6_y_, aprilTag6_z_);
+    result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
+  } else {
+    result = loop_closure_.AddArtifact(
+      pose_key,
+      cur_artifact_key,
+      R_pose_A, 
+      artifactinfo);
+  }
 
   if (result){
     std::cout << "adding artifact observation succeeded" << std::endl;

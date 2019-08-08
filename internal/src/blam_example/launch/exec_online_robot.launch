@@ -95,6 +95,9 @@
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
 
+      <!--AprilTags -->
+      <rosparam file="$(find blam_slam)/config/apriltag_parameters.yaml"/>
+
       <!-- The robot prefix dependent of robot_namespace -->
       <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
       <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>

@@ -246,7 +246,7 @@ class LaserLoopClosure {
   bool AddManualLoopClosure(gtsam::Key key1, gtsam::Key key2, gtsam::Pose3 pose12);
 
   bool AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, gtsam::Pose3 pose12,
-                   ArtifactInfo artifact);
+                   ArtifactInfo artifact, bool fiducial = false, gtsam::Point3 location = gtsam::Point3());
 
   bool AddFactor(gtsam::Key key1, gtsam::Key key2, 
                  gtsam::Pose3 pose12, 

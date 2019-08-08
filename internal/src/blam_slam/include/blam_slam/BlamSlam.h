@@ -252,6 +252,17 @@ class BlamSlam {
   double restart_roll_;
   double restart_pitch_;
   double restart_yaw_;
+
+  // GT AprilTag world coordinates
+  double aprilTag4_x_;
+  double aprilTag4_y_;
+  double aprilTag4_z_;
+  double aprilTag6_x_;
+  double aprilTag6_y_;
+  double aprilTag6_z_;
+  double aprilTag26_x_;
+  double aprilTag26_y_;
+  double aprilTag26_z_;
   
   // Artifact prefix
   unsigned char artifact_prefix_;

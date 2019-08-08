@@ -1818,8 +1818,8 @@ bool LaserLoopClosure::AddManualLoopClosure(gtsam::Key key1, gtsam::Key key2,
                    manual_lc_rot_precision_, manual_lc_trans_precision_); 
 }
 
-bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, 
-                                   gtsam::Pose3 pose12, ArtifactInfo artifact) {
+bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, gtsam::Pose3 pose12,
+                   ArtifactInfo artifact, bool fiducial, gtsam::Point3 location) {
 
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
@@ -1831,9 +1831,20 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key,
   }
   // add to pose graph 
   bool is_manual_loop_closure = false;
-  return AddFactor(posekey, artifact_key, pose12, is_manual_loop_closure,
-                   artifact_rot_precision_, artifact_trans_precision_);
-
+  
+  bool success = AddFactor(posekey, artifact_key, pose12, is_manual_loop_closure,
+                 artifact_rot_precision_, artifact_trans_precision_);
+  if (fiducial) {
+    gtsam::Vector6 precisions;                       // inverse of variances
+    precisions.head<3>().setConstant(0.0); // TODO: define in params
+    precisions.tail<3>().setConstant(0.0); // TODO: define in params
+    static const gtsam::SharedNoiseModel& noise =
+        gtsam::noiseModel::Diagonal::Precisions(precisions);
+    gtsam::NonlinearFactorGraph prior_factor;
+    prior_factor.add(gtsam::PriorFactor<gtsam::Pose3>(artifact_key, gtsam::Pose3(gtsam::Rot3(),  location), noise)); 
+    pgo_solver_->update(prior_factor, gtsam::Values());
+  }
+  return success;
 }
 
 bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2, 
