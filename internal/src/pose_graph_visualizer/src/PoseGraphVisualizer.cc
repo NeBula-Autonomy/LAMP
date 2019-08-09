@@ -190,6 +190,12 @@ void PoseGraphVisualizer::PoseGraphCallback(
     // Fill pose nodes (representing the robot position)
     keyed_poses_[msg_node.key] = pose;
 
+    // Track key frames
+    if (msg_node.ID == "key_frame"){
+      // Have key frame
+      keyframe_poses_[msg_node.key] = pose;
+    }
+
     keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(
         msg_node.key, msg_node.header.stamp));
     stamps_keyed_.insert(std::pair<double, long unsigned int>(
@@ -862,7 +868,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Interactive markers.
   if (publish_interactive_markers_) {
     ROS_INFO("Pose Graph Nodes");
-    for (const auto &keyed_pose : keyed_poses_) {
+    for (const auto &keyed_pose : keyframe_poses_) {
       gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.first);
       std::string robot_id = std::string(key_id);
       MakeMenuMarker(keyed_pose.second, robot_id);
