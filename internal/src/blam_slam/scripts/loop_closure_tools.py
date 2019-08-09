@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-import rospy, transforms3d
-from blam_slam.srv import SaveGraph, LoadGraph, RemoveFactor, AddFactor, Restart, BatchLoopClosure
+import rospy
+import transforms3d
+from blam_slam.srv import SaveGraph, LoadGraph, RemoveFactor, AddFactor, Restart, BatchLoopClosure, CorrectMapRotation
 from blam_slam.msg import RemoveFactorCmd, AddFactorCmd
 from std_msgs.msg import String, Empty, Bool
 from pose_graph_visualizer.srv import HighlightEdge
@@ -11,6 +12,7 @@ class LoopClosureTools:
         self.robot_namespace = rospy.get_namespace()
         self.node_name = rospy.get_name()
         rospy.Subscriber(self.node_name + '/batch_loop_closure', Empty, self.batch_loop_closure_clbk, queue_size=1)
+        rospy.Subscriber(self.node_name + '/correct_map_rotation', Empty, self.correct_map_rotation_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/save_graph', String, self.save_graph_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/load_graph', String, self.load_graph_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/add_factor', AddFactorCmd, self.add_factor_clbk, queue_size=1)
@@ -21,7 +23,6 @@ class LoopClosureTools:
         self.confirmation_received = False
         self.confirmation_status = False
 
-
     def batch_loop_closure_clbk(self, msg):
         rospy.loginfo("Batch loop closure command received")
         batch_loop_closure_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/batch_loop_closure', BatchLoopClosure)
@@ -30,6 +31,13 @@ class LoopClosureTools:
         else:
             print('Did not find any loop closures')
 
+    def correct_map_rotation_clbk(self, msg):
+        rospy.loginfo("Correct map rotation command received")
+        correct_map_rotation_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/correct_map_rotation', CorrectMapRotation)
+        if correct_map_rotation_service().success:
+            print('Successfully corrected map rotation')
+        else:
+            print('Did not correct map rotation')
 
     def save_graph_clbk(self, msg):
         rospy.loginfo("Save graph command received")

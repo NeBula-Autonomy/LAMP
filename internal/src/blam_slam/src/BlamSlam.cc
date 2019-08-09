@@ -256,6 +256,8 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   restart_srv_ = nl.advertiseService("restart", &BlamSlam::RestartService, this);
   load_graph_srv_ = nl.advertiseService("load_graph", &BlamSlam::LoadGraphService, this);
   batch_loop_closure_srv_ = nl.advertiseService("batch_loop_closure", &BlamSlam::BatchLoopClosureService, this);
+  correct_map_rotation_srv_ = nl.advertiseService(
+      "correct_map_rotation", &BlamSlam::CorrectMapRotationService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
 
   if (from_log)
@@ -685,6 +687,18 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   return true; 
 }
 
+bool BlamSlam::CorrectMapRotationService(
+    blam_slam::CorrectMapRotationRequest& request,
+    blam_slam::CorrectMapRotationResponse& response) {
+  std::cout << "Correct Map Rotation. Correcting map rotation..." << std::endl;
+  // Construct a Ground Truth vector from the gate(AprilTag4) to
+  // distal(AprilTag26)
+  Eigen::Vector3d v1((aprilTag26_x_ - aprilTag4_x_),
+                     (aprilTag26_y_ - aprilTag4_y_),
+                     (aprilTag26_z_ - aprilTag4_z_));
+  response.success =
+      loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_);
+}
 
 bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
                               mesh_msgs::ProcessCommNodeResponse &response) {
@@ -845,9 +859,11 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   bool result;
   if (msg.parent_id == "AprilTag26" && b_is_new_artifact) {
     gtsam::Point3 position = gtsam::Point3(aprilTag26_x_, aprilTag26_y_, aprilTag26_z_);
+    distal_key_ = cur_artifact_key;
     result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
   } else if (msg.parent_id == "AprilTag4" && b_is_new_artifact) {
     gtsam::Point3 position = gtsam::Point3(aprilTag4_x_, aprilTag4_y_, aprilTag4_z_);
+    gate_key_ = cur_artifact_key;
     result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
   } else if (msg.parent_id == "AprilTag6" && b_is_new_artifact) {
     gtsam::Point3 position = gtsam::Point3(aprilTag6_x_, aprilTag6_y_, aprilTag6_z_);

@@ -2592,6 +2592,38 @@ bool LaserLoopClosure::BatchLoopClosure() {
     return false;
 }
 
+bool LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
+                                          gtsam::Key gate_key,
+                                          gtsam::Key distal_key) {
+  std::cout << "Received the CorrectMapRotation request in LaserLoopClosure..."
+            << std::endl;
+  geometry_utils::Transform3 gate_pose = GetPoseAtKey(gate_key);
+  geometry_utils::Transform3 distal_pose = GetPoseAtKey(distal_key);
+
+  // Retrive the location of the AprilTag4 from the map
+  Eigen::Matrix<double, 3, 1> T_gate = gate_pose.translation.Eigen();
+  // Retrive the location of the AprilTag26 from the map
+  Eigen::Matrix<double, 3, 1> T_distal = distal_pose.translation.Eigen();
+  // Find the vector connecting the gate to distal AprilTag in the map
+  Eigen::Matrix<double, 3, 1> T_delta = T_distal - T_gate;
+  // Convert the vector to a vector3d
+  Eigen::Vector3d v2(T_delta(0, 0), T_delta(1, 0), T_delta(2, 0));
+
+  // Compute the quaternion that represents the rotation going from v2 to v1
+  std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
+
+  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v1, v2);
+  // Normalize the quaternion and get the corrispondant rotation matrix
+  Eigen::Matrix3d R = q.normalized().toRotationMatrix();
+  // Print the computed rotation matrix between the map and ground truth
+
+  std::cout << "The computed 3D rotation between the map and GT is R= "
+            << std::endl
+            << R << std::endl;
+  // Initialize a new vector
+  return true;
+}
+
 bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
 
   //has_changed must be true to update the posegraph
