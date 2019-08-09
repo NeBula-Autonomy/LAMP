@@ -1063,7 +1063,7 @@ void BlamSlam::SendRepubPoseGraphFlag(){
 
 void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &pointCloud, const geometry_msgs::PoseStamped pose) {
 
-    // ROS_INFO("In message filter callback");
+    ROS_INFO("\n\n>>>>>>>>>>>>>>>>>>>>>\nIn message filter callback\n>>>>>>>>>>>>>>>>>>>>>\n");
 
     geometry_utils::Transform3 fePose = geometry_utils::ros::FromROS(pose.pose);
 

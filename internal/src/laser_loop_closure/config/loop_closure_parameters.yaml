@@ -19,11 +19,11 @@ artifact_trans_precision: 0.01 #0.005
 
 # Noise parameters (as precisions) for fiducials 
 fiducial_rot_precision: 0.0
-fiducial_trans_precision: 2.0
+fiducial_trans_precision: 10.0
 
 # When searching through old poses for loop closures, only consider old poses
 # that are within this distance of the current pose.
-proximity_threshold: 10
+proximity_threshold: 5
 
 # To compute a loop closure we perform ICP between the current scan and laser
 # scans captured from nearby poses. In order to be considered a loop closure,

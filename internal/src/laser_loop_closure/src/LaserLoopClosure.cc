@@ -1916,12 +1916,12 @@ bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, 
                    ArtifactInfo artifact, bool fiducial, gtsam::Point3 location) {
 
   // keep track of artifact info: add to hash if not added
-  if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
+  if (artifact_key2info_hash_.find(artifact_key) == artifact_key2info_hash_.end()) {
     // ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
-    artifact_key2info_hash[artifact_key] = artifact;
+    artifact_key2info_hash_[artifact_key] = artifact;
   } else {
     ROS_INFO("Existing artifact detected");
-    artifact_key2info_hash[artifact_key] = artifact;
+    artifact_key2info_hash_[artifact_key] = artifact;
   }
   // add to pose graph 
   bool is_manual_loop_closure = false;
@@ -1991,7 +1991,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
     // Add timestamps (don't want to reference this with time, so just one way)
     keyed_stamps_.insert(
-        std::pair<gtsam::Symbol, ros::Time>(key_, artifact_key2info_hash[key2].msg.header.stamp));
+        std::pair<gtsam::Symbol, ros::Time>(key_, artifact_key2info_hash_[key2].msg.header.stamp));
   }
 
   linPoint.insert(new_values); // insert new values (valid for all cases)
@@ -2627,25 +2627,24 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       node.key = keyed_pose.key;
       node.header.frame_id = fixed_frame_id_;
       node.pose = gr::ToRosPose(t);
-      if (keyed_stamps_.count(keyed_pose.key)) {
+      if (keyed_scans_.count(keyed_pose.key)) {
         node.header.stamp = keyed_stamps_[keyed_pose.key];
+        // Key frame, note in the ID
+        node.ID = "key_frame";
+      } else if (artifact_key2info_hash_.count(keyed_pose.key)){
+        node.header.stamp = artifact_key2info_hash_[keyed_pose.key].msg.header.stamp;
+      } else if (uwb_key2id_hash_.count(keyed_pose.key)){
+        ROS_INFO("UWB node, leaving node timestamp empty in pose graph message");
       } else {
-        ROS_WARN("%s: Couldn't find timestamp for key %lu", name_.c_str(),
-                 keyed_pose.key);
+        ROS_INFO_STREAM("Node " << gtsam::DefaultKeyFormatter(keyed_pose.key) << " is not a key frame, leaving timestamp empty in pose graph message");
+        // Normal odom node, note in ID
+        node.ID = "odom_node";
       }
-
-      // ROS_INFO_STREAM("Symbol key is " <<
-      // gtsam::DefaultKeyFormatter(sym_key)); 
-      // ROS_INFO_STREAM("Symbol key
-      // (directly) is "
-      //                 << gtsam::DefaultKeyFormatter(keyed_pose.key));
-
-      // ROS_INFO_STREAM("Symbol key (int) is " << keyed_pose.key);
 
       // Add UUID if an artifact or uwb node
       if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p'){
         // Artifact
-        node.ID = artifact_key2info_hash[keyed_pose.key].msg.parent_id;
+        node.ID = artifact_key2info_hash_[keyed_pose.key].msg.parent_id;
       }
       if (sym_key.chr() == 'u'){
         // UWB
@@ -2731,11 +2730,11 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
     ROS_INFO("\n\n\t\tPublishing all artifacts\n\n");
   }
 
-  ROS_INFO_STREAM("size of artifact key to info hash is " << artifact_key2info_hash.size());
+  ROS_INFO_STREAM("size of artifact key to info hash is " << artifact_key2info_hash_.size());
 
   // loop through values 
-  for (auto it = artifact_key2info_hash.begin();
-            it != artifact_key2info_hash.end(); it++ ) {
+  for (auto it = artifact_key2info_hash_.begin();
+            it != artifact_key2info_hash_.end(); it++ ) {
 
     ROS_INFO_STREAM("Artifact hash key is " << gtsam::DefaultKeyFormatter(it->first));
     gtsam::Symbol art_key = gtsam::Symbol(it->first);
@@ -2768,32 +2767,32 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
       ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(artifact_key));
 
       // Check that the key exists
-      if (artifact_key2info_hash.count(artifact_key) == 0) {
+      if (artifact_key2info_hash_.count(artifact_key) == 0) {
         ROS_WARN("Artifact key is not in hash, nothing to publish");
         return;
       }
 
       // Get position and label 
       artifact_position = GetArtifactPosition(artifact_key);
-      artifact_label = artifact_key2info_hash[artifact_key].msg.label;
+      artifact_label = artifact_key2info_hash_[artifact_key].msg.label;
       // Keep the input artifact key
 
       // Increment update count
-      artifact_key2info_hash[artifact_key].num_updates++;
+      artifact_key2info_hash_[artifact_key].num_updates++;
 
       std::cout << "Number of updates of artifact is: "
-                << artifact_key2info_hash[artifact_key].num_updates
+                << artifact_key2info_hash_[artifact_key].num_updates
                 << std::endl;
     }
 
     // Check that the key exists
-    if (artifact_key2info_hash.count(artifact_key) == 0) {
+    if (artifact_key2info_hash_.count(artifact_key) == 0) {
       ROS_WARN("Artifact key is not in hash, nothing to publish");
       return;
     }
 
     // Fill artifact message
-    core_msgs::Artifact new_msg = artifact_key2info_hash[artifact_key].msg;
+    core_msgs::Artifact new_msg = artifact_key2info_hash_[artifact_key].msg;
 
     if (b_publish_all){
       // Update the message ID
@@ -3215,21 +3214,39 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
     // Check input for NaNs
 
-    // Add UUID if an artifact or uwb node
-    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p' || key_.chr() == 'u') {
+    // Add UUID if an artifact node
+    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p') {
       // Artifact
-      // artifact_key2info_hash[key_] = msg_node.ID;
+      // artifact_key2info_hash_[key_] = msg_node.ID;
       std::cout << "\t Artifact added to basestaion(PGcallback): "
                 << gtsam::DefaultKeyFormatter(key_);
       std::cout << "\t with parent id: " << msg_node.ID << std::endl;
       new_values.insert(key_, full_pose);
       values_recieved_at_base_.insert(key_, full_pose);
+      // Add time and ID to the artifact info
+      ArtifactInfo info;
+      info.msg.header.stamp = msg_node.header.stamp;
+      info.msg.parent_id = msg_node.ID;
+      artifact_key2info_hash_.insert(std::pair<gtsam::Symbol, ArtifactInfo>(key_, info));
+      continue;
+    } else if (key_.chr() == 'u') {
+      // Process UWB  
+      // Artifact
+      std::cout << "\t UWB added to PGcallback: "
+                << gtsam::DefaultKeyFormatter(key_);
+      std::cout << "\t with id: " << msg_node.ID << std::endl;
+      new_values.insert(key_, full_pose);
+      values_recieved_at_base_.insert(key_, full_pose);
+      // Add ID to the uwb hash
+      uwb_key2id_hash_[key_] = msg_node.ID;
+      continue;
+    } else {
+      // A node or keyframe - just add to keyed stamps
       // Add time to each node
       keyed_stamps_.insert(
           std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
-      stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(
-          msg_node.header.stamp.toSec(), key_));
-      continue;
+      stamps_keyed_.insert(
+          std::pair<double, gtsam::Symbol>(msg_node.header.stamp.toSec(), key_));
     }
 
     // if previous key exists
@@ -3279,11 +3296,6 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       }
     }
 
-    // Add time to each node
-    keyed_stamps_.insert(
-        std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
-    stamps_keyed_.insert(
-        std::pair<double, gtsam::Symbol>(msg_node.header.stamp.toSec(), key_));
   }
 
   if (new_factor.size() == 1 && new_values.size() == 1 && key_.chr() == initial_key_.chr()){
