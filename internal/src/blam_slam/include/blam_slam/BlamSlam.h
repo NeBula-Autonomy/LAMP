@@ -261,15 +261,15 @@ class BlamSlam {
   double restart_yaw_;
 
   // GT AprilTag world coordinates
-  double aprilTag4_x_;
-  double aprilTag4_y_;
-  double aprilTag4_z_;
-  double aprilTag6_x_;
-  double aprilTag6_y_;
-  double aprilTag6_z_;
-  double aprilTag26_x_;
-  double aprilTag26_y_;
-  double aprilTag26_z_;
+  double calibration_left_x_;
+  double calibration_left_y_;
+  double calibration_left_z_;
+  double calibration_right_x_;
+  double calibration_right_y_;
+  double calibration_right_z_;
+  double distal_x_;
+  double distal_y_;
+  double distal_z_;
 
   // Key for storing the ID of the distal artifact
   gtsam::Key distal_key_;

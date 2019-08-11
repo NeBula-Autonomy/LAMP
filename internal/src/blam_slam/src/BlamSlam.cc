@@ -128,15 +128,15 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("restart_pitch", restart_pitch_)) return false;
   if (!pu::Get("restart_yaw", restart_yaw_)) return false;
 
-  if (!pu::Get("aprilTag4_x", aprilTag4_x_)) return false;
-  if (!pu::Get("aprilTag4_y", aprilTag4_y_)) return false;
-  if (!pu::Get("aprilTag4_z", aprilTag4_z_)) return false;
-  if (!pu::Get("aprilTag6_x", aprilTag6_x_)) return false;
-  if (!pu::Get("aprilTag6_y", aprilTag6_y_)) return false;
-  if (!pu::Get("aprilTag6_z", aprilTag6_z_)) return false;
-  if (!pu::Get("aprilTag26_x", aprilTag26_x_)) return false;
-  if (!pu::Get("aprilTag26_y", aprilTag26_y_)) return false;
-  if (!pu::Get("aprilTag26_z", aprilTag26_z_)) return false;
+  if (!pu::Get("calibration_left_x", calibration_left_x_)) return false;
+  if (!pu::Get("calibration_left_y", calibration_left_y_)) return false;
+  if (!pu::Get("calibration_left_z", calibration_left_z_)) return false;
+  if (!pu::Get("calibration_right_x", calibration_right_x_)) return false;
+  if (!pu::Get("calibration_right_y", calibration_right_y_)) return false;
+  if (!pu::Get("calibration_right_z", calibration_right_z_)) return false;
+  if (!pu::Get("distal_x", distal_x_)) return false;
+  if (!pu::Get("distal_y", distal_y_)) return false;
+  if (!pu::Get("distal_z", distal_z_)) return false;
 
   // check if lamp is run as basestation
   b_is_basestation_ = false;
@@ -691,11 +691,11 @@ bool BlamSlam::CorrectMapRotationService(
     blam_slam::CorrectMapRotationRequest& request,
     blam_slam::CorrectMapRotationResponse& response) {
   std::cout << "Correct Map Rotation. Correcting map rotation..." << std::endl;
-  // Construct a Ground Truth vector from the gate(AprilTag4) to
-  // distal(AprilTag26)
-  Eigen::Vector3d v1((aprilTag26_x_ - aprilTag4_x_),
-                     (aprilTag26_y_ - aprilTag4_y_),
-                     (aprilTag26_z_ - aprilTag4_z_));
+  // Construct a Ground Truth vector from the gate(calibration_left) to
+  // distal(distal)
+  Eigen::Vector3d v1((distal_x_ - calibration_left_x_),
+                     (distal_y_ - calibration_left_y_),
+                     (distal_z_ - calibration_left_z_));
   response.success =
       loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_);
 }
@@ -857,16 +857,16 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
   bool result;
-  if (msg.parent_id == "AprilTag26" && b_is_new_artifact) {
-    gtsam::Point3 position = gtsam::Point3(aprilTag26_x_, aprilTag26_y_, aprilTag26_z_);
+  if (msg.parent_id == "distal" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(distal_x_, distal_y_, distal_z_);
     distal_key_ = cur_artifact_key;
     result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
-  } else if (msg.parent_id == "AprilTag4" && b_is_new_artifact) {
-    gtsam::Point3 position = gtsam::Point3(aprilTag4_x_, aprilTag4_y_, aprilTag4_z_);
+  } else if (msg.parent_id == "calibration_left" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_);
     gate_key_ = cur_artifact_key;
     result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
-  } else if (msg.parent_id == "AprilTag6" && b_is_new_artifact) {
-    gtsam::Point3 position = gtsam::Point3(aprilTag6_x_, aprilTag6_y_, aprilTag6_z_);
+  } else if (msg.parent_id == "calibration_right" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_);
     result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
   } else {
     result = loop_closure_.AddArtifact(

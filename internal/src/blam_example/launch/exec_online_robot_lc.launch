@@ -6,6 +6,8 @@
 
   <arg name="lamp_name" default="blam_slam"/>
 
+  <arg name="ops_env" default="field"/>
+
   <group ns="$(arg robot_namespace)">
 
     <node pkg="blam_slam"
@@ -96,7 +98,7 @@
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
     
       <!--AprilTags -->
-      <rosparam file="$(find blam_slam)/config/apriltag_parameters.yaml"/>
+      <rosparam file="$(find blam_slam)/config/$(arg ops_env)/apriltag_parameters.yaml"/>
 
       <!-- show which to subscribe to of the robots -->
       <rosparam file="$(find laser_loop_closure)/config/robot_names.yaml" />
