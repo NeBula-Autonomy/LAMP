@@ -40,11 +40,12 @@
 #include <ros/ros.h>
 
 #include <blam_slam/AddFactor.h>
-#include <blam_slam/RemoveFactor.h>
-#include <blam_slam/SaveGraph.h>
-#include <blam_slam/Restart.h>
-#include <blam_slam/LoadGraph.h>
 #include <blam_slam/BatchLoopClosure.h>
+#include <blam_slam/CorrectMapRotation.h>
+#include <blam_slam/LoadGraph.h>
+#include <blam_slam/RemoveFactor.h>
+#include <blam_slam/Restart.h>
+#include <blam_slam/SaveGraph.h>
 
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -161,6 +162,11 @@ class BlamSlam {
   bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
                         blam_slam::BatchLoopClosureResponse &response);
 
+  // Service for correcting the global map rotation
+  bool
+  CorrectMapRotationService(blam_slam::CorrectMapRotationRequest& request,
+                            blam_slam::CorrectMapRotationResponse& response);
+
   bool use_chordal_factor_;
 
   // Service to write the pose graph and all point clouds to a zip file.
@@ -255,16 +261,20 @@ class BlamSlam {
   double restart_yaw_;
 
   // GT AprilTag world coordinates
-  double aprilTag4_x_;
-  double aprilTag4_y_;
-  double aprilTag4_z_;
-  double aprilTag6_x_;
-  double aprilTag6_y_;
-  double aprilTag6_z_;
-  double aprilTag26_x_;
-  double aprilTag26_y_;
-  double aprilTag26_z_;
-  
+  double calibration_left_x_;
+  double calibration_left_y_;
+  double calibration_left_z_;
+  double calibration_right_x_;
+  double calibration_right_y_;
+  double calibration_right_z_;
+  double distal_x_;
+  double distal_y_;
+  double distal_z_;
+
+  // Key for storing the ID of the distal artifact
+  gtsam::Key distal_key_;
+  gtsam::Key gate_key_;
+
   // Artifact prefix
   unsigned char artifact_prefix_;
 
@@ -275,6 +285,7 @@ class BlamSlam {
   ros::ServiceServer restart_srv_;
   ros::ServiceServer load_graph_srv_;
   ros::ServiceServer batch_loop_closure_srv_;
+  ros::ServiceServer correct_map_rotation_srv_;
   ros::ServiceServer drop_uwb_srv_;
 
   // Names of coordinate frames.

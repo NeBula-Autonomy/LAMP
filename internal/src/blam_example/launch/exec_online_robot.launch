@@ -17,6 +17,8 @@
   <arg name="lamp_name" default="blam_slam_fe"/>
   <arg name="use_lo_frontend" default="false"/>
 
+  <arg name="ops_env" default="field"/>
+
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->
     <node pkg="blam_slam"
@@ -76,6 +78,8 @@
 
       <!-- Point cloud filter -->
       <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
+      <!--rosparam file="/home/costar/huskySIM_ws/src/husky_core/localizer_blam/internal/src/point_cloud_filter/config/parameters.yaml"/-->
+
 
       <!-- Point cloud odometry -->
       <rosparam file="$(find point_cloud_odometry)/config/parameters.yaml"/>
@@ -100,7 +104,7 @@
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
 
       <!--AprilTags -->
-      <rosparam file="$(find blam_slam)/config/apriltag_parameters.yaml"/>
+      <rosparam file="$(find blam_slam)/config/$(arg ops_env)/apriltag_parameters.yaml"/>
 
       <!-- The robot prefix dependent of robot_namespace -->
       <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />

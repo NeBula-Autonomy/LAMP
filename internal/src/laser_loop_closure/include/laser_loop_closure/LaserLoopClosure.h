@@ -88,6 +88,9 @@
 #include <map>
 #include <vector>
 
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+
 #include "RobustPGO/RobustSolver.h"
 
 struct ArtifactInfo {
@@ -240,6 +243,11 @@ class LaserLoopClosure {
 
   // Function to search for loopclosures over the whole posegraph
   bool BatchLoopClosure();
+
+  // Function to correct the rotation of the map
+  bool CorrectMapRotation(Eigen::Vector3d v1,
+                          gtsam::Key gate_key,
+                          gtsam::Key distal_key);
 
   // AddManualLoopClosure between the two keys to connect them. This function is
   // designed for a scenario where a human operator can manually perform
