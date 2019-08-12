@@ -76,6 +76,8 @@
 
       <!-- Point cloud filter -->
       <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
+      <!--rosparam file="/home/costar/huskySIM_ws/src/husky_core/localizer_blam/internal/src/point_cloud_filter/config/parameters.yaml"/-->
+
 
       <!-- Point cloud odometry -->
       <rosparam file="$(find point_cloud_odometry)/config/parameters.yaml"/>
