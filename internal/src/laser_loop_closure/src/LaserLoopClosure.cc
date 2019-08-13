@@ -2597,17 +2597,20 @@ bool LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
                                           gtsam::Key distal_key) {
   std::cout << "Received the CorrectMapRotation request in LaserLoopClosure..."
             << std::endl;
-  geometry_utils::Transform3 gate_pose = GetPoseAtKey(gate_key);
+  // geometry_utils::Transform3 gate_pose = GetPoseAtKey(gate_key);
   geometry_utils::Transform3 distal_pose = GetPoseAtKey(distal_key);
 
   // Retrive the location of the AprilTag4 from the map
-  Eigen::Matrix<double, 3, 1> T_gate = gate_pose.translation.Eigen();
+  // Eigen::Matrix<double, 3, 1> T_gate = gate_pose.translation.Eigen();
+  
   // Retrive the location of the AprilTag26 from the map
   Eigen::Matrix<double, 3, 1> T_distal = distal_pose.translation.Eigen();
+  
   // Find the vector connecting the gate to distal AprilTag in the map
-  Eigen::Matrix<double, 3, 1> T_delta = T_distal - T_gate;
+  // Eigen::Matrix<double, 3, 1> T_delta = T_distal - T_gate;
+
   // Convert the vector to a vector3d
-  Eigen::Vector3d v2(T_delta(0, 0), T_delta(1, 0), T_delta(2, 0));
+  Eigen::Vector3d v2(T_distal(0, 0), T_distal(1, 0), T_distal(2, 0));
 
   // Compute the quaternion that represents the rotation going from v2 to v1
   std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
