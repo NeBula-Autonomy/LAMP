@@ -693,9 +693,9 @@ bool BlamSlam::CorrectMapRotationService(
   std::cout << "Correct Map Rotation. Correcting map rotation..." << std::endl;
   // Construct a Ground Truth vector from the gate(calibration_left) to
   // distal(distal)
-  Eigen::Vector3d v1((distal_x_ - calibration_left_x_),
-                     (distal_y_ - calibration_left_y_),
-                     (distal_z_ - calibration_left_z_));
+  Eigen::Vector3d v1((distal_x_),
+                     (distal_y_),
+                     (distal_z_));
   response.success =
       loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_);
 }
