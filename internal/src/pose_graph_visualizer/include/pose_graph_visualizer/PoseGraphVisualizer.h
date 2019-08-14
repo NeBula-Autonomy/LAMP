@@ -26,22 +26,21 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
+#include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/ISAM2.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/DoglegOptimizer.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/NonlinearConjugateGradientOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/InitializePose3.h>
-#include <gtsam/nonlinear/NonlinearConjugateGradientOptimizer.h>
-#include <gtsam/inference/Symbol.h>
+#include <gtsam/slam/PriorFactor.h>
 
 #include <map>
 #include <vector>
-
 
 namespace gu = geometry_utils;
 
@@ -50,12 +49,12 @@ public:
   PoseGraphVisualizer() = default;
   ~PoseGraphVisualizer() = default;
 
-  bool Initialize(const ros::NodeHandle &nh, const ros::NodeHandle &pnh);
+  bool Initialize(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
   // Typedef for stored point clouds.
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-  void MakeMenuMarker(const tf::Pose &position, const std::string &id_number);
+  void MakeMenuMarker(const tf::Pose& position, const std::string& id_number);
 
   // Visualizes an edge between the two keys.
   bool HighlightEdge(long unsigned int key1, long unsigned int key2);
@@ -80,27 +79,29 @@ public:
 
   void VisualizeSingleArtifact(visualization_msgs::Marker& m,
                                const ArtifactInfo& art);
+  void VisualizeSingleArtifactId(visualization_msgs::Marker& m,
+                                 const ArtifactInfo& art);
 
 private:
-  bool LoadParameters(const ros::NodeHandle &n);
-  bool RegisterCallbacks(const ros::NodeHandle &nh, const ros::NodeHandle &pnh);
+  bool LoadParameters(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
   void ErasePosegraphCallback(const std_msgs::Bool::ConstPtr& msg);
   void RemoveFactorVizCallback(const std_msgs::Bool::ConstPtr& msg);
-  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
   void
-  PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr &msg);
+  PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr& msg);
   void
-  PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr &msg);
-  void ArtifactCallback(const core_msgs::Artifact &msg);
+  PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr& msg);
+  void ArtifactCallback(const core_msgs::Artifact& msg);
 
   bool
-  HighlightNodeService(pose_graph_visualizer::HighlightNodeRequest &request,
-                       pose_graph_visualizer::HighlightNodeResponse &response);
+  HighlightNodeService(pose_graph_visualizer::HighlightNodeRequest& request,
+                       pose_graph_visualizer::HighlightNodeResponse& response);
   bool
-  HighlightEdgeService(pose_graph_visualizer::HighlightEdgeRequest &request,
-                       pose_graph_visualizer::HighlightEdgeResponse &response);
+  HighlightEdgeService(pose_graph_visualizer::HighlightEdgeRequest& request,
+                       pose_graph_visualizer::HighlightEdgeResponse& response);
 
   geometry_msgs::Point
   GetPositionMsg(long unsigned int key,
@@ -110,8 +111,8 @@ private:
     return keyed_poses_.find(key) != keyed_poses_.end();
   }
 
-  gtsam::Key GetKeyAtTime(const ros::Time &stamp) const;
-  gu::Transform3 GetPoseAtKey(const gtsam::Key &key) const;
+  gtsam::Key GetKeyAtTime(const ros::Time& stamp) const;
+  gu::Transform3 GetPoseAtKey(const gtsam::Key& key) const;
 
   // Node name.
   std::string name_;
@@ -150,6 +151,7 @@ private:
   ros::Publisher closure_area_pub_;
   ros::Publisher highlight_pub_;
   ros::Publisher artifact_marker_pub_;
+  ros::Publisher artifact_id_marker_pub_;
 
   // Subscribers.
   ros::Subscriber keyed_scan_sub_;
