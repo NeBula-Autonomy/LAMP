@@ -2594,7 +2594,8 @@ bool LaserLoopClosure::BatchLoopClosure() {
 
 bool LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
                                           gtsam::Key gate_key,
-                                          gtsam::Key distal_key) {
+                                          gtsam::Key distal_key,
+                                          std::string robot_name) {
   std::cout << "Received the CorrectMapRotation request in LaserLoopClosure..."
             << std::endl;
   // geometry_utils::Transform3 gate_pose = GetPoseAtKey(gate_key);
@@ -2623,7 +2624,32 @@ bool LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
   std::cout << "The computed 3D rotation between the map and GT is R= "
             << std::endl
             << R << std::endl;
-  // Initialize a new vector
+
+  std::string path =
+      homedir + "/.ros/global_map_rotation_" + robot_name + ".yaml";
+  std::ofstream file(path);
+  std::stringstream ss;
+  ss << "position:" << std::endl
+     << "  x: " << 0 << std::endl
+     << "  y: " << 0 << std::endl
+     << "  z: " << 0 << std::endl
+     << "orientation:" << std::endl
+     << "  x: " << q.normalized().x() << std::endl
+     << "  y: " << q.normalized().y() << std::endl
+     << "  z: " << q.normalized().z() << std::endl
+     << "  w: " << q.normalized().w() << std::endl;
+  file << ss.str();
+  file.close();
+
+  // Set rosparam
+  ros::NodeHandle n("global_map_rotation");
+  n.setParam("position/x", 0);
+  n.setParam("position/y", 0);
+  n.setParam("position/z", 0);
+  n.setParam("orientation/x", q.normalized().x());
+  n.setParam("orientation/y", q.normalized().y());
+  n.setParam("orientation/z", q.normalized().z());
+  n.setParam("orientation/w", q.normalized().w());
   return true;
 }
 
