@@ -114,6 +114,8 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_,
       pnh.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
   artifact_marker_pub_ =
       pnh.advertise<visualization_msgs::Marker>("artifact_markers", 10, false);
+  artifact_id_marker_pub_ = pnh.advertise<visualization_msgs::Marker>(
+      "artifact_id_markers", 10, false);
 
   keyed_scan_sub_ = nh.subscribe<pose_graph_msgs::KeyedScan>(
       "blam_slam/keyed_scans", 10, &PoseGraphVisualizer::KeyedScanCallback,
@@ -824,18 +826,23 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   }
 
   // Publish Artifacts
-  if (artifact_marker_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
+  if (artifact_marker_pub_.getNumSubscribers() > 0 ||
+      artifact_id_marker_pub_.getNumSubscribers() > 0) {
+    visualization_msgs::Marker m, m_id;
     m.header.frame_id = fixed_frame_id_;
+    m_id.header.frame_id = m.header.frame_id;
     m.ns = "artifact";
+    m_id.ns = "artifact_id";
     // ROS_INFO("Publishing artifacts!");
     for (const auto& keyedPose : keyed_artifact_poses_) {
       ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
       m.header.stamp = ros::Time::now();
+      m_id.header.stamp = ros::Time::now();
 
       // get the gtsam key
       gtsam::Key key(keyedPose.first);
       m.id = key;
+      m_id.id = m.id;
 
       ROS_INFO_STREAM("Artifact key (raw) is: " << keyedPose.first);
       ROS_INFO_STREAM("Artifact key is " << key);
@@ -859,9 +866,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       // Populate the artifact marker
       VisualizeSingleArtifact(m, art);
+      VisualizeSingleArtifactId(m_id, art);
 
       // Publish
       artifact_marker_pub_.publish(m);
+      artifact_id_marker_pub_.publish(m_id);
     }
   }
 
@@ -877,6 +886,58 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       server->applyChanges();
     }
   }
+}
+
+void PoseGraphVisualizer::VisualizeSingleArtifactId(
+    visualization_msgs::Marker& m, const ArtifactInfo& art) {
+  std::string id = art.msg.id;
+  m.pose.position = art.msg.point.point;
+  m.pose.position.z = m.pose.position.z + 1.5;
+  m.pose.position.x = m.pose.position.x + 2.5;
+  m.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  if (id.find("PhoneArtifact") != std::string::npos) {
+    m.text = id;
+  } else {
+    m.text = id.substr(0, 8);
+  }
+  m.header.frame_id = "world";
+  std::string artifact_label = art.msg.label;
+
+  if (artifact_label == "backpack") {
+    std::cout << "backpack marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.0f;
+  } else if (artifact_label == "fire extinguisher") {
+    std::cout << "fire extinguisher marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.5f;
+    m.color.b = 0.75f;
+  } else if (artifact_label == "drill") {
+    std::cout << "drill marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+  } else if (artifact_label == "survivor") {
+    std::cout << "survivor marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+  } else if (artifact_label == "cellphone") {
+    std::cout << "cellphone marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.7f;
+  } else {
+    std::cout << "Fiducial marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+  }
+
+  m.color.a = 1.0f;
+  m.scale.z = 2.5f;
+  return;
 }
 
 void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
@@ -911,22 +972,19 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.color.g = 0.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::CUBE;
-  }
-  if (artifact_label == "fire extinguisher") {
+  } else if (artifact_label == "fire extinguisher") {
     std::cout << "fire extinguisher marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.5f;
     m.color.b = 0.75f;
     m.type = visualization_msgs::Marker::SPHERE;
-  }
-  if (artifact_label == "drill") {
+  } else if (artifact_label == "drill") {
     std::cout << "drill marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 1.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::CYLINDER;
-  }
-  if (artifact_label == "survivor") {
+  } else if (artifact_label == "survivor") {
     std::cout << "survivor marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 1.0f;
@@ -935,8 +993,7 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.y = 1.2f;
     m.scale.z = 1.2f;
     m.type = visualization_msgs::Marker::CYLINDER;
-  }
-  if (artifact_label == "cellphone") {
+  } else if (artifact_label == "cellphone") {
     std::cout << "cellphone marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 0.0f;
@@ -944,6 +1001,15 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.x = 0.55f;
     m.scale.y = 1.2f;
     m.scale.z = 0.3f;
+    m.type = visualization_msgs::Marker::CUBE;
+  } else {
+    std::cout << "Fiducial marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.scale.x = 0.15f;
+    m.scale.y = 0.7f;
+    m.scale.z = 0.7f;
     m.type = visualization_msgs::Marker::CUBE;
   }
 }
