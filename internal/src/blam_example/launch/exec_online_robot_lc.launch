@@ -108,6 +108,7 @@
       <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
       <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
       <param name="robot_prefix" value="c" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="robot_prefix" value="f" if="$(eval robot_namespace == 'husky4')"/>
       <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax')"/>
       <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
 
@@ -115,6 +116,7 @@
       <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
       <param name="artifact_prefix" value="m" if="$(eval robot_namespace == 'husky2')"/>
       <param name="artifact_prefix" value="n" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="artifact_prefix" value="q" if="$(eval robot_namespace == 'husky4')"/>
       <param name="artifact_prefix" value="o" if="$(eval robot_namespace == 'telemax')"/>
       <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
 
