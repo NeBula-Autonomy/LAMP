@@ -190,6 +190,8 @@ class BlamSlam {
                                const std::string& child_frame,
                                const ros::Time& time,
                                Eigen::Affine3d& T);
+
+  void VisualizeGroundtruthFiducials();
   
   std::string getRobotName(const ros::NodeHandle& n);
 
@@ -249,6 +251,7 @@ class BlamSlam {
   ros::Publisher base_frame_pcld_pub_;
   ros::Publisher pose_pub_;
   ros::Publisher repub_pg_sig_pub_;
+  ros::Publisher april_tag_gt_pub_;
 
   // Transform broadcasting to other nodes.
   tf2_ros::TransformBroadcaster tfbr_;
