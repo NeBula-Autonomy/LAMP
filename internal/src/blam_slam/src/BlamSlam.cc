@@ -693,11 +693,12 @@ bool BlamSlam::CorrectMapRotationService(
   std::cout << "Correct Map Rotation. Correcting map rotation..." << std::endl;
   // Construct a Ground Truth vector from the gate(calibration_left) to
   // distal(distal)
-  Eigen::Vector3d v1((distal_x_ - calibration_left_x_),
-                     (distal_y_ - calibration_left_y_),
-                     (distal_z_ - calibration_left_z_));
-  response.success =
-      loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_);
+  Eigen::Vector3d v1((distal_x_),
+                     (distal_y_),
+                     (distal_z_));
+  response.rotation =
+      loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_, robot_name_);
+  return true;
 }
 
 bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,

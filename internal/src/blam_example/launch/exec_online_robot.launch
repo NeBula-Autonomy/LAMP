@@ -17,7 +17,7 @@
   <arg name="lamp_name" default="blam_slam_fe"/>
   <arg name="use_lo_frontend" default="false"/>
 
-  <arg name="ops_env" default="field"/>
+  <arg name="ops_env" default="experimental"/>
 
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->

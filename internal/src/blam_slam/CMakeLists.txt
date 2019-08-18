@@ -47,7 +47,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_service_files(FILES AddFactor.srv RemoveFactor.srv SaveGraph.srv Restart.srv LoadGraph.srv BatchLoopClosure.srv CorrectMapRotation.srv)
 add_message_files(FILES AddFactorCmd.msg RemoveFactorCmd.msg)
-generate_messages()
+generate_messages(DEPENDENCIES geometry_msgs)
 
 catkin_package(
   INCLUDE_DIRS include

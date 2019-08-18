@@ -51,6 +51,7 @@
 #include <gtsam/slam/dataset.h>
 
 #include <tf_conversions/tf_eigen.h>
+#include <eigen_conversions/eigen_msg.h>
 
 #include <fstream>
 
@@ -252,7 +253,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   } else {
     rpgo_params_.setNoRejection(RobustPGO::Verbosity::VERBOSE); // set no outlier rejection
   }
-  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
+  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'q', 'u'}; // for artifacts
   rpgo_params_.specialSymbols = special_symbs;
   // set solver 
   int solver_num;
@@ -2592,36 +2593,71 @@ bool LaserLoopClosure::BatchLoopClosure() {
     return false;
 }
 
-bool LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
+geometry_msgs::Quaternion LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
                                           gtsam::Key gate_key,
-                                          gtsam::Key distal_key) {
+                                          gtsam::Key distal_key,
+                                          std::string robot_name) {
   std::cout << "Received the CorrectMapRotation request in LaserLoopClosure..."
             << std::endl;
-  geometry_utils::Transform3 gate_pose = GetPoseAtKey(gate_key);
+  // geometry_utils::Transform3 gate_pose = GetPoseAtKey(gate_key);
   geometry_utils::Transform3 distal_pose = GetPoseAtKey(distal_key);
 
   // Retrive the location of the AprilTag4 from the map
-  Eigen::Matrix<double, 3, 1> T_gate = gate_pose.translation.Eigen();
+  // Eigen::Matrix<double, 3, 1> T_gate = gate_pose.translation.Eigen();
+  
   // Retrive the location of the AprilTag26 from the map
   Eigen::Matrix<double, 3, 1> T_distal = distal_pose.translation.Eigen();
+  
   // Find the vector connecting the gate to distal AprilTag in the map
-  Eigen::Matrix<double, 3, 1> T_delta = T_distal - T_gate;
-  // Convert the vector to a vector3d
-  Eigen::Vector3d v2(T_delta(0, 0), T_delta(1, 0), T_delta(2, 0));
+  // Eigen::Matrix<double, 3, 1> T_delta = T_distal - T_gate;
 
+  // Convert the vector to a vector3d
+  Eigen::Vector3d v2(T_distal(0, 0), T_distal(1, 0), T_distal(2, 0));
   // Compute the quaternion that represents the rotation going from v2 to v1
   std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
 
   Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v1, v2);
+  geometry_msgs::Quaternion q_msg;
+  tf::quaternionEigenToMsg(q, q_msg);
   // Normalize the quaternion and get the corrispondant rotation matrix
   Eigen::Matrix3d R = q.normalized().toRotationMatrix();
   // Print the computed rotation matrix between the map and ground truth
+  Eigen::Vector3d Euler = R.eulerAngles(2, 1, 0);
 
   std::cout << "The computed 3D rotation between the map and GT is R= "
             << std::endl
             << R << std::endl;
-  // Initialize a new vector
-  return true;
+
+  std::string path =
+      homedir + "/.ros/global_map_rotation_" + robot_name + ".yaml";
+  std::ofstream file(path);
+  std::stringstream ss;
+  ss << "position:" << std::endl
+     << "  x: " << 0 << std::endl
+     << "  y: " << 0 << std::endl
+     << "  z: " << 0 << std::endl
+     << "orientation:" << std::endl
+     << "  x: " << q.normalized().x() << std::endl
+     << "  y: " << q.normalized().y() << std::endl
+     << "  z: " << q.normalized().z() << std::endl
+     << "  w: " << q.normalized().w() << std::endl
+     << "Euler:" << std::endl
+     << "  Roll: " << Euler[2] << std::endl
+     << "  Pitch: " << Euler[1] << std::endl
+     << "  Yaw: " << Euler[0] << std::endl;
+  file << ss.str();
+  file.close();
+
+  // Set rosparam
+  ros::NodeHandle n("global_map_rotation");
+  n.setParam("position/x", 0);
+  n.setParam("position/y", 0);
+  n.setParam("position/z", 0);
+  n.setParam("orientation/x", q.normalized().x());
+  n.setParam("orientation/y", q.normalized().y());
+  n.setParam("orientation/z", q.normalized().z());
+  n.setParam("orientation/w", q.normalized().w());
+  return q_msg;
 }
 
 bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
@@ -2674,7 +2710,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       }
 
       // Add UUID if an artifact or uwb node
-      if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p'){
+      if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q'){
         // Artifact
         node.ID = artifact_key2info_hash_[keyed_pose.key].msg.parent_id;
       }
@@ -2770,7 +2806,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
     ROS_INFO_STREAM("Artifact hash key is " << gtsam::DefaultKeyFormatter(it->first));
     gtsam::Symbol art_key = gtsam::Symbol(it->first);
-    if (!(art_key.chr() == 'l' || art_key.chr() == 'm' || art_key.chr() == 'n' || art_key.chr() == 'o' || art_key.chr() == 'p')){
+    if (!(art_key.chr() == 'l' || art_key.chr() == 'm' || art_key.chr() == 'n' || art_key.chr() == 'o' || art_key.chr() == 'p' || art_key.chr() == 'q')){
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(it->first));
       continue;
@@ -3247,7 +3283,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     // Check input for NaNs
 
     // Add UUID if an artifact node
-    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p') {
+    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p' || key_.chr() == 'q') {
       // Artifact
       // artifact_key2info_hash_[key_] = msg_node.ID;
       std::cout << "\t Artifact added to basestaion(PGcallback): "

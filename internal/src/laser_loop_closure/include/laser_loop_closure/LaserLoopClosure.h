@@ -72,6 +72,7 @@
 #include <std_msgs/Bool.h>
 
 #include <core_msgs/Artifact.h>
+#include <pwd.h>
 
 // for UWB
 #include <gtsam/sam/RangeFactor.h>
@@ -245,9 +246,10 @@ class LaserLoopClosure {
   bool BatchLoopClosure();
 
   // Function to correct the rotation of the map
-  bool CorrectMapRotation(Eigen::Vector3d v1,
+  geometry_msgs::Quaternion CorrectMapRotation(Eigen::Vector3d v1,
                           gtsam::Key gate_key,
-                          gtsam::Key distal_key);
+                          gtsam::Key distal_key,
+                          std::string robot_name);
 
   // AddManualLoopClosure between the two keys to connect them. This function is
   // designed for a scenario where a human operator can manually perform
@@ -312,6 +314,10 @@ private:
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactorAtLoad(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
+
+  struct passwd* pw = getpwuid(getuid());
+
+  std::string homedir = pw->pw_dir;
 
   // Perform ICP between two laser scans.
   /**
