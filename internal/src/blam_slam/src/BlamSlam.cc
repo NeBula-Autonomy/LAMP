@@ -1647,6 +1647,8 @@ void BlamSlam::VisualizeGroundtruthFiducials() {
   m_distal.pose.position.y = distal_y_;
   m_distal.pose.position.z = distal_z_;
   m_distal.header.frame_id = "world";
+  m_distal.id = 0;
+  m_distal.action = visualization_msgs::Marker::ADD;
   m_distal.pose.orientation.x = 0.0;
   m_distal.pose.orientation.y = 0.0;
   m_distal.pose.orientation.z = 0.0;
@@ -1657,6 +1659,7 @@ void BlamSlam::VisualizeGroundtruthFiducials() {
   m_distal.color.r = 0.0f;
   m_distal.color.g = 1.0f;
   m_distal.color.b = 0.0f;
+  m_distal.color.a = 1.0f;
   m_distal.type = visualization_msgs::Marker::CUBE;
 
   // cal left 
@@ -1664,6 +1667,8 @@ void BlamSlam::VisualizeGroundtruthFiducials() {
   m_calibration_left.pose.position.y = calibration_left_y_;
   m_calibration_left.pose.position.z = calibration_left_z_;
   m_calibration_left.header.frame_id = "world";
+  m_calibration_left.id = 1;
+  m_calibration_left.action = visualization_msgs::Marker::ADD;
   m_calibration_left.pose.orientation.x = 0.0;
   m_calibration_left.pose.orientation.y = 0.0;
   m_calibration_left.pose.orientation.z = 0.0;
@@ -1674,6 +1679,7 @@ void BlamSlam::VisualizeGroundtruthFiducials() {
   m_calibration_left.color.r = 0.0f;
   m_calibration_left.color.g = 1.0f;
   m_calibration_left.color.b = 0.0f;
+  m_calibration_left.color.a = 1.0f;
   m_calibration_left.type = visualization_msgs::Marker::CUBE;
 
   // cal right 
@@ -1681,6 +1687,8 @@ void BlamSlam::VisualizeGroundtruthFiducials() {
   m_calibration_right.pose.position.y = calibration_right_y_;
   m_calibration_right.pose.position.z = calibration_right_z_;
   m_calibration_right.header.frame_id = "world";
+  m_calibration_right.id = 2; 
+  m_calibration_right.action = visualization_msgs::Marker::ADD;
   m_calibration_right.pose.orientation.x = 0.0;
   m_calibration_right.pose.orientation.y = 0.0;
   m_calibration_right.pose.orientation.z = 0.0;
@@ -1691,6 +1699,7 @@ void BlamSlam::VisualizeGroundtruthFiducials() {
   m_calibration_right.color.r = 0.0f;
   m_calibration_right.color.g = 1.0f;
   m_calibration_right.color.b = 0.0f;
+  m_calibration_right.color.a = 1.0f;
   m_calibration_right.type = visualization_msgs::Marker::CUBE;
 
   april_tag_gt_pub_.publish(m_distal);
