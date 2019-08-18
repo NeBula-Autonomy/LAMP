@@ -51,6 +51,7 @@
 #include <gtsam/slam/dataset.h>
 
 #include <tf_conversions/tf_eigen.h>
+#include <eigen_conversions/eigen_msg.h>
 
 #include <fstream>
 
@@ -2592,7 +2593,7 @@ bool LaserLoopClosure::BatchLoopClosure() {
     return false;
 }
 
-bool LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
+geometry_msgs::Quaternion LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
                                           gtsam::Key gate_key,
                                           gtsam::Key distal_key,
                                           std::string robot_name) {
@@ -2611,12 +2612,14 @@ bool LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
   // Eigen::Matrix<double, 3, 1> T_delta = T_distal - T_gate;
 
   // Convert the vector to a vector3d
-  Eigen::Vector3d v2(T_distal(0, 0), T_distal(1, 0), T_distal(2, 0));
-
+  // Eigen::Vector3d v2(T_distal(0, 0), T_distal(1, 0), T_distal(2, 0));
+  Eigen::Vector3d v2(29, 12.5, 2);
   // Compute the quaternion that represents the rotation going from v2 to v1
   std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
 
   Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v1, v2);
+  geometry_msgs::Quaternion q_msg;
+  tf::quaternionEigenToMsg(q, q_msg);
   // Normalize the quaternion and get the corrispondant rotation matrix
   Eigen::Matrix3d R = q.normalized().toRotationMatrix();
   // Print the computed rotation matrix between the map and ground truth
@@ -2650,7 +2653,7 @@ bool LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
   n.setParam("orientation/y", q.normalized().y());
   n.setParam("orientation/z", q.normalized().z());
   n.setParam("orientation/w", q.normalized().w());
-  return true;
+  return q_msg;
 }
 
 bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {

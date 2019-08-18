@@ -696,8 +696,9 @@ bool BlamSlam::CorrectMapRotationService(
   Eigen::Vector3d v1((distal_x_),
                      (distal_y_),
                      (distal_z_));
-  response.success =
+  response.rotation =
       loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_, robot_name_);
+  return true;
 }
 
 bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,

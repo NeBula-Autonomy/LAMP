@@ -246,7 +246,7 @@ class LaserLoopClosure {
   bool BatchLoopClosure();
 
   // Function to correct the rotation of the map
-  bool CorrectMapRotation(Eigen::Vector3d v1,
+  geometry_msgs::Quaternion CorrectMapRotation(Eigen::Vector3d v1,
                           gtsam::Key gate_key,
                           gtsam::Key distal_key,
                           std::string robot_name);
