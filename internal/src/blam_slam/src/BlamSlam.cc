@@ -698,6 +698,7 @@ bool BlamSlam::CorrectMapRotationService(
                      (distal_z_));
   response.rotation =
       loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_, robot_name_);
+  response.success = true;
   return true;
 }
 
