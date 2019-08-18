@@ -168,7 +168,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
     // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
 
     // Add UUID if an artifact or uwb node
-    if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p') { 
+    if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q') { 
       ROS_INFO_STREAM("Have an artifact node with key " << gtsam::DefaultKeyFormatter(sym_key));
       // Artifact
       keyed_artifact_poses_[msg_node.key] = pose;
@@ -848,7 +848,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       ROS_INFO_STREAM("Artifact key is " << key);
       ROS_INFO_STREAM("Artifact hash key is "
                       << gtsam::DefaultKeyFormatter(key));
-      if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p') {
+      if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p' && gtsam::Symbol(key).chr() != 'q') {
         ROS_WARN("ERROR - have a non-landmark ID");
         ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
         continue;
@@ -1038,7 +1038,7 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     gtsam::Key key(artifact_id2key_hash_[it->first]);
     ROS_INFO_STREAM("Artifact hash key is "
                     << gtsam::DefaultKeyFormatter(key));
-    if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p') {
+    if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p' && gtsam::Symbol(key).chr() != 'q') {
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
       continue;

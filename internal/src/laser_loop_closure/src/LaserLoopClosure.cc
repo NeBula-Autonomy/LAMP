@@ -252,7 +252,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   } else {
     rpgo_params_.setNoRejection(RobustPGO::Verbosity::VERBOSE); // set no outlier rejection
   }
-  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
+  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'q', 'u'}; // for artifacts
   rpgo_params_.specialSymbols = special_symbs;
   // set solver 
   int solver_num;
@@ -2674,7 +2674,7 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       }
 
       // Add UUID if an artifact or uwb node
-      if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p'){
+      if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q'){
         // Artifact
         node.ID = artifact_key2info_hash_[keyed_pose.key].msg.parent_id;
       }
@@ -2770,7 +2770,7 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
     ROS_INFO_STREAM("Artifact hash key is " << gtsam::DefaultKeyFormatter(it->first));
     gtsam::Symbol art_key = gtsam::Symbol(it->first);
-    if (!(art_key.chr() == 'l' || art_key.chr() == 'm' || art_key.chr() == 'n' || art_key.chr() == 'o' || art_key.chr() == 'p')){
+    if (!(art_key.chr() == 'l' || art_key.chr() == 'm' || art_key.chr() == 'n' || art_key.chr() == 'o' || art_key.chr() == 'p' || art_key.chr() == 'q')){
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(it->first));
       continue;
@@ -3247,7 +3247,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     // Check input for NaNs
 
     // Add UUID if an artifact node
-    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p') {
+    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p' || key_.chr() == 'q') {
       // Artifact
       // artifact_key2info_hash_[key_] = msg_node.ID;
       std::cout << "\t Artifact added to basestaion(PGcallback): "
