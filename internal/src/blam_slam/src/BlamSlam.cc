@@ -719,9 +719,11 @@ bool BlamSlam::AddPositionEstimateService(
         position_sigma_ * position_sigma_;
   const ros::Time stamp = ros::Time::now();
 
+  localization_.MotionUpdate(odometry_.GetIncrementalEstimate());
+
   // adds a between according to the odometry (and create a node) and add prior on node
   if (!loop_closure_.AddBetweenFactorWithPointEstimation(
-      odometry_.GetIncrementalEstimate(),
+      localization_.GetIncrementalEstimate(),
       covariance,
       point_gu,
       stamp,
@@ -730,7 +732,7 @@ bool BlamSlam::AddPositionEstimateService(
     return false;
   }
 
-  ROS_INFO("Adding range measurement from starting pose to pose graph.");
+  ROS_INFO("Adding position estimate to current robot pose.");
   
   // We found one - regenerate the 3D map.
   PointCloud::Ptr regenerated_map(new PointCloud);

@@ -22,7 +22,7 @@ fiducial_rot_precision: 0.0
 fiducial_trans_precision: 0.0
 
 # Noise parameters (as precisions) for point estimation service (survey tool integration)
-point_estimate_precisions: 10.0
+point_estimate_precision: 100.0
 
 # When searching through old poses for loop closures, only consider old poses
 # that are within this distance of the current pose.

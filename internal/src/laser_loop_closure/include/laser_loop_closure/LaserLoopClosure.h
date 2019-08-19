@@ -503,11 +503,13 @@ private:
 
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
+  typedef std::pair<gtsam::Symbol, gtsam::Pose3> Prior; 
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
   std::vector<Edge> inlier_loop_edges_;
   std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
+  std::vector<Prior> prior_factors_;
   std::vector<Edge> uwb_edges_range_;
   std::vector<Edge> uwb_edges_between_;
   std::map<Edge, gtsam::Pose3> edge_poses_;

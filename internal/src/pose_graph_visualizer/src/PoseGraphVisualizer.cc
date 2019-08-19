@@ -193,7 +193,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
     keyed_poses_[msg_node.key] = pose;
 
     // Track key frames
-    if (msg_node.ID == "key_frame"){
+    if (msg_node.ID == "key_frame" || msg_node.ID == "odom_node"){
       // Have key frame
       keyframe_poses_[msg_node.key] = pose;
     }

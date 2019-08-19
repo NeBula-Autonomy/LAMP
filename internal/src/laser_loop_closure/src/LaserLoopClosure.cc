@@ -481,7 +481,9 @@ bool LaserLoopClosure::AddBetweenFactorWithPointEstimation(
     const gu::Vec3& point, const ros::Time& stamp, gtsam::Symbol* key) {
 
   // first add between factor (basically odometry
-  AddBetweenFactor(delta, covariance, stamp, key, false);
+  if (!AddBetweenFactor(delta, covariance, stamp, key, false)) {
+    return false;
+  }
 
   // create the prior factor 
   gtsam::Point3 estimated_pt = ToGtsam(point);
@@ -495,13 +497,16 @@ bool LaserLoopClosure::AddBetweenFactorWithPointEstimation(
 
   gtsam::NonlinearFactorGraph prior_factor; // create nfg and values to be optimized
   prior_factor.add(gtsam::PriorFactor<gtsam::Pose3>(*key, Pose3(Rot3(), estimated_pt), point_noise));
-  gtsam::Values prior_value; 
-  prior_value.insert(*key, Pose3(Rot3(), estimated_pt));
-
+  prior_factors_.push_back(Prior(*key, Pose3(Rot3(), estimated_pt)));
   // optimize
-  pgo_solver_->update(prior_factor, prior_value);
+  pgo_solver_->update(prior_factor, gtsam::Values());
   nfg_ = pgo_solver_->getFactorsUnsafe();
   values_ = pgo_solver_->calculateEstimate();
+
+  // publish pose graph
+  has_changed_ = true;
+  PublishPoseGraph();
+  return true;
 }
 
 bool LaserLoopClosure::AddBetweenFactor(
@@ -640,7 +645,8 @@ bool LaserLoopClosure::AddBetweenFactor(
   odometry_ = Pose3::identity();
 
   // Return true to store a key frame
-  if (odometry_kf_.translation().norm() > translation_threshold_kf_ || 2*acos(odometry_kf_.rotation().toQuaternion().w()) > rotation_threshold_kf_) {
+  if (!check_threshold || odometry_kf_.translation().norm() > translation_threshold_kf_ || 
+      2*acos(odometry_kf_.rotation().toQuaternion().w()) > rotation_threshold_kf_) {
     // True for a new key frame
     // Reset odometry to identity
     odometry_kf_ = Pose3::identity();
@@ -2291,6 +2297,7 @@ bool LaserLoopClosure::ErasePosegraph(){
 
   loop_edges_.clear();
   manual_loop_edges_.clear();
+  prior_factors_.clear();
   odometry_ = Pose3::identity();
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
@@ -2810,6 +2817,25 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       // Tocleanup! will find it from nfg_ not edge_poses_
       edge.pose = gr::ToRosPose(ToGu(edge_poses_[uwb_edges_between_[ii]]));
       g.edges.push_back(edge);
+    }
+
+    for (size_t ii = 0; ii < prior_factors_.size(); ++ii) {
+      if (!values_.exists(prior_factors_[ii].first)) {
+        ROS_WARN("Key, %lu, does not exist in PublishPoseGraph pose graph pub", prior_factors_[ii].first);
+        continue;
+      }
+
+      gu::Transform3 t = ToGu(values_.at<Pose3>(prior_factors_[ii].first));
+
+      gtsam::Symbol sym_key = gtsam::Symbol(prior_factors_[ii].first);
+
+      // Populate the message with the pose's data.
+      pose_graph_msgs::PoseGraphNode prior;
+      prior.key = prior_factors_[ii].first;
+      prior.header.frame_id = fixed_frame_id_;
+      prior.pose = gr::ToRosPose(t);
+
+      g.priors.push_back(prior);
     }
 
     // Publish.
@@ -3399,6 +3425,39 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       }
     }
 
+  }
+
+  //-----------------------------------------------//
+  ROS_INFO("\n\tAdding pose graph priors\n");
+  // Add the new nodes to base station posegraph
+  // TODO right now this only accounts for translation part of prior (see rotation precision)
+  for (const pose_graph_msgs::PoseGraphNode &msg_prior : msg->priors) {
+    ROS_INFO_STREAM("Adding prior in pose graph callback for key " << gtsam::DefaultKeyFormatter(msg_prior.key));
+    // create the prior factor 
+
+    // create precisions
+    gtsam::Vector6 prior_precisions;
+    prior_precisions.head<3>().setConstant(0.0);
+    prior_precisions.tail<3>().setConstant(point_estimate_precision_);
+    static const gtsam::SharedNoiseModel& prior_noise = 
+        gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
+
+    if (!values_.exists(msg_prior.key) && !new_values.exists(msg_prior.key)) {
+      ROS_WARN("Key does not exists in graph");
+      continue;
+    }
+
+    gtsam::Point3 pose_translation(msg_prior.pose.position.x,
+                                   msg_prior.pose.position.y,
+                                   msg_prior.pose.position.z);
+    gtsam::Rot3 pose_orientation(Rot3::quaternion(msg_prior.pose.orientation.w,
+                                                  msg_prior.pose.orientation.x,
+                                                  msg_prior.pose.orientation.y,
+                                                  msg_prior.pose.orientation.z));
+    gtsam::Pose3 prior_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(msg_prior.key, prior_pose, prior_noise));
+    // assume that the associated value (node) already added above
   }
 
   if (new_factor.size() == 1 && new_values.size() == 1 && key_.chr() == initial_key_.chr()){
