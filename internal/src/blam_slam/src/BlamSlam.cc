@@ -719,11 +719,9 @@ bool BlamSlam::AddPositionEstimateService(
         position_sigma_ * position_sigma_;
   const ros::Time stamp = ros::Time::now();
 
-  localization_.MotionUpdate(odometry_.GetIncrementalEstimate());
-
   // adds a between according to the odometry (and create a node) and add prior on node
   if (!loop_closure_.AddBetweenFactorWithPointEstimation(
-      localization_.GetIncrementalEstimate(),
+      odometry_.GetIncrementalEstimate(),
       covariance,
       point_gu,
       stamp,
@@ -742,13 +740,13 @@ bool BlamSlam::AddPositionEstimateService(
   PointCloud::Ptr unused(new PointCloud);
   mapper_.InsertPoints(regenerated_map, unused.get());
 
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+
   // Also reset the robot's estimated position.
   if (b_use_lo_frontend_){
     be_current_pose_ = loop_closure_.GetLastPose();
     PublishPoseWithLoFrontend();
   } else {
-    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
-    
     // Publish localization pose messages
     ros::Time stamp = loop_closure_.GetTimeAtLastKey();
     localization_.UpdateTimestamp(stamp);

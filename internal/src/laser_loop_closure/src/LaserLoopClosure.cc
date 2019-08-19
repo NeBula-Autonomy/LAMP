@@ -503,9 +503,6 @@ bool LaserLoopClosure::AddBetweenFactorWithPointEstimation(
   nfg_ = pgo_solver_->getFactorsUnsafe();
   values_ = pgo_solver_->calculateEstimate();
 
-  // publish pose graph
-  has_changed_ = true;
-  PublishPoseGraph();
   return true;
 }
 
