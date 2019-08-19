@@ -2616,7 +2616,7 @@ geometry_msgs::Quaternion LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v
   // Compute the quaternion that represents the rotation going from v2 to v1
   std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
 
-  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v1, v2);
+  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v2, v1);
   geometry_msgs::Quaternion q_msg;
   tf::quaternionEigenToMsg(q, q_msg);
   // Normalize the quaternion and get the corrispondant rotation matrix

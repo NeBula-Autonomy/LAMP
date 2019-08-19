@@ -188,6 +188,7 @@
   <group if="$(arg back_end_on_robot)">
     <include file="$(find blam_example)/launch/exec_online_robot_lc.launch">
       <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+      <arg name="ops_env" value="$(arg ops_env)"/>
     </include>
   </group>
 
@@ -200,3 +201,4 @@
   </group>
 
 </launch>
+
