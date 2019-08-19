@@ -159,7 +159,8 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;
   if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_)) return false;
   if (!pu::Get("artifact_rot_precision", artifact_rot_precision_)) return false; 
-  if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false; 
+  if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false;
+  if (!pu::Get("point_estimate_precision", point_estimate_precision_)) return false;
 
   if(!pu::Get("fiducial_trans_precision", fiducial_trans_precision_)) return false;
   if(!pu::Get("fiducial_rot_precision", fiducial_rot_precision_)) return false;
@@ -475,9 +476,37 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
   return true;
 }
 
+bool LaserLoopClosure::AddBetweenFactorWithPointEstimation(
+    const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance, 
+    const gu::Vec3& point, const ros::Time& stamp, gtsam::Symbol* key) {
+
+  // first add between factor (basically odometry
+  AddBetweenFactor(delta, covariance, stamp, key, false);
+
+  // create the prior factor 
+  gtsam::Point3 estimated_pt = ToGtsam(point);
+
+  // create precisions
+  gtsam::Vector6 point_precisions;
+  point_precisions.head<3>().setConstant(0.0);
+  point_precisions.tail<3>().setConstant(point_estimate_precision_);
+  static const gtsam::SharedNoiseModel& point_noise = 
+      gtsam::noiseModel::Diagonal::Precisions(point_precisions);
+
+  gtsam::NonlinearFactorGraph prior_factor; // create nfg and values to be optimized
+  prior_factor.add(gtsam::PriorFactor<gtsam::Pose3>(*key, Pose3(Rot3(), estimated_pt), point_noise));
+  gtsam::Values prior_value; 
+  prior_value.insert(*key, Pose3(Rot3(), estimated_pt));
+
+  // optimize
+  pgo_solver_->update(prior_factor, prior_value);
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+  values_ = pgo_solver_->calculateEstimate();
+}
+
 bool LaserLoopClosure::AddBetweenFactor(
     const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance,
-    const ros::Time& stamp, gtsam::Symbol* key) {
+    const ros::Time& stamp, gtsam::Symbol* key, bool check_threshold) {
   if (key == NULL) {
     ROS_ERROR("%s: Output key is null.", name_.c_str());
     return false;
@@ -495,7 +524,8 @@ bool LaserLoopClosure::AddBetweenFactor(
     odometry_ = Pose3(Rot3::RzRyRx(0, 0, 0),odometry_.translation());
   }
 
-  if (odometry_.translation().norm() < translation_threshold_nodes_ &&  2*acos(odometry_.rotation().toQuaternion().w()) < rotation_threshold_nodes_) {
+  if (check_threshold && odometry_.translation().norm() < translation_threshold_nodes_ &&  
+      2*acos(odometry_.rotation().toQuaternion().w()) < rotation_threshold_nodes_) {
     // No new pose - translation is not enough, nor is rotation to add a new node
     return false;
   }
@@ -1634,6 +1664,11 @@ Pose3 LaserLoopClosure::ToGtsam(const gu::Transform3& pose) const {
          pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
 
   return Pose3(r, t);
+}
+
+gtsam::Point3 LaserLoopClosure::ToGtsam(const gu::Vec3& point) const {
+  gtsam::Point3 pt(point(0), point(1), point(2)); 
+  return pt;
 }
 
 LaserLoopClosure::Mat66 LaserLoopClosure::ToGu(

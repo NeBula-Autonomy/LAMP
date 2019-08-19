@@ -258,6 +258,8 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   batch_loop_closure_srv_ = nl.advertiseService("batch_loop_closure", &BlamSlam::BatchLoopClosureService, this);
   correct_map_rotation_srv_ = nl.advertiseService(
       "correct_map_rotation", &BlamSlam::CorrectMapRotationService, this);
+  add_position_estimate_srv_ = nl.advertiseService(
+      "add_position_estimate", &BlamSlam::AddPositionEstimateService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
 
   if (from_log)
@@ -698,6 +700,65 @@ bool BlamSlam::CorrectMapRotationService(
                      (distal_z_));
   response.rotation =
       loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_, robot_name_);
+  return true;
+}
+
+bool BlamSlam::AddPositionEstimateService(
+    blam_slam::AddPositionEstimateRequest& request, 
+    blam_slam::AddPositionEstimateResponse& response) {
+
+  gu::Vec3 point_gu = gu::ros::FromROS(request.point); // retrieve the point from request
+
+  gtsam::Symbol pose_key; // empty pose key to be filled
+  gu::MatrixNxNBase<double, 6> covariance; // covariance for the between
+  covariance.Zeros();
+  for (int i = 0; i < 3; ++i)
+    covariance(i, i) = attitude_sigma_ * attitude_sigma_;
+  for (int i = 3; i < 6; ++i)
+    covariance(i, i) =
+        position_sigma_ * position_sigma_;
+  const ros::Time stamp = ros::Time::now();
+
+  // adds a between according to the odometry (and create a node) and add prior on node
+  if (!loop_closure_.AddBetweenFactorWithPointEstimation(
+      odometry_.GetIncrementalEstimate(),
+      covariance,
+      point_gu,
+      stamp,
+      &pose_key)) {
+    response.success = false; 
+    return false;
+  }
+
+  ROS_INFO("Adding range measurement from starting pose to pose graph.");
+  
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+  mapper_.Reset();
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
+
+  // Also reset the robot's estimated position.
+  if (b_use_lo_frontend_){
+    be_current_pose_ = loop_closure_.GetLastPose();
+    PublishPoseWithLoFrontend();
+  } else {
+    localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+    
+    // Publish localization pose messages
+    ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+    localization_.UpdateTimestamp(stamp);
+    localization_.PublishPoseNoUpdate();
+  }
+
+  // Visualize the pose graph updates
+  loop_closure_.PublishPoseGraph();
+
+  // Publish artifacts - from pose-graph positions
+  loop_closure_.PublishArtifacts();
+
   return true;
 }
 

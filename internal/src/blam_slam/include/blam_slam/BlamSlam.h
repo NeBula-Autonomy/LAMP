@@ -46,6 +46,7 @@
 #include <blam_slam/RemoveFactor.h>
 #include <blam_slam/Restart.h>
 #include <blam_slam/SaveGraph.h>
+#include <blam_slam/AddPositionEstimate.h>
 
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -167,6 +168,10 @@ class BlamSlam {
   CorrectMapRotationService(blam_slam::CorrectMapRotationRequest& request,
                             blam_slam::CorrectMapRotationResponse& response);
 
+  // Service to add range measurement from survey tool
+  bool AddPositionEstimateService(blam_slam::AddPositionEstimateRequest& request, 
+                                blam_slam::AddPositionEstimateResponse& response);
+
   bool use_chordal_factor_;
 
   // Service to write the pose graph and all point clouds to a zip file.
@@ -287,6 +292,7 @@ class BlamSlam {
   ros::ServiceServer batch_loop_closure_srv_;
   ros::ServiceServer correct_map_rotation_srv_;
   ros::ServiceServer drop_uwb_srv_;
+  ros::ServiceServer add_position_estimate_srv_;
 
   // Names of coordinate frames.
   std::string fixed_frame_id_;
