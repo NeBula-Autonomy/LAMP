@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import rospy
 import transforms3d
-from blam_slam.srv import SaveGraph, LoadGraph, RemoveFactor, AddFactor, Restart, BatchLoopClosure, CorrectMapRotation
+from blam_slam.srv import SaveGraph, LoadGraph, RemoveFactor, AddFactor, Restart, BatchLoopClosure, CorrectMapRotation, AddPositionEstimate
 from blam_slam.msg import RemoveFactorCmd, AddFactorCmd
 from std_msgs.msg import String, Empty, Bool
+from geometry_msgs.msg import Point
 from pose_graph_visualizer.srv import HighlightEdge
 
 
@@ -18,6 +19,7 @@ class LoopClosureTools:
         rospy.Subscriber(self.node_name + '/add_factor', AddFactorCmd, self.add_factor_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/remove_factor', RemoveFactorCmd, self.remove_factor_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/restart', Empty, self.restart_clbk, queue_size=1)
+        rospy.Subscriber(self.node_name + '/add_position_estimate', Point, self.add_position_estimate_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/action_confirmation', Bool, self.confirmation_clbk, queue_size=1)
         rospy.loginfo("Loop closure tools initialized!")
         self.confirmation_received = False
@@ -76,6 +78,14 @@ class LoopClosureTools:
         else:
             print('Error: One or more of the keys %i and %i do not exist.' % (key_from, key_to))
             highlight_edge(prefix_from, key_from, prefix_to, key_to, False)  # remove edge visualization  # remove edge visualization
+
+    def add_position_estimate_clbk(self, msg):
+        rospy.loginfo("Add position estimate command received")
+        add_position_estimate_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam_fe/add_position_estimate', AddPositionEstimate)
+        if add_position_estimate_service(msg).success:
+            print('Successfully added position estimate')
+        else:
+            print('Failed to add position estimate')
 
     def load_graph_clbk(self, msg):
         rospy.loginfo("Load graph command received")
