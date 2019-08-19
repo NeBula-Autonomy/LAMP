@@ -44,6 +44,8 @@
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
+#include <unistd.h>
+
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/pcd_io.h>
@@ -2895,12 +2897,15 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
     // Publish
     artifact_pub_.publish(new_msg);
-
+    
     if (!b_publish_all) {
       ROS_INFO("Single artifact - exiting artifact pub loop");
       // Only a single artifact - exit the loop 
       return;
     }
+
+    // Sleep to spread out the messages
+    usleep(10000);
   }
 }
 
