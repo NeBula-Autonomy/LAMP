@@ -480,7 +480,7 @@ bool LaserLoopClosure::AddBetweenFactorWithPointEstimation(
     const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance, 
     const gu::Vec3& point, const ros::Time& stamp, gtsam::Symbol* key) {
 
-  // first add between factor (basically odometry
+  // first add between factor (basically odometry)
   if (!AddBetweenFactor(delta, covariance, stamp, key, false)) {
     return false;
   }
@@ -499,7 +499,7 @@ bool LaserLoopClosure::AddBetweenFactorWithPointEstimation(
   prior_factor.add(gtsam::PriorFactor<gtsam::Pose3>(*key, Pose3(Rot3(), estimated_pt), point_noise));
   prior_factors_.push_back(Prior(*key, Pose3(Rot3(), estimated_pt)));
   // optimize
-  pgo_solver_->update(prior_factor, gtsam::Values());
+  pgo_solver_->update(prior_factor, gtsam::Values()); // values already added in between
   nfg_ = pgo_solver_->getFactorsUnsafe();
   values_ = pgo_solver_->calculateEstimate();
 
@@ -2824,8 +2824,6 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
 
       gu::Transform3 t = ToGu(values_.at<Pose3>(prior_factors_[ii].first));
 
-      gtsam::Symbol sym_key = gtsam::Symbol(prior_factors_[ii].first);
-
       // Populate the message with the pose's data.
       pose_graph_msgs::PoseGraphNode prior;
       prior.key = prior_factors_[ii].first;
@@ -3428,6 +3426,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   ROS_INFO("\n\tAdding pose graph priors\n");
   // Add the new nodes to base station posegraph
   // TODO right now this only accounts for translation part of prior (see rotation precision)
+  // This assumes that the only priors are coming from AddBetweenFactorWithPointEstimation
   for (const pose_graph_msgs::PoseGraphNode &msg_prior : msg->priors) {
     ROS_INFO_STREAM("Adding prior in pose graph callback for key " << gtsam::DefaultKeyFormatter(msg_prior.key));
     // create the prior factor 
