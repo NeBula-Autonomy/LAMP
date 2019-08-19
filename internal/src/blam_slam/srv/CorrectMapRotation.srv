@@ -1,3 +1,4 @@
 
 ---
 geometry_msgs/Quaternion rotation
+bool success
