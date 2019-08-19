@@ -101,6 +101,8 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
     return false;
   }
 
+  VisualizeGroundtruthFiducials();
+
   return true;
 }
 
@@ -204,6 +206,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
       // Publish updated map
       mapper_.PublishMap();
+      VisualizeGroundtruthFiducials();
     } else {
       ROS_ERROR_STREAM("Failed to load graph from " << graph_filename);
     }
@@ -249,6 +252,8 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
       
   pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(
       "localization_integrated_estimate", 10, false);
+
+  april_tag_gt_pub_ = nl.advertise<visualization_msgs::Marker>("apriltag_gt_markers", 10, false);
 
   add_factor_srv_ = nl.advertiseService("add_factor", &BlamSlam::AddFactorService, this);
   remove_factor_srv_ = nl.advertiseService("remove_factor", &BlamSlam::RemoveFactorService, this);
@@ -508,6 +513,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 
   // Publish updated map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 
   // Get update from front-end
   SendRepubPoseGraphFlag();
@@ -577,6 +583,7 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
 
   // Publish updated map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 
   std::cout << "Updated the map" << std::endl;
 
@@ -944,6 +951,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 
     // Publish updated map // TODO have criteria of change for when to publish the map?
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
   }
 }
 
@@ -1031,6 +1039,7 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
 
     // Publish updated map
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
 
     ROS_INFO("Updated the map by UWB Range Factors");
 
@@ -1065,6 +1074,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 }
 
 void BlamSlam::RepubPoseGraphCallback(const std_msgs::Empty& msg){
@@ -1323,6 +1333,7 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
 
     // Publish the map
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
   }   
 
 }
@@ -1569,6 +1580,7 @@ void BlamSlam::PoseGraphCallback(
 
   // Publish map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 	cur_time = clock() - start;
   ROS_INFO_STREAM("PoseGraphCallback completed in " << (float)cur_time/CLOCKS_PER_SEC << " seconds");
 }
@@ -1626,5 +1638,73 @@ void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& ms
 
   // // Publish the updated pose
   // localization_.PublishPoseNoUpdate();
+}
+
+void BlamSlam::VisualizeGroundtruthFiducials() { 
+  // Get class of artifact
+  visualization_msgs::Marker m_calibration_left, m_calibration_right, m_distal;
+
+  m_distal.pose.position.x = distal_x_;
+  m_distal.pose.position.y = distal_y_;
+  m_distal.pose.position.z = distal_z_;
+  m_distal.header.frame_id = "world";
+  m_distal.id = 0;
+  m_distal.action = visualization_msgs::Marker::ADD;
+  m_distal.pose.orientation.x = 0.0;
+  m_distal.pose.orientation.y = 0.0;
+  m_distal.pose.orientation.z = 0.0;
+  m_distal.pose.orientation.w = 1.0;
+  m_distal.scale.x = 0.15f;
+  m_distal.scale.y = 0.7f;
+  m_distal.scale.z = 0.7f;
+  m_distal.color.r = 0.0f;
+  m_distal.color.g = 1.0f;
+  m_distal.color.b = 0.0f;
+  m_distal.color.a = 1.0f;
+  m_distal.type = visualization_msgs::Marker::CUBE;
+
+  // cal left 
+  m_calibration_left.pose.position.x = calibration_left_x_;
+  m_calibration_left.pose.position.y = calibration_left_y_;
+  m_calibration_left.pose.position.z = calibration_left_z_;
+  m_calibration_left.header.frame_id = "world";
+  m_calibration_left.id = 1;
+  m_calibration_left.action = visualization_msgs::Marker::ADD;
+  m_calibration_left.pose.orientation.x = 0.0;
+  m_calibration_left.pose.orientation.y = 0.0;
+  m_calibration_left.pose.orientation.z = 0.0;
+  m_calibration_left.pose.orientation.w = 1.0;
+  m_calibration_left.scale.x = 0.15f;
+  m_calibration_left.scale.y = 0.7f;
+  m_calibration_left.scale.z = 0.7f;
+  m_calibration_left.color.r = 0.0f;
+  m_calibration_left.color.g = 1.0f;
+  m_calibration_left.color.b = 0.0f;
+  m_calibration_left.color.a = 1.0f;
+  m_calibration_left.type = visualization_msgs::Marker::CUBE;
+
+  // cal right 
+  m_calibration_right.pose.position.x = calibration_right_x_;
+  m_calibration_right.pose.position.y = calibration_right_y_;
+  m_calibration_right.pose.position.z = calibration_right_z_;
+  m_calibration_right.header.frame_id = "world";
+  m_calibration_right.id = 2; 
+  m_calibration_right.action = visualization_msgs::Marker::ADD;
+  m_calibration_right.pose.orientation.x = 0.0;
+  m_calibration_right.pose.orientation.y = 0.0;
+  m_calibration_right.pose.orientation.z = 0.0;
+  m_calibration_right.pose.orientation.w = 1.0;
+  m_calibration_right.scale.x = 0.15f;
+  m_calibration_right.scale.y = 0.7f;
+  m_calibration_right.scale.z = 0.7f;
+  m_calibration_right.color.r = 0.0f;
+  m_calibration_right.color.g = 1.0f;
+  m_calibration_right.color.b = 0.0f;
+  m_calibration_right.color.a = 1.0f;
+  m_calibration_right.type = visualization_msgs::Marker::CUBE;
+
+  april_tag_gt_pub_.publish(m_distal);
+  april_tag_gt_pub_.publish(m_calibration_left);
+  april_tag_gt_pub_.publish(m_calibration_right);
 }
 
