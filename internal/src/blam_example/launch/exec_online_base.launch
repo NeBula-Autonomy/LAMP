@@ -18,12 +18,6 @@
       <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
     </node>
 
-    <node pkg="tf2_ros" 
-        type="static_transform_publisher"
-        name="base2world"
-        args="0 0 0 0 0 0 $(arg robot_namespace)/map /world" >
-    </node>
-
     <node pkg="blam_slam"
       name="loop_closure_tools"
       type="loop_closure_tools.py"

@@ -114,6 +114,8 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_,
       pnh.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
   artifact_marker_pub_ =
       pnh.advertise<visualization_msgs::Marker>("artifact_markers", 10, false);
+  artifact_id_marker_pub_ = pnh.advertise<visualization_msgs::Marker>(
+      "artifact_id_markers", 10, false);
 
   keyed_scan_sub_ = nh.subscribe<pose_graph_msgs::KeyedScan>(
       "blam_slam/keyed_scans", 10, &PoseGraphVisualizer::KeyedScanCallback,
@@ -166,7 +168,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
     // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
 
     // Add UUID if an artifact or uwb node
-    if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p') { 
+    if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q') { 
       ROS_INFO_STREAM("Have an artifact node with key " << gtsam::DefaultKeyFormatter(sym_key));
       // Artifact
       keyed_artifact_poses_[msg_node.key] = pose;
@@ -189,6 +191,12 @@ void PoseGraphVisualizer::PoseGraphCallback(
 
     // Fill pose nodes (representing the robot position)
     keyed_poses_[msg_node.key] = pose;
+
+    // Track key frames
+    if (msg_node.ID == "key_frame"){
+      // Have key frame
+      keyframe_poses_[msg_node.key] = pose;
+    }
 
     keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(
         msg_node.key, msg_node.header.stamp));
@@ -818,24 +826,29 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   }
 
   // Publish Artifacts
-  if (artifact_marker_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
+  if (artifact_marker_pub_.getNumSubscribers() > 0 ||
+      artifact_id_marker_pub_.getNumSubscribers() > 0) {
+    visualization_msgs::Marker m, m_id;
     m.header.frame_id = fixed_frame_id_;
+    m_id.header.frame_id = m.header.frame_id;
     m.ns = "artifact";
+    m_id.ns = "artifact_id";
     // ROS_INFO("Publishing artifacts!");
     for (const auto& keyedPose : keyed_artifact_poses_) {
       ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
       m.header.stamp = ros::Time::now();
+      m_id.header.stamp = ros::Time::now();
 
       // get the gtsam key
       gtsam::Key key(keyedPose.first);
       m.id = key;
+      m_id.id = m.id;
 
       ROS_INFO_STREAM("Artifact key (raw) is: " << keyedPose.first);
       ROS_INFO_STREAM("Artifact key is " << key);
       ROS_INFO_STREAM("Artifact hash key is "
                       << gtsam::DefaultKeyFormatter(key));
-      if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p') {
+      if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p' && gtsam::Symbol(key).chr() != 'q') {
         ROS_WARN("ERROR - have a non-landmark ID");
         ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
         continue;
@@ -853,16 +866,18 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       // Populate the artifact marker
       VisualizeSingleArtifact(m, art);
+      VisualizeSingleArtifactId(m_id, art);
 
       // Publish
       artifact_marker_pub_.publish(m);
+      artifact_id_marker_pub_.publish(m_id);
     }
   }
 
   // Interactive markers.
   if (publish_interactive_markers_) {
     ROS_INFO("Pose Graph Nodes");
-    for (const auto &keyed_pose : keyed_poses_) {
+    for (const auto &keyed_pose : keyframe_poses_) {
       gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.first);
       std::string robot_id = std::string(key_id);
       MakeMenuMarker(keyed_pose.second, robot_id);
@@ -871,6 +886,58 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       server->applyChanges();
     }
   }
+}
+
+void PoseGraphVisualizer::VisualizeSingleArtifactId(
+    visualization_msgs::Marker& m, const ArtifactInfo& art) {
+  std::string id = art.msg.id;
+  m.pose.position = art.msg.point.point;
+  m.pose.position.z = m.pose.position.z + 1.5;
+  m.pose.position.x = m.pose.position.x + 2.5;
+  m.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  if (id.find("PhoneArtifact") != std::string::npos) {
+    m.text = id;
+  } else {
+    m.text = id.substr(0, 8);
+  }
+  m.header.frame_id = "world";
+  std::string artifact_label = art.msg.label;
+
+  if (artifact_label == "backpack") {
+    std::cout << "backpack marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.0f;
+  } else if (artifact_label == "fire extinguisher") {
+    std::cout << "fire extinguisher marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.5f;
+    m.color.b = 0.75f;
+  } else if (artifact_label == "drill") {
+    std::cout << "drill marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+  } else if (artifact_label == "survivor") {
+    std::cout << "survivor marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+  } else if (artifact_label == "cellphone") {
+    std::cout << "cellphone marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.7f;
+  } else {
+    std::cout << "Fiducial marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+  }
+
+  m.color.a = 1.0f;
+  m.scale.z = 2.5f;
+  return;
 }
 
 void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
@@ -905,22 +972,19 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.color.g = 0.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::CUBE;
-  }
-  if (artifact_label == "fire extinguisher") {
+  } else if (artifact_label == "fire extinguisher") {
     std::cout << "fire extinguisher marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.5f;
     m.color.b = 0.75f;
     m.type = visualization_msgs::Marker::SPHERE;
-  }
-  if (artifact_label == "drill") {
+  } else if (artifact_label == "drill") {
     std::cout << "drill marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 1.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::CYLINDER;
-  }
-  if (artifact_label == "survivor") {
+  } else if (artifact_label == "survivor") {
     std::cout << "survivor marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 1.0f;
@@ -929,8 +993,7 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.y = 1.2f;
     m.scale.z = 1.2f;
     m.type = visualization_msgs::Marker::CYLINDER;
-  }
-  if (artifact_label == "cellphone") {
+  } else if (artifact_label == "cellphone") {
     std::cout << "cellphone marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 0.0f;
@@ -938,6 +1001,15 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.x = 0.55f;
     m.scale.y = 1.2f;
     m.scale.z = 0.3f;
+    m.type = visualization_msgs::Marker::CUBE;
+  } else {
+    std::cout << "Fiducial marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.scale.x = 0.15f;
+    m.scale.y = 0.7f;
+    m.scale.z = 0.7f;
     m.type = visualization_msgs::Marker::CUBE;
   }
 }
@@ -966,7 +1038,7 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     gtsam::Key key(artifact_id2key_hash_[it->first]);
     ROS_INFO_STREAM("Artifact hash key is "
                     << gtsam::DefaultKeyFormatter(key));
-    if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p') {
+    if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' && gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' && gtsam::Symbol(key).chr() != 'p' && gtsam::Symbol(key).chr() != 'q') {
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
       continue;
