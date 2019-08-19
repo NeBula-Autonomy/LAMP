@@ -40,6 +40,7 @@ find_package(catkin REQUIRED COMPONENTS
   uwb_msgs
   mesh_msgs
   geometry_msgs
+  nav_msgs
   message_generation
   tf_conversions
   pose_graph_merger
@@ -73,6 +74,7 @@ catkin_package(
     uwb_msgs
     mesh_msgs
     geometry_msgs
+    nav_msgs
     pose_graph_merger
   DEPENDS
     Boost
