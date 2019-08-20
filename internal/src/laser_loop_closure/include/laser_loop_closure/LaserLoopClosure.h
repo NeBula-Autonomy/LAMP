@@ -249,11 +249,20 @@ class LaserLoopClosure {
   // Function to search for loopclosures over the whole posegraph
   bool BatchLoopClosure();
 
-  // Function to correct the rotation of the map
+  geometry_msgs::Quaternion q_from_total_station_msg_;
+
+  // Function to correct the rotation of the map from Apriltags
   geometry_msgs::Quaternion CorrectMapRotation(Eigen::Vector3d v1,
                           gtsam::Key gate_key,
                           gtsam::Key distal_key,
                           std::string robot_name);
+  
+  geometry_msgs::Quaternion PublishMapRotationFromTotalStation();
+
+  // Function to correct the rotation of the map from total station
+  bool CorrectMapRotationFromTotalStation(Eigen::Vector3d v1,
+                          gtsam::Key robot_key,
+                          std::string robot_name);  
 
   // AddManualLoopClosure between the two keys to connect them. This function is
   // designed for a scenario where a human operator can manually perform

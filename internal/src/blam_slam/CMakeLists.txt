@@ -40,13 +40,13 @@ find_package(catkin REQUIRED COMPONENTS
   uwb_msgs
   mesh_msgs
   geometry_msgs
+  nav_msgs
   message_generation
   tf_conversions
   pose_graph_merger
 )
 
-add_service_files(FILES AddFactor.srv RemoveFactor.srv SaveGraph.srv Restart.srv LoadGraph.srv BatchLoopClosure.srv
-    CorrectMapRotation.srv AddPositionEstimate.srv)
+add_service_files(FILES AddFactor.srv RemoveFactor.srv SaveGraph.srv Restart.srv LoadGraph.srv BatchLoopClosure.srv CorrectMapRotation.srv CorrectMapRotationFromTotalStation.srv PublishMapRotationFromTotalStation.srv AddPositionEstimate.srv)
 add_message_files(FILES AddFactorCmd.msg RemoveFactorCmd.msg)
 generate_messages(DEPENDENCIES geometry_msgs)
 
@@ -74,6 +74,7 @@ catkin_package(
     uwb_msgs
     mesh_msgs
     geometry_msgs
+    nav_msgs
     pose_graph_merger
   DEPENDS
     Boost

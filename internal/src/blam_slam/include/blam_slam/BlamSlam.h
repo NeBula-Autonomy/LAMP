@@ -42,6 +42,8 @@
 #include <blam_slam/AddFactor.h>
 #include <blam_slam/BatchLoopClosure.h>
 #include <blam_slam/CorrectMapRotation.h>
+#include <blam_slam/CorrectMapRotationFromTotalStation.h>
+#include <blam_slam/PublishMapRotationFromTotalStation.h>
 #include <blam_slam/LoadGraph.h>
 #include <blam_slam/RemoveFactor.h>
 #include <blam_slam/Restart.h>
@@ -168,9 +170,19 @@ class BlamSlam {
   CorrectMapRotationService(blam_slam::CorrectMapRotationRequest& request,
                             blam_slam::CorrectMapRotationResponse& response);
 
-  // Service to add range measurement from survey tool
+  // Service to add position measurement from survey tool
   bool AddPositionEstimateService(blam_slam::AddPositionEstimateRequest& request, 
                                 blam_slam::AddPositionEstimateResponse& response);
+
+// Service for correcting the global map rotation from Total Station
+  bool
+  CorrectMapRotationFromTotalStationService(blam_slam::CorrectMapRotationFromTotalStationRequest& request,
+                            blam_slam::CorrectMapRotationFromTotalStationResponse& response);
+
+  // Service for correcting the global map rotation
+  bool
+  PublishMapRotationFromTotalStationService(blam_slam::PublishMapRotationFromTotalStationRequest& request,
+                            blam_slam::PublishMapRotationFromTotalStationResponse& response);
 
   bool use_chordal_factor_;
 
@@ -195,6 +207,8 @@ class BlamSlam {
                                const std::string& child_frame,
                                const ros::Time& time,
                                Eigen::Affine3d& T);
+
+  void VisualizeGroundtruthFiducials();
   
   std::string getRobotName(const ros::NodeHandle& n);
 
@@ -254,6 +268,7 @@ class BlamSlam {
   ros::Publisher base_frame_pcld_pub_;
   ros::Publisher pose_pub_;
   ros::Publisher repub_pg_sig_pub_;
+  ros::Publisher april_tag_gt_pub_;
 
   // Transform broadcasting to other nodes.
   tf2_ros::TransformBroadcaster tfbr_;
@@ -291,6 +306,8 @@ class BlamSlam {
   ros::ServiceServer load_graph_srv_;
   ros::ServiceServer batch_loop_closure_srv_;
   ros::ServiceServer correct_map_rotation_srv_;
+  ros::ServiceServer correct_map_rotation_from_total_station_srv_;
+  ros::ServiceServer publish_map_rotation_from_total_station_srv_;
   ros::ServiceServer drop_uwb_srv_;
   ros::ServiceServer add_position_estimate_srv_;
 

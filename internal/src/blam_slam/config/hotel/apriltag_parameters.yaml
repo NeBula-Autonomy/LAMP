@@ -1,0 +1,12 @@
+#Load AprilTag GT coordinates
+calibration_left_x: -0.005
+calibration_left_y: 1.168
+calibration_left_z: 0.895
+
+calibration_right_x: -0.005
+calibration_right_y: -1.168
+calibration_right_z: 1.476
+
+distal_x: 29.0
+distal_y: 0.0
+distal_z: 0.235
