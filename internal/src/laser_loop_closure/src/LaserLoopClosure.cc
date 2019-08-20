@@ -480,6 +480,10 @@ bool LaserLoopClosure::AddBetweenFactorWithPointEstimation(
     const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance, 
     const gu::Vec3& point, const ros::Time& stamp, gtsam::Symbol* key) {
 
+  if (save_posegraph_backup_) {
+    Save("posegraph_backup.zip");
+  }
+  
   // first add between factor (basically odometry)
   if (!AddBetweenFactor(delta, covariance, stamp, key, false)) {
     return false;
