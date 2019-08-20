@@ -48,6 +48,7 @@
 #include <blam_slam/RemoveFactor.h>
 #include <blam_slam/Restart.h>
 #include <blam_slam/SaveGraph.h>
+#include <blam_slam/AddPositionEstimate.h>
 
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -169,7 +170,11 @@ class BlamSlam {
   CorrectMapRotationService(blam_slam::CorrectMapRotationRequest& request,
                             blam_slam::CorrectMapRotationResponse& response);
 
-  // Service for correcting the global map rotation from Total Station
+  // Service to add position measurement from survey tool
+  bool AddPositionEstimateService(blam_slam::AddPositionEstimateRequest& request, 
+                                blam_slam::AddPositionEstimateResponse& response);
+
+// Service for correcting the global map rotation from Total Station
   bool
   CorrectMapRotationFromTotalStationService(blam_slam::CorrectMapRotationFromTotalStationRequest& request,
                             blam_slam::CorrectMapRotationFromTotalStationResponse& response);
@@ -304,6 +309,7 @@ class BlamSlam {
   ros::ServiceServer correct_map_rotation_from_total_station_srv_;
   ros::ServiceServer publish_map_rotation_from_total_station_srv_;
   ros::ServiceServer drop_uwb_srv_;
+  ros::ServiceServer add_position_estimate_srv_;
 
   // Names of coordinate frames.
   std::string fixed_frame_id_;

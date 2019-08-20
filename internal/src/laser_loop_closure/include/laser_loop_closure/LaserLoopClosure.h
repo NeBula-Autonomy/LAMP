@@ -155,7 +155,11 @@ class LaserLoopClosure {
   // AddKeyScanPair().
   bool AddBetweenFactor(const geometry_utils::Transform3& delta,
                         const Mat66& covariance, const ros::Time& stamp,
-                        gtsam::Symbol* key);
+                        gtsam::Symbol* key, bool check_threshold=true);
+
+  bool AddBetweenFactorWithPointEstimation(const geometry_utils::Transform3& delta, 
+      const Mat66& covariance, const geometry_utils::Vec3& point, 
+      const ros::Time& stamp, gtsam::Symbol* key);
   
   bool AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data);
   
@@ -305,6 +309,7 @@ private:
   // Pose conversion from/to GTSAM format.
   geometry_utils::Transform3 ToGu(const gtsam::Pose3& pose) const;
   gtsam::Pose3 ToGtsam(const geometry_utils::Transform3& pose) const;
+  gtsam::Point3 ToGtsam(const geometry_utils::Vec3& point) const;
 
   // Covariance conversion from/to GTSAM format.
   typedef gtsam::noiseModel::Gaussian Gaussian;
@@ -403,6 +408,7 @@ private:
   double artifact_trans_precision_;
   double fiducial_trans_precision_;
   double fiducial_rot_precision_;
+  double point_estimate_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
   unsigned int relinearize_skip_;
@@ -506,11 +512,13 @@ private:
 
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
+  typedef std::pair<gtsam::Symbol, gtsam::Pose3> Prior; 
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
   std::vector<Edge> inlier_loop_edges_;
   std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
+  std::vector<Prior> prior_factors_;
   std::vector<Edge> uwb_edges_range_;
   std::vector<Edge> uwb_edges_between_;
   std::map<Edge, gtsam::Pose3> edge_poses_;
