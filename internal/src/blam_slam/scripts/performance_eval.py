@@ -32,7 +32,8 @@ class PerformanceEvaluation:
         self.slip = 0
 
         self.pub_cycle = 0
-        self.pub_horizon = 900
+        self.pub_horizon = 30
+        self.slip_value_pub = 0
 
     def increment_slip(self):
     	# calculate odom traveled
@@ -68,8 +69,7 @@ class PerformanceEvaluation:
 		    	speed_from_blam = trans_dist / float(delta_t)
 		    	# compare with odom speed
 		    	if abs(self.odom_speed - speed_from_blam) > self.threshold:
-		    		if self.increment_slip():
-		    			self.pub_cycle = 0
+		    		self.increment_slip()
 		    	else:
 		    		self.slipping = False
 		    	# update last non slipping time
@@ -78,18 +78,30 @@ class PerformanceEvaluation:
 		    		self.slip_start_odom_pose = self.odom_pose
 
     	self.last_blam_pose = msg
-    	# publish the previous slip
-    	self.slip_bool_pub.publish(self.slipping)
-    	if self.slip > 0 and self.pub_cycle < self.pub_horizon: # don't publish insignificant slip dist
-    		self.lidar_slip_pub.publish(self.slip)
-    		self.pub_cycle += 1
+
+    def run(self):
+    	r = rospy.Rate(1)
+    	while not rospy.is_shutdown():
+    		# publish the previous slip
+    		self.slip_bool_pub.publish(self.slipping)
+
+    		# publish the max value from the last horizon
+	    	if self.slip > self.slip_value_pub:
+	    		self.slip_value_pub = self.slip
+	    		self.pub_cycle = 0
+	    	if self.slip_value_pub > 0 and self.pub_cycle < self.pub_horizon: # don't publish insignificant slip dist
+	    		self.lidar_slip_pub.publish(self.slip_value_pub)
+	    		self.pub_cycle += 1
+	    	if self.pub_cycle >= self.pub_horizon:
+	    		self.slip_value_pub = 0
+	    	r.sleep()
 
 def main(slip_threshold):
     rospy.init_node('performance_evaluation')
 
-    PerformanceEvaluation(slip_threshold)
-    rospy.spin()
+    performance_eval = PerformanceEvaluation(slip_threshold)
 
+    performance_eval.run()
 
 if __name__ == '__main__':
     main(float(sys.argv[1]))
