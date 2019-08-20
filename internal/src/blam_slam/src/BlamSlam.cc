@@ -264,7 +264,7 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   correct_map_rotation_srv_ = nl.advertiseService(
       "correct_map_rotation", &BlamSlam::CorrectMapRotationService, this);
   publish_map_rotation_from_total_station_srv_ = nl.advertiseService(
-      "correct_map_rotation", &BlamSlam::PublishMapRotationFromTotalStationService, this);
+      "publish_map_rotation_from_total_station", &BlamSlam::PublishMapRotationFromTotalStationService, this);
   correct_map_rotation_from_total_station_srv_ = nl.advertiseService(
       "correct_map_rotation_from_total_station", &BlamSlam::CorrectMapRotationFromTotalStationService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
