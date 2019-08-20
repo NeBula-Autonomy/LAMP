@@ -45,7 +45,7 @@ class PerformanceEvaluation:
 			(self.last_blam_pose.pose.position.z - self.slip_start_blam_pose.pose.position.z)**2)
 		slip = odom_traveled - blam_traveled
 		# only set sliiping to true if slip is greater than 0
-		if slip > 0.05:
+		if slip > 0.1:
 			self.slip = slip
 			self.slipping = True
 			return True
