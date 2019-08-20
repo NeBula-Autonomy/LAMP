@@ -263,6 +263,10 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   batch_loop_closure_srv_ = nl.advertiseService("batch_loop_closure", &BlamSlam::BatchLoopClosureService, this);
   correct_map_rotation_srv_ = nl.advertiseService(
       "correct_map_rotation", &BlamSlam::CorrectMapRotationService, this);
+  publish_map_rotation_from_total_station_srv_ = nl.advertiseService(
+      "publish_map_rotation_from_total_station", &BlamSlam::PublishMapRotationFromTotalStationService, this);
+  correct_map_rotation_from_total_station_srv_ = nl.advertiseService(
+      "correct_map_rotation_from_total_station", &BlamSlam::CorrectMapRotationFromTotalStationService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
 
   if (from_log)
@@ -694,6 +698,7 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   return true; 
 }
 
+// Correct map rotation from distal marker
 bool BlamSlam::CorrectMapRotationService(
     blam_slam::CorrectMapRotationRequest& request,
     blam_slam::CorrectMapRotationResponse& response) {
@@ -705,7 +710,45 @@ bool BlamSlam::CorrectMapRotationService(
                      (distal_z_));
   response.rotation =
       loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_, robot_name_);
+  response.success = true;
   return true;
+}
+
+// Publish map rotation from distal marker
+bool BlamSlam::PublishMapRotationFromTotalStationService(
+    blam_slam::PublishMapRotationFromTotalStationRequest& request,
+    blam_slam::PublishMapRotationFromTotalStationResponse& response) {
+  std::cout << "Correct Map Rotation. Correcting map rotation..." << std::endl;
+  // Construct a Ground Truth vector from the gate(calibration_left) to
+  // distal(distal)
+  Eigen::Vector3d v1((distal_x_),
+                     (distal_y_),
+                     (distal_z_));
+  response.rotation =
+      loop_closure_.PublishMapRotationFromTotalStation();
+  response.success = true;
+  return true;
+}
+
+// Correct map rotation from total station
+bool BlamSlam::CorrectMapRotationFromTotalStationService(
+    blam_slam::CorrectMapRotationFromTotalStationRequest& request,
+    blam_slam::CorrectMapRotationFromTotalStationResponse& response) {
+  std::cout << "Correct Map Rotation from total station. Correcting map rotation..." << std::endl;
+  // Construct a Ground Truth vector from the total station
+  double x_from_total_station = request.x;
+  double y_from_total_station = request.y;
+  double z_from_total_station = request.z;
+
+  Eigen::Vector3d v1((x_from_total_station),
+                     (y_from_total_station),
+                     (z_from_total_station));
+
+  gtsam::Key robot_key = loop_closure_.GetKeyAtTime(ros::Time::now());
+  response.success =
+      loop_closure_.CorrectMapRotationFromTotalStation(v1, robot_key, robot_name_);
+  if (response.success)
+    return true;
 }
 
 bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,

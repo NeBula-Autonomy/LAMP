@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import rospy
 import transforms3d
-from blam_slam.srv import SaveGraph, LoadGraph, RemoveFactor, AddFactor, Restart, BatchLoopClosure, CorrectMapRotation
+from blam_slam.srv import SaveGraph, LoadGraph, RemoveFactor, AddFactor, Restart, BatchLoopClosure, CorrectMapRotation, CorrectMapRotationFromTotalStation
 from blam_slam.msg import RemoveFactorCmd, AddFactorCmd
 from std_msgs.msg import String, Empty, Bool
+from geometry_msgs.msg import Point
 from pose_graph_visualizer.srv import HighlightEdge
 
 
@@ -13,6 +14,8 @@ class LoopClosureTools:
         self.node_name = rospy.get_name()
         rospy.Subscriber(self.node_name + '/batch_loop_closure', Empty, self.batch_loop_closure_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/correct_map_rotation', Empty, self.correct_map_rotation_clbk, queue_size=1)
+        rospy.Subscriber(self.node_name + '/publish_map_rotation_from_total_station', Empty, self.publish_map_rotation_from_total_station_clbk, queue_size=1)
+        rospy.Subscriber(self.node_name + '/correct_map_rotation_from_total_station', Point, self.correct_map_rotation_from_total_station_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/save_graph', String, self.save_graph_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/load_graph', String, self.load_graph_clbk, queue_size=1)
         rospy.Subscriber(self.node_name + '/add_factor', AddFactorCmd, self.add_factor_clbk, queue_size=1)
@@ -32,12 +35,29 @@ class LoopClosureTools:
             print('Did not find any loop closures')
 
     def correct_map_rotation_clbk(self, msg):
-        rospy.loginfo("Correct map rotation command received")
+        rospy.loginfo("Correct map rotation from distal command received")
         correct_map_rotation_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/correct_map_rotation', CorrectMapRotation)
         if correct_map_rotation_service().success:
-            print('Successfully corrected map rotation')
+            print('Successfully corrected map rotation from distal marker')
         else:
-            print('Did not correct map rotation')
+            print('Did not correct map rotation from distal marker')
+
+    def correct_map_rotation_from_total_station_clbk(self, msg):
+        rospy.loginfo("Correct map rotation from total station command received")
+        correct_map_rotation_from_total_station_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/correct_map_rotation_from_total_station', CorrectMapRotationFromTotalStation)
+        if correct_map_rotation_from_total_station_service(msg.x, msg.y, msg.z).success:
+            print('Successfully corrected map rotation from total station')
+        else:
+            print('Did not correct map rotation from total station')
+
+    def publish_map_rotation_from_total_station_clbk(self, msg):
+        rospy.loginfo("Publish map rotation from total station command received")
+        publish_map_rotation_from_total_station_service = rospy.ServiceProxy(self.robot_namespace + '/blam_slam/publish_map_rotation_from_total_station', PublishMapRotationFromTotalStation)
+        if publish_map_rotation_from_total_station_service().success:
+            print('Successfully published map rotation from total station marker')
+        else:
+            print('Did not publish map rotation from total station marker')
+
 
     def save_graph_clbk(self, msg):
         rospy.loginfo("Save graph command received")

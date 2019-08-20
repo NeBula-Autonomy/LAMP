@@ -42,6 +42,8 @@
 #include <blam_slam/AddFactor.h>
 #include <blam_slam/BatchLoopClosure.h>
 #include <blam_slam/CorrectMapRotation.h>
+#include <blam_slam/CorrectMapRotationFromTotalStation.h>
+#include <blam_slam/PublishMapRotationFromTotalStation.h>
 #include <blam_slam/LoadGraph.h>
 #include <blam_slam/RemoveFactor.h>
 #include <blam_slam/Restart.h>
@@ -167,6 +169,16 @@ class BlamSlam {
   CorrectMapRotationService(blam_slam::CorrectMapRotationRequest& request,
                             blam_slam::CorrectMapRotationResponse& response);
 
+  // Service for correcting the global map rotation from Total Station
+  bool
+  CorrectMapRotationFromTotalStationService(blam_slam::CorrectMapRotationFromTotalStationRequest& request,
+                            blam_slam::CorrectMapRotationFromTotalStationResponse& response);
+
+  // Service for correcting the global map rotation
+  bool
+  PublishMapRotationFromTotalStationService(blam_slam::PublishMapRotationFromTotalStationRequest& request,
+                            blam_slam::PublishMapRotationFromTotalStationResponse& response);
+
   bool use_chordal_factor_;
 
   // Service to write the pose graph and all point clouds to a zip file.
@@ -289,6 +301,8 @@ class BlamSlam {
   ros::ServiceServer load_graph_srv_;
   ros::ServiceServer batch_loop_closure_srv_;
   ros::ServiceServer correct_map_rotation_srv_;
+  ros::ServiceServer correct_map_rotation_from_total_station_srv_;
+  ros::ServiceServer publish_map_rotation_from_total_station_srv_;
   ros::ServiceServer drop_uwb_srv_;
 
   // Names of coordinate frames.
