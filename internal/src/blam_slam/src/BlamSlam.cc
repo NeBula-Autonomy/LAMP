@@ -101,6 +101,8 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
     return false;
   }
 
+  VisualizeGroundtruthFiducials();
+
   return true;
 }
 
@@ -204,6 +206,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
       // Publish updated map
       mapper_.PublishMap();
+      VisualizeGroundtruthFiducials();
     } else {
       ROS_ERROR_STREAM("Failed to load graph from " << graph_filename);
     }
@@ -250,6 +253,8 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(
       "localization_integrated_estimate", 10, false);
 
+  april_tag_gt_pub_ = nl.advertise<visualization_msgs::Marker>("apriltag_gt_markers", 10, false);
+
   add_factor_srv_ = nl.advertiseService("add_factor", &BlamSlam::AddFactorService, this);
   remove_factor_srv_ = nl.advertiseService("remove_factor", &BlamSlam::RemoveFactorService, this);
   save_graph_srv_ = nl.advertiseService("save_graph", &BlamSlam::SaveGraphService, this);
@@ -260,6 +265,10 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
       "correct_map_rotation", &BlamSlam::CorrectMapRotationService, this);
   add_position_estimate_srv_ = nl.advertiseService(
       "add_position_estimate", &BlamSlam::AddPositionEstimateService, this);
+  publish_map_rotation_from_total_station_srv_ = nl.advertiseService(
+      "publish_map_rotation_from_total_station", &BlamSlam::PublishMapRotationFromTotalStationService, this);
+  correct_map_rotation_from_total_station_srv_ = nl.advertiseService(
+      "correct_map_rotation_from_total_station", &BlamSlam::CorrectMapRotationFromTotalStationService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
 
   if (from_log)
@@ -510,6 +519,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 
   // Publish updated map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 
   // Get update from front-end
   SendRepubPoseGraphFlag();
@@ -579,6 +589,7 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
 
   // Publish updated map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 
   std::cout << "Updated the map" << std::endl;
 
@@ -689,6 +700,7 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   return true; 
 }
 
+// Correct map rotation from distal marker
 bool BlamSlam::CorrectMapRotationService(
     blam_slam::CorrectMapRotationRequest& request,
     blam_slam::CorrectMapRotationResponse& response) {
@@ -700,6 +712,7 @@ bool BlamSlam::CorrectMapRotationService(
                      (distal_z_));
   response.rotation =
       loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_, robot_name_);
+  response.success = true;
   return true;
 }
 
@@ -760,6 +773,43 @@ bool BlamSlam::AddPositionEstimateService(
   loop_closure_.PublishArtifacts();
 
   return true;
+}
+
+// Publish map rotation from distal marker
+bool BlamSlam::PublishMapRotationFromTotalStationService(
+    blam_slam::PublishMapRotationFromTotalStationRequest& request,
+    blam_slam::PublishMapRotationFromTotalStationResponse& response) {
+  std::cout << "Correct Map Rotation. Correcting map rotation..." << std::endl;
+  // Construct a Ground Truth vector from the gate(calibration_left) to
+  // distal(distal)
+  Eigen::Vector3d v1((distal_x_),
+                     (distal_y_),
+                     (distal_z_));
+  response.rotation =
+      loop_closure_.PublishMapRotationFromTotalStation();
+  response.success = true;
+  return true;
+}
+
+// Correct map rotation from total station
+bool BlamSlam::CorrectMapRotationFromTotalStationService(
+    blam_slam::CorrectMapRotationFromTotalStationRequest& request,
+    blam_slam::CorrectMapRotationFromTotalStationResponse& response) {
+  std::cout << "Correct Map Rotation from total station. Correcting map rotation..." << std::endl;
+  // Construct a Ground Truth vector from the total station
+  double x_from_total_station = request.x;
+  double y_from_total_station = request.y;
+  double z_from_total_station = request.z;
+
+  Eigen::Vector3d v1((x_from_total_station),
+                     (y_from_total_station),
+                     (z_from_total_station));
+
+  gtsam::Key robot_key = loop_closure_.GetKeyAtTime(ros::Time::now());
+  response.success =
+      loop_closure_.CorrectMapRotationFromTotalStation(v1, robot_key, robot_name_);
+  if (response.success)
+    return true;
 }
 
 bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
@@ -1004,6 +1054,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 
     // Publish updated map // TODO have criteria of change for when to publish the map?
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
   }
 }
 
@@ -1091,6 +1142,7 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
 
     // Publish updated map
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
 
     ROS_INFO("Updated the map by UWB Range Factors");
 
@@ -1125,6 +1177,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 }
 
 void BlamSlam::RepubPoseGraphCallback(const std_msgs::Empty& msg){
@@ -1383,6 +1436,7 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
 
     // Publish the map
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
   }   
 
 }
@@ -1629,6 +1683,7 @@ void BlamSlam::PoseGraphCallback(
 
   // Publish map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 	cur_time = clock() - start;
   ROS_INFO_STREAM("PoseGraphCallback completed in " << (float)cur_time/CLOCKS_PER_SEC << " seconds");
 }
@@ -1686,5 +1741,73 @@ void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& ms
 
   // // Publish the updated pose
   // localization_.PublishPoseNoUpdate();
+}
+
+void BlamSlam::VisualizeGroundtruthFiducials() { 
+  // Get class of artifact
+  visualization_msgs::Marker m_calibration_left, m_calibration_right, m_distal;
+
+  m_distal.pose.position.x = distal_x_;
+  m_distal.pose.position.y = distal_y_;
+  m_distal.pose.position.z = distal_z_;
+  m_distal.header.frame_id = "world";
+  m_distal.id = 0;
+  m_distal.action = visualization_msgs::Marker::ADD;
+  m_distal.pose.orientation.x = 0.0;
+  m_distal.pose.orientation.y = 0.0;
+  m_distal.pose.orientation.z = 0.0;
+  m_distal.pose.orientation.w = 1.0;
+  m_distal.scale.x = 0.15f;
+  m_distal.scale.y = 0.7f;
+  m_distal.scale.z = 0.7f;
+  m_distal.color.r = 0.0f;
+  m_distal.color.g = 1.0f;
+  m_distal.color.b = 0.0f;
+  m_distal.color.a = 1.0f;
+  m_distal.type = visualization_msgs::Marker::CUBE;
+
+  // cal left 
+  m_calibration_left.pose.position.x = calibration_left_x_;
+  m_calibration_left.pose.position.y = calibration_left_y_;
+  m_calibration_left.pose.position.z = calibration_left_z_;
+  m_calibration_left.header.frame_id = "world";
+  m_calibration_left.id = 1;
+  m_calibration_left.action = visualization_msgs::Marker::ADD;
+  m_calibration_left.pose.orientation.x = 0.0;
+  m_calibration_left.pose.orientation.y = 0.0;
+  m_calibration_left.pose.orientation.z = 0.0;
+  m_calibration_left.pose.orientation.w = 1.0;
+  m_calibration_left.scale.x = 0.15f;
+  m_calibration_left.scale.y = 0.7f;
+  m_calibration_left.scale.z = 0.7f;
+  m_calibration_left.color.r = 0.0f;
+  m_calibration_left.color.g = 1.0f;
+  m_calibration_left.color.b = 0.0f;
+  m_calibration_left.color.a = 1.0f;
+  m_calibration_left.type = visualization_msgs::Marker::CUBE;
+
+  // cal right 
+  m_calibration_right.pose.position.x = calibration_right_x_;
+  m_calibration_right.pose.position.y = calibration_right_y_;
+  m_calibration_right.pose.position.z = calibration_right_z_;
+  m_calibration_right.header.frame_id = "world";
+  m_calibration_right.id = 2; 
+  m_calibration_right.action = visualization_msgs::Marker::ADD;
+  m_calibration_right.pose.orientation.x = 0.0;
+  m_calibration_right.pose.orientation.y = 0.0;
+  m_calibration_right.pose.orientation.z = 0.0;
+  m_calibration_right.pose.orientation.w = 1.0;
+  m_calibration_right.scale.x = 0.15f;
+  m_calibration_right.scale.y = 0.7f;
+  m_calibration_right.scale.z = 0.7f;
+  m_calibration_right.color.r = 0.0f;
+  m_calibration_right.color.g = 1.0f;
+  m_calibration_right.color.b = 0.0f;
+  m_calibration_right.color.a = 1.0f;
+  m_calibration_right.type = visualization_msgs::Marker::CUBE;
+
+  april_tag_gt_pub_.publish(m_distal);
+  april_tag_gt_pub_.publish(m_calibration_left);
+  april_tag_gt_pub_.publish(m_calibration_right);
 }
 

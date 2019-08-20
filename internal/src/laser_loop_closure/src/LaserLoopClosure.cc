@@ -44,6 +44,8 @@
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
+#include <unistd.h>
+
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/pcd_io.h>
@@ -2636,6 +2638,7 @@ bool LaserLoopClosure::BatchLoopClosure() {
     return false;
 }
 
+
 geometry_msgs::Quaternion LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
                                           gtsam::Key gate_key,
                                           gtsam::Key distal_key,
@@ -2659,7 +2662,7 @@ geometry_msgs::Quaternion LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v
   // Compute the quaternion that represents the rotation going from v2 to v1
   std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
 
-  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v1, v2);
+  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v2, v1);
   geometry_msgs::Quaternion q_msg;
   tf::quaternionEigenToMsg(q, q_msg);
   // Normalize the quaternion and get the corrispondant rotation matrix
@@ -2701,6 +2704,69 @@ geometry_msgs::Quaternion LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v
   n.setParam("orientation/z", q.normalized().z());
   n.setParam("orientation/w", q.normalized().w());
   return q_msg;
+}
+
+geometry_msgs::Quaternion LaserLoopClosure::PublishMapRotationFromTotalStation() {
+ return q_from_total_station_msg_;
+}
+
+bool LaserLoopClosure::CorrectMapRotationFromTotalStation(Eigen::Vector3d v1,
+                                          gtsam::Key robot_key,
+                                          std::string robot_name) {
+  std::cout << "Received the CorrectMapRotationFromTotalStation request in LaserLoopClosure..."
+            << std::endl;
+  geometry_utils::Transform3 robot_pose = GetPoseAtKey(robot_key);
+  
+  // Retrive the location of the AprilTag26 from the map
+  Eigen::Matrix<double, 3, 1> T_robot = robot_pose.translation.Eigen();
+
+  // Convert the vector to a vector3d
+  Eigen::Vector3d v2(T_robot(0, 0), T_robot(1, 0), T_robot(2, 0));
+  // Compute the quaternion that represents the rotation going from v2 to v1
+  std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
+
+  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v2, v1);
+
+  tf::quaternionEigenToMsg(q, q_from_total_station_msg_);
+  // Normalize the quaternion and get the corrispondant rotation matrix
+  Eigen::Matrix3d R = q.normalized().toRotationMatrix();
+  // Print the computed rotation matrix between the map and ground truth
+  Eigen::Vector3d Euler = R.eulerAngles(2, 1, 0);
+
+  std::cout << "The computed 3D rotation between the map and GT is R= "
+            << std::endl
+            << R << std::endl;
+
+  std::string path =
+      homedir + "/.ros/global_map_rotation_" + robot_name + ".yaml";
+  std::ofstream file(path);
+  std::stringstream ss;
+  ss << "position:" << std::endl
+     << "  x: " << 0 << std::endl
+     << "  y: " << 0 << std::endl
+     << "  z: " << 0 << std::endl
+     << "orientation:" << std::endl
+     << "  x: " << q.normalized().x() << std::endl
+     << "  y: " << q.normalized().y() << std::endl
+     << "  z: " << q.normalized().z() << std::endl
+     << "  w: " << q.normalized().w() << std::endl
+     << "Euler:" << std::endl
+     << "  Roll: " << Euler[2] << std::endl
+     << "  Pitch: " << Euler[1] << std::endl
+     << "  Yaw: " << Euler[0] << std::endl;
+  file << ss.str();
+  file.close();
+
+  // Set rosparam
+  ros::NodeHandle n("global_map_rotation");
+  n.setParam("position/x", 0);
+  n.setParam("position/y", 0);
+  n.setParam("position/z", 0);
+  n.setParam("orientation/x", q.normalized().x());
+  n.setParam("orientation/y", q.normalized().y());
+  n.setParam("orientation/z", q.normalized().z());
+  n.setParam("orientation/w", q.normalized().w());
+  return true;
 }
 
 bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
@@ -2961,6 +3027,9 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
       // Only a single artifact - exit the loop 
       return;
     }
+
+    // Sleep to spread out the messages
+    usleep(10000);
   }
 }
 
