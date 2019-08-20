@@ -44,6 +44,8 @@
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
+#include <unistd.h>
+
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/pcd_io.h>
@@ -2617,7 +2619,7 @@ geometry_msgs::Quaternion LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v
   // Compute the quaternion that represents the rotation going from v2 to v1
   std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
 
-  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v1, v2);
+  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v2, v1);
   geometry_msgs::Quaternion q_msg;
   tf::quaternionEigenToMsg(q, q_msg);
   // Normalize the quaternion and get the corrispondant rotation matrix
@@ -2960,12 +2962,15 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
 
     // Publish
     artifact_pub_.publish(new_msg);
-
+    
     if (!b_publish_all) {
       ROS_INFO("Single artifact - exiting artifact pub loop");
       // Only a single artifact - exit the loop 
       return;
     }
+
+    // Sleep to spread out the messages
+    usleep(10000);
   }
 }
 
