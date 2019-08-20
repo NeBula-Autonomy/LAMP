@@ -12,7 +12,7 @@
   <arg name="map_topic_output" default="blam_slam/octree_map_downsampled"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
-  <arg name="load_pose_graph_file" default=""/> 
+  <arg name="load_pose_graph_file" default=""/>
 
   <arg name="lamp_name" default="blam_slam_fe"/>
   <arg name="use_lo_frontend" default="false"/>
@@ -59,7 +59,7 @@
       <rosparam param="noise">
         odom_position_sigma: 0.6324
         odom_attitude_sigma: 0.316
-      </rosparam>      
+      </rosparam>
 
       <!-- Flag on whether it is front=end or not -->
       <param name="b_is_front_end" value="true" type="bool"/>
@@ -171,7 +171,7 @@
         output_frame: $(arg robot_namespace)/base_link
       </rosparam>
     </node>
- 
+
 
     <!-- Convert output PoseStamped message to Odometry -->
     <node pkg="topic_tools" type="transform" name="pose_to_odom"
@@ -180,6 +180,19 @@
                 /$(arg robot_namespace)/blam_slam/odometry
                 nav_msgs/Odometry
                 'nav_msgs.msg.Odometry(header=m.header, pose=geometry_msgs.msg.PoseWithCovariance(pose=m.pose))' --import nav_msgs geometry_msgs">
+    </node>
+
+    <!-- define difference in speed (odom vs blam) at which we notify slip -->
+    <arg name="slip_threshold" value="0.3" />
+    <!-- slip notifier -->
+    <node pkg="blam_slam"
+      name="performance_evaluation"
+      type="performance_eval.py"
+      output="screen"
+      args="$(arg slip_threshold)">
+      <!-- remap topics -->
+      <remap from="/blam_output" to="blam_slam_fe/localization_integrated_estimate" />
+      <remap from="/odometry" to="hero/wio_ekf/odom" />
     </node>
 
   </group>
