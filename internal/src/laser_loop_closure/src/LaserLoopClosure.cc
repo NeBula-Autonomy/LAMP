@@ -3150,7 +3150,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     const pose_graph_msgs::PoseGraph::ConstPtr& msg,
     bool* found_loop) {
   ROS_INFO_STREAM("Loop closure pose_graph_processing");
-
+  *found_loop = false;
   // Update graph to load with other (non odom) factors, if not already initialized
   if (values_recieved_at_base_.exists(initial_key_)){
     ROS_INFO("updating graph in PoseGraphBaseHandler from new factors");
@@ -3526,6 +3526,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     gtsam::Pose3 prior_pose = gtsam::Pose3(pose_orientation, pose_translation);
 
     new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(msg_prior.key, prior_pose, prior_noise));
+    *found_loop = true;
     // assume that the associated value (node) already added above
   }
 
@@ -3588,7 +3589,6 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   key_ = key_ + 1;
 
   // Run loop closures
-  *found_loop = false;
   std::vector<gtsam::Symbol> closure_keys;
   if (FindLoopClosures(key_ - 1, &closure_keys)){
     ROS_INFO("Found loop closures after pose graph callback ");
