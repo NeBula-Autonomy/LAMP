@@ -1,13 +1,17 @@
 <launch>
   <arg name="robot_namespace" default="robot"/>
+  <arg name="b_use_lo_frontend" default="false"/>
 
   <group ns="$(arg robot_namespace)">
-   <node name="pose_graph_merger" pkg="pose_graph_merger" type="pose_graph_merger_node" output="screen" respawn="false">
-        <!-- Topics -->
-        <!-- <remap from="~blam_slam_fe/pose_graph" to="blam_slam_fe/pose_graph"/>
-        <remap from="~blam_slam/pose_graph_lc" to="blam_slam/pose_graph_lc" />
-        <remap from="~blam_slam/pose_graph" to="blam_slam/pose_graph" /> -->
-    </node>
- </group>
+    <group if="$(eval b_use_lo_frontend == false)">
+      <node name="pose_graph_merger" pkg="pose_graph_merger" type="pose_graph_merger_node" output="screen" respawn="false">
+      </node>
+    </group>
+    <group if="$(eval b_use_lo_frontend == true)">
+      <node name="pose_graph_merger" pkg="pose_graph_merger" type="pose_graph_merger_node" output="screen" respawn="false">
+        <remap from="blam_slam_fe/localization_integrated_estimate" to="lo_frontend/localization_integrated_estimate" /> 
+      </node>
+    </group>
+  </group>
 
 </launch>

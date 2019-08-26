@@ -72,6 +72,7 @@
 #include <std_msgs/Bool.h>
 
 #include <core_msgs/Artifact.h>
+#include <pwd.h>
 
 // for UWB
 #include <gtsam/sam/RangeFactor.h>
@@ -87,6 +88,9 @@
 
 #include <map>
 #include <vector>
+
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 #include "RobustPGO/RobustSolver.h"
 
@@ -151,12 +155,17 @@ class LaserLoopClosure {
   // AddKeyScanPair().
   bool AddBetweenFactor(const geometry_utils::Transform3& delta,
                         const Mat66& covariance, const ros::Time& stamp,
-                        gtsam::Symbol* key);
+                        gtsam::Symbol* key, bool check_threshold=true);
+
+  bool AddBetweenFactorWithPointEstimation(const geometry_utils::Transform3& delta, 
+      const Mat66& covariance, const geometry_utils::Vec3& point, 
+      const ros::Time& stamp, gtsam::Symbol* key);
   
   bool AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data);
   
   bool DropUwbAnchor(const std::string uwb_id,
                      const ros::Time& stamp,
+                     const Eigen::Matrix3d T_rot,
                      const Eigen::Vector3d robot_position);
   
   bool UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
@@ -240,13 +249,28 @@ class LaserLoopClosure {
   // Function to search for loopclosures over the whole posegraph
   bool BatchLoopClosure();
 
+  geometry_msgs::Quaternion q_from_total_station_msg_;
+
+  // Function to correct the rotation of the map from Apriltags
+  geometry_msgs::Quaternion CorrectMapRotation(Eigen::Vector3d v1,
+                          gtsam::Key gate_key,
+                          gtsam::Key distal_key,
+                          std::string robot_name);
+  
+  geometry_msgs::Quaternion PublishMapRotationFromTotalStation();
+
+  // Function to correct the rotation of the map from total station
+  bool CorrectMapRotationFromTotalStation(Eigen::Vector3d v1,
+                          gtsam::Key robot_key,
+                          std::string robot_name);  
+
   // AddManualLoopClosure between the two keys to connect them. This function is
   // designed for a scenario where a human operator can manually perform
   // loop closures by adding these factors to the pose graph.
   bool AddManualLoopClosure(gtsam::Key key1, gtsam::Key key2, gtsam::Pose3 pose12);
 
   bool AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, gtsam::Pose3 pose12,
-                   ArtifactInfo artifact);
+                   ArtifactInfo artifact, bool fiducial = false, gtsam::Point3 location = gtsam::Point3());
 
   bool AddFactor(gtsam::Key key1, gtsam::Key key2, 
                  gtsam::Pose3 pose12, 
@@ -285,6 +309,7 @@ private:
   // Pose conversion from/to GTSAM format.
   geometry_utils::Transform3 ToGu(const gtsam::Pose3& pose) const;
   gtsam::Pose3 ToGtsam(const geometry_utils::Transform3& pose) const;
+  gtsam::Point3 ToGtsam(const geometry_utils::Vec3& point) const;
 
   // Covariance conversion from/to GTSAM format.
   typedef gtsam::noiseModel::Gaussian Gaussian;
@@ -303,6 +328,10 @@ private:
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
   gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactorAtLoad(
       const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
+
+  struct passwd* pw = getpwuid(getuid());
+
+  std::string homedir = pw->pw_dir;
 
   // Perform ICP between two laser scans.
   /**
@@ -337,6 +366,9 @@ private:
 
   // Subscribe to laster lc toggle
   void LaserLCToggle(const std_msgs::Bool& msg);
+
+  // Update loop edges based on iniers 
+  void updateInlierLoopEdges();
 
   // Node name.
   std::string name_;
@@ -374,6 +406,9 @@ private:
   double manual_lc_trans_precision_;
   double artifact_rot_precision_;
   double artifact_trans_precision_;
+  double fiducial_trans_precision_;
+  double fiducial_rot_precision_;
+  double point_estimate_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
   unsigned int relinearize_skip_;
@@ -410,13 +445,16 @@ private:
   std::unordered_map<gtsam::Key, std::string> uwb_key2id_hash_;
   std::unordered_map<std::string, int> uwb_id2keynumber_hash_;
   double uwb_range_measurement_error_;
-  unsigned int uwb_range_compensation_;
+  unsigned int uwb_adding_range_option_;
   unsigned int uwb_factor_optimizer_;
   unsigned int uwb_number_added_rangefactor_first_;
   unsigned int uwb_number_added_rangefactor_not_first_;
   double uwb_minimum_range_threshold_;
+  double uwb_maximum_range_threshold_;
   bool b_use_display_uwb_data_;
   bool b_use_uwb_outlier_rejection_;
+  bool b_uwb_add_betweenfactor_;
+  Eigen::Vector3d uwb_dropped_position_;
 
   // Optimizer object, and best guess pose values.
   std::unique_ptr<RobustPGO::RobustSolver> pgo_solver_;
@@ -442,7 +480,7 @@ private:
   std::string base_frame_id_;
 
   // Artifacts and labels 
-  std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash;
+  std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
 
   // Visualization publishers.
   ros::Subscriber laser_lc_toggle_sub_;
@@ -474,10 +512,13 @@ private:
 
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
+  typedef std::pair<gtsam::Symbol, gtsam::Pose3> Prior; 
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
+  std::vector<Edge> inlier_loop_edges_;
   std::vector<Edge> manual_loop_edges_;
   std::vector<ArtifactEdge> artifact_edges_;
+  std::vector<Prior> prior_factors_;
   std::vector<Edge> uwb_edges_range_;
   std::vector<Edge> uwb_edges_between_;
   std::map<Edge, gtsam::Pose3> edge_poses_;

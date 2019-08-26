@@ -6,6 +6,8 @@
 
   <arg name="lamp_name" default="blam_slam"/>
 
+  <arg name="ops_env" default="field"/>
+
   <group ns="$(arg robot_namespace)">
 
     <node pkg="blam_slam"
@@ -45,8 +47,8 @@
       <rosparam param="init">
         position: {x: 0.0, y: 0.0, z: 0.0}
         orientation: {roll: 0.0, pitch: 0.0, yaw: 0.0}
-        position_sigma: {x: 0.316, y: 0.316, z: 0.316}
-        orientation_sigma: {roll: 0.141, pitch: 0.141, yaw: 0.141}
+        position_sigma: {x: 0.2, y: 0.2, z: 0.2}
+        orientation_sigma: {roll: 0.041, pitch: 0.041, yaw: 0.041}
       </rosparam>
 
       <!-- Noise parameters -->
@@ -58,6 +60,9 @@
       <!-- Flag on whether it is front=end or not -->
       <param name="b_is_front_end" value="false" type="bool"/>
 
+      <!-- Flag on whether to use the front end -->
+      <param name="b_use_lo_frontend" value="false" type="bool"/>
+      
       <!-- Rates -->
       <rosparam file="$(find blam_example)/config/blam_rates.yaml"/>
 
@@ -91,6 +96,9 @@
 
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
+    
+      <!--AprilTags -->
+      <rosparam file="$(find blam_slam)/config/$(arg ops_env)/apriltag_parameters.yaml"/>
 
       <!-- show which to subscribe to of the robots -->
       <rosparam file="$(find laser_loop_closure)/config/robot_names.yaml" />
@@ -100,6 +108,7 @@
       <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
       <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
       <param name="robot_prefix" value="c" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="robot_prefix" value="f" if="$(eval robot_namespace == 'husky4')"/>
       <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax')"/>
       <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
 
@@ -107,6 +116,7 @@
       <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
       <param name="artifact_prefix" value="m" if="$(eval robot_namespace == 'husky2')"/>
       <param name="artifact_prefix" value="n" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="artifact_prefix" value="q" if="$(eval robot_namespace == 'husky4')"/>
       <param name="artifact_prefix" value="o" if="$(eval robot_namespace == 'telemax')"/>
       <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
 

@@ -9,7 +9,7 @@ check_for_loop_closures: false
 use_two_vlps: false
 
 # Use the lo_frontend
-b_use_lo_frontend: false
+#b_use_lo_frontend: false
 
 # Toggle outlier rejection
 b_use_outlier_rejection: false

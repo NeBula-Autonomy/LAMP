@@ -101,6 +101,8 @@ bool BlamSlam::Initialize(const ros::NodeHandle& n, bool from_log) {
     return false;
   }
 
+  VisualizeGroundtruthFiducials();
+
   return true;
 }
 
@@ -128,6 +130,16 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("restart_pitch", restart_pitch_)) return false;
   if (!pu::Get("restart_yaw", restart_yaw_)) return false;
 
+  if (!pu::Get("calibration_left_x", calibration_left_x_)) return false;
+  if (!pu::Get("calibration_left_y", calibration_left_y_)) return false;
+  if (!pu::Get("calibration_left_z", calibration_left_z_)) return false;
+  if (!pu::Get("calibration_right_x", calibration_right_x_)) return false;
+  if (!pu::Get("calibration_right_y", calibration_right_y_)) return false;
+  if (!pu::Get("calibration_right_z", calibration_right_z_)) return false;
+  if (!pu::Get("distal_x", distal_x_)) return false;
+  if (!pu::Get("distal_y", distal_y_)) return false;
+  if (!pu::Get("distal_z", distal_z_)) return false;
+
   // check if lamp is run as basestation
   b_is_basestation_ = false;
   if (!pu::Get("b_is_basestation", b_is_basestation_)) return false;
@@ -140,20 +152,27 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
       return false;
   }
 
+  if (!pu::Get("b_uwb_test_data_collection", b_uwb_test_data_collection_)) return false;
+  robot_name_ = getRobotName(n);
   XmlRpc::XmlRpcValue uwb_list;
   if (!pu::Get("uwb_list", uwb_list)) return false;
   std::vector<std::string> uwb_id_list_drop;
-  if (!pu::Get("uwb_drop/"+getRobotName(n), uwb_id_list_drop)) return false;
+  if (!pu::Get("uwb_drop/"+robot_name_, uwb_id_list_drop)) return false;
   for (int i = 0; i < uwb_list.size(); i++) {
     UwbMeasurementInfo uwb_data;
     std::string uwb_id = uwb_list[i]["id"];
     uwb_data.id = uwb_id;
-    uwb_data.drop_status = true;  // This should be false. (after the enhancement of UWB firmware)
+    if (b_uwb_test_data_collection_) {
+      uwb_data.drop_status = true;
+    }
+    else {
+      uwb_data.drop_status = false;
+    }
     uwb_id2data_hash_[uwb_id] = uwb_data;
     uwb_id2data_hash_[uwb_id].in_pose_graph = false;
   }
   for (auto itr = uwb_id_list_drop.begin(); itr != uwb_id_list_drop.end(); itr++) {
-    uwb_id2data_hash_[*itr].holder = getRobotName(n);
+    uwb_id2data_hash_[*itr].holder = robot_name_;
     uwb_id2data_hash_[*itr].drop_status = false;  // This sentence will be removed.
   }
 
@@ -187,6 +206,7 @@ bool BlamSlam::LoadParameters(const ros::NodeHandle& n) {
 
       // Publish updated map
       mapper_.PublishMap();
+      VisualizeGroundtruthFiducials();
     } else {
       ROS_ERROR_STREAM("Failed to load graph from " << graph_filename);
     }
@@ -233,12 +253,22 @@ bool BlamSlam::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(
       "localization_integrated_estimate", 10, false);
 
+  april_tag_gt_pub_ = nl.advertise<visualization_msgs::Marker>("apriltag_gt_markers", 10, false);
+
   add_factor_srv_ = nl.advertiseService("add_factor", &BlamSlam::AddFactorService, this);
   remove_factor_srv_ = nl.advertiseService("remove_factor", &BlamSlam::RemoveFactorService, this);
   save_graph_srv_ = nl.advertiseService("save_graph", &BlamSlam::SaveGraphService, this);
   restart_srv_ = nl.advertiseService("restart", &BlamSlam::RestartService, this);
   load_graph_srv_ = nl.advertiseService("load_graph", &BlamSlam::LoadGraphService, this);
   batch_loop_closure_srv_ = nl.advertiseService("batch_loop_closure", &BlamSlam::BatchLoopClosureService, this);
+  correct_map_rotation_srv_ = nl.advertiseService(
+      "correct_map_rotation", &BlamSlam::CorrectMapRotationService, this);
+  add_position_estimate_srv_ = nl.advertiseService(
+      "add_position_estimate", &BlamSlam::AddPositionEstimateService, this);
+  publish_map_rotation_from_total_station_srv_ = nl.advertiseService(
+      "publish_map_rotation_from_total_station", &BlamSlam::PublishMapRotationFromTotalStationService, this);
+  correct_map_rotation_from_total_station_srv_ = nl.advertiseService(
+      "correct_map_rotation_from_total_station", &BlamSlam::CorrectMapRotationFromTotalStationService, this);
   drop_uwb_srv_ = nl.advertiseService("drop_uwb_anchor", &BlamSlam::DropUwbService, this);
 
   if (from_log)
@@ -274,7 +304,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
           new PcldSynchronizer(PcldSyncPolicy(pcld_queue_size_), *pcld1_sub_, *pcld2_sub_));
         pcld_synchronizer->registerCallback(&BlamSlam::TwoPointCloudCallback, this);
       } else {
-        pcld_sub_ = nl.subscribe("pcld", 100000, &BlamSlam::PointCloudCallback, this);
+        pcld_sub_ = nl.subscribe("pcld", 10, &BlamSlam::PointCloudCallback, this);
       }
     } else {
 
@@ -352,8 +382,8 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   ROS_INFO("Creating message filters");
 
   if (b_use_lo_frontend_){
-    this->filterPointSub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld_sync", 10);
-    this->filterPoseSub_ = new message_filters::Subscriber<geometry_msgs::PoseStamped>(nl, "fe_pose", 10);
+    this->filterPointSub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nl, "pcld_sync", 100);
+    this->filterPoseSub_ = new message_filters::Subscriber<geometry_msgs::PoseStamped>(nl, "fe_pose", 100);
 
 
     this->poseScanSync_ = new message_filters::Synchronizer
@@ -368,7 +398,7 @@ bool BlamSlam::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
             <
               sensor_msgs::PointCloud2,
               geometry_msgs::PoseStamped
-            >(10),
+            >(100),
             *this->filterPointSub_,
             *this->filterPoseSub_
     );
@@ -489,6 +519,7 @@ bool BlamSlam::AddFactorService(blam_slam::AddFactorRequest &request,
 
   // Publish updated map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 
   // Get update from front-end
   SendRepubPoseGraphFlag();
@@ -558,6 +589,7 @@ bool BlamSlam::RemoveFactorService(blam_slam::RemoveFactorRequest &request,
 
   // Publish updated map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 
   std::cout << "Updated the map" << std::endl;
 
@@ -668,6 +700,117 @@ bool BlamSlam::BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &reque
   return true; 
 }
 
+// Correct map rotation from distal marker
+bool BlamSlam::CorrectMapRotationService(
+    blam_slam::CorrectMapRotationRequest& request,
+    blam_slam::CorrectMapRotationResponse& response) {
+  std::cout << "Correct Map Rotation. Correcting map rotation..." << std::endl;
+  // Construct a Ground Truth vector from the gate(calibration_left) to
+  // distal(distal)
+  Eigen::Vector3d v1((distal_x_),
+                     (distal_y_),
+                     (distal_z_));
+  response.rotation =
+      loop_closure_.CorrectMapRotation(v1, gate_key_, distal_key_, robot_name_);
+  response.success = true;
+  return true;
+}
+
+bool BlamSlam::AddPositionEstimateService(
+    blam_slam::AddPositionEstimateRequest& request, 
+    blam_slam::AddPositionEstimateResponse& response) {
+
+  gu::Vec3 point_gu = gu::ros::FromROS(request.point); // retrieve the point from request
+
+  gtsam::Symbol pose_key; // empty pose key to be filled
+  gu::MatrixNxNBase<double, 6> covariance; // covariance for the between
+  covariance.Zeros();
+  for (int i = 0; i < 3; ++i)
+    covariance(i, i) = attitude_sigma_ * attitude_sigma_;
+  for (int i = 3; i < 6; ++i)
+    covariance(i, i) =
+        position_sigma_ * position_sigma_;
+  const ros::Time stamp = ros::Time::now();
+
+  // adds a between according to the odometry (and create a node) and add prior on node
+  if (!loop_closure_.AddBetweenFactorWithPointEstimation(
+      odometry_.GetIncrementalEstimate(),
+      covariance,
+      point_gu,
+      stamp,
+      &pose_key)) {
+    response.success = false; 
+    return false;
+  }
+
+  ROS_INFO("Adding position estimate to current robot pose.");
+  
+  // We found one - regenerate the 3D map.
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  loop_closure_.GetMaximumLikelihoodPoints(regenerated_map.get());
+
+  mapper_.Reset();
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
+
+  localization_.SetIntegratedEstimate(loop_closure_.GetLastPose());
+
+  // Also reset the robot's estimated position.
+  if (b_use_lo_frontend_){
+    be_current_pose_ = loop_closure_.GetLastPose();
+    PublishPoseWithLoFrontend();
+  } else {
+    // Publish localization pose messages
+    ros::Time stamp = loop_closure_.GetTimeAtLastKey();
+    localization_.UpdateTimestamp(stamp);
+    localization_.PublishPoseNoUpdate();
+  }
+
+  // Visualize the pose graph updates
+  loop_closure_.PublishPoseGraph();
+
+  // Publish artifacts - from pose-graph positions
+  loop_closure_.PublishArtifacts();
+
+  return true;
+}
+
+// Publish map rotation from distal marker
+bool BlamSlam::PublishMapRotationFromTotalStationService(
+    blam_slam::PublishMapRotationFromTotalStationRequest& request,
+    blam_slam::PublishMapRotationFromTotalStationResponse& response) {
+  std::cout << "Correct Map Rotation. Correcting map rotation..." << std::endl;
+  // Construct a Ground Truth vector from the gate(calibration_left) to
+  // distal(distal)
+  Eigen::Vector3d v1((distal_x_),
+                     (distal_y_),
+                     (distal_z_));
+  response.rotation =
+      loop_closure_.PublishMapRotationFromTotalStation();
+  response.success = true;
+  return true;
+}
+
+// Correct map rotation from total station
+bool BlamSlam::CorrectMapRotationFromTotalStationService(
+    blam_slam::CorrectMapRotationFromTotalStationRequest& request,
+    blam_slam::CorrectMapRotationFromTotalStationResponse& response) {
+  std::cout << "Correct Map Rotation from total station. Correcting map rotation..." << std::endl;
+  // Construct a Ground Truth vector from the total station
+  double x_from_total_station = request.x;
+  double y_from_total_station = request.y;
+  double z_from_total_station = request.z;
+
+  Eigen::Vector3d v1((x_from_total_station),
+                     (y_from_total_station),
+                     (z_from_total_station));
+
+  gtsam::Key robot_key = loop_closure_.GetKeyAtTime(ros::Time::now());
+  response.success =
+      loop_closure_.CorrectMapRotationFromTotalStation(v1, robot_key, robot_name_);
+  if (response.success)
+    return true;
+}
 
 bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
                               mesh_msgs::ProcessCommNodeResponse &response) {
@@ -681,7 +824,13 @@ bool BlamSlam::DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
     aug_robot_position = localization_.GetIntegratedEstimate().translation.Eigen();
   }
 
-  loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, aug_robot_position);
+  Eigen::Affine3d T;
+  const std::string parent_frame = "/world";
+  const std::string child_frame = "/"+robot_name_+"/base_link";
+  getTransformEigenFromTF(parent_frame, child_frame, ros::Time::now(), T);
+  Eigen::Matrix3d T_rot = T.rotation();
+
+  loop_closure_.DropUwbAnchor(request.node.AnchorID, request.node.DropTime, T_rot, aug_robot_position);
 
   uwb_id2data_hash_[request.node.AnchorID].drop_status = true;
   
@@ -819,12 +968,25 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
-
-  bool result = loop_closure_.AddArtifact(
-    pose_key,
-    cur_artifact_key,
-    R_pose_A, 
-    artifactinfo);
+  bool result;
+  if (msg.parent_id == "distal" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(distal_x_, distal_y_, distal_z_);
+    distal_key_ = cur_artifact_key;
+    result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
+  } else if (msg.parent_id == "calibration_left" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_);
+    gate_key_ = cur_artifact_key;
+    result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
+  } else if (msg.parent_id == "calibration_right" && b_is_new_artifact) {
+    gtsam::Point3 position = gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_);
+    result = loop_closure_.AddArtifact(pose_key, cur_artifact_key, R_pose_A, artifactinfo, true, position);
+  } else {
+    result = loop_closure_.AddArtifact(
+      pose_key,
+      cur_artifact_key,
+      R_pose_A, 
+      artifactinfo);
+  }
 
   if (result){
     std::cout << "adding artifact observation succeeded" << std::endl;
@@ -892,6 +1054,7 @@ void BlamSlam::ArtifactCallback(const core_msgs::Artifact& msg) {
 
     // Publish updated map // TODO have criteria of change for when to publish the map?
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
   }
 }
 
@@ -979,6 +1142,7 @@ void BlamSlam::ProcessUwbRangeData(const std::string uwb_id) {
 
     // Publish updated map
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
 
     ROS_INFO("Updated the map by UWB Range Factors");
 
@@ -991,18 +1155,17 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
   if (!b_use_uwb_) {
     return;
   }
-  ROS_INFO("In UWB Callback");
   if (loop_closure_.GetNumberStampsKeyed() > uwb_first_key_threshold_) {
     
     // Store the UWB-related data into the buffer "uwb_id2data_hash_"
     auto itr = uwb_id2data_hash_.find(msg.id);
     if (itr != end(uwb_id2data_hash_)) {
       if (uwb_id2data_hash_[msg.id].drop_status == true) {
+        ROS_INFO("In UWB Callback");
         uwb_id2data_hash_[msg.id].range.push_back(msg.range);
         uwb_id2data_hash_[msg.id].time_stamp.push_back(msg.header.stamp);
         uwb_id2data_hash_[msg.id].robot_position.push_back(localization_.GetIntegratedEstimate().translation.Eigen()); // Maybe should use tfs for this? If we are in the middle of a loop closure?
         uwb_id2data_hash_[msg.id].nearest_pose_key.push_back(loop_closure_.GetKeyAtTime(msg.header.stamp));
-
       }
     } 
     else {
@@ -1014,6 +1177,7 @@ void BlamSlam::UwbSignalCallback(const uwb_msgs::Anchor& msg) {
 
 void BlamSlam::VisualizationTimerCallback(const ros::TimerEvent& ev) {
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 }
 
 void BlamSlam::RepubPoseGraphCallback(const std_msgs::Empty& msg){
@@ -1030,7 +1194,7 @@ void BlamSlam::SendRepubPoseGraphFlag(){
 
 void BlamSlam::PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr &pointCloud, const geometry_msgs::PoseStamped pose) {
 
-    // ROS_INFO("In message filter callback");
+    ROS_INFO("\n\n>>>>>>>>>>>>>>>>>>>>>\nIn message filter callback\n>>>>>>>>>>>>>>>>>>>>>\n");
 
     geometry_utils::Transform3 fePose = geometry_utils::ros::FromROS(pose.pose);
 
@@ -1272,6 +1436,7 @@ void BlamSlam::ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const
 
     // Publish the map
     mapper_.PublishMap();
+    VisualizeGroundtruthFiducials();
   }   
 
 }
@@ -1518,6 +1683,7 @@ void BlamSlam::PoseGraphCallback(
 
   // Publish map
   mapper_.PublishMap();
+  VisualizeGroundtruthFiducials();
 	cur_time = clock() - start;
   ROS_INFO_STREAM("PoseGraphCallback completed in " << (float)cur_time/CLOCKS_PER_SEC << " seconds");
 }
@@ -1575,5 +1741,73 @@ void BlamSlam::PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& ms
 
   // // Publish the updated pose
   // localization_.PublishPoseNoUpdate();
+}
+
+void BlamSlam::VisualizeGroundtruthFiducials() { 
+  // Get class of artifact
+  visualization_msgs::Marker m_calibration_left, m_calibration_right, m_distal;
+
+  m_distal.pose.position.x = distal_x_;
+  m_distal.pose.position.y = distal_y_;
+  m_distal.pose.position.z = distal_z_;
+  m_distal.header.frame_id = "world";
+  m_distal.id = 0;
+  m_distal.action = visualization_msgs::Marker::ADD;
+  m_distal.pose.orientation.x = 0.0;
+  m_distal.pose.orientation.y = 0.0;
+  m_distal.pose.orientation.z = 0.0;
+  m_distal.pose.orientation.w = 1.0;
+  m_distal.scale.x = 0.15f;
+  m_distal.scale.y = 0.7f;
+  m_distal.scale.z = 0.7f;
+  m_distal.color.r = 0.0f;
+  m_distal.color.g = 1.0f;
+  m_distal.color.b = 0.0f;
+  m_distal.color.a = 1.0f;
+  m_distal.type = visualization_msgs::Marker::CUBE;
+
+  // cal left 
+  m_calibration_left.pose.position.x = calibration_left_x_;
+  m_calibration_left.pose.position.y = calibration_left_y_;
+  m_calibration_left.pose.position.z = calibration_left_z_;
+  m_calibration_left.header.frame_id = "world";
+  m_calibration_left.id = 1;
+  m_calibration_left.action = visualization_msgs::Marker::ADD;
+  m_calibration_left.pose.orientation.x = 0.0;
+  m_calibration_left.pose.orientation.y = 0.0;
+  m_calibration_left.pose.orientation.z = 0.0;
+  m_calibration_left.pose.orientation.w = 1.0;
+  m_calibration_left.scale.x = 0.15f;
+  m_calibration_left.scale.y = 0.7f;
+  m_calibration_left.scale.z = 0.7f;
+  m_calibration_left.color.r = 0.0f;
+  m_calibration_left.color.g = 1.0f;
+  m_calibration_left.color.b = 0.0f;
+  m_calibration_left.color.a = 1.0f;
+  m_calibration_left.type = visualization_msgs::Marker::CUBE;
+
+  // cal right 
+  m_calibration_right.pose.position.x = calibration_right_x_;
+  m_calibration_right.pose.position.y = calibration_right_y_;
+  m_calibration_right.pose.position.z = calibration_right_z_;
+  m_calibration_right.header.frame_id = "world";
+  m_calibration_right.id = 2; 
+  m_calibration_right.action = visualization_msgs::Marker::ADD;
+  m_calibration_right.pose.orientation.x = 0.0;
+  m_calibration_right.pose.orientation.y = 0.0;
+  m_calibration_right.pose.orientation.z = 0.0;
+  m_calibration_right.pose.orientation.w = 1.0;
+  m_calibration_right.scale.x = 0.15f;
+  m_calibration_right.scale.y = 0.7f;
+  m_calibration_right.scale.z = 0.7f;
+  m_calibration_right.color.r = 0.0f;
+  m_calibration_right.color.g = 1.0f;
+  m_calibration_right.color.b = 0.0f;
+  m_calibration_right.color.a = 1.0f;
+  m_calibration_right.type = visualization_msgs::Marker::CUBE;
+
+  april_tag_gt_pub_.publish(m_distal);
+  april_tag_gt_pub_.publish(m_calibration_left);
+  april_tag_gt_pub_.publish(m_calibration_right);
 }
 

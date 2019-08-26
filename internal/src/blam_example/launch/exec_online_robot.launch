@@ -12,9 +12,12 @@
   <arg name="map_topic_output" default="blam_slam/octree_map_downsampled"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
-  <arg name="load_pose_graph_file" default=""/> 
+  <arg name="load_pose_graph_file" default=""/>
 
   <arg name="lamp_name" default="blam_slam_fe"/>
+  <arg name="use_lo_frontend" default="false"/>
+
+  <arg name="ops_env" default="experimental"/>
 
   <group ns="$(arg robot_namespace)">
     <!-- SLAM -->
@@ -48,18 +51,21 @@
       <rosparam param="init">
         position: {x: 0.0, y: 0.0, z: 0.0}
         orientation: {roll: 0.0, pitch: 0.0, yaw: 0.0}
-        position_sigma: {x: 0.316, y: 0.316, z: 0.316}
-        orientation_sigma: {roll: 0.141, pitch: 0.141, yaw: 0.141}
+        position_sigma: {x: 0.016, y: 0.016, z: 0.016}
+        orientation_sigma: {roll: 0.041, pitch: 0.041, yaw: 0.041}
       </rosparam>
 
       <!-- Noise parameters -->
       <rosparam param="noise">
         odom_position_sigma: 0.6324
         odom_attitude_sigma: 0.316
-      </rosparam>      
+      </rosparam>
 
       <!-- Flag on whether it is front=end or not -->
       <param name="b_is_front_end" value="true" type="bool"/>
+
+      <!-- Flag on whether we are use lo_frontend -->
+      <param name="b_use_lo_frontend" value="$(arg use_lo_frontend)" type="bool"/>
 
       <!-- Rates -->
       <rosparam file="$(find blam_example)/config/blam_rates.yaml"/>
@@ -72,6 +78,8 @@
 
       <!-- Point cloud filter -->
       <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
+      <!--rosparam file="/home/costar/huskySIM_ws/src/husky_core/localizer_blam/internal/src/point_cloud_filter/config/parameters.yaml"/-->
+
 
       <!-- Point cloud odometry -->
       <rosparam file="$(find point_cloud_odometry)/config/parameters.yaml"/>
@@ -95,10 +103,14 @@
       <!-- Multirobot -->
       <rosparam file="$(find blam_slam)/config/parameters.yaml"/>
 
+      <!--AprilTags -->
+      <rosparam file="$(find blam_slam)/config/$(arg ops_env)/apriltag_parameters.yaml"/>
+
       <!-- The robot prefix dependent of robot_namespace -->
       <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
       <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
       <param name="robot_prefix" value="c" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="robot_prefix" value="f" if="$(eval robot_namespace == 'husky4')"/>
       <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax')"/>
       <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
 
@@ -106,6 +118,7 @@
       <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
       <param name="artifact_prefix" value="m" if="$(eval robot_namespace == 'husky2')"/>
       <param name="artifact_prefix" value="n" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="artifact_prefix" value="q" if="$(eval robot_namespace == 'husky4')"/>
       <param name="artifact_prefix" value="o" if="$(eval robot_namespace == 'telemax')"/>
       <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
 
@@ -130,11 +143,10 @@
     </node>
     <node name="point_cloud_throttler_front" type="throttle" pkg="topic_tools" args="messages velodyne_front/velodyne_points $(arg vlp_throttle_freq)">
     </node>
- 
 
     <!-- Republish node with different frame_id -->
     <node pkg="nodelet" type="nodelet" name="transform_points_base_link"
-          args="standalone pcl/PassThrough">
+          args="standalone pcl/PassThrough" unless="$(arg use_lo_frontend)">
       <remap from="~input" to="velodyne_points"/>
       <!-- <remap from="~input" to="velodyne_points_throttle"/> -->
       <remap from="~output" to="velodyne_points/transformed"/>
@@ -148,7 +160,7 @@
 
     <!-- Republish node with different frame_id -->
     <node pkg="nodelet" type="nodelet" name="transform_points_base_link_front"
-          args="standalone pcl/PassThrough">
+          args="standalone pcl/PassThrough" unless="$(arg use_lo_frontend)">
       <remap from="~input" to="velodyne_front/velodyne_points"/>
       <!-- <remap from="~input" to="velodyne_front/velodyne_points_throttle"/> -->
       <remap from="~output" to="velodyne_front/velodyne_points/transformed"/>
@@ -160,6 +172,7 @@
       </rosparam>
     </node>
 
+
     <!-- Convert output PoseStamped message to Odometry -->
     <node pkg="topic_tools" type="transform" name="pose_to_odom"
           respawn="true" output="screen"
@@ -169,12 +182,26 @@
                 'nav_msgs.msg.Odometry(header=m.header, pose=geometry_msgs.msg.PoseWithCovariance(pose=m.pose))' --import nav_msgs geometry_msgs">
     </node>
 
+    <!-- define difference in speed (odom vs blam) at which we notify slip -->
+    <arg name="slip_threshold" value="0.3" />
+    <!-- slip notifier -->
+    <node pkg="blam_slam"
+      name="performance_evaluation"
+      type="performance_eval.py"
+      output="screen"
+      args="$(arg slip_threshold)">
+      <!-- remap topics -->
+      <remap from="/blam_output" to="blam_slam_fe/localization_integrated_estimate" />
+      <remap from="/odometry" to="hero/wio_ekf/odom" />
+    </node>
+
   </group>
 
   <!-- Run back end -->
   <group if="$(arg back_end_on_robot)">
     <include file="$(find blam_example)/launch/exec_online_robot_lc.launch">
       <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+      <arg name="ops_env" value="$(arg ops_env)"/>
     </include>
   </group>
 
@@ -182,7 +209,9 @@
   <group if="$(arg back_end_on_robot)">
     <include file="$(find pose_graph_merger)/launch/pose_graph_merger.launch">
       <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+      <arg name="b_use_lo_frontend" value="$(arg use_lo_frontend)"/>
     </include>
   </group>
 
 </launch>
+

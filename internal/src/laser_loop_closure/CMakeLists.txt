@@ -30,6 +30,7 @@ find_package(catkin REQUIRED COMPONENTS
   interactive_markers
   core_msgs
   robust_pgo
+  eigen_conversions
 )
 
 catkin_package(
@@ -48,6 +49,7 @@ catkin_package(
     interactive_markers
     core_msgs
     robust_pgo
+    eigen_conversions
 )
 
 

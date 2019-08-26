@@ -44,6 +44,8 @@
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
+#include <unistd.h>
+
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/pcd_io.h>
@@ -51,6 +53,7 @@
 #include <gtsam/slam/dataset.h>
 
 #include <tf_conversions/tf_eigen.h>
+#include <eigen_conversions/eigen_msg.h>
 
 #include <fstream>
 
@@ -158,7 +161,11 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;
   if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_)) return false;
   if (!pu::Get("artifact_rot_precision", artifact_rot_precision_)) return false; 
-  if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false; 
+  if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false;
+  if (!pu::Get("point_estimate_precision", point_estimate_precision_)) return false;
+
+  if(!pu::Get("fiducial_trans_precision", fiducial_trans_precision_)) return false;
+  if(!pu::Get("fiducial_rot_precision", fiducial_rot_precision_)) return false;
 
   // Load ICP parameters.
   if (!pu::Get("icp/tf_epsilon", icp_tf_epsilon_)) return false;
@@ -213,12 +220,12 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("translational_sanity_check_odom", translational_sanity_check_odom_)) return false;
   // UWB
   if (!pu::Get("uwb_range_measurement_error", uwb_range_measurement_error_)) return false;
-  if (!pu::Get("uwb_range_compensation", uwb_range_compensation_)) return false;
-  // Robust Optimizer
+  if (!pu::Get("uwb_adding_range_option", uwb_adding_range_option_)) return false;
   if (!pu::Get("uwb_factor_optimizer", uwb_factor_optimizer_)) return false;
   if (!pu::Get("uwb_number_added_rangefactor_first", uwb_number_added_rangefactor_first_)) return false;
   if (!pu::Get("uwb_number_added_rangefactor_not_first", uwb_number_added_rangefactor_not_first_)) return false;
   if (!pu::Get("uwb_minimum_range_threshold", uwb_minimum_range_threshold_)) return false;
+  if (!pu::Get("uwb_maximum_range_threshold", uwb_maximum_range_threshold_)) return false;
   XmlRpc::XmlRpcValue uwb_list;
   if (!pu::Get("uwb_list", uwb_list)) return false;
   for (int i=0; i<uwb_list.size(); i++) {
@@ -227,6 +234,12 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   }
   if (!pu::Get("b_use_display_uwb_data", b_use_display_uwb_data_)) return false;
   if (!pu::Get("b_use_uwb_outlier_rejection", b_use_uwb_outlier_rejection_)) return false;
+  if (!pu::Get("b_uwb_add_betweenfactor", b_uwb_add_betweenfactor_)) return false;
+  double uwb_dropped_x, uwb_dropped_y, uwb_dropped_z;
+  if (!pu::Get("uwb_dropped_position/x", uwb_dropped_x)) return false;
+  if (!pu::Get("uwb_dropped_position/y", uwb_dropped_y)) return false;
+  if (!pu::Get("uwb_dropped_position/z", uwb_dropped_z)) return false;
+  uwb_dropped_position_ << uwb_dropped_x, uwb_dropped_y, uwb_dropped_z;
 
     // Optimizer backend
   bool b_use_outlier_rejection;
@@ -243,7 +256,7 @@ bool LaserLoopClosure::LoadParameters(const ros::NodeHandle& n) {
   } else {
     rpgo_params_.setNoRejection(RobustPGO::Verbosity::VERBOSE); // set no outlier rejection
   }
-  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'u'}; // for artifacts
+  std::vector<char> special_symbs{'l', 'm', 'n', 'o', 'p', 'q', 'u'}; // for artifacts
   rpgo_params_.specialSymbols = special_symbs;
   // set solver 
   int solver_num;
@@ -465,9 +478,43 @@ bool LaserLoopClosure::AddFactorAtLoad(const gu::Transform3& delta, const LaserL
   return true;
 }
 
+bool LaserLoopClosure::AddBetweenFactorWithPointEstimation(
+    const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance, 
+    const gu::Vec3& point, const ros::Time& stamp, gtsam::Symbol* key) {
+
+  if (save_posegraph_backup_) {
+    Save("posegraph_backup.zip");
+  }
+  
+  // first add between factor (basically odometry)
+  if (!AddBetweenFactor(delta, covariance, stamp, key, false)) {
+    return false;
+  }
+
+  // create the prior factor 
+  gtsam::Point3 estimated_pt = ToGtsam(point);
+
+  // create precisions
+  gtsam::Vector6 point_precisions;
+  point_precisions.head<3>().setConstant(0.0);
+  point_precisions.tail<3>().setConstant(point_estimate_precision_);
+  static const gtsam::SharedNoiseModel& point_noise = 
+      gtsam::noiseModel::Diagonal::Precisions(point_precisions);
+
+  gtsam::NonlinearFactorGraph prior_factor; // create nfg and values to be optimized
+  prior_factor.add(gtsam::PriorFactor<gtsam::Pose3>(*key, Pose3(Rot3(), estimated_pt), point_noise));
+  prior_factors_.push_back(Prior(*key, Pose3(Rot3(), estimated_pt)));
+  // optimize
+  pgo_solver_->update(prior_factor, gtsam::Values()); // values already added in between
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+  values_ = pgo_solver_->calculateEstimate();
+
+  return true;
+}
+
 bool LaserLoopClosure::AddBetweenFactor(
     const gu::Transform3& delta, const LaserLoopClosure::Mat66& covariance,
-    const ros::Time& stamp, gtsam::Symbol* key) {
+    const ros::Time& stamp, gtsam::Symbol* key, bool check_threshold) {
   if (key == NULL) {
     ROS_ERROR("%s: Output key is null.", name_.c_str());
     return false;
@@ -485,7 +532,8 @@ bool LaserLoopClosure::AddBetweenFactor(
     odometry_ = Pose3(Rot3::RzRyRx(0, 0, 0),odometry_.translation());
   }
 
-  if (odometry_.translation().norm() < translation_threshold_nodes_ &&  2*acos(odometry_.rotation().toQuaternion().w()) < rotation_threshold_nodes_) {
+  if (check_threshold && odometry_.translation().norm() < translation_threshold_nodes_ &&  
+      2*acos(odometry_.rotation().toQuaternion().w()) < rotation_threshold_nodes_) {
     // No new pose - translation is not enough, nor is rotation to add a new node
     return false;
   }
@@ -600,7 +648,8 @@ bool LaserLoopClosure::AddBetweenFactor(
   odometry_ = Pose3::identity();
 
   // Return true to store a key frame
-  if (odometry_kf_.translation().norm() > translation_threshold_kf_ || 2*acos(odometry_kf_.rotation().toQuaternion().w()) > rotation_threshold_kf_) {
+  if (!check_threshold || odometry_kf_.translation().norm() > translation_threshold_kf_ || 
+      2*acos(odometry_kf_.rotation().toQuaternion().w()) > rotation_threshold_kf_) {
     // True for a new key frame
     // Reset odometry to identity
     odometry_kf_ = Pose3::identity();
@@ -647,7 +696,8 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
   // TODO: Range measurement error may depend on a distance between a transmitter and a receiver
   double sigmaR = uwb_range_measurement_error_;
   gtsam::noiseModel::Base::shared_ptr gaussian = gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
-  gtsam::noiseModel::Base::shared_ptr rangeNoise = gaussian;
+  gtsam::noiseModel::Base::shared_ptr tukey = gtsam::noiseModel::Robust::Create(gtsam::noiseModel::mEstimator::Tukey::Create(15), gaussian); //robust
+  gtsam::noiseModel::Base::shared_ptr rangeNoise = tukey;
 
   NonlinearFactorGraph new_factor;
   gtsam::Values new_values;
@@ -655,7 +705,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
   // Change the process according to whether the uwb anchor is observed for the first time or not
   if (!values_.exists(uwb_key)) {
 
-    switch (uwb_range_compensation_) {
+    switch (uwb_adding_range_option_) {
       case 0 : 
       {      
         // Add RangeFactors between the nearest pose key and the UWB key
@@ -700,6 +750,37 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
         break;
       case 1 :
       {
+        // Add RangeFactors between the nearest pose key and the UWB key
+        int counter = 0;
+        for (int itr = 0; itr < sorted_data.range_nearest_key.size(); itr++) {
+          double range = sorted_data.range_nearest_key[counter];
+          if (range > uwb_minimum_range_threshold_ && range < uwb_maximum_range_threshold_) {
+            gtsam::Key pose_key = sorted_data.pose_key_list[counter];
+            new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
+            Edge edge_range = std::make_pair(pose_key, uwb_key);
+            uwb_edges_range_.push_back(edge_range);
+            edge_ranges_[edge_range] = range;
+            error_rangefactor_[edge_range] = sigmaR;
+            ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+                            << gtsam::DefaultKeyFormatter(pose_key) << " and "
+                            << gtsam::DefaultKeyFormatter(uwb_key));
+          }
+          counter++;
+        }
+
+        // Add a UWB key
+        // TODO
+        Eigen::Vector3d robot_position = sorted_data.posekey2data[sorted_data.pose_key_list[0]].robot_position[0];
+        gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
+        new_values.insert(uwb_key, pose_uwb);
+
+        // Add a PriorFactor for the UWB key
+        gtsam::Vector6 prior_precisions;
+        prior_precisions.head<3>().setConstant(10.0);
+        prior_precisions.tail<3>().setConstant(0.0);
+        static const gtsam::SharedNoiseModel& prior_noise = 
+        gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
+        new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(uwb_key, gtsam::Pose3(), prior_noise));
       }
         break;
       default :
@@ -711,7 +792,7 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
     }
   }
   else {
-    switch (uwb_range_compensation_) {
+    switch (uwb_adding_range_option_) {
       case 0 :
       {
         int counter = 0;
@@ -740,6 +821,22 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
         break;
       case 1 :
       {
+        int counter = 0;
+        for (int itr = 0; itr < sorted_data.range_nearest_key.size(); itr++) {
+          double range = sorted_data.range_nearest_key[counter];
+          if (range > uwb_minimum_range_threshold_ && range < uwb_maximum_range_threshold_) {
+            gtsam::Key pose_key = sorted_data.pose_key_list[counter];
+            new_factor.add(gtsam::RangeFactor<Pose3, Pose3>(pose_key, uwb_key, range, rangeNoise));
+            Edge edge_range = std::make_pair(pose_key, uwb_key);
+            uwb_edges_range_.push_back(edge_range);
+            edge_ranges_[edge_range] = range;
+            error_rangefactor_[edge_range] = sigmaR;
+            ROS_INFO_STREAM("LaserLoopClosure adds new UWB edge between... "
+                            << gtsam::DefaultKeyFormatter(pose_key) << " and "
+                            << gtsam::DefaultKeyFormatter(uwb_key));
+          }
+          counter++;
+        }
       }
         break;
       default :
@@ -756,18 +853,43 @@ bool LaserLoopClosure::AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo
 
 void LaserLoopClosure::UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data) {
   std::vector<bool> b_outlier_list;
+  std::vector<bool> b_range_outlier_list;
+  std::vector<bool> b_time_outlier_list;
   std::vector<double> time_stamp;
   for (auto itr : uwb_data.time_stamp) {
     time_stamp.push_back(itr.toSec());
   }
+  std::vector<double> time_index;
+  double counter = 0.0;
+  for (auto itr : time_stamp) {
+    time_index.push_back(counter);
+    counter = counter + 1.0;
+  }
 
-  hampelOutlierRejection<double, double>(uwb_data.range, time_stamp, b_outlier_list);
+  // Outlier rejection for range measurement
+  hampelOutlierRejection<double, double>(uwb_data.range, time_stamp, b_range_outlier_list);
+  // Outlier rejection for time stamps
+  hampelOutlierRejection<double, double>(time_stamp, time_index, b_time_outlier_list);
+  // Integrate the result of outlier rejection for range measurement and time stamps
+  for (int itr = 0; itr < b_range_outlier_list.size(); itr++) {
+    if (b_range_outlier_list[itr] == true || b_time_outlier_list[itr] == true) {
+      b_outlier_list.push_back(true);
+    }
+    else {
+      b_outlier_list.push_back(false);
+    }
+  }
 
   for (int itr = 0; itr < b_outlier_list.size(); itr++) {
     int itr_back = b_outlier_list.size()-itr-1;
     if (b_outlier_list[itr_back] == true) {
-      // std::cout << "data No. " << itr_back << "\n";
-      // std::cout << "outlier range: " << uwb_data.range[itr_back]  << "\n";
+      // Show the outliers
+      if (b_use_display_uwb_data_ == true) {
+        std::cout << "outlier data No. " << itr_back << "\t";
+        std::cout << "range: " << uwb_data.range[itr_back]  << "\t";
+        std::cout << "time_stamp: " << uwb_data.time_stamp[itr_back] << "\n";
+      }
+      // Remove the outlier data from the buffer
       uwb_data.time_stamp.erase(uwb_data.time_stamp.begin()+itr_back);
       uwb_data.range.erase(uwb_data.range.begin()+itr_back);
       uwb_data.robot_position.erase(uwb_data.robot_position.begin()+itr_back);
@@ -991,50 +1113,62 @@ void LaserLoopClosure::Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &v
 
 bool LaserLoopClosure::DropUwbAnchor(const std::string uwb_id,
                                      const ros::Time& stamp,
+                                     const Eigen::Matrix3d T_rot,
                                      const Eigen::Vector3d robot_position) {
 
-  gtsam::Key uwb_key;
-  if (uwb_id2key_hash_.find(uwb_id) != uwb_id2key_hash_.end()) {
-    uwb_key = uwb_id2key_hash_[uwb_id];
+  if (b_uwb_add_betweenfactor_) {
+    gtsam::Key uwb_key;
+    if (uwb_id2key_hash_.find(uwb_id) != uwb_id2key_hash_.end()) {
+      uwb_key = uwb_id2key_hash_[uwb_id];
+    }
+    else {
+      uwb_key = gtsam::Symbol('u', uwb_id2keynumber_hash_[uwb_id]);
+      uwb_id2key_hash_[uwb_id] = uwb_key;
+      uwb_key2id_hash_[uwb_key] = uwb_id;
+    }
+
+    NonlinearFactorGraph new_factor;
+    gtsam::Values new_values;
+    gtsam::Key pose_key = GetKeyAtTime(stamp);
+
+    // Add a UWB key
+    uwb_dropped_position_ = T_rot*uwb_dropped_position_;
+    gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position+uwb_dropped_position_));
+    new_values.insert(uwb_key, pose_uwb);
+
+    // Add a BetweenFactor between the pose key and the UWB key
+    // gtsam::Vector6 precisions;
+    // precisions.head<3>().setConstant(0.0);
+    // precisions.tail<3>().setConstant(4.0);
+    // static const gtsam::SharedNoiseModel& noise = 
+    // gtsam::noiseModel::Diagonal::Precisions(precisions);
+    // // TODO
+    // new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
+
+    gu::MatrixNxNBase<double, 6> covariance;
+    covariance.Zeros();
+    for (int i = 0; i < 3; ++i)
+      covariance(i, i) = 1000000; // rotation
+    for (int i = 3; i < 6; ++i)
+      covariance(i, i) = 1.0; // translation
+    
+    // Calculate the position of the dropped UWB anchor
+    Eigen::Vector3d prev_key_position = GetLastPose().translation.Eigen();
+    Eigen::Vector3d uwb_position;
+    uwb_position = (robot_position - prev_key_position) + uwb_dropped_position_;
+
+    const gtsam::Pose3 uwb_pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(uwb_position));
+
+    new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, uwb_pose, ToGtsam(covariance)));
+
+    Edge edge_uwb = std::make_pair(pose_key, uwb_key);
+    uwb_edges_between_.push_back(edge_uwb);
+    edge_poses_[edge_uwb] = uwb_pose;
+    covariance_betweenfactor_[edge_uwb] = covariance;
+
+    return (UwbLoopClosureOptimization(new_factor, new_values));
   }
-  else {
-    uwb_key = gtsam::Symbol('u', uwb_id2keynumber_hash_[uwb_id]);
-    uwb_id2key_hash_[uwb_id] = uwb_key;
-    uwb_key2id_hash_[uwb_key] = uwb_id;
-  }
-
-  NonlinearFactorGraph new_factor;
-  gtsam::Values new_values;
-  gtsam::Key pose_key = GetKeyAtTime(stamp);
-
-  // Add a UWB key
-  gtsam::Pose3 pose_uwb = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(robot_position));
-  new_values.insert(uwb_key, pose_uwb);
-
-  // Add a BetweenFactor between the pose key and the UWB key
-  // gtsam::Vector6 precisions;
-  // precisions.head<3>().setConstant(0.0);
-  // precisions.tail<3>().setConstant(4.0);
-  // static const gtsam::SharedNoiseModel& noise = 
-  // gtsam::noiseModel::Diagonal::Precisions(precisions);
-  // // TODO
-  // new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), noise));
-
-  gu::MatrixNxNBase<double, 6> covariance;
-  covariance.Zeros();
-  for (int i = 0; i < 3; ++i)
-    covariance(i, i) = 1000000; // rotation
-  for (int i = 3; i < 6; ++i)
-    covariance(i, i) = 0.25; // translation
-  // TODO
-  new_factor.add(gtsam::BetweenFactor<gtsam::Pose3>(pose_key, uwb_key, gtsam::Pose3(), ToGtsam(covariance)));
-
-  Edge edge_uwb = std::make_pair(pose_key, uwb_key);
-  uwb_edges_between_.push_back(edge_uwb);
-  edge_poses_[edge_uwb] = gtsam::Pose3();
-  covariance_betweenfactor_[edge_uwb] = covariance;
-
-  return (UwbLoopClosureOptimization(new_factor, new_values));
+  return true;
 }
 
 
@@ -1541,6 +1675,11 @@ Pose3 LaserLoopClosure::ToGtsam(const gu::Transform3& pose) const {
   return Pose3(r, t);
 }
 
+gtsam::Point3 LaserLoopClosure::ToGtsam(const gu::Vec3& point) const {
+  gtsam::Point3 pt(point(0), point(1), point(2)); 
+  return pt;
+}
+
 LaserLoopClosure::Mat66 LaserLoopClosure::ToGu(
     const LaserLoopClosure::Gaussian::shared_ptr& covariance) const {
   gtsam::Matrix66 gtsam_covariance = covariance->covariance();
@@ -1818,22 +1957,33 @@ bool LaserLoopClosure::AddManualLoopClosure(gtsam::Key key1, gtsam::Key key2,
                    manual_lc_rot_precision_, manual_lc_trans_precision_); 
 }
 
-bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, 
-                                   gtsam::Pose3 pose12, ArtifactInfo artifact) {
+bool LaserLoopClosure::AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, gtsam::Pose3 pose12,
+                   ArtifactInfo artifact, bool fiducial, gtsam::Point3 location) {
 
   // keep track of artifact info: add to hash if not added
-  if (artifact_key2info_hash.find(artifact_key) == artifact_key2info_hash.end()) {
+  if (artifact_key2info_hash_.find(artifact_key) == artifact_key2info_hash_.end()) {
     // ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
-    artifact_key2info_hash[artifact_key] = artifact;
+    artifact_key2info_hash_[artifact_key] = artifact;
   } else {
     ROS_INFO("Existing artifact detected");
-    artifact_key2info_hash[artifact_key] = artifact;
+    artifact_key2info_hash_[artifact_key] = artifact;
   }
   // add to pose graph 
   bool is_manual_loop_closure = false;
-  return AddFactor(posekey, artifact_key, pose12, is_manual_loop_closure,
-                   artifact_rot_precision_, artifact_trans_precision_);
-
+  
+  bool success = AddFactor(posekey, artifact_key, pose12, is_manual_loop_closure,
+                 artifact_rot_precision_, artifact_trans_precision_);
+  if (fiducial) {
+    gtsam::Vector6 precisions;                       // inverse of variances
+    precisions.head<3>().setConstant(fiducial_rot_precision_); // TODO: define in params
+    precisions.tail<3>().setConstant(fiducial_trans_precision_); // TODO: define in params
+    static const gtsam::SharedNoiseModel& noise =
+        gtsam::noiseModel::Diagonal::Precisions(precisions);
+    gtsam::NonlinearFactorGraph prior_factor;
+    prior_factor.add(gtsam::PriorFactor<gtsam::Pose3>(artifact_key, gtsam::Pose3(gtsam::Rot3(),  location), noise)); 
+    pgo_solver_->update(prior_factor, gtsam::Values());
+  }
+  return success;
 }
 
 bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2, 
@@ -1886,7 +2036,7 @@ bool LaserLoopClosure::AddFactor(gtsam::Key key1, gtsam::Key key2,
 
     // Add timestamps (don't want to reference this with time, so just one way)
     keyed_stamps_.insert(
-        std::pair<gtsam::Symbol, ros::Time>(key_, artifact_key2info_hash[key2].msg.header.stamp));
+        std::pair<gtsam::Symbol, ros::Time>(key_, artifact_key2info_hash_[key2].msg.header.stamp));
   }
 
   linPoint.insert(new_values); // insert new values (valid for all cases)
@@ -2150,6 +2300,7 @@ bool LaserLoopClosure::ErasePosegraph(){
 
   loop_edges_.clear();
   manual_loop_edges_.clear();
+  prior_factors_.clear();
   odometry_ = Pose3::identity();
   odometry_kf_ = Pose3::identity();
   odometry_edges_.clear();
@@ -2487,6 +2638,137 @@ bool LaserLoopClosure::BatchLoopClosure() {
     return false;
 }
 
+
+geometry_msgs::Quaternion LaserLoopClosure::CorrectMapRotation(Eigen::Vector3d v1,
+                                          gtsam::Key gate_key,
+                                          gtsam::Key distal_key,
+                                          std::string robot_name) {
+  std::cout << "Received the CorrectMapRotation request in LaserLoopClosure..."
+            << std::endl;
+  // geometry_utils::Transform3 gate_pose = GetPoseAtKey(gate_key);
+  geometry_utils::Transform3 distal_pose = GetPoseAtKey(distal_key);
+
+  // Retrive the location of the AprilTag4 from the map
+  // Eigen::Matrix<double, 3, 1> T_gate = gate_pose.translation.Eigen();
+  
+  // Retrive the location of the AprilTag26 from the map
+  Eigen::Matrix<double, 3, 1> T_distal = distal_pose.translation.Eigen();
+  
+  // Find the vector connecting the gate to distal AprilTag in the map
+  // Eigen::Matrix<double, 3, 1> T_delta = T_distal - T_gate;
+
+  // Convert the vector to a vector3d
+  Eigen::Vector3d v2(T_distal(0, 0), T_distal(1, 0), T_distal(2, 0));
+  // Compute the quaternion that represents the rotation going from v2 to v1
+  std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
+
+  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v2, v1);
+  geometry_msgs::Quaternion q_msg;
+  tf::quaternionEigenToMsg(q, q_msg);
+  // Normalize the quaternion and get the corrispondant rotation matrix
+  Eigen::Matrix3d R = q.normalized().toRotationMatrix();
+  // Print the computed rotation matrix between the map and ground truth
+  Eigen::Vector3d Euler = R.eulerAngles(2, 1, 0);
+
+  std::cout << "The computed 3D rotation between the map and GT is R= "
+            << std::endl
+            << R << std::endl;
+
+  std::string path =
+      homedir + "/.ros/global_map_rotation_" + robot_name + ".yaml";
+  std::ofstream file(path);
+  std::stringstream ss;
+  ss << "position:" << std::endl
+     << "  x: " << 0 << std::endl
+     << "  y: " << 0 << std::endl
+     << "  z: " << 0 << std::endl
+     << "orientation:" << std::endl
+     << "  x: " << q.normalized().x() << std::endl
+     << "  y: " << q.normalized().y() << std::endl
+     << "  z: " << q.normalized().z() << std::endl
+     << "  w: " << q.normalized().w() << std::endl
+     << "Euler:" << std::endl
+     << "  Roll: " << Euler[2] << std::endl
+     << "  Pitch: " << Euler[1] << std::endl
+     << "  Yaw: " << Euler[0] << std::endl;
+  file << ss.str();
+  file.close();
+
+  // Set rosparam
+  ros::NodeHandle n("global_map_rotation");
+  n.setParam("position/x", 0);
+  n.setParam("position/y", 0);
+  n.setParam("position/z", 0);
+  n.setParam("orientation/x", q.normalized().x());
+  n.setParam("orientation/y", q.normalized().y());
+  n.setParam("orientation/z", q.normalized().z());
+  n.setParam("orientation/w", q.normalized().w());
+  return q_msg;
+}
+
+geometry_msgs::Quaternion LaserLoopClosure::PublishMapRotationFromTotalStation() {
+ return q_from_total_station_msg_;
+}
+
+bool LaserLoopClosure::CorrectMapRotationFromTotalStation(Eigen::Vector3d v1,
+                                          gtsam::Key robot_key,
+                                          std::string robot_name) {
+  std::cout << "Received the CorrectMapRotationFromTotalStation request in LaserLoopClosure..."
+            << std::endl;
+  geometry_utils::Transform3 robot_pose = GetPoseAtKey(robot_key);
+  
+  // Retrive the location of the AprilTag26 from the map
+  Eigen::Matrix<double, 3, 1> T_robot = robot_pose.translation.Eigen();
+
+  // Convert the vector to a vector3d
+  Eigen::Vector3d v2(T_robot(0, 0), T_robot(1, 0), T_robot(2, 0));
+  // Compute the quaternion that represents the rotation going from v2 to v1
+  std::cout << "Find the 3D rotation between the map and GT..." << std::endl;
+
+  Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(v2, v1);
+
+  tf::quaternionEigenToMsg(q, q_from_total_station_msg_);
+  // Normalize the quaternion and get the corrispondant rotation matrix
+  Eigen::Matrix3d R = q.normalized().toRotationMatrix();
+  // Print the computed rotation matrix between the map and ground truth
+  Eigen::Vector3d Euler = R.eulerAngles(2, 1, 0);
+
+  std::cout << "The computed 3D rotation between the map and GT is R= "
+            << std::endl
+            << R << std::endl;
+
+  std::string path =
+      homedir + "/.ros/global_map_rotation_" + robot_name + ".yaml";
+  std::ofstream file(path);
+  std::stringstream ss;
+  ss << "position:" << std::endl
+     << "  x: " << 0 << std::endl
+     << "  y: " << 0 << std::endl
+     << "  z: " << 0 << std::endl
+     << "orientation:" << std::endl
+     << "  x: " << q.normalized().x() << std::endl
+     << "  y: " << q.normalized().y() << std::endl
+     << "  z: " << q.normalized().z() << std::endl
+     << "  w: " << q.normalized().w() << std::endl
+     << "Euler:" << std::endl
+     << "  Roll: " << Euler[2] << std::endl
+     << "  Pitch: " << Euler[1] << std::endl
+     << "  Yaw: " << Euler[0] << std::endl;
+  file << ss.str();
+  file.close();
+
+  // Set rosparam
+  ros::NodeHandle n("global_map_rotation");
+  n.setParam("position/x", 0);
+  n.setParam("position/y", 0);
+  n.setParam("position/z", 0);
+  n.setParam("orientation/x", q.normalized().x());
+  n.setParam("orientation/y", q.normalized().y());
+  n.setParam("orientation/z", q.normalized().z());
+  n.setParam("orientation/w", q.normalized().w());
+  return true;
+}
+
 bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
 
   //has_changed must be true to update the posegraph
@@ -2494,6 +2776,9 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
     return false;
   
   has_changed_ = false;
+
+  // update inliers 
+  updateInlierLoopEdges();
 
   // Construct and send the pose graph.
   if (pose_graph_pub_.getNumSubscribers() > 0) {
@@ -2519,25 +2804,24 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       node.key = keyed_pose.key;
       node.header.frame_id = fixed_frame_id_;
       node.pose = gr::ToRosPose(t);
-      if (keyed_stamps_.count(keyed_pose.key)) {
+      if (keyed_scans_.count(keyed_pose.key)) {
         node.header.stamp = keyed_stamps_[keyed_pose.key];
+        // Key frame, note in the ID
+        node.ID = "key_frame";
+      } else if (artifact_key2info_hash_.count(keyed_pose.key)){
+        node.header.stamp = artifact_key2info_hash_[keyed_pose.key].msg.header.stamp;
+      } else if (uwb_key2id_hash_.count(keyed_pose.key)){
+        ROS_INFO("UWB node, leaving node timestamp empty in pose graph message");
       } else {
-        ROS_WARN("%s: Couldn't find timestamp for key %lu", name_.c_str(),
-                 keyed_pose.key);
+        ROS_INFO_STREAM("Node " << gtsam::DefaultKeyFormatter(keyed_pose.key) << " is not a key frame, leaving timestamp empty in pose graph message");
+        // Normal odom node, note in ID
+        node.ID = "odom_node";
       }
 
-      // ROS_INFO_STREAM("Symbol key is " <<
-      // gtsam::DefaultKeyFormatter(sym_key)); 
-      // ROS_INFO_STREAM("Symbol key
-      // (directly) is "
-      //                 << gtsam::DefaultKeyFormatter(keyed_pose.key));
-
-      // ROS_INFO_STREAM("Symbol key (int) is " << keyed_pose.key);
-
       // Add UUID if an artifact or uwb node
-      if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p'){
+      if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' || sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q'){
         // Artifact
-        node.ID = artifact_key2info_hash[keyed_pose.key].msg.parent_id;
+        node.ID = artifact_key2info_hash_[keyed_pose.key].msg.parent_id;
       }
       if (sym_key.chr() == 'u'){
         // UWB
@@ -2564,9 +2848,9 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       g.edges.push_back(edge);
     }
 
-    for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
-      edge.key_from = loop_edges_[ii].first;
-      edge.key_to = loop_edges_[ii].second;
+    for (size_t ii = 0; ii < inlier_loop_edges_.size(); ++ii) {
+      edge.key_from = inlier_loop_edges_[ii].first;
+      edge.key_to = inlier_loop_edges_[ii].second;
       edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
 
 
@@ -2602,6 +2886,23 @@ bool LaserLoopClosure::PublishPoseGraph(bool only_publish_if_changed) {
       g.edges.push_back(edge);
     }
 
+    for (size_t ii = 0; ii < prior_factors_.size(); ++ii) {
+      if (!values_.exists(prior_factors_[ii].first)) {
+        ROS_WARN("Key, %lu, does not exist in PublishPoseGraph pose graph pub", prior_factors_[ii].first);
+        continue;
+      }
+
+      gu::Transform3 t = ToGu(values_.at<Pose3>(prior_factors_[ii].first));
+
+      // Populate the message with the pose's data.
+      pose_graph_msgs::PoseGraphNode prior;
+      prior.key = prior_factors_[ii].first;
+      prior.header.frame_id = fixed_frame_id_;
+      prior.pose = gr::ToRosPose(t);
+
+      g.priors.push_back(prior);
+    }
+
     // Publish.
     pose_graph_pub_.publish(g);
   }
@@ -2623,15 +2924,15 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
     ROS_INFO("\n\n\t\tPublishing all artifacts\n\n");
   }
 
-  ROS_INFO_STREAM("size of artifact key to info hash is " << artifact_key2info_hash.size());
+  ROS_INFO_STREAM("size of artifact key to info hash is " << artifact_key2info_hash_.size());
 
   // loop through values 
-  for (auto it = artifact_key2info_hash.begin();
-            it != artifact_key2info_hash.end(); it++ ) {
+  for (auto it = artifact_key2info_hash_.begin();
+            it != artifact_key2info_hash_.end(); it++ ) {
 
     ROS_INFO_STREAM("Artifact hash key is " << gtsam::DefaultKeyFormatter(it->first));
     gtsam::Symbol art_key = gtsam::Symbol(it->first);
-    if (!(art_key.chr() == 'l' || art_key.chr() == 'm' || art_key.chr() == 'n' || art_key.chr() == 'o' || art_key.chr() == 'p')){
+    if (!(art_key.chr() == 'l' || art_key.chr() == 'm' || art_key.chr() == 'n' || art_key.chr() == 'o' || art_key.chr() == 'p' || art_key.chr() == 'q')){
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(it->first));
       continue;
@@ -2660,32 +2961,32 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
       ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(artifact_key));
 
       // Check that the key exists
-      if (artifact_key2info_hash.count(artifact_key) == 0) {
+      if (artifact_key2info_hash_.count(artifact_key) == 0) {
         ROS_WARN("Artifact key is not in hash, nothing to publish");
         return;
       }
 
       // Get position and label 
       artifact_position = GetArtifactPosition(artifact_key);
-      artifact_label = artifact_key2info_hash[artifact_key].msg.label;
+      artifact_label = artifact_key2info_hash_[artifact_key].msg.label;
       // Keep the input artifact key
 
       // Increment update count
-      artifact_key2info_hash[artifact_key].num_updates++;
+      artifact_key2info_hash_[artifact_key].num_updates++;
 
       std::cout << "Number of updates of artifact is: "
-                << artifact_key2info_hash[artifact_key].num_updates
+                << artifact_key2info_hash_[artifact_key].num_updates
                 << std::endl;
     }
 
     // Check that the key exists
-    if (artifact_key2info_hash.count(artifact_key) == 0) {
+    if (artifact_key2info_hash_.count(artifact_key) == 0) {
       ROS_WARN("Artifact key is not in hash, nothing to publish");
       return;
     }
 
     // Fill artifact message
-    core_msgs::Artifact new_msg = artifact_key2info_hash[artifact_key].msg;
+    core_msgs::Artifact new_msg = artifact_key2info_hash_[artifact_key].msg;
 
     if (b_publish_all){
       // Update the message ID
@@ -2726,6 +3027,9 @@ void LaserLoopClosure::PublishArtifacts(gtsam::Key artifact_key) {
       // Only a single artifact - exit the loop 
       return;
     }
+
+    // Sleep to spread out the messages
+    usleep(10000);
   }
 }
 
@@ -2792,6 +3096,28 @@ Eigen::Vector3d LaserLoopClosure::GetArtifactPosition(const gtsam::Key& artifact
   return values_.at<Pose3>(artifact_key).translation().vector();
 }
 
+// Update loop edges based on iniers 
+void LaserLoopClosure::updateInlierLoopEdges() {
+  // first get the edges corresponding to each key 
+  std::unordered_map < gtsam::Key, std::vector<Edge> > edges; 
+  for (size_t i = 0; i < nfg_.size(); i++) {
+    if (nfg_[i] != NULL && nfg_[i]->keys().size() == 2) {
+      edges[nfg_[i]->front()].push_back(std::make_pair(nfg_[i]->front(), nfg_[i]->back()));
+    }
+  }
+  // now update loop edges 
+  inlier_loop_edges_.clear(); 
+  for (size_t i  = 0; i < loop_edges_.size(); i++) {
+    gtsam::Key front_key = loop_edges_[i].first; 
+    if (edges.find(front_key) != edges.end()) {
+      if (std::find(edges[front_key].begin(), edges[front_key].end(), 
+          loop_edges_[i]) != edges[front_key].end()) {
+        inlier_loop_edges_.push_back(loop_edges_[i]);
+      }
+    }
+  }
+}
+
 //------------------Basestation functions:---------------------------------
 
 void LaserLoopClosure::KeyedScanBaseHandler(
@@ -2824,7 +3150,7 @@ void LaserLoopClosure::PoseGraphBaseHandler(
     const pose_graph_msgs::PoseGraph::ConstPtr& msg,
     bool* found_loop) {
   ROS_INFO_STREAM("Loop closure pose_graph_processing");
-
+  *found_loop = false;
   // Update graph to load with other (non odom) factors, if not already initialized
   if (values_recieved_at_base_.exists(initial_key_)){
     ROS_INFO("updating graph in PoseGraphBaseHandler from new factors");
@@ -3085,21 +3411,39 @@ void LaserLoopClosure::PoseGraphBaseHandler(
 
     // Check input for NaNs
 
-    // Add UUID if an artifact or uwb node
-    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p' || key_.chr() == 'u') {
+    // Add UUID if an artifact node
+    if (key_.chr() == 'l' || key_.chr() == 'm' || key_.chr() == 'n' || key_.chr() == 'o' || key_.chr() == 'p' || key_.chr() == 'q') {
       // Artifact
-      // artifact_key2info_hash[key_] = msg_node.ID;
+      // artifact_key2info_hash_[key_] = msg_node.ID;
       std::cout << "\t Artifact added to basestaion(PGcallback): "
                 << gtsam::DefaultKeyFormatter(key_);
       std::cout << "\t with parent id: " << msg_node.ID << std::endl;
       new_values.insert(key_, full_pose);
       values_recieved_at_base_.insert(key_, full_pose);
+      // Add time and ID to the artifact info
+      ArtifactInfo info;
+      info.msg.header.stamp = msg_node.header.stamp;
+      info.msg.parent_id = msg_node.ID;
+      artifact_key2info_hash_.insert(std::pair<gtsam::Symbol, ArtifactInfo>(key_, info));
+      continue;
+    } else if (key_.chr() == 'u') {
+      // Process UWB  
+      // Artifact
+      std::cout << "\t UWB added to PGcallback: "
+                << gtsam::DefaultKeyFormatter(key_);
+      std::cout << "\t with id: " << msg_node.ID << std::endl;
+      new_values.insert(key_, full_pose);
+      values_recieved_at_base_.insert(key_, full_pose);
+      // Add ID to the uwb hash
+      uwb_key2id_hash_[key_] = msg_node.ID;
+      continue;
+    } else {
+      // A node or keyframe - just add to keyed stamps
       // Add time to each node
       keyed_stamps_.insert(
           std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
-      stamps_keyed_.insert(std::pair<double, gtsam::Symbol>(
-          msg_node.header.stamp.toSec(), key_));
-      continue;
+      stamps_keyed_.insert(
+          std::pair<double, gtsam::Symbol>(msg_node.header.stamp.toSec(), key_));
     }
 
     // if previous key exists
@@ -3149,11 +3493,41 @@ void LaserLoopClosure::PoseGraphBaseHandler(
       }
     }
 
-    // Add time to each node
-    keyed_stamps_.insert(
-        std::pair<gtsam::Symbol, ros::Time>(key_, msg_node.header.stamp));
-    stamps_keyed_.insert(
-        std::pair<double, gtsam::Symbol>(msg_node.header.stamp.toSec(), key_));
+  }
+
+  //-----------------------------------------------//
+  ROS_INFO("\n\tAdding pose graph priors\n");
+  // Add the new nodes to base station posegraph
+  // TODO right now this only accounts for translation part of prior (see rotation precision)
+  // This assumes that the only priors are coming from AddBetweenFactorWithPointEstimation
+  for (const pose_graph_msgs::PoseGraphNode &msg_prior : msg->priors) {
+    ROS_INFO_STREAM("Adding prior in pose graph callback for key " << gtsam::DefaultKeyFormatter(msg_prior.key));
+    // create the prior factor 
+
+    // create precisions
+    gtsam::Vector6 prior_precisions;
+    prior_precisions.head<3>().setConstant(0.0);
+    prior_precisions.tail<3>().setConstant(point_estimate_precision_);
+    static const gtsam::SharedNoiseModel& prior_noise = 
+        gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
+
+    if (!values_.exists(msg_prior.key) && !new_values.exists(msg_prior.key)) {
+      ROS_WARN("Key does not exists in graph");
+      continue;
+    }
+
+    gtsam::Point3 pose_translation(msg_prior.pose.position.x,
+                                   msg_prior.pose.position.y,
+                                   msg_prior.pose.position.z);
+    gtsam::Rot3 pose_orientation(Rot3::quaternion(msg_prior.pose.orientation.w,
+                                                  msg_prior.pose.orientation.x,
+                                                  msg_prior.pose.orientation.y,
+                                                  msg_prior.pose.orientation.z));
+    gtsam::Pose3 prior_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    new_factor.add(gtsam::PriorFactor<gtsam::Pose3>(msg_prior.key, prior_pose, prior_noise));
+    *found_loop = true;
+    // assume that the associated value (node) already added above
   }
 
   if (new_factor.size() == 1 && new_values.size() == 1 && key_.chr() == initial_key_.chr()){
@@ -3215,7 +3589,6 @@ void LaserLoopClosure::PoseGraphBaseHandler(
   key_ = key_ + 1;
 
   // Run loop closures
-  *found_loop = false;
   std::vector<gtsam::Symbol> closure_keys;
   if (FindLoopClosures(key_ - 1, &closure_keys)){
     ROS_INFO("Found loop closures after pose graph callback ");

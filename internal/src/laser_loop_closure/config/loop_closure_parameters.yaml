@@ -11,15 +11,22 @@ manual_lc_trans_precision: 10.0 # default 0.001 (~30 m sd)
 
 # Noise parameters (as variances) for Laser loop closure
 laser_lc_rot_sigma: 0.01 #0.316 # default 0.01
-laser_lc_trans_sigma: 0.01 #0.6324 # default 0.04 
+laser_lc_trans_sigma: 0.01 #0.6324 # default 0.04
 
-# Noise parameters (as precisions) for artifacts 
+# Noise parameters (as precisions) for artifacts
 artifact_rot_precision: 0.0
-artifact_trans_precision: 1.0 #0.005
+artifact_trans_precision: 0.005 #0.005
+
+# Noise parameters (as precisions) for fiducials
+fiducial_rot_precision: 0.0
+fiducial_trans_precision: 0.0
+
+# Noise parameters (as precisions) for point estimation service (survey tool integration)
+point_estimate_precision: 25.0
 
 # When searching through old poses for loop closures, only consider old poses
 # that are within this distance of the current pose.
-proximity_threshold: 4
+proximity_threshold: 5
 
 # To compute a loop closure we perform ICP between the current scan and laser
 # scans captured from nearby poses. In order to be considered a loop closure,
@@ -28,12 +35,12 @@ max_tolerable_fitness: 5.0
 
 # Don't attempt loop closures with poses in the graph that were collected within
 # this translational distance (m) from the current pose.
-distance_to_skip_recent_poses: 20 #10 # 200
+distance_to_skip_recent_poses: 50 #10 # 200
 
 # If a loop has recently been closed, don't close a new one for at least this
 # amount of translational distance (m).
-distance_before_reclosing: 20 #10
+distance_before_reclosing: 50 #10
 
 # If a batchloop has recently been closed, don't close a new one for at least this
 # amount of translational distance (m).
-distance_before_batch_reclosing: 5 #3
+distance_before_batch_reclosing: 10 #3

@@ -40,11 +40,15 @@
 #include <ros/ros.h>
 
 #include <blam_slam/AddFactor.h>
-#include <blam_slam/RemoveFactor.h>
-#include <blam_slam/SaveGraph.h>
-#include <blam_slam/Restart.h>
-#include <blam_slam/LoadGraph.h>
 #include <blam_slam/BatchLoopClosure.h>
+#include <blam_slam/CorrectMapRotation.h>
+#include <blam_slam/CorrectMapRotationFromTotalStation.h>
+#include <blam_slam/PublishMapRotationFromTotalStation.h>
+#include <blam_slam/LoadGraph.h>
+#include <blam_slam/RemoveFactor.h>
+#include <blam_slam/Restart.h>
+#include <blam_slam/SaveGraph.h>
+#include <blam_slam/AddPositionEstimate.h>
 
 #include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -161,6 +165,25 @@ class BlamSlam {
   bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
                         blam_slam::BatchLoopClosureResponse &response);
 
+  // Service for correcting the global map rotation
+  bool
+  CorrectMapRotationService(blam_slam::CorrectMapRotationRequest& request,
+                            blam_slam::CorrectMapRotationResponse& response);
+
+  // Service to add position measurement from survey tool
+  bool AddPositionEstimateService(blam_slam::AddPositionEstimateRequest& request, 
+                                blam_slam::AddPositionEstimateResponse& response);
+
+// Service for correcting the global map rotation from Total Station
+  bool
+  CorrectMapRotationFromTotalStationService(blam_slam::CorrectMapRotationFromTotalStationRequest& request,
+                            blam_slam::CorrectMapRotationFromTotalStationResponse& response);
+
+  // Service for correcting the global map rotation
+  bool
+  PublishMapRotationFromTotalStationService(blam_slam::PublishMapRotationFromTotalStationRequest& request,
+                            blam_slam::PublishMapRotationFromTotalStationResponse& response);
+
   bool use_chordal_factor_;
 
   // Service to write the pose graph and all point clouds to a zip file.
@@ -184,11 +207,14 @@ class BlamSlam {
                                const std::string& child_frame,
                                const ros::Time& time,
                                Eigen::Affine3d& T);
+
+  void VisualizeGroundtruthFiducials();
   
   std::string getRobotName(const ros::NodeHandle& n);
 
   // The node's name.
   std::string name_;
+  std::string robot_name_;
 
   std::string blam_frame_;
   std::string world_frame_;
@@ -242,6 +268,7 @@ class BlamSlam {
   ros::Publisher base_frame_pcld_pub_;
   ros::Publisher pose_pub_;
   ros::Publisher repub_pg_sig_pub_;
+  ros::Publisher april_tag_gt_pub_;
 
   // Transform broadcasting to other nodes.
   tf2_ros::TransformBroadcaster tfbr_;
@@ -252,7 +279,22 @@ class BlamSlam {
   double restart_roll_;
   double restart_pitch_;
   double restart_yaw_;
-  
+
+  // GT AprilTag world coordinates
+  double calibration_left_x_;
+  double calibration_left_y_;
+  double calibration_left_z_;
+  double calibration_right_x_;
+  double calibration_right_y_;
+  double calibration_right_z_;
+  double distal_x_;
+  double distal_y_;
+  double distal_z_;
+
+  // Key for storing the ID of the distal artifact
+  gtsam::Key distal_key_;
+  gtsam::Key gate_key_;
+
   // Artifact prefix
   unsigned char artifact_prefix_;
 
@@ -263,7 +305,11 @@ class BlamSlam {
   ros::ServiceServer restart_srv_;
   ros::ServiceServer load_graph_srv_;
   ros::ServiceServer batch_loop_closure_srv_;
+  ros::ServiceServer correct_map_rotation_srv_;
+  ros::ServiceServer correct_map_rotation_from_total_station_srv_;
+  ros::ServiceServer publish_map_rotation_from_total_station_srv_;
   ros::ServiceServer drop_uwb_srv_;
+  ros::ServiceServer add_position_estimate_srv_;
 
   // Names of coordinate frames.
   std::string fixed_frame_id_;
@@ -290,6 +336,7 @@ class BlamSlam {
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
 
   // UWB
+  bool b_uwb_test_data_collection_;
   unsigned int uwb_skip_measurement_number_;
   unsigned int uwb_update_key_number_;
   unsigned int uwb_required_key_number_first_;
