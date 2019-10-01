@@ -1,0 +1,33 @@
+#######################################
+# Overall Setup parameters
+#######################################
+
+# Toggle auto loop closures on or off.
+check_for_loop_closures: true
+
+# Use two velodynes?
+use_two_vlps: false
+
+# Use the lo_frontend
+#b_use_lo_frontend: false
+
+# Toggle outlier rejection
+b_use_outlier_rejection: true
+
+# Whether or not consolidate artifacts
+use_artifact_loop_closure: false
+
+# Use UWB
+b_use_uwb: false
+
+# Turn on sanity checks
+b_check_deltas: false
+
+# Make true to save a backup pointcloud before every loop closure.
+save_posegraph_backup: true
+
+# Number of keyes between each saved backup
+keys_between_each_posegraph_backup: 25
+
+# Solver used in backend. 1 for LM, 2 for GN
+solver: 1

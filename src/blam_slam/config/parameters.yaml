@@ -1,0 +1,7 @@
+#Load and restart deltas
+restart_x: 0.0 
+restart_y: 0.0 
+restart_z: 0.0 
+restart_roll: 0.0 
+restart_pitch: 0.0 
+restart_yaw: 0.0 

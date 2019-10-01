@@ -1,0 +1,29 @@
+<launch>
+  <arg name="robot_namespace" default="robot"/>
+
+    <!-- optional filename of the zip archive of a pose graph to be loaded -->
+  <arg name="load_pose_graph_file" default=""/>
+
+  <group ns="$(arg robot_namespace)">
+
+    <!-- Pose graph visualization -->
+    <node pkg="pose_graph_visualizer"
+          name="pose_graph_visualizer"
+          type="pose_graph_visualizer_node"
+          output="screen">
+      <!-- Frames -->
+      <rosparam file="$(find blam_example)/config/blam_frames.yaml" subst_value="true"/>
+
+      <!-- Loop closure -->
+      <rosparam file="$(find laser_loop_closure)/config/parameters.yaml"/>
+    </node>
+
+    <node pkg="blam_slam"
+      name="loop_closure_tools"
+      type="loop_closure_tools.py"
+      output="screen">
+    </node>
+
+  </group>
+
+</launch>
