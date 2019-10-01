@@ -22,3 +22,11 @@ LampRobot::~LampRobot() {}
 
 // Initialization - override for robot specific setup
 LampRobot::Initialize() {}
+
+// Check for data from all of the handlers
+bool LampRobot::CheckHandlers() {
+
+    odometry_handler_.GetData();
+    artifact_handler_.GetData();
+
+}

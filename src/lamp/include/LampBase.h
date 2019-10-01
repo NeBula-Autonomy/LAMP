@@ -27,14 +27,20 @@
 #include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
 
+#include <factor_handlers/LampDataHandlerBase.h>
+
+#include <utils/CommonStructs.h>
+
+// TODO - review and make pure-virtual all functions that are not implemented here
+
 // Services
-
-
 
 // Class definition
 class LampBase {
   public:
     // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+    
+    
 
     // Constructor
     LampBase();
@@ -57,7 +63,12 @@ class LampBase {
     // bool RegisterLogCallbacks(const ros::NodeHandle& n);
     // bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
     bool CreatePublishers(const ros::NodeHandle& n);
+    
+    // instantiate all handlers that are being used in the derived classes
+    virtual bool InitializeHandlers() = 0; 
 
+    // retrieve data from all handlers
+    virtual bool CheckHandlers() = 0; 
 
     // Private variables - won't be able to be accessed in the derived class
     float example_variable_;

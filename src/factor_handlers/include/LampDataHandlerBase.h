@@ -10,6 +10,8 @@
 // Includes 
 #include <ros/ros.h>
 
+#include <utils/CommonStructs.h>
+
 
 class LampDataHandlerBase {
   public:
@@ -19,7 +21,7 @@ class LampDataHandlerBase {
 
     bool Initialize(const ros::NodeHandle& n);
 
-    void GetData(custom lamp_data);
+    FactorData GetData(); 
     // TODO
     // List all the outputs and maybe create custom struct?
     // Vector maybe - for multiple factors
@@ -27,7 +29,7 @@ class LampDataHandlerBase {
     // Return timestamps (for keys) and transforms
     // Odom - transform (and covariance) and two timestamps
     // Loop closure - transform (and covar) and two timestamps
-    // Artifact - transform and one timestamp and artifact key
+    // Artifact - transform and one timestamp and artifact_key
     // April - the same
     // TS - Position and one timestamp 
     // IMU - attitude (roll and pitch) and return time stamp with input timestamp

@@ -26,11 +26,18 @@ LampBase::LampBase()
 LampBase::~LampBase() {}
 
 // Initialization
-LampBase::Initialize() {}
+LampBase::Initialize() {
+
+  LoadParameters();
+  CreatePublishers();
+  InitializeHandlers();
+
+}
 
 // Load Parameters
 LampBase::LoadParameters() {}
 
 // Create Publishers
 LampBase::CreatePublishers() {}
+
 
