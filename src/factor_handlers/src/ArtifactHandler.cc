@@ -18,7 +18,7 @@ bool ArtifactHandler::Initialize(const ros::NodeHandle& n){
     return false;
   }
 
-  if (!RegisterArtifactCallbacks(n)) {
+  if (!RegisterCallbacks(n, ???)) {
     ROS_ERROR("%s: Failed to register artifact callback.", name_.c_str());
     return false;
   }
@@ -54,7 +54,7 @@ bool ArtifactHandler::LoadParameters(const ros::NodeHandle& n) {
  * n - Nodehandle
  * Returns bool
  */
-bool ArtifactHandler::RegisterArtifactsCallback(const ros::NodeHandle& n) {
+bool ArtifactHandler::RegisterCallbacks(const ros::NodeHandle& n, bool from_log) {
   ROS_INFO("%s: Registering online callbacks.", name_.c_str());
 
   // Create a local nodehandle to manage callback subscriptions.

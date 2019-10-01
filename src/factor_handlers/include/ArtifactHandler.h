@@ -12,9 +12,12 @@ struct ArtifactInfo {
                num_updates(0){}
 };
 
-/*! \brief  Handles artifact messages. 
+/*! \brief  Handles artifact messages. Takes artifact data from the artifact message - 
+          - Timestamp of the artifact message to help decide where to add the artifact in the pose graph
+          - Artifact relative transformation to make factor in pose graph
+          - Key of the last corresponding artifact node.
  * \input   Artifact message
- * \output  Keys and transform to the pose graph
+ * \output  Current Timestamp, key of last corresponding artifact node and relative transform to the pose graph
  */
 class ArtifactHandler : public LampDataHandlerBase {
     public:
@@ -29,7 +32,13 @@ class ArtifactHandler : public LampDataHandlerBase {
      * Returns bool
      */
     bool Initialize(const ros::NodeHandle& n);
+    
+    /*! \brief  Gives the artifact associated data to the caller.
+     * Returns  Artifact data
+     */
+    void GetData(custom lamp_data);
 
+    protected:
     /*! \brief Load artifact parameters. 
      * n - Nodehandle
      * Returns bool
@@ -37,10 +46,22 @@ class ArtifactHandler : public LampDataHandlerBase {
     bool LoadParameters(const ros::NodeHandle& n);
 
     /*! \brief Register callbacks. 
+     * n - Nodehandle, from_log - ????
+     * Returns bool
+     */
+    bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
+
+    /*! \brief Register Log callbacks. 
      * n - Nodehandle
      * Returns bool
      */
-    bool RegisterArtifactsCallback(const ros::NodeHandle& n);
+    bool RegisterLogCallbacks(const ros::NodeHandle& n);
+
+    /*! \brief Register Online callbacks. 
+     * n - Nodehandle
+     * Returns bool
+     */
+    bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
 
     /*! \brief Compute transform from Artifact message.
      * Returns Transform
@@ -62,29 +83,24 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     bool IsNewArtifact();
 
-    /*! \brief  Gives the factors to be added.
-     * Returns  Factors 
-     */
-    bool GetFactors();
-
-    /*! \brief  Gives the values.
-     * Returns  Values 
-     */
-    bool GetValues();
-
     /*! \brief  Callback for Artifacts.
      * Returns  Void
      */
     void ArtifactCallback(const core_msgs::Artifact& msg);
     
-    /*! \brief  Callback for ArtifactBase.
+    /*! \brief  Create publisher for the artifacts.
      * Returns  Void
      */
-    void BlamSlam::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
+    bool CreatePublishers(const ros::NodeHandle& n);
     
     private:
-    // Object IDs
+    // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
+    // from the pose graph
+    std::unordered_map<std::string, ArtifactInfo> artifact_id_to_info;
+    // Mapping between a artifact id and the node where it is present in the pose graph
     std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
+    
+    // Object IDs
     std::uint64_t last_id_;
     
     // Parameters
@@ -97,6 +113,8 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     // Namespace for publishing
     std::string name_;
+
+    // Publisher
 
     // Subscribers
     ros::Subscriber artifact_sub_;
