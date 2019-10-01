@@ -46,7 +46,11 @@ class LampBase {
 
     bool Initialize();
 
-  private:
+    bool public_variable_;
+
+  protected:
+
+    // Use this for any "private" things to be used in the derived class
     // Node initialization.
     bool LoadParameters(const ros::NodeHandle& n);
     // bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
@@ -55,7 +59,7 @@ class LampBase {
     bool CreatePublishers(const ros::NodeHandle& n);
 
 
-    // Private variables
+    // Private variables - won't be able to be accessed in the derived class
     float example_variable_;
     int variable_2_;
 
@@ -69,6 +73,9 @@ class LampBase {
     // Services 
 
     // Message filters (if any)
+
+  private:
+    // Anything just in the base class
 
 };
 
