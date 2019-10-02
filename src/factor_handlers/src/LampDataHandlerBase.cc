@@ -6,7 +6,9 @@
 
 
 // Includes
-#include <lamp/LampDataHandlerBase.h>
+#include <factor_handlers/LampDataHandlerBase.h>
+#include <parameter_utils/ParameterUtils.h>
+
 
 // #include <math.h>
 // #include <ctime>
@@ -21,7 +23,7 @@ LampDataHandlerBase::LampDataHandlerBase() {}
 LampDataHandlerBase::~LampDataHandlerBase() {}
 
 // Initialization
-LampDataHandlerBase::Initialize() {}
+bool LampDataHandlerBase::Initialize(const ros::NodeHandle& n) {}
 
 // Main interface call
-LampDataHandlerBase::GetData() {}
+FactorData LampDataHandlerBase::GetData() {}

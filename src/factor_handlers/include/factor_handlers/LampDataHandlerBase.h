@@ -10,6 +10,11 @@
 // Includes 
 #include <ros/ros.h>
 
+#include <geometry_utils/Transform3.h>
+#include <geometry_utils/GeometryUtilsROS.h>
+
+#include <utils/CommonStructs.h>
+
 
 class LampDataHandlerBase {
   public:
@@ -19,20 +24,7 @@ class LampDataHandlerBase {
 
     bool Initialize(const ros::NodeHandle& n);
 
-    void GetData(custom lamp_data);
-    // TODO
-    // List all the outputs and maybe create custom struct?
-    // Vector maybe - for multiple factors
-
-    // Return timestamps (for keys) and transforms
-    // Odom - transform (and covariance) and two timestamps
-    // Loop closure - transform (and covar) and two timestamps
-    // Artifact - transform and one timestamp and artifact key
-    // April - the same
-    // TS - Position and one timestamp 
-    // IMU - attitude (roll and pitch) and return time stamp with input timestamp
-
-    // [Pose, [timestamp, timestamp]]
+    virtual FactorData GetData() = 0;
 
   protected:
 
@@ -51,3 +43,7 @@ class LampDataHandlerBase {
   private:
 
 };
+
+#endif
+
+// TODO - remaptopic names for the handlers in the launch file
