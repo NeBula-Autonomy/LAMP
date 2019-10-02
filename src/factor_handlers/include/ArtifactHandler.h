@@ -1,15 +1,20 @@
 #ifndef ARTIFACT_HANDLER_H
 #define ARTIFACT_HANDLER_H
 
+// Includes
+#include "utils/CommonStructs.h"
+
 /*! \brief Stores Artifact information
  */
 struct ArtifactInfo {
-  std::string id;                   // this corresponds to parent_id
-  core_msgs::Artifact msg;          // All fields in the artifact message that we need
-  int num_updates;                  // how many times the optimizer has updated this
+  std::string           id;                   // this corresponds to parent_id
+  int                   num_updates;          // how many times the optimizer has updated this
+  gtsam::Pose3          global pose;          // Global pose of the artifact
   ArtifactInfo(std::string art_id="") :
                id(art_id), 
-               num_updates(0){}
+               num_updates(0),
+               global_pose(gtsam::Pose3())
+               {}
 };
 
 /*! \brief  Handles artifact messages. Takes artifact data from the artifact message - 
@@ -36,7 +41,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
-    void GetData(custom lamp_data);
+    void GetData(FactorData artifact_data);
 
     protected:
     /*! \brief Load artifact parameters. 
@@ -64,6 +69,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
 
     /*! \brief Compute transform from Artifact message.
+     * Not sure how necessary this is ????
      * Returns Transform
      */
     void ComputeTransform();
@@ -99,9 +105,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     std::unordered_map<std::string, ArtifactInfo> artifact_id_to_info;
     // Mapping between a artifact id and the node where it is present in the pose graph
     std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
-    
-    // Object IDs
-    std::uint64_t last_id_;
+
     
     // Parameters
     bool artifacts_in_global_;
