@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>lamp_pgo</name>
+  <version>0.0.0</version>
+  <description>The lamp_pgo package</description>
+
+  <maintainer email="yunchang@mit.edu">Yun Chang</maintainer>
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <export>
+  </export>
+</package>
