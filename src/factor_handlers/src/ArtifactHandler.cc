@@ -221,9 +221,9 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // ???? Need to know when this is done. Do we publish this information or do we give this out when we call GetData.
   artifact_data_.type = "artifact";
   artifact_data_.transforms.push_back(R_pose_A);
-  // Need to convert float[9] to Mat
+  // Need to convert float[9] to Mat from geometry utils
   artifact_data_.covariances = msg.covariance;
-  // Why std::pair<ros::Time, ros::Time>
+  // Why std::pair<ros::Time, ros::Time(0.0)> for artifact
   artifact_data_.time_stamps.push_back(msg.header.stamp);
   artifact_data_.artifact_key = cur_artifact_key;
 }
