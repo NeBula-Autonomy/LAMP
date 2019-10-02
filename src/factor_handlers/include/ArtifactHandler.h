@@ -2,7 +2,11 @@
 #define ARTIFACT_HANDLER_H
 
 // Includes
+// For common datastructures
 #include "utils/CommonStructs.h"
+
+// Base class
+#include "LampDataHandlerBase.h"
 
 /*! \brief Stores Artifact information
  */
