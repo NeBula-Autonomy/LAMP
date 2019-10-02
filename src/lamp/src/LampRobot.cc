@@ -31,6 +31,8 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
     if (!pu::Get("update_rate", update_rate_)) return false;
 
+    // TODO initialize keyed_stamps_ and stamps_keyed_
+
 }
 
 bool LampRobot::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
@@ -38,22 +40,25 @@ bool LampRobot::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-   timer_callback_ = nl.createTimer(
-      update_rate_, &LampRobot::ProcessTimerCallback, this);
+  update_timer_ = nl.createTimer(
+    update_rate_, &LampRobot::ProcessTimerCallback, this);
     
 }
 
-bool LampRobot::CreatePublishers() {
+bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
 
-    pose_graph_pub_ =
-        nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
-    keyed_scan_pub_ =
-        nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+  // Create a local nodehandle to manage callback subscriptions.
+  ros::NodeHandle nl(n);
+
+  pose_graph_pub_ =
+      nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
+  keyed_scan_pub_ =
+      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
 
 }
 
 bool LampRobot::InitializeHandlers(){
-    artifact_handler_.Initialize(); 
+    // artifact_handler_.Initialize(); 
 }
 
 
@@ -62,11 +67,11 @@ bool LampRobot::InitializeHandlers(){
 bool LampRobot::CheckHandlers() {
 
   // Check the odom for adding new poses
-  ProcessOdomData(odometry_handler_.GetData());
+  // ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
-  ProcessArtifactData(artifact_handler_.GetData());
-  ProcessAprilData(april_handler_.GetData());
+  // ProcessArtifactData(artifact_handler_.GetData());
+  // ProcessAprilData(april_handler_.GetData());
 
 }
 
@@ -105,9 +110,9 @@ void LampRobot::UpdateArtifactPositions(){
   //Get new positions of artifacts from the pose-graph 
   
   // Update global pose just for what has changed
-  artifact_handler_.UpdateArtifactPositions(keyed_poses_global);
+  // artifact_handler_.UpdateArtifactPositions(keyed_poses_global);
 
-  artifact_handler_.PublishArtifacts();
+  // artifact_handler_.PublishArtifacts();
 }
 
 //-------------------------------------------------------------------
@@ -132,6 +137,7 @@ bool LampRobot::ProcessOdomData(FactorData data){
 
   // process data for each new factor 
   for (int i = 0; i < num_factors; i++) {
+      /*
 
         gtsam::Pose3 transform = data.transforms[i];
         Mat1212 covariance = data.covariances[i];
@@ -148,6 +154,13 @@ bool LampRobot::ProcessOdomData(FactorData data){
         
         // add to nfg_ and values_
 
+        // add  node/keyframe to keyed stamps
+        keyed_stamps_.insert(
+            std::pair<gtsam::Symbol, ros::Time>(current_key_, times.second));
+        stamps_keyed_.insert(
+            std::pair<double, gtsam::Symbol>(times.second, current_key_));
+
+
         // check for keyed scans
         if (odometry_handler_.HasKeyedScanAtTime(times.second)) {
 
@@ -155,23 +168,22 @@ bool LampRobot::ProcessOdomData(FactorData data){
           std::pair<gtsam::Symbol, PointCloud::ConstPtr> new_scan;
           new_scan = odometry_handler_.GetKeyedScanAtTime();
 
-          // add to map
-          keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+          // add new keyed scan to map
+          keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(new_scan.first, new_scan.second));
 
 
-          // publish scan
+          // publish keyed scan
           pose_graph_msgs::KeyedScan keyed_scan_msg;
           keyed_scan_msg.key = key;
           pcl::toROSMsg(*new_scan.second, keyed_scan_msg.scan);
           keyed_scan_pub_.publish(keyed_scan_msg);
 
-        }
+          */
+    }
 
-  }
-
-
-  
 }
+
+
 
 /*! 
   \brief  Wrapper for the artifact class interactions
@@ -190,7 +202,9 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
   // TODO - fill out this function 
 
-    // process data for each new factor 
+  // process data for each new factor
+  int num_factors = data.transforms.size();
+
   for (int i = 0; i < num_factors; i++) {
 
     // create the factor

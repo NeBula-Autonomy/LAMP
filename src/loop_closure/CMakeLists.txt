@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(lamp)
+project(loop_closure)
 
 #IF(NOT CMAKE_BUILD_TYPE)
 #  SET(CMAKE_BUILD_TYPE Release)
@@ -26,15 +26,11 @@ FIND_PACKAGE(Boost REQUIRED
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rosbag
-  factor_handlers
-  loop_closure
-  utils
   geometry_utils
   parameter_utils
   pcl_ros
   pcl_conversions
   core_msgs
-  pose_graph_msgs
   uwb_msgs
   mesh_msgs
   geometry_msgs
@@ -49,15 +45,11 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     rosbag
-    factor_handlers
-    loop_closure
-    utils
     geometry_utils
     parameter_utils
     pcl_ros
     pcl_conversions
     core_msgs
-    pose_graph_msgs
     uwb_msgs
     mesh_msgs
     geometry_msgs
@@ -79,40 +71,9 @@ endif()
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
-add_library(${PROJECT_NAME} src/LampRobot.cc src/LampBase.cc src/LampBaseStation.cc)
+add_library(${PROJECT_NAME} src/LaserLoopClosureNode.cc src/LoopClosureBase.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   gtsam
 )
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS}) # THis is for custom messages and services
-
-# add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}_node.cc)
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${PROJECT_NAME}
-#   ${catkin_LIBRARIES}
-#   ${Boost_LIBRARIES}
-#   gtsam
-# )
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
-
-#add_executable(${PROJECT_NAME}_offline src/${PROJECT_NAME}_offline.cc)
-#target_link_libraries(${PROJECT_NAME}_offline
-#  ${PROJECT_NAME}
-#  ${catkin_LIBRARIES}
-#  ${Boost_LIBRARIES}
-#  gtsam
-#)
-
-# if (CATKIN_ENABLE_TESTING)
-#   add_subdirectory(test)
-# endif()
-
-
-#############
-## Testing ##
-#############
-
-# ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cpp)
-# target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})

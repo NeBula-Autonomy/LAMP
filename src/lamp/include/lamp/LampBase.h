@@ -22,6 +22,11 @@
 #include <gtsam/slam/InitializePose3.h>
 #include <gtsam/inference/Symbol.h>
 
+#include <pose_graph_msgs/KeyedScan.h>
+#include <pose_graph_msgs/PoseGraph.h>
+#include <pose_graph_msgs/PoseGraphEdge.h>
+#include <pose_graph_msgs/PoseGraphNode.h>
+
 // #include <tf/transform_broadcaster.h>
 // #include <tf/transform_listener.h>
 // #include <tf_conversions/tf_eigen.h>
@@ -37,7 +42,9 @@
 // #include <mesh_msgs/ProcessCommNode.h>
 
 #include <geometry_utils/Transform3.h>
+#include <parameter_utils/ParameterUtils.h>
 #include <geometry_utils/GeometryUtilsROS.h>
+#include <pcl_ros/point_cloud.h>
 
 #include <factor_handlers/LampDataHandlerBase.h>
 
@@ -59,7 +66,7 @@ class LampBase {
 
     // Define main interface functions
 
-    virtual bool Initialize();
+    virtual bool Initialize(const ros::NodeHandle& n);
 
   protected:
 
@@ -72,16 +79,19 @@ class LampBase {
     virtual bool CreatePublishers(const ros::NodeHandle& n) = 0;
     
     // instantiate all handlers that are being used in the derived classes
-    virtual bool InitializeHandlers() = 0; 
+    virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0; 
 
     // retrieve data from all handlers
     virtual bool CheckHandlers() = 0; 
 
     // Functions to publish
-    void PublishPoseGraph();
+    bool PublishPoseGraph(const ros::NodeHandle& n);
 
     // Convert timestamps to gtsam keys 
     gtsam::Key getKeyAtTime(const ros::Time& stamp) const;
+
+    // Typedef for stored point clouds.
+    typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
     // Variables - can be able to be accessed in the derived class
     gtsam::NonlinearFactorGraph nfg_;
@@ -97,12 +107,17 @@ class LampBase {
     bool b_run_optimization_;
 
     // Publishers
+    ros::Publisher pose_graph_pub_;
+    ros::Publisher keyed_scan_pub_;
 
     // Subscribers
 
     // Services 
 
     // Message filters (if any)
+
+    bool example_boolean_;
+    float example_variable_;
 
   private:
     // Anything just in the base class

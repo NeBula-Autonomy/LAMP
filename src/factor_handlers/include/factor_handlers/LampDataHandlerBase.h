@@ -10,6 +10,9 @@
 // Includes 
 #include <ros/ros.h>
 
+#include <geometry_utils/Transform3.h>
+#include <geometry_utils/GeometryUtilsROS.h>
+
 #include <utils/CommonStructs.h>
 
 
@@ -41,5 +44,6 @@ class LampDataHandlerBase {
 
 };
 
+#endif
 
 // TODO - remaptopic names for the handlers in the launch file

@@ -21,4 +21,4 @@ LampBaseStation::LampBaseStation() {}
 LampBaseStation::~LampBaseStation() {}
 
 // Initialization - override for Base Station Setup
-LampBaseStation::Initialize() {}
+bool LampBaseStation::Initialize() {}

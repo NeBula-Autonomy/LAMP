@@ -42,11 +42,15 @@ class LampRobot : public LampBase {
 
     virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
 
-    virtual bool CreatePublishers(const ros::NoseHandle& n);
+    virtual bool CreatePublishers(const ros::NodeHandle& n);
 
     void ProcessTimerCallback(const ros::TimerEvent& ev);
     // TODO - move to base class?
-    ros::Timer update_rate_;
+    double update_rate_;
+    ros::Timer update_timer_;
+
+    void UpdateArtifactPositions();
+
 
 
   private:
@@ -55,7 +59,7 @@ class LampRobot : public LampBase {
 
     // Factor Hanlder Wrappers
     bool ProcessOdomData(FactorData data);
-    void ProcessArtifactData(FactorData data);
+    bool ProcessArtifactData(FactorData data);
     void ProcessAprilData(FactorData data);
     // void ProcessUWBData(FactorData data);
     // Example use:
@@ -63,9 +67,9 @@ class LampRobot : public LampBase {
 
 
     // Data Handler classes
-    OdometryHandler odometry_handler_; 
-    ArtifactHandler artifact_handler_;
-    AprilHandler april_handler_;
+    // OdometryHandler odometry_handler_; 
+    // ArtifactHandler artifact_handler_;
+    // AprilHandler april_handler_;
     // Manual LC
     // IMU
     // TS
