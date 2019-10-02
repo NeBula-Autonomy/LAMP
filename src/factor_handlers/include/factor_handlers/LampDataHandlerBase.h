@@ -15,6 +15,10 @@
 
 #include <utils/CommonStructs.h>
 
+namespace gu = geometry_utils;
+namespace gr = gu::ros;
+namespace pu = parameter_utils;
+using namespace std; 
 
 class LampDataHandlerBase {
   public:
