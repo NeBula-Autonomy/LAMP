@@ -13,12 +13,16 @@
 #include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
 
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovariance.h>
+#include <geometry_msgs/TransformStamped.h>
+
+#include <nav_msgs/Odometry.h>
+
 #include <utils/CommonStructs.h>
 
 namespace gu = geometry_utils;
-namespace gr = gu::ros;
-namespace pu = parameter_utils;
-using namespace std; 
 
 class LampDataHandlerBase {
   public:

@@ -79,3 +79,6 @@ target_link_libraries(${PROJECT_NAME}
   ${Boost_LIBRARIES}
   gtsam
 )
+
+catkin_add_gtest(test_odometry_handler test/test_odometry_handler.cc)
+target_link_libraries(test_odometry_handler factor_handler ${catkin_LIBRARIES})
