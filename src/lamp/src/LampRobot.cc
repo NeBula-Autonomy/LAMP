@@ -31,9 +31,9 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
 
 bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
-    if (!pu::Get("update_rate", update_rate_)) return false;
+  if (!pu::Get("update_rate", update_rate_)) return false;
 
-    // TODO initialize keyed_stamps_ and stamps_keyed_
+  // TODO initialize keyed_stamps_ and stamps_keyed_
 
 
   return true;
@@ -191,7 +191,6 @@ bool LampRobot::ProcessOdomData(FactorData data){
 
           */
     }
-
 }
 
 

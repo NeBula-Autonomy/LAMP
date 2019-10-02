@@ -47,6 +47,7 @@
 #include <pcl_ros/point_cloud.h>
 
 #include <factor_handlers/LampDataHandlerBase.h>
+#include <pose_graph_merger/merger.h>
 
 #include <utils/CommonStructs.h>
 
@@ -104,6 +105,8 @@ class LampBase {
     std::map<gtsam::Symbol, ros::Time> keyed_stamps_;
     std::map<double, gtsam::Symbol> stamps_keyed_;
 
+    // New pose graph values from optimizer
+    void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
     
     // Booleans
     bool b_run_optimization_;
@@ -113,6 +116,7 @@ class LampBase {
     ros::Publisher keyed_scan_pub_;
 
     // Subscribers
+    ros::Subscriber slow_graph_sub_;
 
     // Services 
 
@@ -120,6 +124,9 @@ class LampBase {
 
     bool example_boolean_;
     float example_variable_;
+
+    // Pose graph merger
+    // Merger merger_;
 
   private:
     // Anything just in the base class

@@ -16,7 +16,7 @@
 // Class Definition
 class LampRobot : public LampBase {
   public:
-    // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+    typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
     // Constructor
     LampRobot();

@@ -55,6 +55,7 @@
 
 
   <depend>geometry_utils</depend>
+  <depend>utils</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
