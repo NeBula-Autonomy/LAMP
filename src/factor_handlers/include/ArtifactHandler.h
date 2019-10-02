@@ -76,7 +76,7 @@ class ArtifactHandler : public LampDataHandlerBase {
      * Not sure how necessary this is ????
      * Returns Transform
      */
-    void ComputeTransform();
+    void ComputeTransform(const core_msgs::Artifact& msg);
 
     /*! \brief  Get artifacts id and if not create one.
      * Returns Artifacts Id
@@ -121,6 +121,9 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     // Namespace for publishing
     std::string name_;
+
+    // Artifact output data
+    FactorData artifact_data_;
 
     // Publisher
 
