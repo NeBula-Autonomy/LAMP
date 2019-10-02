@@ -24,9 +24,8 @@ class LampRobot : public LampBase {
     // Destructor
     ~LampRobot();    
 
-
     // Override base class functions where needed 
-    // bool Initialize();
+    virtual bool Initialize(const ros::NodeHandle& n);
 
   protected:
 

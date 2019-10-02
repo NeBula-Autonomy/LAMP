@@ -70,19 +70,21 @@ class LampBase {
 
   protected:
 
+  // TODO: make most of these pure virtual
+
     // Use this for any "private" things to be used in the derived class
     // Node initialization.
-    virtual bool LoadParameters(const ros::NodeHandle& n) = 0;
+    virtual bool LoadParameters(const ros::NodeHandle& n);
     // bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
     // bool RegisterLogCallbacks(const ros::NodeHandle& n);
-    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n) = 0;
-    virtual bool CreatePublishers(const ros::NodeHandle& n) = 0;
+    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
+    virtual bool CreatePublishers(const ros::NodeHandle& n);
     
     // instantiate all handlers that are being used in the derived classes
-    virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0; 
+    virtual bool InitializeHandlers(const ros::NodeHandle& n); 
 
     // retrieve data from all handlers
-    virtual bool CheckHandlers() = 0; 
+    virtual bool CheckHandlers(); 
 
     // Functions to publish
     bool PublishPoseGraph(const ros::NodeHandle& n);

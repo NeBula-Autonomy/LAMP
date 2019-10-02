@@ -15,9 +15,7 @@ namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
 // Constructor
-LampBase::LampBase()
-  : example_variable_(3.14159),
-    example_boolean_(false) {
+LampBase::LampBase(){
      // any other things on construction 
     }
 
@@ -29,7 +27,7 @@ bool LampBase::Initialize(const ros::NodeHandle& n) {
 
   LoadParameters(n);
   CreatePublishers(n);
-  InitializeHandlers(n);
+  // InitializeHandlers(n);
 
 }
 
@@ -45,9 +43,21 @@ bool LampBase::CreatePublishers(const ros::NodeHandle& n) {
 
 // TODO might be common - check
 bool LampBase::PublishPoseGraph(const ros::NodeHandle& n){
-  
+  return false;
 }
 
+
+bool LampBase::RegisterOnlineCallbacks(const ros::NodeHandle& n){
+  return false;
+}
+
+bool LampBase::InitializeHandlers(const ros::NodeHandle& n){
+  return false;
+}
+
+bool LampBase::CheckHandlers(){
+  return false;
+}
 
 gtsam::Key LampBase::getKeyAtTime(const ros::Time& stamp) const {
 
