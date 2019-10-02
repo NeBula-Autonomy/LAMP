@@ -10,6 +10,18 @@
 // Includes 
 #include <ros/ros.h>
 
+// GTSAM
+#include <gtsam/base/Vector.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/Rot3.h>
+#include <gtsam/linear/NoiseModel.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/InitializePose3.h>
+#include <gtsam/inference/Symbol.h>
+
 // #include <tf/transform_broadcaster.h>
 // #include <tf/transform_listener.h>
 // #include <tf_conversions/tf_eigen.h>
@@ -38,9 +50,6 @@
 // Class definition
 class LampBase {
   public:
-    // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-    
-    
 
     // Constructor
     LampBase();
@@ -50,19 +59,17 @@ class LampBase {
 
     // Define main interface functions
 
-    bool Initialize();
-
-    bool public_variable_;
+    virtual bool Initialize();
 
   protected:
 
     // Use this for any "private" things to be used in the derived class
     // Node initialization.
-    bool LoadParameters(const ros::NodeHandle& n);
+    virtual bool LoadParameters(const ros::NodeHandle& n) = 0;
     // bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
     // bool RegisterLogCallbacks(const ros::NodeHandle& n);
-    // bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
-    bool CreatePublishers(const ros::NodeHandle& n);
+    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n) = 0;
+    virtual bool CreatePublishers(const ros::NodeHandle& n) = 0;
     
     // instantiate all handlers that are being used in the derived classes
     virtual bool InitializeHandlers() = 0; 
@@ -70,12 +77,24 @@ class LampBase {
     // retrieve data from all handlers
     virtual bool CheckHandlers() = 0; 
 
-    // Private variables - won't be able to be accessed in the derived class
-    float example_variable_;
-    int variable_2_;
+    // Functions to publish
+    void PublishPoseGraph();
 
+    // Convert timestamps to gtsam keys 
+    gtsam::Key getKeyAtTime(const ros::Time& stamp) const;
+
+    // Variables - can be able to be accessed in the derived class
+    gtsam::NonlinearFactorGraph nfg_;
+    gtsam::Values values_;
+
+    // Keep a list of keyed laser scans and keyed timestamps.
+    std::map<gtsam::Symbol, PointCloud::ConstPtr> keyed_scans_;
+    std::map<gtsam::Symbol, ros::Time> keyed_stamps_;
+    std::map<double, gtsam::Symbol> stamps_keyed_;
+
+    
     // Booleans
-    bool example_boolean_;
+    bool b_run_optimization_;
 
     // Publishers
 
