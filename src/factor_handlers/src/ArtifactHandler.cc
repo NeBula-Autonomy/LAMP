@@ -1,5 +1,5 @@
 // Includes
-#include "ArtifactHandler.h"
+#include "factor_handlers/ArtifactHandler.h"
 
 /**
  * Constructor
@@ -73,8 +73,8 @@ bool ArtifactHandler::Initialize(const ros::NodeHandle& n){
     ROS_ERROR("%s: Failed to load artifact parameters.", name_.c_str());
     return false;
   }
-
-  if (!RegisterCallbacks(n, ???)) {
+  // Need to change this
+  if (!RegisterCallbacks(n, false)) {
     ROS_ERROR("%s: Failed to register artifact callback.", name_.c_str());
     return false;
   }
@@ -189,7 +189,7 @@ gtsam::Key ArtifactHandler::GetArtifactKey(const core_msgs::Artifact& msg) {
 
     ArtifactInfo artifactinfo(msg.parent_id);
     // create hashmap for artifact id to artifact_info
-    artifact_id_to_info[artifact_id] = artifactinfo;
+    artifact_id_to_info_[artifact_id] = artifactinfo;
   }
   return cur_artifact_key;
 }
@@ -247,7 +247,8 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Append transform
   artifact_data_.transforms.push_back(R_pose_A);
   // Append covariance
-  artifact_data_.covariances.push_back(cov);
+  // TODO How to push Mat33 to Mat1212 
+  // artifact_data_.covariances.push_back(cov);
   // Append std::pair<ros::Time, ros::Time(0.0)> for artifact
   artifact_data_.time_stamps.push_back(std::make_pair(msg.header.stamp, ros::Time(0.0)));
   // Append the artifact key
@@ -272,7 +273,7 @@ void ArtifactHandler::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& 
   artifact.thumbnail = msg->thumbnail;
 
   ArtifactInfo artifactinfo(msg->parent_id);
-  artifactinfo.msg = artifact;
+  // artifactinfo.msg = artifact;           // TODO check this
 
   std::cout << "Artifact position in world is: " << artifact.point.point.x
             << ", " << artifact.point.point.y << ", " << artifact.point.point.z
@@ -287,14 +288,15 @@ void ArtifactHandler::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& 
   std::cout << "\t Label: " << artifact.label << std::endl;
 
   // Publish artifacts - should be updated from the pose-graph
-  loop_closure_.PublishArtifacts();
+  // loop_closure_.PublishArtifacts();      // TODO Need publish function
 }
 
 /*! \brief  Gives the factors to be added.
  * Returns  Factors 
  */
+// TODO Need to either return FactorData or have it as pointer
 void ArtifactHandler::GetData(FactorData artifact_data) {
-  return artifact_data_;
+  artifact_data = artifact_data_;
 }
 
 /*! \brief  Create the publishers to log data.
@@ -318,54 +320,55 @@ bool ArtifactHandler::CreatePublishers(const ros::NodeHandle& n) {
  * n - Nodehandle
  * Returns bool
  */
-bool RegisterOnlineCallbacks(const ros::NodeHandle& n) {
+bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   ROS_INFO("%s: Registering online callbacks.", name_.c_str());
 
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  if (!b_is_basestation_ && !b_use_lo_frontend_){
-    artifact_sub_ = nl.subscribe(
-        "artifact_relative", 10, &ArtifactCallback, this);
-  }
+  // if (!b_is_basestation_ && !b_use_lo_frontend_){
+  //   artifact_sub_ = nl.subscribe(
+  //       "artifact_relative", 10, &ArtifactCallback, this);
+  // }
 
-  // Create pose-graph callbacks for base station
-  if(b_is_basestation_){
-    int num_robots = robot_names_.size();
-    // init size of subscribers
-    // loop through each robot to set up subscriber
-    for (size_t i = 0; i < num_robots; i++) {
-      ros::Subscriber artifact_base_sub =
-          nl.subscribe("/" + robot_names_[i] + "/blam_slam/artifact_global",
-                       10,
-                       &ArtifactBaseCallback,
-                       this);
-      Subscriber_artifactList_.push_back(artifact_base_sub);
-      ROS_INFO_STREAM(i);
-    }    
-  }
+  // // Create pose-graph callbacks for base station
+  // if(b_is_basestation_){
+  //   int num_robots = robot_names_.size();
+  //   // init size of subscribers
+  //   // loop through each robot to set up subscriber
+  //   for (size_t i = 0; i < num_robots; i++) {
+  //     ros::Subscriber artifact_base_sub =
+  //         nl.subscribe("/" + robot_names_[i] + "/blam_slam/artifact_global",
+  //                      10,
+  //                      &ArtifactBaseCallback,
+  //                      this);
+  //     Subscriber_artifactList_.push_back(artifact_base_sub);
+  //     ROS_INFO_STREAM(i);
+  //   }    
+  // }
 
-  if (!b_is_front_end_){
-    ros::Subscriber artifact_base_sub =
-        nl.subscribe("artifact_global_sub",
-                      10,
-                      &ArtifactBaseCallback,
-                      this);
-    Subscriber_artifactList_.push_back(artifact_base_sub);
-  }
+  // if (!b_is_front_end_){
+  //   ros::Subscriber artifact_base_sub =
+  //       nl.subscribe("artifact_global_sub",
+  //                     10,
+  //                     &ArtifactBaseCallback,
+  //                     this);
+  //   Subscriber_artifactList_.push_back(artifact_base_sub);
+  // }
   return CreatePublishers(n);  
 }
 
 /*! \brief  Updates the global pose of an artifact 
  * Returns  Void
  */
-void UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
-  std::unordered_map<std::string, gtsam::Key>::const_iterator it = artifact_id2key_hash.find(artifact_key);
+void ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
   std::string artifact_id;
-  if (it == artifact_id2key_hash.end())
-    std::cout << "Key not found in the Artifact id to key map.";
-  else
-    artifact_id = artifact_id2key_hash->first; 
-
-  artifact_id_to_info_[artifact_id].global_pose = global_pose;
+  for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end(); ++it) {
+    if (it->second == artifact_key) {
+      artifact_id = it->first; 
+      artifact_id_to_info_[artifact_id].global_pose = global_pose;
+      return;
+    }
+  } 
+  std::cout << "Key not found in the Artifact id to key map.";
 }

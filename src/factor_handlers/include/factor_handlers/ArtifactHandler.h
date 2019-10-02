@@ -4,9 +4,18 @@
 // Includes
 // For common datastructures
 #include "utils/CommonStructs.h"
+#include <core_msgs/Artifact.h>
 
 // Base class
 #include "LampDataHandlerBase.h"
+
+// TODO Namespaces. Needs to be removed once this goes into header of LampDataHadlerBase
+#include <parameter_utils/ParameterUtils.h>
+namespace pu = parameter_utils;
+namespace gu = geometry_utils;
+
+// TODO Move to CommonStructs
+typedef geometry_utils::MatrixNxNBase<double, 3> Mat33;
 
 /*! \brief Stores Artifact information
  */
@@ -102,8 +111,13 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Updates the global pose of an artifact 
      * Returns  Void
      */
-    void UpdateGlobalPose(std::string artifact_key ,gtsam::Pose3 global_pose);
+    void UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
     
+    /*! \brief  TODO Incomplete
+     * Returns  Void
+     */
+    void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
+
     private:
     // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
     // from the pose graph
@@ -131,6 +145,6 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Subscribers
     ros::Subscriber artifact_sub_;
     std::vector<ros::Subscriber> Subscriber_artifactList_;
-}
+};
 
 #endif // !ARTIFACT_HANDLER_H
