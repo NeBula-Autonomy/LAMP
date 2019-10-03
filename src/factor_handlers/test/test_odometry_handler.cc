@@ -9,10 +9,10 @@
 
 using namespace std;
 
-TEST(OdometryHandlerTest, TestLidarOdometryCallback) {
-    //ros::NodeHandle nh, pnh("~");
-    std::cout<<"HelloWorld"<<std::endl;
-}
+// TEST(OdometryHandlerTest, TestLidarOdometryCallback) {
+//     //ros::NodeHandle nh, pnh("~");
+//     std::cout<<"HelloWorld"<<std::endl;
+// }
 
 // TEST(OdomHandlerTest, EnqueueLidarOdometryMsgs) {
 //   ros::NodeHandle nh, pnh("~");
@@ -26,5 +26,6 @@ TEST(OdometryHandlerTest, TestLidarOdometryCallback) {
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_odometry_handler");
+  std::cout<<"Hello World"<<std::endl;
   return RUN_ALL_TESTS();
 }
