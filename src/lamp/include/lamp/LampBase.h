@@ -120,7 +120,7 @@ class LampBase {
     std::vector<pose_graph_msgs::PoseGraphNode> priors_info_;
     
     // New pose graph values from optimizer
-    // virtual void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
+    virtual void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
 
     // Booleans
     bool b_run_optimization_;

@@ -118,7 +118,7 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
   update_timer_ = nl.createTimer(
     update_rate_, &LampRobot::ProcessTimerCallback, this);
     
-  back_end_pose_graph_sub_ = nl.subscribe("back_end_pose_graph", 1, &LampRobot::OptimizerUpdateCallback, this);
+  back_end_pose_graph_sub_ = nl.subscribe("back_end_pose_graph", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
 
   return true; 
 }
@@ -284,47 +284,6 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
 
   UpdateArtifactPositions();
 
-}
-
-void LampRobot::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg) {
-  
-  // Process the slow graph update
-  merger_.on_slow_graph_msg(msg);
-
-  // Give merger the current graph // TODO
-  // merger_.on_fast_graph_msg(ConvertPoseGraphToMsg());
-
-  gtsam::Values new_values; 
-  gtsam::Symbol key;
-
-  // Update the internal LAMP graph using the one stored by the merger
-  pose_graph_msgs::PoseGraph fused_graph = merger_.GetCurrentGraph();
-
-  // update the LAMP internal values_
-  // Function pose_graph msg to gtsam values and factors
-  // utils::ConvertMsgToPoseGraph(msg, values_, nfg_);
-  // Implement this - replaces the below
-
-  for (const pose_graph_msgs::PoseGraphNode &msg_node : fused_graph.nodes) {
-    // Get key 
-    key = gtsam::Symbol(msg_node.key);
-
-    gtsam::Pose3 full_pose;
-
-    gtsam::Point3 pose_translation(msg_node.pose.position.x,
-                                  msg_node.pose.position.y,
-                                  msg_node.pose.position.z);
-    gtsam::Rot3 pose_orientation(gtsam::Rot3::quaternion(msg_node.pose.orientation.w,
-                                                  msg_node.pose.orientation.x,
-                                                  msg_node.pose.orientation.y,
-                                                  msg_node.pose.orientation.z));
-    full_pose = gtsam::Pose3(pose_orientation, pose_translation);
-
-    new_values.insert(key, full_pose);
-  }
-
-  // Update internal pose graph values
-  values_ = new_values;
 }
 
 

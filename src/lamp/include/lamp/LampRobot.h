@@ -53,9 +53,6 @@ class LampRobot : public LampBase {
     bool SetInitialPosition();
     bool SetInitialKey();
 
-    void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
-
-
 
     void ProcessTimerCallback(const ros::TimerEvent& ev);
     // TODO - move to base class?
