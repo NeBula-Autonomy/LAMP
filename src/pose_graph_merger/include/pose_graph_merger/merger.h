@@ -7,6 +7,7 @@
 
 #include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
+#include <utils/CommonStructs.h>
 
 #include <tf2/transform_datatypes.h>
 
@@ -16,12 +17,12 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <Eigen/Eigen>
 
-typedef pose_graph_msgs::PoseGraphNode Node;
-typedef pose_graph_msgs::PoseGraphEdge Edge;
+typedef pose_graph_msgs::PoseGraphNode GraphNode;
+typedef pose_graph_msgs::PoseGraphEdge GraphEdge;
 
 class Merger {
 public:
-    Merger(ros::NodeHandle nh, ros::NodeHandle pnh);
+    Merger();
 
     void on_fast_graph_msg(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
@@ -34,12 +35,13 @@ public:
 
     // Utility functions
     void clean_up_map(const ros::Time &stamp);
+    pose_graph_msgs::PoseGraph GetCurrentGraph();
 
     geometry_utils::Transform3 get_pose_at_time(const ros::Time &stamp);
 
 private:
 
-
+    pose_graph_msgs::PoseGraph current_graph_;
     pose_graph_msgs::PoseGraphConstPtr lastSlow;
     geometry_utils::Transform3 current_pose_est_;
     geometry_utils::Transform3 last_slow_pose_;
@@ -52,9 +54,6 @@ private:
     bool b_received_first_slow_pose_;
 
     bool b_block_slow_pose_update;
-
-    ros::NodeHandle nodeHandle;
-    ros::NodeHandle privNodeHandle;
 
     ros::Subscriber fastGraphSub;
     ros::Subscriber slowGraphSub;

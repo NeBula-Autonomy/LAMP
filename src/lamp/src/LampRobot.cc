@@ -22,17 +22,21 @@ LampRobot::LampRobot() :
 LampRobot::~LampRobot() {}
 
 // Initialization - override for robot specific setup
-// LampRobot::Initialize() {
-//   // Add load params etc
+bool LampRobot::Initialize(const ros::NodeHandle& n) {
+  // Add load params etc
 
-// }
+
+  return true; 
+}
 
 bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
-    if (!pu::Get("update_rate", update_rate_)) return false;
+  if (!pu::Get("update_rate", update_rate_)) return false;
 
-    // TODO initialize keyed_stamps_ and stamps_keyed_
+  // TODO initialize keyed_stamps_ and stamps_keyed_
 
+
+  return true;
 }
 
 bool LampRobot::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
@@ -43,6 +47,9 @@ bool LampRobot::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   update_timer_ = nl.createTimer(
     update_rate_, &LampRobot::ProcessTimerCallback, this);
     
+
+
+  return true; 
 }
 
 bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
@@ -51,14 +58,18 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   pose_graph_pub_ =
-      nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
+    nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   keyed_scan_pub_ =
-      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+    nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
 
+
+  return true; 
 }
 
 bool LampRobot::InitializeHandlers(){
     // artifact_handler_.Initialize(); 
+
+  return true; 
 }
 
 
@@ -180,7 +191,6 @@ bool LampRobot::ProcessOdomData(FactorData data){
 
           */
     }
-
 }
 
 

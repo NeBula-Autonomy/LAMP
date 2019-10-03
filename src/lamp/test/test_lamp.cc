@@ -14,18 +14,18 @@ class TestLampRobot : public ::testing::Test{
     TestLampRobot(){}
     ~TestLampRobot(){}
 
-}
+};
 
 TEST(TestLampRobot, Initialization)
 {
   ros::NodeHandle nh, pnh("~");
 
   // Constructor
-  LampRobot lr(nh, pnh);
+  LampRobot lr;
 
-  lr.Initialize();
+  bool result = lr.Initialize(nh);
   
-  EXPECT_EQ(sampled_points_gt[0], sampled_points[0]);
+  ASSERT_TRUE(result);
 }
 
 TEST(TestLampRobot, highestConfidenceIndex)

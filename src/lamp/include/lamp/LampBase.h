@@ -47,6 +47,7 @@
 #include <pcl_ros/point_cloud.h>
 
 #include <factor_handlers/LampDataHandlerBase.h>
+#include <pose_graph_merger/merger.h>
 
 #include <utils/CommonStructs.h>
 
@@ -70,19 +71,21 @@ class LampBase {
 
   protected:
 
+  // TODO: make most of these pure virtual
+
     // Use this for any "private" things to be used in the derived class
     // Node initialization.
-    virtual bool LoadParameters(const ros::NodeHandle& n) = 0;
+    virtual bool LoadParameters(const ros::NodeHandle& n);
     // bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
     // bool RegisterLogCallbacks(const ros::NodeHandle& n);
-    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n) = 0;
-    virtual bool CreatePublishers(const ros::NodeHandle& n) = 0;
+    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
+    virtual bool CreatePublishers(const ros::NodeHandle& n);
     
     // instantiate all handlers that are being used in the derived classes
-    virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0; 
+    virtual bool InitializeHandlers(const ros::NodeHandle& n); 
 
     // retrieve data from all handlers
-    virtual bool CheckHandlers() = 0; 
+    virtual bool CheckHandlers(); 
 
     // Functions to publish
     bool PublishPoseGraph(const ros::NodeHandle& n);
@@ -102,6 +105,8 @@ class LampBase {
     std::map<gtsam::Symbol, ros::Time> keyed_stamps_;
     std::map<double, gtsam::Symbol> stamps_keyed_;
 
+    // New pose graph values from optimizer
+    void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
     
     // Booleans
     bool b_run_optimization_;
@@ -111,6 +116,7 @@ class LampBase {
     ros::Publisher keyed_scan_pub_;
 
     // Subscribers
+    ros::Subscriber slow_graph_sub_;
 
     // Services 
 
@@ -118,6 +124,9 @@ class LampBase {
 
     bool example_boolean_;
     float example_variable_;
+
+    // Pose graph merger
+    Merger merger_;
 
   private:
     // Anything just in the base class

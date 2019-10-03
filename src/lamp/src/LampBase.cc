@@ -15,9 +15,7 @@ namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
 // Constructor
-LampBase::LampBase()
-  : example_variable_(3.14159),
-    example_boolean_(false) {
+LampBase::LampBase(){
      // any other things on construction 
     }
 
@@ -29,7 +27,7 @@ bool LampBase::Initialize(const ros::NodeHandle& n) {
 
   LoadParameters(n);
   CreatePublishers(n);
-  InitializeHandlers(n);
+  // InitializeHandlers(n);
 
 }
 
@@ -45,9 +43,25 @@ bool LampBase::CreatePublishers(const ros::NodeHandle& n) {
 
 // TODO might be common - check
 bool LampBase::PublishPoseGraph(const ros::NodeHandle& n){
-  
+  return false;
 }
 
+
+bool LampBase::RegisterOnlineCallbacks(const ros::NodeHandle& n){
+  ros::NodeHandle nl(n);
+
+  slow_graph_sub_ = nl.subscribe("lamp/pose_graph_lc", 1, &LampBase::OptimizerUpdateCallback, this);
+
+  return false;
+}
+
+bool LampBase::InitializeHandlers(const ros::NodeHandle& n){
+  return false;
+}
+
+bool LampBase::CheckHandlers(){
+  return false;
+}
 
 gtsam::Key LampBase::getKeyAtTime(const ros::Time& stamp) const {
 
@@ -90,3 +104,38 @@ gtsam::Key LampBase::getKeyAtTime(const ros::Time& stamp) const {
   return key; 
 
 }
+
+void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg) {
+  
+  // Process the slow graph update
+  merger_.on_slow_graph_msg(msg);
+
+  gtsam::Values new_values; 
+  gtsam::Key key;
+
+  // Update the internal LAMP graph using the one stored by the merger
+  pose_graph_msgs::PoseGraph current_graph = merger_.GetCurrentGraph();
+
+  // update the LAMP internal values_
+  for (const pose_graph_msgs::PoseGraphNode &msg_node : msg->nodes) {
+    // Get key 
+    key = gtsam::Symbol(msg_node.key);
+
+    gtsam::Pose3 full_pose;
+
+    gtsam::Point3 pose_translation(msg_node.pose.position.x,
+                                  msg_node.pose.position.y,
+                                  msg_node.pose.position.z);
+    gtsam::Rot3 pose_orientation(gtsam::Rot3::quaternion(msg_node.pose.orientation.w,
+                                                  msg_node.pose.orientation.x,
+                                                  msg_node.pose.orientation.y,
+                                                  msg_node.pose.orientation.z));
+    full_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    new_values.insert(key, full_pose);
+  }
+
+  // Update internal pose graph values
+  values_ = new_values;
+}
+    
