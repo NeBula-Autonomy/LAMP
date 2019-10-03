@@ -9,10 +9,57 @@
 
 using namespace std;
 
-// TEST(OdometryHandlerTest, TestLidarOdometryCallback) {
-//     //ros::NodeHandle nh, pnh("~");
-//     std::cout<<"HelloWorld"<<std::endl;
-// }
+class OdometryHandlerTest : public ::testing::Test {
+  
+  protected:
+
+    void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+      myOdometryHandler.LidarOdometryCallback(msg);
+      }
+
+    int Foo(int a) {
+      myOdometryHandler.Foo(a);
+    }       
+
+    int CheckLidarOdometryBufferSize() {
+      myOdometryHandler.CheckLidarOdometryBufferSize();
+    }
+
+  private: 
+    OdometryHandler myOdometryHandler; 
+};
+
+
+
+
+TEST_F(OdometryHandlerTest, TestLidarOdometryCallback) {   
+
+  // Construct a OdometryHandler Object
+  // OdometryHandler myOdometryHandler; 
+  
+  // Check that result is correct  
+  EXPECT_EQ(CheckLidarOdometryBufferSize(), 0);
+
+  // Create a message to trigger the Callback 
+  // const int * intPtr1; // Declares a pointer whose contents cannot be changed.
+
+  //const nav_msgs::Odometry OdometryMsg;
+  
+  //LidarOdometryCallback(OdometryMsg);
+
+
+  EXPECT_EQ(Foo(2),2)
+
+
+  // Check that result is correct  
+  //EXPECT_EQ(CheckLidarOdometryBufferSize(), 0);
+
+  //myOdometryHandler.LidarOdometryCallback()
+
+}
+
+
+
 
 // TEST(OdomHandlerTest, EnqueueLidarOdometryMsgs) {
 //   ros::NodeHandle nh, pnh("~");
@@ -26,6 +73,9 @@ using namespace std;
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_odometry_handler");
-  std::cout<<"Hello World"<<std::endl;
   return RUN_ALL_TESTS();
 }
+
+
+
+

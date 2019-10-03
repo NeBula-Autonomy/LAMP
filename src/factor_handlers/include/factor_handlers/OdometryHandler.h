@@ -15,6 +15,8 @@
 
 // Class Definition 
 class OdometryHandler : public LampDataHandlerBase{
+
+    friend class OdometryHandlerTest;
     
     public:
      
@@ -23,9 +25,15 @@ class OdometryHandler : public LampDataHandlerBase{
 
         //Initialize(const ros::NodeHandle& n);  
 
-        //RegisterOnlineCallbacks(const ros::NodeHandle& n);    
+        //RegisterOnlineCallbacks(const ros::NodeHandle& n); 
+
+        int Foo(int a); 
+
+          
 
     protected: 
+
+    private:    
 
         // Odometry Subscribers 
         ros::Subscriber lidar_odom_sub_;
@@ -37,14 +45,16 @@ class OdometryHandler : public LampDataHandlerBase{
         void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
         void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
+        
         // Odometry Storages 
-        std::vector<geometry_msgs::PoseStamped> lidar_odometry_deque_; 
-        std::vector<geometry_msgs::PoseStamped> visual_odometry_deque_;
-        std::vector<geometry_msgs::PoseStamped> wheel_odometry_deque_; 
-    
+        std::vector<geometry_msgs::PoseStamped> lidar_odometry_buffer_; 
+        std::vector<geometry_msgs::PoseStamped> visual_odometry_buffer_;
+        std::vector<geometry_msgs::PoseStamped> wheel_odometry_buffer_;
 
-
-    private:    
+        // Utilities to check local buffer sizes
+        int CheckLidarOdometryBufferSize(); 
+        int CheckVisualOdometryBufferSize();
+        int CheckWheelOdometryBufferSize();  
 };
 
 #endif
