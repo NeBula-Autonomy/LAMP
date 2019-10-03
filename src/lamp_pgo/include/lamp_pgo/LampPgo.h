@@ -7,6 +7,9 @@ Interface for ROS and KimeraRPGO
 #ifndef LAMP_PGO_H_
 #define LAMP_PGO_H_
 
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+
 #include <ros/console.h>
 #include <ros/ros.h>
 
@@ -17,18 +20,19 @@ Interface for ROS and KimeraRPGO
 
 class LampPgo {
  public:
+  // constructor destructor
   LampPgo();
+  ~LampPgo();
 
-  Initialize(const ros::NodeHandle& n);
+  bool Initialize(const ros::NodeHandle& n);
 
  private:
-  // node handle
-  ros::NodeHandle nh_;
-
   // define publishers and subscribers
   ros::Publisher optimized_pub_;
 
   ros::Subscriber input_sub_;
+
+  void PublishValues() const;
 
   void InputCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
 
@@ -36,6 +40,9 @@ class LampPgo {
   // Optimizer parameters
   KimeraRPGO::RobustSolverParams rpgo_params_;
   std::unique_ptr<KimeraRPGO::RobustSolver> pgo_solver_;  // actual solver
+
+  gtsam::Values values_;
+  gtsam::NonlinearFactorGraph nfg_;
 };
 
 #endif  // LAMP_PGO_H_

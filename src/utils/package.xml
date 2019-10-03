@@ -2,18 +2,26 @@
 <package>
   <name>utils</name>
   <version>0.0.9</version>
-  <description>geometry_utils</description>
+  <description>utils</description>
 
-  <author email="nmichael@cmu.edu">Nathan Michael</author>
-  <author email="eanelson@eecs.berkeley.edu">Erik Nelson</author>
-  <maintainer email="eanelson@eecs.berkeley.edu">Erik Nelson</maintainer>
+  <author email="yunchang@mit.edu">Yun Chang</author>
+  <maintainer email="yunchang@mit.edu">Yun Chang</maintainer>
 
   <license>GPLv2</license>
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <build_depend>roscpp</build_depend>
+  <build_depend>geometry_utils</build_depend>
+  <build_depend>pose_graph_msgs</build_depend>
+  <build_depend>core_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
-  <build_depend>tf2</build_depend>
 
-  <run_depend>tf2</run_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>geometry_utils</run_depend>
+  <run_depend>pose_graph_msgs</run_depend>
+  <run_depend>core_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+
 </package>
