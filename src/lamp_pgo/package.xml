@@ -4,6 +4,8 @@
   <version>0.0.0</version>
   <description>The lamp_pgo package</description>
 
+  <license>TODO</license>
+
   <maintainer email="yunchang@mit.edu">Yun Chang</maintainer>
   <buildtool_depend>catkin</buildtool_depend>
 
