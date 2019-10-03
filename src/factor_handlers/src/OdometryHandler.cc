@@ -80,26 +80,11 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
     wheel_odometry_buffer_.push_back(currentMsg); 
 }
  
-
-// Header header
-// string child_frame_id
-// geometry_msgs/PoseWithCovariance pose
-// geometry_msgs/TwistWithCovariance twist
-
-
-int OdometryHandler::CheckLidarOdometryBufferSize() {
-    return lidar_odometry_buffer_.size(); 
+template <typename TYPE>
+int OdometryHandler::CheckBufferSize(std::vector<TYPE> const& x) {
+    return x.size();
 }
 
-int OdometryHandler::CheckVisualOdometryBufferSize() {
-    return visual_odometry_buffer_.size(); 
-}
-
-int OdometryHandler::CheckWheelOdometryBufferSize() {
-    return wheel_odometry_buffer_.size(); 
-}  
-
-int OdometryHandler::Foo(int a) {
-    std::cout<<"Received "<< a << std::endl;
-    return a;
+int OdometryHandler::CheckMyBufferSize(const std::vector<geometry_msgs::PoseStamped>& x){
+    return x.size();
 }
