@@ -79,3 +79,11 @@ target_link_libraries(${PROJECT_NAME}
   ${Boost_LIBRARIES}
   gtsam
 )
+
+#############
+## Testing ##
+#############
+
+## Add gtest based cpp test target and link libraries
+catkin_add_gtest(test_artifact_handler test/test_artifact_handler.cc)
+target_link_libraries(test_artifact_handler ${PROJECT_NAME} ${catkin_LIBRARIES})

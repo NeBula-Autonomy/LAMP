@@ -14,15 +14,13 @@
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
-// TODO Move to CommonStructs
-typedef geometry_utils::MatrixNxNBase<double, 3> Mat33;
-
 /*! \brief Stores Artifact information
  */
 struct ArtifactInfo {
   std::string           id;                   // this corresponds to parent_id
   int                   num_updates;          // how many times the optimizer has updated this
   gtsam::Pose3          global_pose;          // Global pose of the artifact
+  core_msgs::Artifact   msg;                  // All fields in the artifact message that we need  
   ArtifactInfo(std::string art_id="") :
                id(art_id), 
                num_updates(0),
@@ -54,7 +52,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
-    void GetData(FactorData artifact_data);
+    FactorData GetData();
 
     protected:
     /*! \brief Load artifact parameters. 
@@ -92,12 +90,6 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     gtsam::Key GetArtifactKey(const core_msgs::Artifact& msg);
 
-
-    /*! \brief  Checks if artifact is a new one.
-     * Returns  True if new or false otherwise 
-     */
-    bool IsNewArtifact(const std::string artifact_id);
-
     /*! \brief  Callback for Artifacts.
      * Returns  Void
      */
@@ -118,10 +110,15 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
 
+    /*! \brief  Publish Artifact
+     * Returns  Void
+     */
+    void PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
+
     private:
     // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
     // from the pose graph
-    std::unordered_map<std::string, ArtifactInfo> artifact_id_to_info_;
+    std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
     // Mapping between a artifact id and the node where it is present in the pose graph
     std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
 
