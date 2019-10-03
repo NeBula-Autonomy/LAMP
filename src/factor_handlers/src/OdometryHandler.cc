@@ -84,6 +84,14 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
     currentMsg.pose = msg->pose;
     wheel_odometry_buffer_.push_back(currentMsg); 
 }
+
+double OdometryHandler::CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer) {
+    auto pose_first = gr::FromROS((*(odom_buffer.begin())).pose.pose);
+    auto pose_end   = gr::FromROS((*(std::prev(odom_buffer.end()))).pose.pose);
+    auto pose_delta = gu::PoseDelta(pose_first, pose_end);
+    // Return the norm of the 3D Transformation between two poses as a double
+    return pose_delta.translation.Norm();
+}
  
 template <typename TYPE>
 int OdometryHandler::CheckBufferSize(std::vector<TYPE> const& x) {

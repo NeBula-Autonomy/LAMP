@@ -24,6 +24,7 @@
 #include <utils/CommonStructs.h>
 
 namespace gu = geometry_utils;
+namespace gr = geometry_utils::ros;
 
 class LampDataHandlerBase {
   public:

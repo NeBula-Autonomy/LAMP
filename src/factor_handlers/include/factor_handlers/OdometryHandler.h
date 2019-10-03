@@ -38,18 +38,22 @@ class OdometryHandler : public LampDataHandlerBase{
         void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
         void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
-        
         // Odometry Storages 
-
         std::vector<geometry_msgs::PoseWithCovarianceStamped> lidar_odometry_buffer_; 
         std::vector<geometry_msgs::PoseWithCovarianceStamped> visual_odometry_buffer_;
         std::vector<geometry_msgs::PoseWithCovarianceStamped> wheel_odometry_buffer_;
 
+        // Odometry Storages Size Computer 
+        int CheckMyBufferSize(const std::vector<geometry_msgs::PoseWithCovarianceStamped>& x);
+        
+        // Calculate Delta between two Poses 
+        double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer);
+    
         // Utilities to check local buffer sizes
         template <typename TYPE>
         int CheckBufferSize(std::vector<TYPE> const& x);
 
-        int CheckMyBufferSize(const std::vector<geometry_msgs::PoseWithCovarianceStamped>& x);
+        
 
 
 
