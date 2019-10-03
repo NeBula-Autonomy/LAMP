@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package format="2">
+<package>
   <name>lamp_pgo</name>
   <version>0.0.0</version>
   <description>The lamp_pgo package</description>
@@ -8,6 +8,23 @@
 
   <maintainer email="yunchang@mit.edu">Yun Chang</maintainer>
   <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>utils</build_depend>
+  <build_depend>geometry_utils</build_depend>
+  <build_depend>parameter_utils</build_depend>
+  <build_depend>pose_graph_msgs</build_depend>
+  <build_depend>core_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>utils</run_depend>
+  <run_depend>geometry_utils</run_depend>
+  <run_depend>parameter_utils</run_depend>
+  <run_depend>pose_graph_msgs</run_depend>
+  <run_depend>core_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
 
   <export>
   </export>
