@@ -7,14 +7,21 @@
 #include <gtest/gtest.h>
 #include <factor_handlers/OdometryHandler.h>
 
-TEST(OdomHandlerTest, EnqueueLidarOdometryMsgs) {
-  ros::NodeHandle nh, pnh("~");
-  OdometryHandler myOdometryHandler; 
-  myOdometryHandler.Initialize(nh);
-  // std::string phrase("Hello World");
-  // std_msgs::String msg = talker.composeGreetingMsg(phrase);
-  // EXPECT_EQ(phrase, msg.data);
+using namespace std;
+
+TEST(OdometryHandlerTest, TestLidarOdometryCallback) {
+    //ros::NodeHandle nh, pnh("~");
+    std::cout<<"HelloWorld"<<std::endl;
 }
+
+// TEST(OdomHandlerTest, EnqueueLidarOdometryMsgs) {
+//   ros::NodeHandle nh, pnh("~");
+//   OdometryHandler myOdometryHandler; 
+//   // myOdometryHandler.Initialize(nh);
+//   // std::string phrase("Hello World");
+//   // std_msgs::String msg = talker.composeGreetingMsg(phrase);
+//   // EXPECT_EQ(phrase, msg.data);
+// }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

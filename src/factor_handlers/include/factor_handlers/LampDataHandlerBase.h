@@ -30,9 +30,9 @@ class LampDataHandlerBase {
     LampDataHandlerBase();
     ~LampDataHandlerBase();
 
-    bool Initialize(const ros::NodeHandle& n);
+    virtual bool Initialize(const ros::NodeHandle& n);
 
-    virtual FactorData GetData() = 0;
+    virtual FactorData GetData();
 
   protected:
 
