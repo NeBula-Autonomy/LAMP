@@ -32,7 +32,7 @@ class OdometryHandlerTest : public ::testing::Test {
       return myOdometryHandler.CheckBufferSize(x);
     }
 
-    int CheckMyBufferSize(const std::vector<geometry_msgs::PoseStamped>& x) {
+    int CheckMyBufferSize(const std::vector<geometry_msgs::PoseWithCovarianceStamped>& x) {
       return myOdometryHandler.CheckMyBufferSize(x);
     }
 
@@ -46,9 +46,9 @@ TEST_F (OdometryHandlerTest, TestCheckMyBufferSize) {
   int N = 10;
 
   // Create a buffer 
-  std::vector<geometry_msgs::PoseStamped> pose_stamped_buffer;
+  std::vector<geometry_msgs::PoseWithCovarianceStamped> pose_stamped_buffer;
   // Create a message
-  geometry_msgs::PoseStamped pose_stamped;
+  geometry_msgs::PoseWithCovarianceStamped pose_stamped;
 
   for (size_t x=0; x<N; x++){    
     // Push the message in the buffer
@@ -66,32 +66,33 @@ TEST_F (OdometryHandlerTest, TestCheckMyBufferSize) {
 }
 
 
-TEST_F (OdometryHandlerTest, TestCheckBufferSize) {
+// TEST_F (OdometryHandlerTest, TestCheckBufferSize) {
 
-  int N = 10;
+//   int N = 10;
 
-  // Create a buffer 
-  std::vector<geometry_msgs::PoseStamped> pose_stamped_buffer;
-  // Create a message
-  geometry_msgs::PoseStamped pose_stamped;
+//   // Create a buffer 
+//   std::vector<geometry_msgs::PoseStamped> pose_stamped_buffer;
+//   // Create a message
+//   geometry_msgs::PoseStamped pose_stamped;
 
-  for (size_t x=0; x<N; x++){    
-    // Push the message in the buffer
-    pose_stamped_buffer.push_back(pose_stamped);   
-    std::cout << x << std::endl; 
-  }
+//   for (size_t x=0; x<N; x++){    
+//     // Push the message in the buffer
+//     pose_stamped_buffer.push_back(pose_stamped);   
+//     std::cout << x << std::endl; 
+//   }
 
-  // Compute current buffer size
-  int buffer_size = CheckBufferSize<geometry_msgs::PoseStamped>(pose_stamped_buffer);
+//   // Compute current buffer size
+//   int buffer_size = CheckBufferSize<geometry_msgs::PoseStamped>(pose_stamped_buffer);
 
-  const std::vector<geometry_msgs::PoseStamped>& x
+//   const std::vector<geometry_msgs::PoseStamped>& x
 
 
-  // Check that the result is the expected
+//   // Check that the result is the expected
   
-  //EXPECT_EQ(buffer_size, N);
-  EXPECT_EQ(0,0);
-}
+//   //EXPECT_EQ(buffer_size, N);
+//   EXPECT_EQ(0,0);
+  
+// }
 
 // TEST_F(OdometryHandlerTest, TestLidarOdometryCallback) {   
 

@@ -54,29 +54,34 @@ DOCUMENTATION
         geometry_msgs/PoseWithCovariance
             Pose pose
             float64[36] covariance
+
+        geometry_msgs/PoseWithCovarianceStamped
+            Header header
+            PoseWithCovariance pose
+
 */
 
 void OdometryHandler::LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
-    geometry_msgs::PoseStamped currentMsg;
+    geometry_msgs::PoseWithCovarianceStamped currentMsg;
     currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose.pose;
+    currentMsg.pose = msg->pose;
     lidar_odometry_buffer_.push_back(currentMsg); 
 }
 
 void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
-    geometry_msgs::PoseStamped currentMsg;
+    geometry_msgs::PoseWithCovarianceStamped currentMsg;
     currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose.pose;
+    currentMsg.pose = msg->pose;
     visual_odometry_buffer_.push_back(currentMsg); 
 }
 
 void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    geometry_msgs::PoseStamped currentMsg;
+    geometry_msgs::PoseWithCovarianceStamped currentMsg;
     currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose.pose;
+    currentMsg.pose = msg->pose;
     wheel_odometry_buffer_.push_back(currentMsg); 
 }
  
@@ -85,6 +90,6 @@ int OdometryHandler::CheckBufferSize(std::vector<TYPE> const& x) {
     return x.size();
 }
 
-int OdometryHandler::CheckMyBufferSize(const std::vector<geometry_msgs::PoseStamped>& x){
+int OdometryHandler::CheckMyBufferSize(const std::vector<geometry_msgs::PoseWithCovarianceStamped>& x){
     return x.size();
 }

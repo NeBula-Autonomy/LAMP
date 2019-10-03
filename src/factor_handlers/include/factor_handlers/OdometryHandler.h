@@ -40,15 +40,19 @@ class OdometryHandler : public LampDataHandlerBase{
 
         
         // Odometry Storages 
-        std::vector<geometry_msgs::PoseStamped> lidar_odometry_buffer_; 
-        std::vector<geometry_msgs::PoseStamped> visual_odometry_buffer_;
-        std::vector<geometry_msgs::PoseStamped> wheel_odometry_buffer_;
+
+        std::vector<geometry_msgs::PoseWithCovarianceStamped> lidar_odometry_buffer_; 
+        std::vector<geometry_msgs::PoseWithCovarianceStamped> visual_odometry_buffer_;
+        std::vector<geometry_msgs::PoseWithCovarianceStamped> wheel_odometry_buffer_;
 
         // Utilities to check local buffer sizes
         template <typename TYPE>
         int CheckBufferSize(std::vector<TYPE> const& x);
 
-        int CheckMyBufferSize(const std::vector<geometry_msgs::PoseStamped>& x);
+        int CheckMyBufferSize(const std::vector<geometry_msgs::PoseWithCovarianceStamped>& x);
+
+
+
 
     private:    
 };
