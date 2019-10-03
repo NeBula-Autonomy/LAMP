@@ -3,6 +3,9 @@ project(lamp_pgo)
 
 SET(CMAKE_BUILD_TYPE Release)
 
+## Build KimeraRPGO
+add_subdirectory(KimeraRPGO)
+
 find_package(GTSAM REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -17,11 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## Export package settings
 catkin_package(
-  INCLUDE_DIRS
-    KimeraRPGO
-    include
-  LIBRARIES
-    ${PROJECT_NAME}
+  INCLUDE_DIRS include KimeraRPGO
+  LIBRARIES ${PROJECT_NAME} KimeraRPGO
   CATKIN_DEPENDS
   	roscpp
     utils
@@ -30,19 +30,15 @@ catkin_package(
   	core_msgs
     pose_graph_msgs
   	geometry_msgs
-  DEPENDS
-    KimeraRPGO
 )
 
-## Build RobustPGO
-add_subdirectory(KimeraRPGO)
-
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} KimeraRPGO)
-link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS})
+link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} KimeraRPGO)
 
 add_library(${PROJECT_NAME} src/lamp_pgo.cc src/LampPgo.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
+  KimeraRPGO
   gtsam
 )
 
@@ -50,6 +46,7 @@ add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc)
 target_link_libraries(${PROJECT_NAME}_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
+  KimeraRPGO
   gtsam
 )
 
