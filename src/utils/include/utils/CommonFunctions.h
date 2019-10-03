@@ -1,14 +1,17 @@
 /*
  * Copyright Notes
  *
- * Authors: 
+ * Authors:
+ * Yun Chang       (yunchang@mit.edu)
  * Alex Stephens       (alex.stephens@jpl.nasa.gov)
  * Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
  */
 
-
 #ifndef COMMON_FUNCTIONS_H
 #define COMMON_FUNCTIONS_H
+
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
 
 #include <utils/CommonStructs.h>
 
@@ -17,33 +20,20 @@
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 
-
-// using gtsam::BetweenFactor;
-// using gtsam::RangeFactor;
-// using gtsam::Pose3;
-// using gtsam::PriorFactor;
-// using gtsam::Rot3;
-// using gtsam::Values;
-// using gtsam::Vector3;
-// using gtsam::Vector6;
-
 namespace gu = geometry_utils;
 
-namespace utils{
-  
-  inline void ConvertMsgToPoseGraph(const pose_graph_msgs::PoseGraphConstPtr &msg, gtsam::Values& values, gtsam::NonlinearFactorGraph& nfg) {
-
-    // TODO - populate this
-
-  }
-
-  inline pose_graph_msgs::PoseGraphConstPtr ConvertGtsamToMsg(gtsam::Values& values, gtsam::NonlinearFactorGraph& nfg){
-    
-    // Init pose graph message
-    pose_graph_msgs::PoseGraphConstPtr msg;
-  }
+namespace utils {
+  // Pose graph msg to gtsam conversion
+  void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
+                          gtsam::NonlinearFactorGraph* graph_nfg,
+                          gtsam::Values* graph_vals);
 
 
+  // inline ConvertMsgToPoseGraph(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
+  //                         gtsam::NonlinearFactorGraph* graph_nfg,
+  //                         gtsam::Values* graph_vals){
+
+  // }
 
   inline gu::Transform3 ToGu(const gtsam::Pose3& pose) {
     gu::Transform3 out;
@@ -108,10 +98,5 @@ namespace utils{
       gtsam_covariance(i) = covariance(i,i);
     return gtsam::noiseModel::Diagonal::Covariance(gtsam_covariance);
   }
-
-
-} // namespace
-
-
-
-#endif
+}  // namespace utils
+#endif  // COMMON_FUNCTIONS_H

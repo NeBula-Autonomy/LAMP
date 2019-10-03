@@ -291,8 +291,8 @@ void LampRobot::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr
   // Process the slow graph update
   merger_.on_slow_graph_msg(msg);
 
-  // Give merger the current graph 
-  merger_.on_fast_graph_msg(ConvertPoseGraphToMsg());
+  // Give merger the current graph // TODO
+  // merger_.on_fast_graph_msg(ConvertPoseGraphToMsg());
 
   gtsam::Values new_values; 
   gtsam::Symbol key;
@@ -302,7 +302,8 @@ void LampRobot::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr
 
   // update the LAMP internal values_
   // Function pose_graph msg to gtsam values and factors
-  utils::ConvertMsgToPoseGraph(msg, values_, nfg_);
+  // utils::ConvertMsgToPoseGraph(msg, values_, nfg_);
+  // Implement this - replaces the below
 
   for (const pose_graph_msgs::PoseGraphNode &msg_node : fused_graph.nodes) {
     // Get key 

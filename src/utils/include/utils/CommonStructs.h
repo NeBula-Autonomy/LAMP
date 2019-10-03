@@ -37,20 +37,21 @@ typedef gtsam::noiseModel::Diagonal Diagonal;
 // GTSAM edge types
 typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
 typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
-typedef std::pair<gtsam::Symbol, gtsam::Pose3> Prior; 
+typedef std::pair<gtsam::Symbol, gtsam::Pose3> Prior;
 
-
-// Struct definition 
+// Struct definition
 struct FactorData {
-  bool b_has_data; // False if there is no data
-  std::string type; // odom, artifact, loop clsoure
+  bool b_has_data;   // False if there is no data
+  std::string type;  // odom, artifact, loop clsoure
   // Vector for possible multiple factors
-  std::vector<gtsam::Pose3> transforms; // The transform (for odom, loop closures etc.) and pose for TS
-  std::vector<Mat66> covariances; // Covariances for each transform 
-  std::vector<std::pair<ros::Time, ros::Time>> time_stamps; // Time when the measurement as acquired
+  std::vector<gtsam::Pose3> transforms;  // The transform (for odom, loop
+                                         // closures etc.) and pose for TS
+  std::vector<Mat1212> covariances;      // Covariances for each transform
+  std::vector<std::pair<ros::Time, ros::Time>>
+      time_stamps;  // Time when the measurement as acquired
   // TODO - use ros::Time or something else?
 
-  std::vector<gtsam::Key> artifact_key; // key for the artifacts
+  std::vector<gtsam::Key> artifact_key;  // key for the artifacts
 };
 
 #endif
