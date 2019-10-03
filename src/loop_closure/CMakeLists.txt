@@ -25,17 +25,14 @@ FIND_PACKAGE(Boost REQUIRED
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  rosbag
+  utils
   geometry_utils
   parameter_utils
   pcl_ros
   pcl_conversions
   core_msgs
-  uwb_msgs
-  mesh_msgs
+  pose_graph_msgs
   geometry_msgs
-  nav_msgs
-  tf_conversions
 )
 
 
@@ -44,16 +41,14 @@ catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS
     roscpp
-    rosbag
+    utils
     geometry_utils
     parameter_utils
     pcl_ros
     pcl_conversions
     core_msgs
-    uwb_msgs
-    mesh_msgs
+    pose_graph_msgs
     geometry_msgs
-    nav_msgs
   DEPENDS
     Boost
 )
@@ -71,7 +66,7 @@ endif()
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
-add_library(${PROJECT_NAME} src/LaserLoopClosureNode.cc src/LoopClosureBase.cc)
+add_library(${PROJECT_NAME} src/LaserLoopClosure.cc src/LoopClosureBase.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
