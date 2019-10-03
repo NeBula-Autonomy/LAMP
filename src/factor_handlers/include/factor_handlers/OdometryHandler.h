@@ -23,8 +23,9 @@ class OdometryHandler : public LampDataHandlerBase{
         ~OdometryHandler();  
 
         //Initialize(const ros::NodeHandle& n);  
+        //RegisterOnlineCallbacks(const ros::NodeHandle& n);
 
-        //RegisterOnlineCallbacks(const ros::NodeHandle& n);    
+        typedef std::vector<geometry_msgs::PoseWithCovarianceStamped> OdomPoseBuffer;
 
     protected: 
 
@@ -52,11 +53,6 @@ class OdometryHandler : public LampDataHandlerBase{
         // Utilities to check local buffer sizes
         template <typename TYPE>
         int CheckBufferSize(std::vector<TYPE> const& x);
-
-        
-
-
-
 
     private:    
 };

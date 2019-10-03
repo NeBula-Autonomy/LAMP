@@ -20,20 +20,19 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <nav_msgs/Odometry.h>
-
 #include <utils/CommonStructs.h>
 
 namespace gu = geometry_utils;
 namespace gr = geometry_utils::ros;
 
 class LampDataHandlerBase {
+
   public:
 
     LampDataHandlerBase();
     ~LampDataHandlerBase();
 
     virtual bool Initialize(const ros::NodeHandle& n);
-
     virtual FactorData GetData();
 
   protected:
@@ -46,9 +45,7 @@ class LampDataHandlerBase {
     bool CreatePublishers(const ros::NodeHandle& n);
 
     // Callback functions 
-    // void DataCallback();
-
-    
+    // void DataCallback();    
 
   private:
 

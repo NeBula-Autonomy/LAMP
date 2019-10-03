@@ -17,31 +17,6 @@ OdometryHandler::~OdometryHandler() {
     std::cout<<"Odometry Handler Class Destructor"<<std::endl;
     }
 
-// OdometryHandler::Initialize(const ros::NodeHandle& n){
-//     ROS_INFO("Initialize Method of OdometryHandler Called"); 
-//     // RegisterOnlineCallBacks(n);
-// }
-
-// void OdometryHandler::RegisterOnlineCallBacks(const ros::NodeHandler& n){
-
-//     ROS_INFO("%s: Odometry Handler: Registering online callbacks.", name_.c_str());
-    
-//     // Create a local node handle to manage callback subscriptions.
-//     ros::NodeHandle nl(n);
-    
-//     lidar_odom_sub_ =
-//       nl.subscribe("LIDAR_ODOMETRY_TOPIC", 100, &OdometryHandler::LidarOdometryCallback, this);
-// //     nav_msgs::Odometry::ConstPtr& msg) {
-// //         ROS_INFO("LidarOdometryCallback")    
-// //         geometry_msgs::Pose currentPose = msg.pose.pose 
-// //         currentPose.header.stamp = msg.header.stamp; 
-// //         lidar_odometry_deque_.push_back(currentPose); 
-// //     }
-
-// }
-
-
-
 /*
 DOCUMENTATION 
 
@@ -85,11 +60,14 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
     wheel_odometry_buffer_.push_back(currentMsg); 
 }
 
+//void OdometryHandler::CheckOdometryBuffer()
+
 double OdometryHandler::CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer) {
+    // TODO: Should be implemented in a cleaner way
     auto pose_first = gr::FromROS((*(odom_buffer.begin())).pose.pose);
     auto pose_end   = gr::FromROS((*(std::prev(odom_buffer.end()))).pose.pose);
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
-    // Return the norm of the 3D Transformation between two poses as a double
+    // Return the norm of the 3D Transformation between two poses as a
     return pose_delta.translation.Norm();
 }
  
