@@ -250,6 +250,9 @@ bool LampRobot::CheckHandlers() {
   // Check all handlers
   // ProcessArtifactData(artifact_handler_.GetData());
   // ProcessAprilData(april_handler_.GetData());
+
+
+  // Return true if there is a new node - or have a flag that we are ready to publish 
   return true;
 }
 
@@ -259,10 +262,15 @@ bool LampRobot::InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal:
   nfg_.add(PriorFactor<Pose3>(initial_key_, pose, covariance));
   values_.insert(initial_key_, pose);
 
+  ros::Time stamp = ros::Time::now();
+  keyed_stamps_[initial_key_] = stamp;
+
+  TrackPriors(stamp, initial_key_, pose, covariance);
+
+  // Populate the priors_info vector 
+
   return true;
 }
-
-
 
 void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
 
@@ -324,50 +332,58 @@ bool LampRobot::ProcessOdomData(FactorData data){
 
   // process data for each new factor 
   for (int i = 0; i < num_factors; i++) {
-      /*
+      
 
-        gtsam::Pose3 transform = data.transforms[i];
-        Mat1212 covariance = data.covariances[i];
-        std::pair<ros::Time, ros::Time> times = time_stamps[i];
-
-        // create the factor
-        NonlinearFactorGraph new_factor;
-        new_factor.add(BetweenFactor<Pose3>(prev_key_, current_key_, transform, covariance));
-
-        // TODO develop and chek these
-        // TODO - move to another function?
-
-        // add factor to buffer to send to pgo
-        
-        // add to nfg_ and values_
-
-        // add  node/keyframe to keyed stamps
-        keyed_stamps_.insert(
-            std::pair<gtsam::Symbol, ros::Time>(current_key_, times.second));
-        stamp_to_odom_key_.insert(
-            std::pair<double, gtsam::Symbol>(times.second, current_key_));
+    gtsam::Pose3 transform = data.transforms[i];
+    gtsam::SharedNoiseModel covariance = data.covariances[i]; // TODO - fix
+    std::pair<ros::Time, ros::Time> times = data.time_stamps[i];
 
 
-        // check for keyed scans
-        if (odometry_handler_.HasKeyedScanAtTime(times.second)) {
+    gtsam::Symbol prev_key = GetKeyAtTime(times.first);
+    gtsam::Symbol current_key = GetKeyAtTime(times.second);
 
-          // get keyed scan from odom handler
-          std::pair<gtsam::Symbol, PointCloud::ConstPtr> new_scan;
-          new_scan = odometry_handler_.GetKeyedScanAtTime();
+    // create the factor
+    NonlinearFactorGraph new_factor;
+    new_factor.add(BetweenFactor<Pose3>(prev_key, current_key, transform, covariance));
 
-          // add new keyed scan to map
-          keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(new_scan.first, new_scan.second));
+    // TODO develop and chek these
+    // TODO - move to another function?
+
+    // add factor to buffer to send to pgo
+    
+    // add to nfg_ and values_
+
+    // add  node/keyframe to keyed stamps
+    keyed_stamps_.insert(
+        std::pair<gtsam::Symbol, ros::Time>(current_key, times.second));
+    stamp_to_odom_key_.insert(
+        std::pair<double, gtsam::Symbol>(times.second.toSec(), current_key));
 
 
-          // publish keyed scan
-          pose_graph_msgs::KeyedScan keyed_scan_msg;
-          keyed_scan_msg.key = key;
-          pcl::toROSMsg(*new_scan.second, keyed_scan_msg.scan);
-          keyed_scan_pub_.publish(keyed_scan_msg);
+    TrackEdges(prev_key, current_key, transform, covariance);
 
-          */
+    // // check for keyed scans
+    // if (odometry_handler_.HasKeyedScanAtTime(times.second)) {
 
-    }
+    //   // get keyed scan from odom handler
+    //   std::pair<gtsam::Symbol, PointCloud::ConstPtr> new_scan;
+    //   new_scan = odometry_handler_.GetKeyedScanAtTime();
+
+    //   // add new keyed scan to map
+    //   keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(new_scan.first, new_scan.second));
+
+
+    //   // publish keyed scan
+    //   pose_graph_msgs::KeyedScan keyed_scan_msg;
+    //   keyed_scan_msg.key = current_key_;
+    //   pcl::toROSMsg(*new_scan.second, keyed_scan_msg.scan);
+    //   keyed_scan_pub_.publish(keyed_scan_msg);
+
+    // }
+
+  }
+
+    
 }
 
 
@@ -415,3 +431,5 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
 
 // Pose Graph merger class
+
+

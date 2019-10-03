@@ -95,7 +95,7 @@ class LampBase {
     bool PublishPoseGraph();
 
     // Convert timestamps to gtsam keys 
-    gtsam::Key getKeyAtTime(const ros::Time& stamp) const;
+    gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
 
     // Convert values to PoseGraphNode Messages
     bool ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNode>& nodes);
@@ -116,11 +116,15 @@ class LampBase {
     std::map<double, gtsam::Symbol> stamp_to_odom_key_;
 
     // List of all factors with additional information
-    std::vector<pose_graph_msgs::PoseGraphEdge> edges_info_;// TODO - revisit - do we want this to be a map for any reason - to quickly access specific edges?
+    std::vector<pose_graph_msgs::PoseGraphEdge> edges_info_; // TODO - revisit - do we want this to be a map for any reason - to quickly access specific edges?
     std::vector<pose_graph_msgs::PoseGraphNode> priors_info_;
     
     // New pose graph values from optimizer
     virtual void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
+
+    // Tracking info for publishing messages
+    void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
+    void TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
 
     // Booleans
     bool b_run_optimization_;

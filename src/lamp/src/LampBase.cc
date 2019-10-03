@@ -68,7 +68,7 @@ bool LampBase::CheckHandlers(){
   return false;
 }
 
-gtsam::Key LampBase::getKeyAtTime(const ros::Time& stamp) const {
+gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
 
   auto iterTime = stamp_to_odom_key_.lower_bound(stamp.toSec()); // First key that is not less than timestamp 
 
@@ -117,39 +117,43 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
   merger_.on_slow_graph_msg(msg);
 
   // Give merger the current graph // TODO
-  // merger_.on_fast_graph_msg(ConvertPoseGraphToMsg());
+  merger_.on_fast_graph_msg(ConvertPoseGraphToMsg());
 
   gtsam::Values new_values; 
   gtsam::Symbol key;
 
   // Update the internal LAMP graph using the one stored by the merger
-  pose_graph_msgs::PoseGraph fused_graph = merger_.GetCurrentGraph();
+  pose_graph_msgs::PoseGraphConstPtr fused_graph(new pose_graph_msgs::PoseGraph(merger_.GetCurrentGraph()));
 
-  // update the LAMP internal values_
-  // Function pose_graph msg to gtsam values and factors
-  // utils::ConvertMsgToPoseGraph(msg, values_, nfg_);
-  // Implement this - replaces the below
+  // update the LAMP internal values_ and factors
+  utils::PoseGraphMsgToGtsam(fused_graph, &nfg_, &values_);
 
-  for (const pose_graph_msgs::PoseGraphNode &msg_node : fused_graph.nodes) {
-    // Get key 
-    key = gtsam::Symbol(msg_node.key);
+}
 
-    gtsam::Pose3 full_pose;
+// Convert the internally stored pose_graph to a pose graph message
+pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
+  // Uses internally stored info. 
 
-    gtsam::Point3 pose_translation(msg_node.pose.position.x,
-                                  msg_node.pose.position.y,
-                                  msg_node.pose.position.z);
-    gtsam::Rot3 pose_orientation(gtsam::Rot3::quaternion(msg_node.pose.orientation.w,
-                                                  msg_node.pose.orientation.x,
-                                                  msg_node.pose.orientation.y,
-                                                  msg_node.pose.orientation.z));
-    full_pose = gtsam::Pose3(pose_orientation, pose_translation);
+  // Create the Pose Graph Message
+  pose_graph_msgs::PoseGraph g;
+  g.header.frame_id = fixed_frame_id_;
+  g.header.stamp = keyed_stamps_[key_ - 1]; // Get timestamp from latest keyed pose
 
-    new_values.insert(key, full_pose);
-  }
+  // Flag on whether it is incremental or not
+  // TODO make incremental Pose Graph publishing
+  g.incremental = false;
 
-  // Update internal pose graph values
-  values_ = new_values;
+  // Get Values
+  ConvertValuesToNodeMsgs(g.nodes);
+
+  // Add the factors  // BIG TODO - integrate this tracking with all handlers
+  g.edges = edges_info_;
+  g.priors = priors_info_;
+
+  pose_graph_msgs::PoseGraphConstPtr g_ptr(new pose_graph_msgs::PoseGraph(g));
+
+  return g_ptr;
+
 }
 
 
@@ -199,32 +203,6 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
   return true;
 }
 
-// Convert the internally stored pose_graph to a pose graph message
-pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
-  // Uses internally stored info. 
-
-  // Create the Pose Graph Message
-  pose_graph_msgs::PoseGraph g;
-  g.header.frame_id = fixed_frame_id_;
-  g.header.stamp = keyed_stamps_[key_ - 1]; // Get timestamp from latest keyed pose
-
-  // Flag on whether it is incremental or not
-  // TODO make incremental Pose Graph publishing
-  g.incremental = false;
-
-  // Get Values
-  ConvertValuesToNodeMsgs(g.nodes);
-
-  // Add the factors 
-  g.edges = edges_info_;
-  g.priors = priors_info_;
-
-  pose_graph_msgs::PoseGraphConstPtr g_ptr(new pose_graph_msgs::PoseGraph(g));
-
-  return g_ptr;
-
-}
-
 
 bool LampBase::PublishPoseGraph(){
   // TODO - publish incremental
@@ -236,5 +214,39 @@ bool LampBase::PublishPoseGraph(){
   pose_graph_pub_.publish(*g);
 
   return true;
+
+}
+
+//-------------------------------------- 
+// Tracking 
+
+void LampBase::TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance){
+
+  // Populate the message with the pose's data.
+  pose_graph_msgs::PoseGraphEdge edge;
+  edge.key_from = key_from;
+  edge.key_to = key_to;
+  // edge.header.frame_id = fixed_frame_id_;
+  // edge.header.stamp = keyed_stamps_[key_to];
+  edge.pose = gr::ToRosPose(utils::ToGu(pose));
+
+  // TODO - add covariance 
+
+  edges_info_.push_back(edge);
+
+}
+
+void LampBase::TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance){
+
+  // Populate the message with the pose's data.
+  pose_graph_msgs::PoseGraphNode prior;
+  prior.key = key;
+  prior.header.frame_id = fixed_frame_id_;
+  prior.header.stamp = keyed_stamps_[key];
+  prior.pose = gr::ToRosPose(utils::ToGu(pose));
+
+  // TODO - add covariance 
+
+  priors_info_.push_back(prior);
 
 }
