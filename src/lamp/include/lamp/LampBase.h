@@ -19,6 +19,7 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/RangeFactor.h>
 #include <gtsam/slam/InitializePose3.h>
 #include <gtsam/inference/Symbol.h>
 
@@ -48,8 +49,11 @@
 
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <pose_graph_merger/merger.h>
+#include <point_cloud_filter/PointCloudFilter.h>
+#include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <utils/CommonStructs.h>
+#include <utils/CommonFunctions.h>
 
 // TODO - review and make pure-virtual all functions that are not implemented here
 
@@ -78,20 +82,26 @@ class LampBase {
     virtual bool LoadParameters(const ros::NodeHandle& n);
     // bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
     // bool RegisterLogCallbacks(const ros::NodeHandle& n);
-    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
+    // virtual bool RegisterCallbacks(const ros::NodeHandle& n);
     virtual bool CreatePublishers(const ros::NodeHandle& n);
     
     // instantiate all handlers that are being used in the derived classes
-    virtual bool InitializeHandlers(const ros::NodeHandle& n); 
+    virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0; 
 
     // retrieve data from all handlers
     virtual bool CheckHandlers(); 
 
     // Functions to publish
-    bool PublishPoseGraph(const ros::NodeHandle& n);
+    bool PublishPoseGraph();
 
     // Convert timestamps to gtsam keys 
     gtsam::Key getKeyAtTime(const ros::Time& stamp) const;
+
+    // Convert values to PoseGraphNode Messages
+    bool ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNode>& nodes);
+
+    // Convert internal pose graph to message
+    pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg();
 
     // Typedef for stored point clouds.
     typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -102,12 +112,16 @@ class LampBase {
 
     // Keep a list of keyed laser scans and keyed timestamps.
     std::map<gtsam::Symbol, PointCloud::ConstPtr> keyed_scans_;
-    std::map<gtsam::Symbol, ros::Time> keyed_stamps_;
-    std::map<double, gtsam::Symbol> stamps_keyed_;
+    std::map<gtsam::Symbol, ros::Time> keyed_stamps_; // All nodes
+    std::map<double, gtsam::Symbol> stamp_to_odom_key_;
 
-    // New pose graph values from optimizer
-    void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
+    // List of all factors with additional information
+    std::vector<pose_graph_msgs::PoseGraphEdge> edges_info_;// TODO - revisit - do we want this to be a map for any reason - to quickly access specific edges?
+    std::vector<pose_graph_msgs::PoseGraphNode> priors_info_;
     
+    // New pose graph values from optimizer
+    // virtual void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
+
     // Booleans
     bool b_run_optimization_;
 
@@ -116,17 +130,33 @@ class LampBase {
     ros::Publisher keyed_scan_pub_;
 
     // Subscribers
-    ros::Subscriber slow_graph_sub_;
+    ros::Subscriber back_end_pose_graph_sub_;
 
     // Services 
 
     // Message filters (if any)
 
-    bool example_boolean_;
-    float example_variable_;
+    std::string prefix_;
+
+    // Frames.
+    std::string fixed_frame_id_;
+    std::string base_frame_id_;
+
+    gtsam::Symbol key_;
 
     // Pose graph merger
     Merger merger_;
+
+    // Precisions
+    double manual_lc_rot_precision_;
+    double manual_lc_trans_precision_;
+    double artifact_rot_precision_;
+    double artifact_trans_precision_;
+    double fiducial_trans_precision_;
+    double fiducial_rot_precision_;
+    double point_estimate_precision_;
+    double laser_lc_rot_sigma_;
+    double laser_lc_trans_sigma_;
 
   private:
     // Anything just in the base class

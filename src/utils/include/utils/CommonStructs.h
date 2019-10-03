@@ -27,6 +27,12 @@
 
 // Typedef for 6x6 covariance matrices (x, y, z, roll, pitch, yaw).
 typedef geometry_utils::MatrixNxNBase<double, 6> Mat66;
+typedef geometry_utils::MatrixNxNBase<double, 12> Mat1212;
+
+// Noise models
+typedef gtsam::noiseModel::Gaussian Gaussian;
+typedef gtsam::noiseModel::Diagonal Diagonal;
+
 
 // GTSAM edge types
 typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
