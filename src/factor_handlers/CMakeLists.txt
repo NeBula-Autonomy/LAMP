@@ -73,7 +73,7 @@ endif()
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
-add_library(${PROJECT_NAME} src/LampDataHandlerBase.cc src/OdometryHandler.cc)
+add_library(${PROJECT_NAME} src/LampDataHandlerBase.cc src/OdometryHandler.cc src/ArtifactHandler.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}

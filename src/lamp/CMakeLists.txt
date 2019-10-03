@@ -33,6 +33,8 @@ find_package(catkin REQUIRED COMPONENTS
   parameter_utils
   pcl_ros
   pcl_conversions
+  point_cloud_filter
+  point_cloud_mapper
   core_msgs
   pose_graph_msgs
   uwb_msgs
@@ -40,6 +42,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   tf_conversions
+  eigen_conversions
+  pose_graph_merger
 )
 
 
@@ -54,6 +58,8 @@ catkin_package(
     utils
     geometry_utils
     parameter_utils
+    point_cloud_filter
+    point_cloud_mapper
     pcl_ros
     pcl_conversions
     core_msgs
@@ -62,6 +68,7 @@ catkin_package(
     mesh_msgs
     geometry_msgs
     nav_msgs
+    pose_graph_merger
   DEPENDS
     Boost
 )
@@ -87,13 +94,13 @@ target_link_libraries(${PROJECT_NAME}
 )
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS}) # THis is for custom messages and services
 
-# add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}_node.cc)
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${PROJECT_NAME}
-#   ${catkin_LIBRARIES}
-#   ${Boost_LIBRARIES}
-#   gtsam
-# )
+add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}_node.cc)
+target_link_libraries(${PROJECT_NAME}_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 #add_executable(${PROJECT_NAME}_offline src/${PROJECT_NAME}_offline.cc)
@@ -113,6 +120,6 @@ target_link_libraries(${PROJECT_NAME}
 ## Testing ##
 #############
 
-# ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cpp)
-# target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
+## Add gtest based cpp test target and link libraries
+catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cc)
+target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})

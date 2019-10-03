@@ -1,10 +1,11 @@
 /*
  * Copyright Notes
  *
- * Authors:
+ * Authors: 
  * Alex Stephens       (alex.stephens@jpl.nasa.gov)
  * Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
  */
+
 
 #ifndef COMMON_STRUCTS_H
 #define COMMON_STRUCTS_H
@@ -13,20 +14,25 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
-#include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/InitializePose3.h>
-#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/inference/Symbol.h>
 
-#include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
+#include <geometry_utils/GeometryUtilsROS.h>
 
 // Typedef for 6x6 covariance matrices (x, y, z, roll, pitch, yaw).
 typedef geometry_utils::MatrixNxNBase<double, 6> Mat66;
 typedef geometry_utils::MatrixNxNBase<double, 12> Mat1212;
+
+// Noise models
+typedef gtsam::noiseModel::Gaussian Gaussian;
+typedef gtsam::noiseModel::Diagonal Diagonal;
+
 
 // GTSAM edge types
 typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;

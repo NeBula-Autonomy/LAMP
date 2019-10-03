@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle n("~");
 
   LampRobot lr;
-  if (!lr.Initialize(n, false /* online processing */)) {
+  if (!lr.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize LAMP.",
               ros::this_node::getName().c_str());
     return EXIT_FAILURE;

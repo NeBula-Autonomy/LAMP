@@ -1,29 +1,27 @@
-#include <pose_graph_merger/merger.hpp>
+#include <pose_graph_merger/merger.h>
 
 namespace gu = geometry_utils;
 
-Merger::Merger(ros::NodeHandle nh, ros::NodeHandle pnh) :
-    nodeHandle(nh),
-    privNodeHandle(pnh),
+Merger::Merger() :
     b_received_first_fast_pose_(false),
     b_received_first_slow_pose_(false),
     b_block_slow_pose_update(false),
     lastSlow(nullptr)
 {
 
-    this->fastGraphSub = this->nodeHandle.subscribe("blam_slam_fe/pose_graph", 1, &Merger::on_fast_graph_msg, this);
+    // this->fastGraphSub = this->nodeHandle.subscribe("blam_slam_fe/pose_graph", 1, &Merger::on_fast_graph_msg, this);
 
-    this->slowGraphSub = this->nodeHandle.subscribe("blam_slam/pose_graph_lc", 1, &Merger::on_slow_graph_msg, this);
+    // this->slowGraphSub = this->nodeHandle.subscribe("blam_slam/pose_graph_lc", 1, &Merger::on_slow_graph_msg, this);
 
-    this->mergedGraphPub = this->nodeHandle.advertise<pose_graph_msgs::PoseGraph>
-            ("blam_slam/pose_graph", 1, true);
+    // this->mergedGraphPub = this->nodeHandle.advertise<pose_graph_msgs::PoseGraph>
+    //         ("blam_slam/pose_graph", 1, true);
 
-    this->fastPoseSub = this->nodeHandle.subscribe("blam_slam_fe/localization_integrated_estimate", 1, &Merger::on_fast_pose_msg, this);
+    // this->fastPoseSub = this->nodeHandle.subscribe("blam_slam_fe/localization_integrated_estimate", 1, &Merger::on_fast_pose_msg, this);
 
-    this->slowPoseSub = this->nodeHandle.subscribe("blam_slam/localization_integrated_estimate_lc", 1, &Merger::on_slow_pose_msg, this);
+    // this->slowPoseSub = this->nodeHandle.subscribe("blam_slam/localization_integrated_estimate_lc", 1, &Merger::on_slow_pose_msg, this);
 
-    this->mergedPosePub = this->nodeHandle.advertise<geometry_msgs::PoseStamped>
-            ("blam_slam/localization_integrated_estimate", 1, true);            
+    // this->mergedPosePub = this->nodeHandle.advertise<geometry_msgs::PoseStamped>
+    //         ("blam_slam/localization_integrated_estimate", 1, true);            
 }
 
 void Merger::on_slow_graph_msg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
@@ -44,29 +42,29 @@ void Merger::on_fast_graph_msg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
 
     std::map<long unsigned int, int> mergedGraphKeyToIndex;
 
-    for (const Node& node : this->lastSlow->nodes) {
+    for (const GraphNode& node : this->lastSlow->nodes) {
         mergedGraphKeyToIndex[node.key] = mergedGraph.nodes.size();
         mergedGraph.nodes.push_back(node);
     }
-    for (const Edge& edge: this->lastSlow->edges) {
+    for (const GraphEdge& edge: this->lastSlow->edges) {
         mergedGraph.edges.push_back(edge);
     }
 
 
     //use map to order the new fast nodes by the order they were created in
-    std::map<unsigned int, const Node*> newFastNodes;
-    std::map<long unsigned int, const Node*> fastKeyToNode;
+    std::map<unsigned int, const GraphNode*> newFastNodes;
+    std::map<long unsigned int, const GraphNode*> fastKeyToNode;
 
-    for (const Node& node : msg->nodes) {
+    for (const GraphNode& node : msg->nodes) {
         if (mergedGraphKeyToIndex.count(node.key) != 0) continue; //skip if this node is in the slow graph
 
         newFastNodes[node.header.seq] = &node;
         fastKeyToNode[node.key] = &node;
     }
 
-    std::map<long unsigned int, std::set<const Edge*>> fastOutAdjList;
-    std::map<long unsigned int, std::set<const Edge*>> fastInAdjList;
-    for (const Edge& edge : msg->edges) {
+    std::map<long unsigned int, std::set<const GraphEdge*>> fastOutAdjList;
+    std::map<long unsigned int, std::set<const GraphEdge*>> fastInAdjList;
+    for (const GraphEdge& edge : msg->edges) {
         fastOutAdjList[edge.key_from].insert(&edge);
         fastInAdjList[edge.key_to].insert(&edge);
     }
@@ -75,18 +73,18 @@ void Merger::on_fast_graph_msg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
     for (auto kv : fastKeyToNode) {
 
         //the fast node to add to the mergedGraph
-        const Node* fastNode = kv.second;
+        const GraphNode* fastNode = kv.second;
 
         //edge in the fast graph to this fast node
-        const Edge* edgeToFastNode = *fastInAdjList[fastNode->key].begin();
+        const GraphEdge* edgeToFastNode = *fastInAdjList[fastNode->key].begin();
 
         //create a copy of the fast node and edge to add to the mergedGraph
-        Node newMergedGraphNode = *fastNode;
-        Edge newMergedGraphEdge = *edgeToFastNode;
+        GraphNode newMergedGraphNode = *fastNode;
+        GraphEdge newMergedGraphEdge = *edgeToFastNode;
 
         //find the node in the mergedGraph corresponding to previous node in fast graph
         long unsigned int prevFastKey = edgeToFastNode->key_from;
-        const Node* mergedGraphPrevNode = &mergedGraph.nodes[mergedGraphKeyToIndex[prevFastKey]];
+        const GraphNode* mergedGraphPrevNode = &mergedGraph.nodes[mergedGraphKeyToIndex[prevFastKey]];
 
         //calculate the pose of the new merged graph node by applying the edge transformation to the previous node
         Eigen::Affine3d newMergedGraphEdgeTf;
@@ -220,12 +218,17 @@ void Merger::clean_up_map(const ros::Time &stamp){
   ROS_INFO_STREAM("Size of timestamped poses after erase is: " << timestamped_poses_.size());
 }
 
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "pose_graph_merger");
-    ros::NodeHandle nh, pnh("~");
-
-    Merger merger(nh, pnh);
-
-    ros::spin();
+pose_graph_msgs::PoseGraph Merger::GetCurrentGraph() {
+    return current_graph_;
 }
+
+
+// int main(int argc, char** argv) {
+//     ros::init(argc, argv, "pose_graph_merger");
+//     ros::NodeHandle nh, pnh("~");
+
+//     Merger merger(nh, pnh);
+
+//     ros::spin();
+// }
 
