@@ -190,6 +190,7 @@ bool LampRobot::ProcessOdomData(FactorData data){
           keyed_scan_pub_.publish(keyed_scan_msg);
 
           */
+
     }
 }
 

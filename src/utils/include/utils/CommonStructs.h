@@ -27,7 +27,6 @@
 
 // Typedef for 6x6 covariance matrices (x, y, z, roll, pitch, yaw).
 typedef geometry_utils::MatrixNxNBase<double, 6> Mat66;
-typedef geometry_utils::MatrixNxNBase<double, 12> Mat1212;
 
 // GTSAM edge types
 typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
@@ -41,7 +40,7 @@ struct FactorData {
   std::string type; // odom, artifact, loop clsoure
   // Vector for possible multiple factors
   std::vector<gtsam::Pose3> transforms; // The transform (for odom, loop closures etc.) and pose for TS
-  std::vector<Mat1212> covariances; // Covariances for each transform 
+  std::vector<Mat66> covariances; // Covariances for each transform 
   std::vector<std::pair<ros::Time, ros::Time>> time_stamps; // Time when the measurement as acquired
   // TODO - use ros::Time or something else?
 
