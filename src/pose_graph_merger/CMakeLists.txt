@@ -114,6 +114,7 @@ catkin_package(
     pose_graph_msgs
     geometry_utils
     utils
+    eigen_conversions
 )
 
 ###########

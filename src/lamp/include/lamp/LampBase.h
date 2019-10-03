@@ -126,7 +126,7 @@ class LampBase {
     float example_variable_;
 
     // Pose graph merger
-    // Merger merger_;
+    Merger merger_;
 
   private:
     // Anything just in the base class
