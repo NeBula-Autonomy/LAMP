@@ -41,12 +41,17 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
 
     std::map<long unsigned int, int> merged_graph_KeyToIndex;
 
+    // Add slow graph nodes
     for (const GraphNode& node : this->lastSlow->nodes) {
         merged_graph_KeyToIndex[node.key] = merged_graph_.nodes.size();
         merged_graph_.nodes.push_back(node);
     }
-    for (const GraphEdge& edge: this->lastSlow->edges) {
-        merged_graph_.edges.push_back(edge);
+
+    // Add edges from the fast graph that connect nodes in the slow graph
+    for (const GraphEdge& edge : msg->edges) {
+        if (merged_graph_KeyToIndex.count(edge.key_from) != 0 && merged_graph_KeyToIndex.count(edge.key_to) != 0) {
+            merged_graph_.edges.push_back(edge);
+        }
     }
 
     ROS_INFO_STREAM("Merged graph curr size " << merged_graph_.nodes.size());
