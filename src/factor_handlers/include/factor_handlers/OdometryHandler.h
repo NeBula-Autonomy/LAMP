@@ -56,20 +56,17 @@ class OdometryHandler : public LampDataHandlerBase{
         void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
 
         // Getters 
-        gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair);
+        std::vector<gtsam::Pose3> GetTransform(PoseCovStampedPair pose_cov_stamped_pair);
         Mat1212 GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
         TimeStampedPair GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
 
-
         FactorData GetData();        
-        // Protected 
-        FactorData factors_;
+        FactorData factors_;        
         
-        /*
-        TODO: Get this templated method pass the unit test 
-            template <typename TYPE>
-            int CheckBufferSize(std::vector<TYPE> const& x);
-        */
+        // TODO: Get this templated method pass the unit test 
+        template <typename TYPE>
+        int CheckBufferSize(std::vector<TYPE> const& x);
+        
 
     private:    
 };

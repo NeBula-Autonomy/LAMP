@@ -98,14 +98,14 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     //Makes a new factor by filling the fields of FactorData
     factors_.b_has_data = true;
     factors_.type = "odom";
-    //factors_.transforms = GetTransform(pose_cov_stamped_pair);
+    factors_.transforms = GetTransform(pose_cov_stamped_pair);
     //factors_.covariances = GetCovariance(pose_cov_stamped_pair);
     //factors_.time_stamps = GetTimeStamps(pose_cov_stamped_pair);
 }
 
-gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
+std::vector<gtsam::Pose3> OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented late" << std::endl;
-    gtsam::Pose3 output;
+    std::vector<gtsam::Pose3> output;
     return output;
 }
 
