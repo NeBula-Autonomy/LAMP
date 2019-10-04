@@ -80,6 +80,7 @@ void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr&
     visual_odometry_buffer_.push_back(currentMsg); 
     CheckOdometryBuffer(visual_odometry_buffer_);
 }
+
 void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
     PoseCovStamped currentMsg;
@@ -125,7 +126,7 @@ void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
     MakeFactor(pose_cov_stamped_pair);
     // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element 
     odom_buffer.clear();
-    // odom_buffer.push_back(last_odom_element);
+    odom_buffer.push_back(*last_odom_element);
 }
 
 void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
@@ -160,20 +161,24 @@ FactorData OdometryHandler::GetData() {
     // reset factors after this get called
 }
 
-// Pose conversion from gu to GTSAM format.
-// gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
-//   Vector3 t;
+/*
 
-//   t(0) = pose.translation(0);
-//   t(1) = pose.translation(1);
-//   t(2) = pose.translation(2);
+gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
+  
+  gu::Vector3 t;
 
-//   Rot3 r(pose.rotation(0, 0), pose.rotation(0, 1), pose.rotation(0, 2),
-//          pose.rotation(1, 0), pose.rotation(1, 1), pose.rotation(1, 2),
-//          pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
+  t(0) = pose.translation(0);
+  t(1) = pose.translation(1);
+  t(2) = pose.translation(2);
 
-//   return gtsam::Pose3(r, t);
-// }
+  gu::Rot3 r(pose.rotation(0, 0), pose.rotation(0, 1), pose.rotation(0, 2),
+         pose.rotation(1, 0), pose.rotation(1, 1), pose.rotation(1, 2),
+         pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
+
+  return gtsam::Pose3(r, t);
+}
+
+*/
 
 // // Pose conversion from GTSAM to GU format.
 // gu::Transform3 OdometryHandler::ToGu(const gtsam::Pose3& pose) const {
@@ -194,14 +199,6 @@ FactorData OdometryHandler::GetData() {
 
 
 /*
-
-
-
-
-
-
-
-
 DOCUMENTATION 
 
         nav_msgs/Odometry Message

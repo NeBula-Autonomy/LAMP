@@ -77,7 +77,7 @@ class OdometryHandler : public LampDataHandlerBase{
         std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
 
         // Pose conversion from/to GTSAM format.
-        gu::Transform3 ToGu(const gtsam::Pose3& pose) const;
+        // gu::Transform3 ToGu(const gtsam::Pose3& pose) const;
         gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const;
 
         // LAMP Interface
