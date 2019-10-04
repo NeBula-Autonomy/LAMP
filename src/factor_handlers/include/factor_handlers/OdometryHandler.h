@@ -62,10 +62,11 @@ class OdometryHandler : public LampDataHandlerBase{
         OdomPoseBuffer visual_odometry_buffer_;
         OdomPoseBuffer wheel_odometry_buffer_;
 
-        // Utilities 
+        // Utilities
+        // TODO: Unit test for this template function 
         template <typename TYPE>
-        int CheckBufferSize(std::vector<TYPE> const& x);
-        
+        int CheckBufferSize(const std::vector<TYPE>& x);
+
         void PrepareFactor(OdomPoseBuffer& odom_buffer);
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
@@ -74,7 +75,7 @@ class OdometryHandler : public LampDataHandlerBase{
         // Getters 
         std::vector<gtsam::Pose3> GetTransform(PoseCovStampedPair pose_cov_stamped_pair);        
         std::vector<Mat1212> GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
-        TimeStampedPair GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
+        std::vector<std::pair<ros::Time, ros::Time>> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
 
         // LAMP Interface
         FactorData factors_; 

@@ -56,12 +56,11 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
 // Utilities ----------------------------------------------------------------------------
 
 template <typename TYPE>
-int OdometryHandler::CheckBufferSize(std::vector<TYPE> const& x) {
+int OdometryHandler::CheckBufferSize(const std::vector<TYPE>& x) {
     return x.size();
 }
 
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
-    // if (CheckMyBufferSize(odom_buffer) > 2) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
         if (CalculatePoseDelta(odom_buffer) > 1.0) {
             ROS_INFO("Moved more than 1 meter");
@@ -97,7 +96,7 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     factors_.type = "odom";
     factors_.transforms = GetTransform(pose_cov_stamped_pair);
     factors_.covariances = GetCovariance(pose_cov_stamped_pair);
-    //factors_.time_stamps = GetTimeStamps(pose_cov_stamped_pair);
+    factors_.time_stamps = GetTimeStamps(pose_cov_stamped_pair);
 }
 
 std::vector<gtsam::Pose3> OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
@@ -113,9 +112,9 @@ std::vector<Mat1212> OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_
     return output;
 }
 
-std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
+std::vector<std::pair<ros::Time, ros::Time>> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented later" << std::endl;
-    TimeStampedPair output;
+    std::vector<std::pair<ros::Time, ros::Time>> output;
     return output;
 }
 

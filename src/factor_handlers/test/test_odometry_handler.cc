@@ -26,7 +26,7 @@ class OdometryHandlerTest : public ::testing::Test {
 
     // Utilities 
     template <typename TYPE>
-    int CheckBufferSize(std::vector<TYPE> const& x) {
+    int CheckBufferSize(const std::vector<TYPE>& x) {
       return myOdometryHandler.CheckBufferSize(x);
     }
 
@@ -51,31 +51,28 @@ TEST LidarOdometryCallback
 */
 
 /*
-TEST CheckMyBufferSize method 
+TEST CheckBufferSize method 
   Create a buffer 
   Create a message 
   Push message in the buffer 
   Check the resulting buffer size 
 */
 TEST_F (OdometryHandlerTest, TestCheckBufferSize) {
-
-  int N = 10;
-
-  // Create a buffer
+  
   typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
+  // Create a buffer
   std::vector<PoseCovStamped> pose_buffer;
   // Create a message
   PoseCovStamped pose;
-
+  int N = 10;
   for (size_t x=0; x<N; x++){    
     // Push the message in the buffer
     pose_buffer.push_back(pose);   
     std::cout << x << std::endl; 
   }
-
   // Compute current buffer size
   int buffer_size = CheckBufferSize<PoseCovStamped>(pose_buffer);
-  
+
   // Check that the result is the expected
   EXPECT_EQ(buffer_size, N);
 }
