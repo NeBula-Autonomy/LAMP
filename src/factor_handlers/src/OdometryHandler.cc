@@ -54,9 +54,15 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
 
 
 // Utilities ----------------------------------------------------------------------------
+template <typename TYPE>
+int OdometryHandler::CheckBufferSize(std::vector<TYPE> const& x) {
+    return x.size();
+}
+
 
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
-    if (CheckMyBufferSize(odom_buffer) > 2) {
+    // if (CheckMyBufferSize(odom_buffer) > 2) {
+    if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
         if (CalculatePoseDelta(odom_buffer) > 1.0) {
             ROS_INFO("Moved more than 1 meter");
             std::cout<<"CheckOdometryBuffer Here"<<std::endl;
@@ -64,15 +70,9 @@ void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
         }
     }     
 }
-
-// template <typename TYPE>
-// int OdometryHandler::CheckMyBufferSize(std::vector<TYPE> const& x) {
+// int OdometryHandler::CheckMyBufferSize(const OdomPoseBuffer& x){
 //     return x.size();
 // }
-
-int OdometryHandler::CheckMyBufferSize(const OdomPoseBuffer& x){
-    return x.size();
-}
 
 double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     // TODO: Should be implemented in a cleaner way
@@ -99,7 +99,7 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     factors_.b_has_data = true;
     factors_.type = "odom";
     factors_.transforms = GetTransform(pose_cov_stamped_pair);
-    //factors_.covariances = GetCovariance(pose_cov_stamped_pair);
+    factors_.covariances = GetCovariance(pose_cov_stamped_pair);
     //factors_.time_stamps = GetTimeStamps(pose_cov_stamped_pair);
 }
 
@@ -109,9 +109,9 @@ std::vector<gtsam::Pose3> OdometryHandler::GetTransform(PoseCovStampedPair pose_
     return output;
 }
 
-Mat1212 OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+std::vector<Mat1212> OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented later" << std::endl;
-    Mat1212 output;
+    std::vector<Mat1212> output;
     // gtsam::SharedNoiseModel& bias_noise_model =  gtsam::noiseModel::Diagonal::Sigmas(biasSigmas);”
     return output;
 }

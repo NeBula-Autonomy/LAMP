@@ -51,13 +51,12 @@ class OdometryHandler : public LampDataHandlerBase{
         // Utilities 
         void PrepareFactor(OdomPoseBuffer& odom_buffer);
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
-        int CheckMyBufferSize(const OdomPoseBuffer& x); 
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
         void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
 
         // Getters 
-        std::vector<gtsam::Pose3> GetTransform(PoseCovStampedPair pose_cov_stamped_pair);
-        Mat1212 GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
+        std::vector<gtsam::Pose3> GetTransform(PoseCovStampedPair pose_cov_stamped_pair);        
+        std::vector<Mat1212> GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
         TimeStampedPair GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
 
         FactorData GetData();        
