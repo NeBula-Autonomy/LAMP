@@ -280,10 +280,18 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
   // Check the handlers
   CheckHandlers();
 
+  if (b_has_new_factor_) {
+    PublishPoseGraph();
+
+    b_has_new_factor_ = false;
+  }
+
   // Start optimize, if needed
   if (b_run_optimization_) {
       // tell LampPgo to optimize
       // TODO Set up publisher for this
+
+      PublishPoseGraph();
 
       b_run_optimization_ = false; 
   }
@@ -327,6 +335,9 @@ bool LampRobot::ProcessOdomData(FactorData data){
   if (!data.b_has_data) {
     return false;
   }
+
+  // Record new factor being added - need to publish pose graph 
+  b_has_new_factor_ = true;
 
   int num_factors = data.time_stamps.size();
 

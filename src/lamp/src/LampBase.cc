@@ -114,10 +114,10 @@ gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
 void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg) {
   
   // Process the slow graph update
-  merger_.on_slow_graph_msg(msg);
+  merger_.OnSlowGraphMsg(msg);
 
   // Give merger the current graph // TODO
-  merger_.on_fast_graph_msg(ConvertPoseGraphToMsg());
+  merger_.OnFastGraphMsg(ConvertPoseGraphToMsg());
 
   gtsam::Values new_values; 
   gtsam::Symbol key;

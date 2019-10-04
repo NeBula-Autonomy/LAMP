@@ -8,8 +8,6 @@
 #include "lamp/LampRobot.h"
 
 class TestLampRobot : public ::testing::Test {
-  // friend class LampRobot;
-
   private:
 
   public: 

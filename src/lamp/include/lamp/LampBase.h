@@ -127,6 +127,7 @@ class LampBase {
     void TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
 
     // Booleans
+    bool b_has_new_factor_;
     bool b_run_optimization_;
 
     // Publishers
