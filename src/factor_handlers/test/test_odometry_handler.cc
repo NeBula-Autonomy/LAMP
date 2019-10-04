@@ -19,7 +19,7 @@ class OdometryHandlerTest : public ::testing::Test {
     void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
       myOdometryHandler.LidarOdometryCallback(msg);
     }  
-    
+
     void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
       myOdometryHandler.LidarOdometryCallback(msg);
     } 
@@ -28,10 +28,6 @@ class OdometryHandlerTest : public ::testing::Test {
     template <typename TYPE>
     int CheckBufferSize(std::vector<TYPE> const& x) {
       return myOdometryHandler.CheckBufferSize(x);
-    }
-
-    int CheckMyBufferSize(const std::vector<geometry_msgs::PoseWithCovarianceStamped>& x) {
-      return myOdometryHandler.CheckMyBufferSize(x);
     }
 
     double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer){
@@ -53,18 +49,6 @@ TEST LidarOdometryCallback
   Trigger the callback 
   Check that the callback successfully pushed the received message in the buffer 
 */
-TEST_F (OdometryHandlerTest, TestLidarOdometryCallback){
-  nav_msgs::Odometry::ConstPtr msg_p;
-  LidarOdometryCallback(msg_p);
-  EXPECT_EQ(CheckMyBufferSize(lidar_odometry_buffer_), 1);
-
-  nav_msgs::Odometry::ConstPtr msg_pp;
-  LidarOdometryCallback(msg_pp);
-  EXPECT_EQ(CheckMyBufferSize(lidar_odometry_buffer_), 2);
-
-}
-
-
 
 /*
 TEST CheckMyBufferSize method 
@@ -73,14 +57,15 @@ TEST CheckMyBufferSize method
   Push message in the buffer 
   Check the resulting buffer size 
 */
-TEST_F (OdometryHandlerTest, TestCheckMyBufferSize) {
+TEST_F (OdometryHandlerTest, TestCheckBufferSize) {
 
   int N = 10;
 
-  // Create a buffer 
-  std::vector<geometry_msgs::PoseWithCovarianceStamped> pose_buffer;
+  // Create a buffer
+  typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
+  std::vector<PoseCovStamped> pose_buffer;
   // Create a message
-  geometry_msgs::PoseWithCovarianceStamped pose;
+  PoseCovStamped pose;
 
   for (size_t x=0; x<N; x++){    
     // Push the message in the buffer
@@ -89,12 +74,10 @@ TEST_F (OdometryHandlerTest, TestCheckMyBufferSize) {
   }
 
   // Compute current buffer size
-  int buffer_size = CheckMyBufferSize(pose_buffer);
-  // int buffer_size = CheckBufferSize<geometry_msgs::PoseStamped>(pose_stamped_buffer);
+  int buffer_size = CheckBufferSize<PoseCovStamped>(pose_buffer);
+  
   // Check that the result is the expected
-  
   EXPECT_EQ(buffer_size, N);
-  
 }
 
 /*

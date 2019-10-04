@@ -6,30 +6,44 @@
  *          Nobuhiro Funabiki   (nobuhiro.funabiki@jpl.nasa.gov)
 */
 
+
+
 #ifndef ODOMETRY_HANDLER_H
 #define ODOMETRY_HANDLER_H
+
+
 
 // Includes
 #include <factor_handlers/LampDataHandlerBase.h>
 
+
+
 // Class Definition 
 class OdometryHandler : public LampDataHandlerBase{
 
+
+
     friend class OdometryHandlerTest;
     
+
+
     public:
-     
+        
+        // Constructors and Destructors
         OdometryHandler();
         ~OdometryHandler();  
-
-        //Initialize(const ros::NodeHandle& n);  
-        //RegisterOnlineCallbacks(const ros::NodeHandle& n);
 
         // Typedefs
         typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
         typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
+        
+        // Public methods
+        //Initialize(const ros::NodeHandle& n);  
+        //RegisterOnlineCallbacks(const ros::NodeHandle& n);
+
+
 
     protected: 
 
@@ -49,6 +63,9 @@ class OdometryHandler : public LampDataHandlerBase{
         OdomPoseBuffer wheel_odometry_buffer_;
 
         // Utilities 
+        template <typename TYPE>
+        int CheckBufferSize(std::vector<TYPE> const& x);
+        
         void PrepareFactor(OdomPoseBuffer& odom_buffer);
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
@@ -59,13 +76,9 @@ class OdometryHandler : public LampDataHandlerBase{
         std::vector<Mat1212> GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
         TimeStampedPair GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
 
-        FactorData GetData();        
-        FactorData factors_;        
-        
-        // TODO: Get this templated method pass the unit test 
-        template <typename TYPE>
-        int CheckBufferSize(std::vector<TYPE> const& x);
-        
+        // LAMP Interface
+        FactorData factors_; 
+        FactorData GetData();                      
 
     private:    
 };

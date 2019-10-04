@@ -54,11 +54,11 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
 
 
 // Utilities ----------------------------------------------------------------------------
+
 template <typename TYPE>
 int OdometryHandler::CheckBufferSize(std::vector<TYPE> const& x) {
     return x.size();
 }
-
 
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     // if (CheckMyBufferSize(odom_buffer) > 2) {
@@ -70,9 +70,6 @@ void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
         }
     }     
 }
-// int OdometryHandler::CheckMyBufferSize(const OdomPoseBuffer& x){
-//     return x.size();
-// }
 
 double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     // TODO: Should be implemented in a cleaner way
@@ -155,6 +152,3 @@ DOCUMENTATION
         };
 
 */
-
-// bool ResetBuffer(PoseCovStamped& last_element){    
-// }
