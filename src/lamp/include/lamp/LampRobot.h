@@ -89,7 +89,7 @@ class LampRobot : public LampBase {
 
 
     // Data Handler classes
-    // OdometryHandler odometry_handler_; 
+    OdometryHandler odometry_handler_; 
     // ArtifactHandler artifact_handler_;
     // AprilHandler april_handler_;
     // Manual LC
