@@ -24,6 +24,39 @@ OdometryHandler::~OdometryHandler() {
     }
 
 
+// Initialize 
+
+bool OdometryHandler::Initialize(const ros::NodeHandle& n){
+    
+    name_ = ros::names::append(n.getNamespace(), "OdometryHandler");
+
+    if (!LoadParameters(n)) {
+        ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
+        return false;
+    }
+
+    if (!RegisterCallbacks(n)) {
+        ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
+        return false;
+    }    
+
+    return true;
+}
+
+bool LoadParameters(const ros::NodeHandle& n) {
+    ROS_INFO("LoadParameters method called in OdometryHandler"); 
+    // TODO: Load necessary parameters from yaml into local variables
+    return true; 
+}
+
+bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
+    ROS_INFO("%s: Registering online callbacks in OdometryHandler", name_.c_str());    
+    ros::NodeHandle nl(n);    
+    lidar_odom_sub_ = nl.subscribe("LIDAR_ODOMETRY_TOPIC", 1000, &OdometryHandler::LidarOdometryCallback, this); 
+    visual_odom_sub_ = nl.subscribe("VISUAL ODOMETRY TOPIC", 1000, &OdometryHandler::VisualOdometryCallback, this); 
+    wheel_odom_sub_ = nl.subscribe("WHEEL_ODOMETRY_TOPIC", 1000, &OdometryHandler::WheelOdometryCallback, this);
+    return true;    
+    }
 
 // Callbacks 
 
@@ -101,7 +134,7 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
 }
 
 gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
-    std::cout<<"Needs to be implemented late" << std::endl;
+    //auto pose_delta = gu::PoseDelta(pose_cov_stamped_pair.first, pose_cov_stamped_pair.second);
     gtsam::Pose3 output;
     return output;
 }
