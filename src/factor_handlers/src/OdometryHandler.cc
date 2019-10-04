@@ -96,7 +96,7 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     factors_.b_has_data = true;
     factors_.type = "odom";
     factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
-    factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
+    // factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
     factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
 }
 
