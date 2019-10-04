@@ -95,7 +95,9 @@ gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
   //   key = std::prev(iterTime,1)->second;
   //   iterTime--;
   // }
+
   // // std::cout << "Key is: " << key << std::endl;
+
   // if (iterTime == std::prev(stamp_to_odom_key_.begin())){
   //   ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
   //   iterTime++;

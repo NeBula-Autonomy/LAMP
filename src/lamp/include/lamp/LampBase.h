@@ -132,6 +132,7 @@ class LampBase {
 
     // Publishers
     ros::Publisher pose_graph_pub_;
+    ros::Publisher pose_graph_to_optimize_pub_;
     ros::Publisher keyed_scan_pub_;
 
     // Subscribers
