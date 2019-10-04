@@ -76,13 +76,16 @@ class OdometryHandler : public LampDataHandlerBase{
         Mat1212 GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
         std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
 
+        // Pose conversion from/to GTSAM format.
+        gu::Transform3 ToGu(const gtsam::Pose3& pose) const;
+        gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const;
+
         // LAMP Interface
         FactorData factors_; 
         FactorData GetData();        
 
         // The node's name.
         std::string name_;
-
               
 
     private:    
