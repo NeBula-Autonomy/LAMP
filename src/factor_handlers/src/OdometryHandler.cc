@@ -6,24 +6,26 @@
  *          Nobuhiro Funabiki   (nobuhiro.funabiki@jpl.nasa.gov)
 */
 
+
+
 // Includes
 #include <factor_handlers/OdometryHandler.h>
 
 
 
-// Constructor & Destructors ------------------------------------------------------------
+// Constructor & Destructors 
 
 OdometryHandler::OdometryHandler() {
-    std::cout<<"Odometry Handler Class Constructor"<<std::endl;
+    ROS_INFO("Odometry Handler Class Constructor");
     }
 
 OdometryHandler::~OdometryHandler() {
-    std::cout<<"Odometry Handler Class Destructor"<<std::endl;
+    ROS_INFO("Odometry Handler Class Destructor");
     }
 
 
 
-// Callbacks ----------------------------------------------------------------------------
+// Callbacks 
 
 void OdometryHandler::LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
@@ -42,7 +44,6 @@ void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr&
     visual_odometry_buffer_.push_back(currentMsg); 
     CheckOdometryBuffer(visual_odometry_buffer_);
 }
-
 void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
     PoseCovStamped currentMsg;
@@ -53,21 +54,22 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
 }
 
 
-// Utilities ----------------------------------------------------------------------------
 
-template <typename TYPE>
-int OdometryHandler::CheckBufferSize(const std::vector<TYPE>& x) {
-    return x.size();
-}
+// Utilities 
 
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
         if (CalculatePoseDelta(odom_buffer) > 1.0) {
             ROS_INFO("Moved more than 1 meter");
             std::cout<<"CheckOdometryBuffer Here"<<std::endl;
-            //PrepareFactor(odom_buffer);
+            PrepareFactor(odom_buffer);
         }
     }     
+}
+
+template <typename TYPE>
+int OdometryHandler::CheckBufferSize(const std::vector<TYPE>& x) {
+    return x.size();
 }
 
 double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
@@ -75,9 +77,8 @@ double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     auto pose_first = gr::FromROS((*(odom_buffer.begin())).pose.pose);
     auto pose_end   = gr::FromROS((*(std::prev(odom_buffer.end()))).pose.pose);
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
-    // Return the norm of the 3D Transformation between two poses as a
-    auto pose_first_stamp = (*(odom_buffer.begin())).header.stamp;
-    auto pose_second_stamp = (*(std::prev(odom_buffer.end()))).header.stamp;    
+    // auto pose_first_stamp = (*(odom_buffer.begin())).header.stamp;
+    // auto pose_second_stamp = (*(std::prev(odom_buffer.end()))).header.stamp;    
     return pose_delta.translation.Norm();
 }
 
@@ -94,27 +95,26 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     //Makes a new factor by filling the fields of FactorData
     factors_.b_has_data = true;
     factors_.type = "odom";
-    factors_.transforms = GetTransform(pose_cov_stamped_pair);
-    factors_.covariances = GetCovariance(pose_cov_stamped_pair);
-    factors_.time_stamps = GetTimeStamps(pose_cov_stamped_pair);
+    factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
+    factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
+    factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
 }
 
-std::vector<gtsam::Pose3> OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
+gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented late" << std::endl;
-    std::vector<gtsam::Pose3> output;
+    gtsam::Pose3 output;
     return output;
 }
 
-std::vector<Mat1212> OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+Mat1212 OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented later" << std::endl;
-    std::vector<Mat1212> output;
-    // gtsam::SharedNoiseModel& bias_noise_model =  gtsam::noiseModel::Diagonal::Sigmas(biasSigmas);”
+    Mat1212 output; // TODO: Should be gtsam::SharedNoiseModel& bias_noise_model =  gtsam::noiseModel::Diagonal::Sigmas(biasSigmas);”
     return output;
 }
 
-std::vector<std::pair<ros::Time, ros::Time>> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
+std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented later" << std::endl;
-    std::vector<std::pair<ros::Time, ros::Time>> output;
+    std::pair<ros::Time, ros::Time> output;
     return output;
 }
 
@@ -149,5 +149,4 @@ DOCUMENTATION
             std::vector<std::pair<ros::Time, ros::Time>> time_stamps; // Time when the measurement as acquired
             std::vector<gtsam::Key> artifact_key; // key for the artifacts
         };
-
 */
