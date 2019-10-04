@@ -28,6 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
   utils
   geometry_utils
   parameter_utils
+  point_cloud_filter
   pcl_ros
   pcl_conversions
   core_msgs
@@ -44,6 +45,7 @@ catkin_package(
     utils
     geometry_utils
     parameter_utils
+    point_cloud_filter
     pcl_ros
     pcl_conversions
     core_msgs

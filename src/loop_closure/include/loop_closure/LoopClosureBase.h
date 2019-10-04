@@ -15,6 +15,7 @@ Loop closure base class
 #include <ros/console.h>
 #include <ros/ros.h>
 
+#include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>
 
 class LoopClosure {
@@ -22,8 +23,11 @@ class LoopClosure {
   LoopClosure(const ros::NodeHandle& n);
   ~LoopClosure();
 
+  virtual bool Initialize(const ros::NodeHandle& n) {}
+
  protected:
   std::unordered_map<gtsam::Key, ros::Time> keyed_stamps_;
+  std::unordered_map<gtsam::Key, gtsam::Pose3> keyed_poses_;
 
   // define publishers and subscribers
   ros::Publisher loop_closure_pub_;
