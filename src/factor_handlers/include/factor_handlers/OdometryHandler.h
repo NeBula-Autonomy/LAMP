@@ -40,8 +40,9 @@ class OdometryHandler : public LampDataHandlerBase{
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
         
         // Public methods
-        //Initialize(const ros::NodeHandle& n);  
-        //RegisterOnlineCallbacks(const ros::NodeHandle& n);
+        bool Initialize (const ros::NodeHandle& n);
+        bool LoadParameters(const ros::NodeHandle& n);
+        bool RegisterCallbacks(const ros::NodeHandle& n);
 
 
 
@@ -77,7 +78,12 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // LAMP Interface
         FactorData factors_; 
-        FactorData GetData();                      
+        FactorData GetData();        
+
+        // The node's name.
+        std::string name_;
+
+              
 
     private:    
     

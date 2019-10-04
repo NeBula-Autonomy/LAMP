@@ -24,6 +24,34 @@ OdometryHandler::~OdometryHandler() {
     }
 
 
+// Initialize 
+
+bool OdometryHandler::Initialize(const ros::NodeHandle& n){
+    
+    name_ = ros::names::append(n.getNamespace(), "OdometryHandler");
+
+    if (!LoadParameters(n)) {
+        ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
+        return false;
+    }
+
+    if (!RegisterCallbacks(n)) {
+        ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
+        return false;
+    }    
+
+    return true;
+}
+
+bool LoadParameters(const ros::NodeHandle& n) {
+    ROS_INFO("LoadParameters method called in OdometryHandler"); 
+    return true; 
+}
+
+bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
+    ROS_INFO("RegisterCallbacks method called in OdometryHandler"); 
+    return true;    
+}
 
 // Callbacks 
 
@@ -101,7 +129,10 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
 }
 
 gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
-    std::cout<<"Needs to be implemented late" << std::endl;
+    // std::cout<<"Needs to be implemented late" << std::endl;
+    auto pose_first = pose_cov_stamped_pair.first;
+    auto pose_second = pose_cov_stamped_pair.second;
+    
     gtsam::Pose3 output;
     return output;
 }
