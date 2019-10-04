@@ -9,19 +9,6 @@ Merger::Merger() :
     lastSlow(nullptr)
 {
 
-    // this->fastGraphSub = this->nodeHandle.subscribe("blam_slam_fe/pose_graph", 1, &Merger::on_fast_graph_msg, this);
-
-    // this->slowGraphSub = this->nodeHandle.subscribe("blam_slam/pose_graph_lc", 1, &Merger::on_slow_graph_msg, this);
-
-    // this->merged_graph_Pub = this->nodeHandle.advertise<pose_graph_msgs::PoseGraph>
-    //         ("blam_slam/pose_graph", 1, true);
-
-    // this->fastPoseSub = this->nodeHandle.subscribe("blam_slam_fe/localization_integrated_estimate", 1, &Merger::on_fast_pose_msg, this);
-
-    // this->slowPoseSub = this->nodeHandle.subscribe("blam_slam/localization_integrated_estimate_lc", 1, &Merger::on_slow_pose_msg, this);
-
-    // this->mergedPosePub = this->nodeHandle.advertise<geometry_msgs::PoseStamped>
-    //         ("blam_slam/localization_integrated_estimate", 1, true);            
 }
 
 void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
@@ -54,9 +41,6 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
         }
     }
 
-    ROS_INFO_STREAM("Merged graph curr size " << merged_graph_.nodes.size());
-
-
     //use map to order the new fast nodes by the order they were created in
     std::map<unsigned int, const GraphNode*> newFastNodes;
     std::map<long unsigned int, const GraphNode*> fastKeyToNode;
@@ -75,8 +59,6 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
         fastOutAdjList[edge.key_from].insert(&edge);
         fastInAdjList[edge.key_to].insert(&edge);
     }
-
-    ROS_INFO_STREAM("Merged graph curr size " << merged_graph_.nodes.size());
 
     //for each node in the fast graph which is not in the graph
     for (auto kv : fastKeyToNode) {
@@ -114,15 +96,11 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
         merged_graph_.edges.push_back(new_merged_graph_edge);
     }
 
-    ROS_INFO_STREAM("Merged graph curr size " << merged_graph_.nodes.size());
-
-    // this->merged_graph_Pub.publish(merged_graph_);
+    ROS_INFO_STREAM("Finished merging graph, size " << merged_graph_.nodes.size());
 }
 
 void Merger::OnSlowPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-    ROS_INFO_STREAM("Recevived slow pose");
-    ROS_INFO_STREAM("Slow timestamp is " << msg->header.stamp.toSec());
-    
+
     // if (!b_block_slow_pose_update){ // blocked if updated in fast_pose callback
     this->last_slow_pose_ = gu::ros::FromROS(msg->pose);
 
@@ -134,13 +112,9 @@ void Merger::OnSlowPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     }
 
     b_received_first_slow_pose_ = true;
-    // }
-    
 }
 
 void Merger::OnFastPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-    // ROS_INFO_STREAM("Recevived fast pose");
-    // ROS_INFO_STREAM("Fast timestamp is " << msg->header.stamp.toSec());
 
     // Update current fast pose
     current_fast_pose_ = gu::ros::FromROS(msg->pose);
@@ -232,14 +206,3 @@ void Merger::CleanUpMap(const ros::Time &stamp){
 pose_graph_msgs::PoseGraph Merger::GetCurrentGraph() {
     return merged_graph_;
 }
-
-
-// int main(int argc, char** argv) {
-//     ros::init(argc, argv, "pose_graph_merger");
-//     ros::NodeHandle nh, pnh("~");
-
-//     Merger merger(nh, pnh);
-
-//     ros::spin();
-// }
-
