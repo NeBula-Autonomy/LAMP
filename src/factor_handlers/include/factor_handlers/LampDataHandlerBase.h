@@ -22,11 +22,6 @@
 #include <nav_msgs/Odometry.h>
 #include <utils/CommonStructs.h>
 
-#include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/geometry/Rot3.h>
-
-
 namespace gu = geometry_utils;
 namespace gr = geometry_utils::ros;
 
