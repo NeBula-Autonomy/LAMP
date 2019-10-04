@@ -234,7 +234,11 @@ bool LampRobot::SetInitialPosition() {
 }
 
 bool LampRobot::InitializeHandlers(const ros::NodeHandle& n){
-    // artifact_handler_.Initialize(); 
+
+    if (!odometry_handler_.Initialize(n)) {
+      ROS_ERROR("%s: Failed to initialize the odometry handler.", name_.c_str());
+      return false;
+    }
 
   return true; 
 }
