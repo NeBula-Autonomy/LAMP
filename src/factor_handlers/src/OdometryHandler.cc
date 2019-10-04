@@ -24,6 +24,7 @@ OdometryHandler::~OdometryHandler() {
     }
 
 
+
 // Initialize 
 
 bool OdometryHandler::Initialize(const ros::NodeHandle& n){
@@ -43,7 +44,7 @@ bool OdometryHandler::Initialize(const ros::NodeHandle& n){
     return true;
 }
 
-bool LoadParameters(const ros::NodeHandle& n) {
+bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
     ROS_INFO("LoadParameters method called in OdometryHandler"); 
     // TODO: Load necessary parameters from yaml into local variables
     return true; 
@@ -57,6 +58,8 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     wheel_odom_sub_ = nl.subscribe("WHEEL_ODOMETRY_TOPIC", 1000, &OdometryHandler::WheelOdometryCallback, this);
     return true;    
     }
+
+
 
 // Callbacks 
 
@@ -120,8 +123,9 @@ void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
     auto last_odom_element = std::prev(odom_buffer.end());
     auto pose_cov_stamped_pair = std::make_pair(*first_odom_element, *last_odom_element);
     MakeFactor(pose_cov_stamped_pair);
-    //ResetBuffer(last_odom_element); 
-    //TODO: ResetBuffer clears the buffer and adds the last element of interest
+    // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element 
+    odom_buffer.clear();
+    // odom_buffer.push_back(last_odom_element);
 }
 
 void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
@@ -156,7 +160,48 @@ FactorData OdometryHandler::GetData() {
     // reset factors after this get called
 }
 
+// Pose conversion from gu to GTSAM format.
+// gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
+//   Vector3 t;
+
+//   t(0) = pose.translation(0);
+//   t(1) = pose.translation(1);
+//   t(2) = pose.translation(2);
+
+//   Rot3 r(pose.rotation(0, 0), pose.rotation(0, 1), pose.rotation(0, 2),
+//          pose.rotation(1, 0), pose.rotation(1, 1), pose.rotation(1, 2),
+//          pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
+
+//   return gtsam::Pose3(r, t);
+// }
+
+// // Pose conversion from GTSAM to GU format.
+// gu::Transform3 OdometryHandler::ToGu(const gtsam::Pose3& pose) const {
+
+//   gu::Transform3 out;
+
+//   out.translation(0) = pose.translation().x();
+//   out.translation(1) = pose.translation().y();
+//   out.translation(2) = pose.translation().z();
+
+//   for (int i = 0; i < 3; ++i) {
+//     for (int j = 0; j < 3; ++j)
+//       out.rotation(i, j) = pose.rotation().matrix()(i, j);
+//   }
+
+//   return out;
+// }
+
+
 /*
+
+
+
+
+
+
+
+
 DOCUMENTATION 
 
         nav_msgs/Odometry Message
