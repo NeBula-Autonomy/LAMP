@@ -11,8 +11,7 @@ class OdometryHandlerTest : public ::testing::Test {
   
   protected: 
 
-    // Odometry Callbacks
-   
+    // Odometry Callbacks ------------------------------------------------   
     void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
       myOdometryHandler.LidarOdometryCallback(msg);
     } 
@@ -20,13 +19,12 @@ class OdometryHandlerTest : public ::testing::Test {
     void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
       myOdometryHandler.LidarOdometryCallback(msg);
     }  
-
+    
     void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
       myOdometryHandler.LidarOdometryCallback(msg);
     } 
 
-    // Check Buffer Size Callbacks
-
+    // Utilities 
     template <typename TYPE>
     int CheckBufferSize(std::vector<TYPE> const& x) {
       return myOdometryHandler.CheckBufferSize(x);
@@ -38,7 +36,7 @@ class OdometryHandlerTest : public ::testing::Test {
 
     double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer){
       return myOdometryHandler.CalculatePoseDelta(odom_buffer);
-    }
+    }    
 
     std::vector<geometry_msgs::PoseWithCovarianceStamped> lidar_odometry_buffer_ = myOdometryHandler.lidar_odometry_buffer_;
 

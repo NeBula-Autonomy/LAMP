@@ -25,7 +25,11 @@ class OdometryHandler : public LampDataHandlerBase{
         //Initialize(const ros::NodeHandle& n);  
         //RegisterOnlineCallbacks(const ros::NodeHandle& n);
 
-        typedef std::vector<geometry_msgs::PoseWithCovarianceStamped> OdomPoseBuffer;
+        // Typedefs
+        typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
+        typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
+        typedef std::vector<PoseCovStamped> OdomPoseBuffer;
+        typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
 
     protected: 
 
@@ -40,19 +44,32 @@ class OdometryHandler : public LampDataHandlerBase{
         void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
         // Odometry Storages 
-        std::vector<geometry_msgs::PoseWithCovarianceStamped> lidar_odometry_buffer_; 
-        std::vector<geometry_msgs::PoseWithCovarianceStamped> visual_odometry_buffer_;
-        std::vector<geometry_msgs::PoseWithCovarianceStamped> wheel_odometry_buffer_;
+        OdomPoseBuffer lidar_odometry_buffer_; 
+        OdomPoseBuffer visual_odometry_buffer_;
+        OdomPoseBuffer wheel_odometry_buffer_;
 
-        // Odometry Storages Size Computer 
-        int CheckMyBufferSize(const std::vector<geometry_msgs::PoseWithCovarianceStamped>& x);
+        // Utilities 
+        void PrepareFactor(OdomPoseBuffer& odom_buffer);
+        void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
+        int CheckMyBufferSize(const OdomPoseBuffer& x); 
+        double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
+        void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
+
+        // Getters 
+        gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair);
+        Mat1212 GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
+        TimeStampedPair GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
+
+
+        FactorData GetData();        
+        // Protected 
+        FactorData factors_;
         
-        // Calculate Delta between two Poses 
-        double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer);
-    
-        // Utilities to check local buffer sizes
-        template <typename TYPE>
-        int CheckBufferSize(std::vector<TYPE> const& x);
+        /*
+        TODO: Get this templated method pass the unit test 
+            template <typename TYPE>
+            int CheckBufferSize(std::vector<TYPE> const& x);
+        */
 
     private:    
 };
