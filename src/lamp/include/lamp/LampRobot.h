@@ -9,14 +9,16 @@
 
 // Includes 
 #include <lamp/LampBase.h>
+
 #include <factor_handlers/OdometryHandler.h>
 
 // Services
 
 // Class Definition
 class LampRobot : public LampBase {
+
   public:
-    // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+    typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
     // Constructor
     LampRobot();
@@ -24,14 +26,16 @@ class LampRobot : public LampBase {
     // Destructor
     ~LampRobot();    
 
-
     // Override base class functions where needed 
-    // bool Initialize();
+    virtual bool Initialize(const ros::NodeHandle& n);
+
+    gtsam::Symbol GetInitialKey() {return initial_key_;};
+    gtsam::Symbol GetCurrentKey() {return key_;};
 
   protected:
 
     // instantiate all handlers that are being used in the derived classes
-    virtual bool InitializeHandlers(); 
+    virtual bool InitializeHandlers(const ros::NodeHandle& n); 
 
     // load parameters from yaml files
     virtual bool LoadParameters(const ros::NodeHandle& n);
@@ -40,9 +44,15 @@ class LampRobot : public LampBase {
     virtual bool CheckHandlers(); // - inside timed callback
     // TODO consider checking handlers at different frequencies
 
-    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
+    bool RegisterCallbacks(const ros::NodeHandle& n);
 
     virtual bool CreatePublishers(const ros::NodeHandle& n);
+
+    // Initialization helper functions
+    bool SetFactorPrecisions();
+    bool SetInitialPosition();
+    bool SetInitialKey();
+
 
     void ProcessTimerCallback(const ros::TimerEvent& ev);
     // TODO - move to base class?
@@ -51,6 +61,17 @@ class LampRobot : public LampBase {
 
     void UpdateArtifactPositions();
 
+    // Initial key
+    gtsam::Symbol initial_key_;
+
+    // Current key
+    gtsam::Symbol key_;
+
+    // Main process name
+    std::string name_;
+
+    PointCloudFilter filter_;
+    PointCloudMapper mapper_;
 
 
   private:
@@ -61,6 +82,7 @@ class LampRobot : public LampBase {
     bool ProcessOdomData(FactorData data);
     bool ProcessArtifactData(FactorData data);
     void ProcessAprilData(FactorData data);
+    bool InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // void ProcessUWBData(FactorData data);
     // Example use:
     // ProcessArtifactData(artifact_handler_.GetData());
@@ -83,7 +105,12 @@ class LampRobot : public LampBase {
     // Add new variables as needed
 
 
+    // Parameters
+    gtsam::Vector6 initial_noise_;
 
+
+    // Test class fixtures
+    friend class TestLampRobot;
 
 };
 

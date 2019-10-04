@@ -31,6 +31,7 @@
 <depend>roscpp</depend>
 <depend>pose_graph_msgs</depend>
 <depend>tf2_ros</depend>
+<depend>eigen_conversions</depend>
   <!-- The *depend tags are used to specify dependencies -->
   <!-- Dependencies can be catkin packages or system dependencies -->
   <!-- Examples: -->
@@ -55,7 +56,9 @@
 
 
   <depend>geometry_utils</depend>
+  <depend>utils</depend>
 
+  <test_depend>rosunit</test_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
