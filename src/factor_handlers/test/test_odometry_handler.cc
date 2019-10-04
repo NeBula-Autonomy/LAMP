@@ -41,7 +41,13 @@ class OdometryHandlerTest : public ::testing::Test {
 
 };
 
+TEST_F(OdometryHandlerTest, Initialization) {
+  ros::NodeHandle nh, pnh("~");
 
+  bool result = lr.Initialize(nh);
+  
+  ASSERT_TRUE(result);
+}
 
 /*
 TEST LidarOdometryCallback

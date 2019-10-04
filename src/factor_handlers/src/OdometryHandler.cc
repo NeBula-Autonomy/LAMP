@@ -80,6 +80,7 @@ void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr&
     visual_odometry_buffer_.push_back(currentMsg); 
     CheckOdometryBuffer(visual_odometry_buffer_);
 }
+
 void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
     PoseCovStamped currentMsg;
@@ -113,8 +114,6 @@ double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     auto pose_first = gr::FromROS((*(odom_buffer.begin())).pose.pose);
     auto pose_end   = gr::FromROS((*(std::prev(odom_buffer.end()))).pose.pose);
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
-    // auto pose_first_stamp = (*(odom_buffer.begin())).header.stamp;
-    // auto pose_second_stamp = (*(std::prev(odom_buffer.end()))).header.stamp;    
     return pose_delta.translation.Norm();
 }
 
@@ -125,7 +124,7 @@ void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
     MakeFactor(pose_cov_stamped_pair);
     // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element 
     odom_buffer.clear();
-    // odom_buffer.push_back(last_odom_element);
+    odom_buffer.push_back(*last_odom_element);
 }
 
 void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
@@ -138,8 +137,10 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
 }
 
 gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
-    //auto pose_delta = gu::PoseDelta(pose_cov_stamped_pair.first, pose_cov_stamped_pair.second);
-    gtsam::Pose3 output;
+    auto pose_first = gr::FromROS(pose_cov_stamped_pair.first.pose.pose); 
+    auto pose_end = gr::FromROS(pose_cov_stamped_pair.second.pose.pose); 
+    auto pose_delta = gu::PoseDelta(pose_first, pose_end);
+    gtsam::Pose3 output = ToGtsam(pose_delta);
     return output;
 }
 
@@ -151,8 +152,13 @@ Mat1212 OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair)
 
 std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented later" << std::endl;
-    std::pair<ros::Time, ros::Time> output;
-    return output;
+    // Get the timestamps of interest from the received pair 
+    ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
+    ros::Time second_timestamp = pose_cov_stamped_pair.first.header.stamp;
+    std::pair<ros::Time, ros::Time> timestamp_pair;
+    timestamp_pair.first = first_timestamp; 
+    timestamp_pair.second = second_timestamp; 
+    return timestamp_pair;
 }
 
 FactorData OdometryHandler::GetData() {
@@ -160,48 +166,23 @@ FactorData OdometryHandler::GetData() {
     // reset factors after this get called
 }
 
-// Pose conversion from gu to GTSAM format.
-// gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
-//   Vector3 t;
 
-//   t(0) = pose.translation(0);
-//   t(1) = pose.translation(1);
-//   t(2) = pose.translation(2);
+gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
+  
+  gtsam::Vector3 t;
 
-//   Rot3 r(pose.rotation(0, 0), pose.rotation(0, 1), pose.rotation(0, 2),
-//          pose.rotation(1, 0), pose.rotation(1, 1), pose.rotation(1, 2),
-//          pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
+  t(0) = pose.translation(0);
+  t(1) = pose.translation(1);
+  t(2) = pose.translation(2);
 
-//   return gtsam::Pose3(r, t);
-// }
+  gtsam::Rot3 r(pose.rotation(0, 0), pose.rotation(0, 1), pose.rotation(0, 2),
+         pose.rotation(1, 0), pose.rotation(1, 1), pose.rotation(1, 2),
+         pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
 
-// // Pose conversion from GTSAM to GU format.
-// gu::Transform3 OdometryHandler::ToGu(const gtsam::Pose3& pose) const {
-
-//   gu::Transform3 out;
-
-//   out.translation(0) = pose.translation().x();
-//   out.translation(1) = pose.translation().y();
-//   out.translation(2) = pose.translation().z();
-
-//   for (int i = 0; i < 3; ++i) {
-//     for (int j = 0; j < 3; ++j)
-//       out.rotation(i, j) = pose.rotation().matrix()(i, j);
-//   }
-
-//   return out;
-// }
-
+  return gtsam::Pose3(r, t);
+}
 
 /*
-
-
-
-
-
-
-
-
 DOCUMENTATION 
 
         nav_msgs/Odometry Message
