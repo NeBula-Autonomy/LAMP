@@ -71,7 +71,11 @@ class OdometryHandler : public LampDataHandlerBase{
         void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
         // Pointcloud Callback 
-        void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);     
+        void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
+
+        // TODO: This function should be defined in the base class
+        template <typename T1, typename T2>
+        bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer);   
 
         // Odometry Storages 
         OdomPoseBuffer lidar_odometry_buffer_; 

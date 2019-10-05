@@ -65,29 +65,35 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void OdometryHandler::LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
-    PoseCovStamped currentMsg;
-    currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose;
-    lidar_odometry_buffer_.push_back(currentMsg); 
-    CheckOdometryBuffer(lidar_odometry_buffer_);
+    // PoseCovStamped currentMsg;
+    // currentMsg.header = msg->header; 
+    // currentMsg.pose = msg->pose;
+    // lidar_odometry_buffer_.push_back(currentMsg);
+    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
+        CheckOdometryBuffer(lidar_odometry_buffer_);
+    }
 }
 
 void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
-    PoseCovStamped currentMsg;
-    currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose;
-    visual_odometry_buffer_.push_back(currentMsg); 
-    CheckOdometryBuffer(visual_odometry_buffer_);
+    // PoseCovStamped currentMsg;
+    // currentMsg.header = msg->header; 
+    // currentMsg.pose = msg->pose;
+    // visual_odometry_buffer_.push_back(currentMsg);
+    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
+        CheckOdometryBuffer(visual_odometry_buffer_);
+    }
 }
 
 void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    PoseCovStamped currentMsg;
-    currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose;
-    wheel_odometry_buffer_.push_back(currentMsg); 
-    CheckOdometryBuffer(wheel_odometry_buffer_);
+    // PoseCovStamped currentMsg;
+    // currentMsg.header = msg->header; 
+    // currentMsg.pose = msg->pose;
+    // wheel_odometry_buffer_.push_back(currentMsg);
+    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
+        CheckOdometryBuffer(wheel_odometry_buffer_);
+    }
 }
 
 void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
@@ -97,7 +103,19 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
     point_cloud_buffer_.insert({current_timestamp, current_pointcloud}); 
 }
 
-
+// TODO: This function should be defined in the base class
+template <typename T1, typename T2>
+bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+    auto prev_size = CheckBufferSize<T2>(buffer);
+    T2 stored_msg;
+    // TODO: The following two lines should be implemented in a function
+    stored_msg.header = msg->header; 
+    stored_msg.pose = msg->pose;
+    buffer.push_back(stored_msg);
+    auto current_size = CheckBufferSize<T2>(buffer);
+    if (current_size != (prev_size + 1)) return false;
+    return true;
+}
 
 // Utilities 
 
