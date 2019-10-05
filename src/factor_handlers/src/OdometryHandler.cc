@@ -90,6 +90,10 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
     CheckOdometryBuffer(wheel_odometry_buffer_);
 }
 
+void OdometryHandler::PointCloudCallback(const PointCloud::ConstPtr& msg){
+    ROS_INFO("To be implemented");
+}
+
 
 
 // Utilities 
@@ -144,11 +148,13 @@ gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_p
     return output;
 }
 
-Mat1212 OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
-    std::cout<<"Needs to be implemented later" << std::endl;
-    Mat1212 output; // TODO: Should be gtsam::SharedNoiseModel& bias_noise_model =  gtsam::noiseModel::Diagonal::Sigmas(biasSigmas);”
-    return output;
+bool OdometryHandler::GetKeyedScanAtTime(ros::Time time, PointCloud::ConstPtr& msg) {
+    if (point_could_buffer_.size() == 0) return false;
+
+    
+    return true;
 }
+
 
 std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented later" << std::endl;

@@ -20,6 +20,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <utils/CommonStructs.h>
 
 namespace gu = geometry_utils;

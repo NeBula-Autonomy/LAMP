@@ -38,12 +38,17 @@ class OdometryHandler : public LampDataHandlerBase{
         typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
+        typedef sensor_msgs::PointCloud2 PointCloud;
+        typedef std::vector<PointCloud> PointCloudBuffer;
         
         // Public methods
         bool Initialize (const ros::NodeHandle& n);
         bool LoadParameters(const ros::NodeHandle& n);
         bool RegisterCallbacks(const ros::NodeHandle& n);
 
+        // LAMP Interface
+        FactorData GetData();
+        bool GetKeyedScanAtTime(ros::Time time, PointCloud::ConstPtr& msg);
 
 
     protected: 
@@ -53,15 +58,24 @@ class OdometryHandler : public LampDataHandlerBase{
         ros::Subscriber visual_odom_sub_;
         ros::Subscriber wheel_odom_sub_;
 
+        // Pointclouud Subscribers 
+        ros::Subscriber pcld_sub_;
+
         // Odometry Callbacks 
         void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg); 
         void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
         void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
+        // Pointcloud Callback 
+        void PointCloudCallback(const PointCloud::ConstPtr& msg);        
+
         // Odometry Storages 
         OdomPoseBuffer lidar_odometry_buffer_; 
         OdomPoseBuffer visual_odometry_buffer_;
         OdomPoseBuffer wheel_odometry_buffer_;
+        
+        // Point Cloud Storage
+        PointCloudBuffer point_could_buffer_;
 
         // Protected methods
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
@@ -73,15 +87,14 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Getters 
         gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair);        
-        Mat1212 GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
+        gtsam::SharedNoiseModel GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
         std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
 
         // Conversion utilities 
         gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const; // TODO: This function should be defined in the base class
  
         // LAMP Interface
-        FactorData factors_; 
-        FactorData GetData();        
+        FactorData factors_;         
 
         // The node's name.
         std::string name_;
