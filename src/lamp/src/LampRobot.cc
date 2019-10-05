@@ -24,9 +24,8 @@ using gtsam::Rot3;
 using gtsam::Values;
 using gtsam::Vector3;
 
-// Constructor (if there is override)
-LampRobot::LampRobot() :
-  update_rate_(10) {}
+// Constructor
+LampRobot::LampRobot() {}
 
 //Destructor
 LampRobot::~LampRobot() {}
@@ -115,8 +114,7 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  update_timer_ = nl.createTimer(
-    update_rate_, &LampRobot::ProcessTimerCallback, this);
+  update_timer_ = nl.createTimer(update_rate_, &LampRobot::ProcessTimerCallback, this);
     
   back_end_pose_graph_sub_ = nl.subscribe("back_end_pose_graph", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
 
@@ -249,7 +247,8 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n){
 // Check for data from all of the handlers
 bool LampRobot::CheckHandlers() {
 
-  // b_has_new_factor_ will be set to true if there is at least one new factor
+  // b_has_new_factor_ will be set to true if there is a new factor
+  // b_run_optimization_ will be set to true if there is a new loop closure
 
   // Check the odom for adding new poses
   ProcessOdomData(odometry_handler_.GetData());
@@ -277,7 +276,7 @@ bool LampRobot::InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal:
   return true;
 }
 
-void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
+void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Print some debug messages
   ROS_INFO_STREAM("Checking for new data");
@@ -285,6 +284,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
   // Check the handlers
   CheckHandlers();
 
+  // Publish the pose graph
   if (b_has_new_factor_) {
     PublishPoseGraph();
 
@@ -293,10 +293,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
 
   // Start optimize, if needed
   if (b_run_optimization_) {
-      // tell LampPgo to optimize
-      // TODO Set up publisher for this
-
-      PublishPoseGraph();
+      PublishPoseGraphForOptimizer();
 
       b_run_optimization_ = false; 
   }
@@ -383,12 +380,10 @@ bool LampRobot::ProcessOdomData(FactorData data){
     TrackEdges(prev_key, current_key, transform, covariance);
     
 
-    // check for keyed scans
+    // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 
     // if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
-
-      // get keyed scan from odom handler
 
       // add new keyed scan to map
       keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(current_key, new_scan));

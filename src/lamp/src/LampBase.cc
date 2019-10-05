@@ -26,7 +26,8 @@ using gtsam::Vector3;
 
 // Constructor
 LampBase::LampBase():
-    prefix_("") {
+    prefix_(""),
+    update_rate_(10) {
      // any other things on construction 
     }
 
@@ -70,9 +71,9 @@ bool LampBase::CheckHandlers(){
 
 gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
 
-  auto iterTime = stamp_to_odom_key_.lower_bound(stamp.toSec()); // First key that is not less than timestamp 
+  // First key that is not less than timestamp
+  auto iterTime = stamp_to_odom_key_.lower_bound(stamp.toSec());  
 
-  // TODO - interpolate - currently just take one
   double t2 = iterTime->first;
 
   if (iterTime == stamp_to_odom_key_.begin()){
@@ -81,35 +82,34 @@ gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
   }
   double t1 = std::prev(iterTime,1)->first; 
 
-  // std::cout << "Time 1 is: " << t1 << ", Time 2 is: " << t2 << std::endl;
+  ROS_INFO_STREAM("Time 1 is: " << t1 << ", Time 2 is: " << t2);
 
   gtsam::Symbol key;
 
-  // if (t2-stamp.toSec() < stamp.toSec() - t1) {
-  //   // t2 is closer - use that key
-  //   // std::cout << "Selecting later time: " << t2 << std::endl;
-  //   key = iterTime->second;
-  // } else {
-  //   // t1 is closer - use that key
-  //   // std::cout << "Selecting earlier time: " << t1 << std::endl;
-  //   key = std::prev(iterTime,1)->second;
-  //   iterTime--;
-  // }
+  if (t2-stamp.toSec() < stamp.toSec() - t1) {
+    // t2 is closer - use that key
+    ROS_INFO_STREAM("Selecting later time: " << t2);
+    key = iterTime->second;
+  } else {
+    // t1 is closer - use that key
+    ROS_INFO_STREAM("Selecting earlier time: " << t1);
+    key = std::prev(iterTime,1)->second;
+    iterTime--;
+  }
 
-  // // std::cout << "Key is: " << key << std::endl;
+  // std::cout << "Key is: " << key << std::endl;
 
-  // if (iterTime == std::prev(stamp_to_odom_key_.begin())){
-  //   ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
-  //   iterTime++;
-  //   // iterTime = stamp_to_odom_key_.begin();
-  //   key = iterTime->second;
-  // } else if(iterTime == stamp_to_odom_key_.end()) {
-  //   ROS_WARN("Invalid time for graph (past end of graph range). take latest pose");
-  //   key = key_ -1;
-  // }
+  if (iterTime == std::prev(stamp_to_odom_key_.begin())){
+    ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
+    iterTime++;
+    // iterTime = stamp_to_odom_key_.begin();
+    key = iterTime->second;
+  } else if(iterTime == stamp_to_odom_key_.end()) {
+    ROS_WARN("Invalid time for graph (past end of graph range). take latest pose");
+    key = key_ -1;
+  }
 
   return key; 
-
 }
 
 
@@ -206,8 +206,7 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
 }
 
 
-bool LampBase::PublishPoseGraph(){
-  // TODO - publish incremental
+bool LampBase::PublishPoseGraph() {
 
   // Convert master pose-graph to messages
   pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();
@@ -216,7 +215,19 @@ bool LampBase::PublishPoseGraph(){
   pose_graph_pub_.publish(*g);
 
   return true;
+}
 
+bool LampBase::PublishPoseGraphForOptimizer() {
+  
+  // TODO - incremental publishing instead of full graph
+
+  // Convert master pose-graph to messages
+  pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();
+
+  // Publish 
+  pose_graph_to_optimize_pub_.publish(*g);
+
+  return true;
 }
 
 //-------------------------------------- 
