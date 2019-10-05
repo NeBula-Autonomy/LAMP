@@ -18,6 +18,7 @@
 
 
 
+
 // Class Definition 
 class OdometryHandler : public LampDataHandlerBase{
 
@@ -38,7 +39,7 @@ class OdometryHandler : public LampDataHandlerBase{
         typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
-        typedef sensor_msgs::PointCloud2 PointCloud;
+        typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
         
         // Public methods
@@ -48,7 +49,10 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // LAMP Interface
         FactorData GetData();
-        bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud::ConstPtr& msg);
+
+        // TODO: This function should be impletented as a template function in the base class
+        // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
+        bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud& msg);
 
 
     protected: 
@@ -67,7 +71,7 @@ class OdometryHandler : public LampDataHandlerBase{
         void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
         // Pointcloud Callback 
-        void PointCloudCallback(const PointCloud::ConstPtr& msg);        
+        void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);     
 
         // Odometry Storages 
         OdomPoseBuffer lidar_odometry_buffer_; 
@@ -75,7 +79,7 @@ class OdometryHandler : public LampDataHandlerBase{
         OdomPoseBuffer wheel_odometry_buffer_;
         
         // Point Cloud Storage (Time stamp and point cloud)
-        std::map<double, PointCloud> point_could_buffer_;
+        std::map<double, PointCloud> point_cloud_buffer_;
 
         // Protected methods
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);

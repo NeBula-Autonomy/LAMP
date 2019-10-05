@@ -22,6 +22,9 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <utils/CommonStructs.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+
 
 namespace gu = geometry_utils;
 namespace gr = geometry_utils::ros;
