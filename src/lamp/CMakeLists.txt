@@ -33,6 +33,8 @@ find_package(catkin REQUIRED COMPONENTS
   parameter_utils
   pcl_ros
   pcl_conversions
+  point_cloud_filter
+  point_cloud_mapper
   core_msgs
   pose_graph_msgs
   uwb_msgs
@@ -56,6 +58,8 @@ catkin_package(
     utils
     geometry_utils
     parameter_utils
+    point_cloud_filter
+    point_cloud_mapper
     pcl_ros
     pcl_conversions
     core_msgs

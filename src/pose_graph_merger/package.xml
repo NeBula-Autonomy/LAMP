@@ -58,6 +58,7 @@
   <depend>geometry_utils</depend>
   <depend>utils</depend>
 
+  <test_depend>rosunit</test_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

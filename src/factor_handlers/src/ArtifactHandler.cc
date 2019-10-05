@@ -17,6 +17,7 @@
  * CreatePublishers        - Not Done
  * UpdateGlobalPose        - Final check
  * Tests                   - Test needed.
+ * covariances             - Make Covariance SharedNoiseModel 
  */
  
 
@@ -255,7 +256,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Append transform
   artifact_data_.transforms.push_back(R_pose_A);
   // Append covariance
-  artifact_data_.covariances.push_back(cov);
+  // artifact_data_.covariances.push_back(cov);
   // Append std::pair<ros::Time, ros::Time(0.0)> for artifact
   artifact_data_.time_stamps.push_back(std::make_pair(msg.header.stamp, ros::Time(0.0)));
   // Append the artifact key
@@ -373,9 +374,132 @@ void ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 glo
   std::cout << "Key not found in the Artifact id to key map.";
 }
 
- /*! \brief  Publish Artifact
+ /*! \brief  Publish Artifact. Need to see if publish_all is still relevant
+  * I am considering publishing if we have the key and the pose without 
+  * any further processing.
+  * TODO Remove the publish_all part if thats not required.
+  * TODO Resolve the frame and transform between world and map
+  * in poutput message. 
   * Returns  Void
   */
 void ArtifactHandler::PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
-  
+  // For now, loop through artifact_key2label_hash
+  // then publish. (might want to change this to an array later?)
+  Eigen::Vector3d artifact_position = global_pose.translation().vector();
+  std::string artifact_label;
+  bool b_publish_all = false;
+
+  // Default input key is 'z0' if this is the case, publish all artifacts
+  if (gtsam::Symbol(artifact_key).chr() == 'z') {
+    b_publish_all = true;
+    ROS_INFO("\n\n\t\tPublishing all artifacts\n\n");
+  }
+
+  ROS_INFO_STREAM("size of artifact key to info hash is " << artifact_key2info_hash_.size());
+
+  // loop through values 
+  for (auto it = artifact_key2info_hash_.begin();
+            it != artifact_key2info_hash_.end(); it++ ) {
+
+    ROS_INFO_STREAM("Artifact hash key is " << gtsam::DefaultKeyFormatter(it->first));
+    gtsam::Symbol art_key = gtsam::Symbol(it->first);
+    if (!(art_key.chr() == 'l' || art_key.chr() == 'm' || art_key.chr() == 'n' || art_key.chr() == 'o' || art_key.chr() == 'p' || art_key.chr() == 'q')){
+      ROS_WARN("ERROR - have a non-landmark ID");
+      ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(it->first));
+      continue;
+    }
+
+    if (b_publish_all) { // The default value
+      // Update all artifacts - loop through all - the default
+      // Get position and label 
+      ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(it->first));
+      // artifact_position = GetArtifactPosition(gtsam::Key(it->first));
+      artifact_label = it->second.msg.label;
+      // Get the artifact key
+      artifact_key = it->first;
+
+      // Increment update count
+      it->second.num_updates++;
+
+      std::cout << "Number of updates of artifact is: "
+                << it->second.num_updates << std::endl;
+
+    }
+    else{
+      // Updating a single artifact - will return at the end of this first loop
+      // Using the artifact key to publish that artifact
+      ROS_INFO("Publishing only the new artifact");
+      ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(artifact_key));
+
+      // Check that the key exists
+      if (artifact_key2info_hash_.count(artifact_key) == 0) {
+        ROS_WARN("Artifact key is not in hash, nothing to publish");
+        return;
+      }
+
+      // Get position and label 
+      // artifact_position = GetArtifactPosition(artifact_key);
+      artifact_label = artifact_key2info_hash_[artifact_key].msg.label;
+      // Keep the input artifact key
+
+      // Increment update count
+      artifact_key2info_hash_[artifact_key].num_updates++;
+
+      std::cout << "Number of updates of artifact is: "
+                << artifact_key2info_hash_[artifact_key].num_updates
+                << std::endl;
+    }
+
+    // Check that the key exists
+    if (artifact_key2info_hash_.count(artifact_key) == 0) {
+      ROS_WARN("Artifact key is not in hash, nothing to publish");
+      return;
+    }
+
+    // Fill artifact message
+    core_msgs::Artifact new_msg = artifact_key2info_hash_[artifact_key].msg;
+
+    if (b_publish_all){
+      // Update the message ID
+      new_msg.id = new_msg.id + std::to_string(it->second.num_updates-1);
+      
+      // Update the time after loop closure
+      new_msg.header.stamp = ros::Time::now();
+    }
+
+    // Fill the new message positions
+    new_msg.point.point.x = artifact_position[0];
+    new_msg.point.point.y = artifact_position[1];
+    new_msg.point.point.z = artifact_position[2];
+    // TODO new_msg.point.header.frame_id = fixed_frame_id_;
+    // TODO Transform to world frame from map frame
+    // new_msg.point = tf_buffer_.transform(
+        // new_msg.point, "world", new_msg.point.header.stamp, "world");
+
+    // Print out
+    // Transform at time of message
+    std::cout << "Artifact position in world is: " << new_msg.point.point.x
+              << ", " << new_msg.point.point.y << ", " << new_msg.point.point.z
+              << std::endl;
+    std::cout << "Frame ID is: " << new_msg.point.header.frame_id << std::endl;
+
+    std::cout << "\t Parent id: " << new_msg.parent_id << std::endl;
+    std::cout << "\t Confidence: " << new_msg.confidence << std::endl;
+    std::cout << "\t Position:\n[" << new_msg.point.point.x << ", "
+              << new_msg.point.point.y << ", " << new_msg.point.point.z << "]"
+              << std::endl;
+    std::cout << "\t Label: " << new_msg.label << std::endl;
+
+    // Publish
+    artifact_pub_.publish(new_msg);
+
+    if (!b_publish_all) {
+      ROS_INFO("Single artifact - exiting artifact pub loop");
+      // Only a single artifact - exit the loop 
+      return;
+    }
+
+    // Sleep to spread out the messages
+    usleep(10000);
+  }
 }

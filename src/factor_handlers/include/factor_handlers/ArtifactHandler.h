@@ -138,6 +138,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     FactorData artifact_data_;
 
     // Publisher
+    ros::Publisher artifact_pub_;
 
     // Subscribers
     ros::Subscriber artifact_sub_;
