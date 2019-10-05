@@ -377,5 +377,5 @@ void ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 glo
   * Returns  Void
   */
 void ArtifactHandler::PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
-
+  
 }
