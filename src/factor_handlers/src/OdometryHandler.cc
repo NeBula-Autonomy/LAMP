@@ -92,7 +92,11 @@ void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
 
 void OdometryHandler::PointCloudCallback(const PointCloud::ConstPtr& msg){
     ROS_INFO("To be implemented");
+    double current_timestamp = msg->header.stamp.toSec();
+    PointCloud current_pointcloud = PointCloud();
+    point_could_buffer_.insert({current_timestamp, current_pointcloud});
 }
+
 
 
 
@@ -148,13 +152,11 @@ gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_p
     return output;
 }
 
-bool OdometryHandler::GetKeyedScanAtTime(ros::Time time, PointCloud::ConstPtr& msg) {
+bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp, PointCloud::ConstPtr& msg) {
     if (point_could_buffer_.size() == 0) return false;
-
-    
+    ROS_INFO("To be implemented");    
     return true;
 }
-
 
 std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
     std::cout<<"Needs to be implemented later" << std::endl;
@@ -187,6 +189,17 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
 
   return gtsam::Pose3(r, t);
 }
+
+// gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+//     gtsam::Vector6 biasSigmas;
+//     auto position_sigma = pose_cov_stamped_pair.first.pose.covariance;
+//     auto attitude_sigma = pose_cov_stamped_pair.second.pose.covariance;;
+//     biasSigmas.head<3>().setConstant(attitude_sigma*attitude_sigma);
+//     biasSigmas.tail<3>().setConstant(position_sigma*position_sigma);
+//     static const gtsam::SharedNoiseModel& point_noise = 
+//         gtsam::noiseModel::Diagonal::Sigmas(biasSigmas);
+//     return point_noise;
+// }
 
 /*
 DOCUMENTATION 

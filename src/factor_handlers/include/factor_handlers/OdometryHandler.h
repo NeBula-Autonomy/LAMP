@@ -39,7 +39,7 @@ class OdometryHandler : public LampDataHandlerBase{
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
         typedef sensor_msgs::PointCloud2 PointCloud;
-        typedef std::vector<PointCloud> PointCloudBuffer;
+
         
         // Public methods
         bool Initialize (const ros::NodeHandle& n);
@@ -48,7 +48,7 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // LAMP Interface
         FactorData GetData();
-        bool GetKeyedScanAtTime(ros::Time time, PointCloud::ConstPtr& msg);
+        bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud::ConstPtr& msg);
 
 
     protected: 
@@ -74,8 +74,8 @@ class OdometryHandler : public LampDataHandlerBase{
         OdomPoseBuffer visual_odometry_buffer_;
         OdomPoseBuffer wheel_odometry_buffer_;
         
-        // Point Cloud Storage
-        PointCloudBuffer point_could_buffer_;
+        // Point Cloud Storage (Time stamp and point cloud)
+        std::map<double, PointCloud> point_could_buffer_;
 
         // Protected methods
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
