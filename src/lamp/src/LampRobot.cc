@@ -16,10 +16,10 @@ namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 using gtsam::BetweenFactor;
-using gtsam::RangeFactor;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Pose3;
 using gtsam::PriorFactor;
+using gtsam::RangeFactor;
 using gtsam::Rot3;
 using gtsam::Values;
 using gtsam::Vector3;
