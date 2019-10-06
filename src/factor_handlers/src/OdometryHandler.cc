@@ -142,13 +142,16 @@ double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
 }
 
 void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
-    auto first_odom_element = odom_buffer.begin();   
-    auto last_odom_element = std::prev(odom_buffer.end());
-    auto pose_cov_stamped_pair = std::make_pair(*first_odom_element, *last_odom_element);
-    MakeFactor(pose_cov_stamped_pair);
-    // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element 
-    odom_buffer.clear();
-    odom_buffer.push_back(*last_odom_element);
+  // Make a pair between the first and last elements in the odom buffer
+  auto first_odom_element = odom_buffer.begin();
+  auto last_odom_element = std::prev(odom_buffer.end());
+  auto pose_cov_stamped_pair =
+      std::make_pair(*first_odom_element, *last_odom_element);
+  MakeFactor(pose_cov_stamped_pair);
+  // After MakeFactor has finished its job, reset the buffer and add
+  // last_odom_element as first element
+  odom_buffer.clear();
+  odom_buffer.push_back(*last_odom_element);
 }
 
 void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
@@ -160,6 +163,7 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
 }
 
+// Gets the transform between two pose stamped - the delta
 gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
     auto pose_first = gr::FromROS(pose_cov_stamped_pair.first.pose.pose); 
     auto pose_end = gr::FromROS(pose_cov_stamped_pair.second.pose.pose); 
@@ -189,20 +193,18 @@ bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp, PointCloud& msg) {
     return true;
 }
 
+// Create a pair of the timestamps from and to - to be used in lamp to reference
+// nodes
 std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
-    std::cout<<"Needs to be implemented later" << std::endl;
-    // Get the timestamps of interest from the received pair 
-    ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
-    ros::Time second_timestamp = pose_cov_stamped_pair.first.header.stamp;
-    std::pair<ros::Time, ros::Time> timestamp_pair;
-    timestamp_pair.first = first_timestamp; 
-    timestamp_pair.second = second_timestamp; 
-    return timestamp_pair;
-}
-
-FactorData OdometryHandler::GetData() {
-    return factors_;
-    // reset factors after this get called
+  std::cout << "Needs to be implemented later"
+            << std::endl; // What needs to be implemented later? @Matteo
+  // Get the timestamps of interest from the received pair
+  ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
+  ros::Time second_timestamp = pose_cov_stamped_pair.first.header.stamp;
+  std::pair<ros::Time, ros::Time> timestamp_pair;
+  timestamp_pair.first = first_timestamp;
+  timestamp_pair.second = second_timestamp;
+  return timestamp_pair;
 }
 
 gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {

@@ -270,9 +270,8 @@ bool LampRobot::InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal:
   ros::Time stamp = ros::Time::now();
   keyed_stamps_[initial_key_] = stamp;
 
+  // Populate the priors_info vector
   TrackPriors(stamp, initial_key_, pose, covariance);
-
-  // Populate the priors_info vector 
 
   return true;
 }

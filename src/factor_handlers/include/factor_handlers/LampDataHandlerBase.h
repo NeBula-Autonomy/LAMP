@@ -48,8 +48,14 @@ class LampDataHandlerBase {
     bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
     bool CreatePublishers(const ros::NodeHandle& n);
 
-    // Callback functions 
-    // void DataCallback();    
+    // Reset Factor data
+    void ResetFactorData();
+
+    // Callback functions
+    // void DataCallback();
+
+    // LAMP Interface
+    FactorData factors_;
 
   private:
 

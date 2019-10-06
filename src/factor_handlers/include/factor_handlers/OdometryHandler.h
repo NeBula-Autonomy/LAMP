@@ -48,7 +48,7 @@ class OdometryHandler : public LampDataHandlerBase{
         bool RegisterCallbacks(const ros::NodeHandle& n);
 
         // LAMP Interface
-        FactorData GetData();
+        // FactorData GetData();
 
         // TODO: This function should be impletented as a template function in the base class
         // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
