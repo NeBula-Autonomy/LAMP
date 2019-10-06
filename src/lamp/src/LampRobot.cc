@@ -126,6 +126,7 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
+  pose_graph_pub_ =
     nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   pose_graph_to_optimize_pub_ =
     nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
