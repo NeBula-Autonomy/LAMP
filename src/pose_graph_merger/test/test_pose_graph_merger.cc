@@ -287,7 +287,7 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
 
   a0.ID = "m0";
   a0.key = gtsam::Symbol('m', 0);
-  a0.pose.position.x = 2.0;
+  a0.pose.position.x = 1.0;
   a0.pose.position.y = 1.0;
   a0.pose.position.z = 0.0;
 
@@ -309,7 +309,7 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   e2.pose.position.y = 0.0;
   e2.pose.position.z = 0.0;
 
-  e3.key_from = n2.key;
+  e3.key_from = n1.key;
   e3.key_to = a0.key;
   e3.pose.position.x = 0.0;
   e3.pose.position.y = 1.0;
@@ -388,7 +388,7 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
 
   // Check that final pose is correct
   EXPECT_NEAR(-1.0, x, 1e-5);
-  EXPECT_NEAR(2.0, y, 1e-5);
+  EXPECT_NEAR(1.0, y, 1e-5);
   EXPECT_NEAR(0.0, z, 1e-5);
 }
 
