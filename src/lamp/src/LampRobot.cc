@@ -401,7 +401,6 @@ bool LampRobot::ProcessOdomData(FactorData data){
     PointCloud::Ptr new_scan(new PointCloud);
 
     if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
-
       // add new keyed scan to map
       keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(current_key, new_scan));
 
@@ -410,7 +409,6 @@ bool LampRobot::ProcessOdomData(FactorData data){
       keyed_scan_msg.key = current_key;
       pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
       keyed_scan_pub_.publish(keyed_scan_msg);
-
     }
   }
 

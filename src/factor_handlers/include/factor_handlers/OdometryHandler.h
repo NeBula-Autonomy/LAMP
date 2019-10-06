@@ -39,9 +39,9 @@ class OdometryHandler : public LampDataHandlerBase{
         typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
-        typedef pcl::PointCloud<pcl::PointXYZ> PointCloud; // TODO make this common across packages somehow?
+        typedef pcl::PointCloud<pcl::PointXYZ>
+            PointCloud; // TODO make this common across packages somehow?
 
-        
         // Public methods
         bool Initialize (const ros::NodeHandle& n);
         bool LoadParameters(const ros::NodeHandle& n);
@@ -54,15 +54,13 @@ class OdometryHandler : public LampDataHandlerBase{
         // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
         bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg);
 
-
-    protected: 
-
+      protected:
         // Odometry Subscribers 
         ros::Subscriber lidar_odom_sub_;
         ros::Subscriber visual_odom_sub_;
         ros::Subscriber wheel_odom_sub_;
 
-        // Pointclouud Subscribers 
+        // Pointclouud Subscribers
         ros::Subscriber point_cloud_sub_;
 
         // Odometry Callbacks 
@@ -111,10 +109,8 @@ class OdometryHandler : public LampDataHandlerBase{
         double keyed_scan_time_diff_limit_;
         double pc_buffer_size_limit_;
         double translation_threshold_;
-              
 
-    private:    
-    
+      private:
 };
 
 #endif

@@ -10,8 +10,8 @@
 // Includes 
 #include <ros/ros.h>
 
-#include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
+#include <geometry_utils/Transform3.h>
 #include <parameter_utils/ParameterUtils.h>
 
 #include <geometry_msgs/Pose.h>

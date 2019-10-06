@@ -72,7 +72,7 @@ bool LampBase::CheckHandlers(){
 gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
 
   // First key that is not less than timestamp
-  auto iterTime = stamp_to_odom_key_.lower_bound(stamp.toSec());  
+  auto iterTime = stamp_to_odom_key_.lower_bound(stamp.toSec());
 
   // Get the closest time after the input stamp
   double t2 = iterTime->first;
@@ -90,7 +90,7 @@ gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
 
   gtsam::Symbol key;
 
-  // Chose the key that is closer 
+  // Chose the key that is closer
   if (t2 - stamp.toSec() < stamp.toSec() - t1) {
     // t2 is closer - use that key
     ROS_INFO_STREAM("Selecting later time: " << t2);
@@ -102,7 +102,8 @@ gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
     iterTime--;
   }
 
-  // Check if the resulting iterator is before the start - special case so need to step forward 
+  // Check if the resulting iterator is before the start - special case so need
+  // to step forward
   if (iterTime == std::prev(stamp_to_odom_key_.begin())){
     ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
     iterTime++;
