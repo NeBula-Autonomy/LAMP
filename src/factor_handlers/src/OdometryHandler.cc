@@ -65,32 +65,57 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void OdometryHandler::LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
-    PoseCovStamped currentMsg;
-    currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose;
-    lidar_odometry_buffer_.push_back(currentMsg); 
-    CheckOdometryBuffer(lidar_odometry_buffer_);
+    // PoseCovStamped currentMsg;
+    // currentMsg.header = msg->header; 
+    // currentMsg.pose = msg->pose;
+    // lidar_odometry_buffer_.push_back(currentMsg);
+    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
+        CheckOdometryBuffer(lidar_odometry_buffer_);
+    }
 }
 
 void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
-    PoseCovStamped currentMsg;
-    currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose;
-    visual_odometry_buffer_.push_back(currentMsg); 
-    CheckOdometryBuffer(visual_odometry_buffer_);
+    // PoseCovStamped currentMsg;
+    // currentMsg.header = msg->header; 
+    // currentMsg.pose = msg->pose;
+    // visual_odometry_buffer_.push_back(currentMsg);
+    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
+        CheckOdometryBuffer(visual_odometry_buffer_);
+    }
 }
 
 void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    PoseCovStamped currentMsg;
-    currentMsg.header = msg->header; 
-    currentMsg.pose = msg->pose;
-    wheel_odometry_buffer_.push_back(currentMsg); 
-    CheckOdometryBuffer(wheel_odometry_buffer_);
+    // PoseCovStamped currentMsg;
+    // currentMsg.header = msg->header; 
+    // currentMsg.pose = msg->pose;
+    // wheel_odometry_buffer_.push_back(currentMsg);
+    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
+        CheckOdometryBuffer(wheel_odometry_buffer_);
+    }
 }
 
+void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
+    double current_timestamp = msg->header.stamp.toSec();
+    PointCloud current_pointcloud; 
+    pcl::fromROSMsg(*msg, current_pointcloud); 
+    point_cloud_buffer_.insert({current_timestamp, current_pointcloud}); 
+}
 
+// TODO: This function should be defined in the base class
+template <typename T1, typename T2>
+bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+    auto prev_size = CheckBufferSize<T2>(buffer);
+    T2 stored_msg;
+    // TODO: The following two lines should be implemented in a function
+    stored_msg.header = msg->header; 
+    stored_msg.pose = msg->pose;
+    buffer.push_back(stored_msg);
+    auto current_size = CheckBufferSize<T2>(buffer);
+    if (current_size != (prev_size + 1)) return false;
+    return true;
+}
 
 // Utilities 
 
@@ -98,7 +123,6 @@ void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
         if (CalculatePoseDelta(odom_buffer) > 1.0) {
             ROS_INFO("Moved more than 1 meter");
-            std::cout<<"CheckOdometryBuffer Here"<<std::endl;
             PrepareFactor(odom_buffer);
         }
     }     
@@ -144,10 +168,25 @@ gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_p
     return output;
 }
 
-Mat1212 OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
-    std::cout<<"Needs to be implemented later" << std::endl;
-    Mat1212 output; // TODO: Should be gtsam::SharedNoiseModel& bias_noise_model =  gtsam::noiseModel::Diagonal::Sigmas(biasSigmas);”
-    return output;
+// TODO: This function should be impletented as a template function in the base class
+// TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
+bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp, PointCloud& msg) {
+    if (point_cloud_buffer_.size() == 0) return false;
+    auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
+    auto time2 = itrTime->first;
+    if (itrTime == point_cloud_buffer_.begin()) {
+        msg = itrTime->second;
+        return true;
+    }
+    double time1 = std::prev(itrTime,1)->first;
+    if (time2 - stamp.toSec() < stamp.toSec() - time1) {
+        msg = itrTime->second;
+    }
+    else {
+        msg = std::prev(itrTime,1)->second;
+    }
+    point_cloud_buffer_.clear();
+    return true;
 }
 
 std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
@@ -166,7 +205,6 @@ FactorData OdometryHandler::GetData() {
     // reset factors after this get called
 }
 
-
 gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
   
   gtsam::Vector3 t;
@@ -181,6 +219,16 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
 
   return gtsam::Pose3(r, t);
 }
+
+// gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+//     gtsam::Vector6 biasSigmas;
+//         for (int i = 0; i < 6; ++i) {
+//           biasSigmas(i) = delta_pose(i,i);
+//         }
+//     static const gtsam::SharedNoiseModel& point_noise = 
+//         gtsam::noiseModel::Diagonal::Sigmas(biasSigmas);
+//     return point_noise;
+// }
 
 /*
 DOCUMENTATION 
