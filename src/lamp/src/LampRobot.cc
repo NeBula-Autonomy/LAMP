@@ -259,13 +259,18 @@ bool LampRobot::CheckHandlers() {
   // b_has_new_factor_ will be set to true if there is a new factor
   // b_run_optimization_ will be set to true if there is a new loop closure
 
+  bool b_have_odom_factors;
+  // bool b_have_loop_closure;
+  // bool b_have_new_artifacts;
+
   // Check the odom for adding new poses
-  ProcessOdomData(odometry_handler_.GetData());
+  b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
   // ProcessArtifactData(artifact_handler_.GetData());
   // ProcessAprilData(april_handler_.GetData());
 
+  // TODO - determine what a true and false return means here
   return true;
 }
 
@@ -395,7 +400,7 @@ bool LampRobot::ProcessOdomData(FactorData data){
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 
-    // if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
+    if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
 
       // add new keyed scan to map
       keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(current_key, new_scan));
@@ -406,7 +411,7 @@ bool LampRobot::ProcessOdomData(FactorData data){
       pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
       keyed_scan_pub_.publish(keyed_scan_msg);
 
-    // }
+    }
   }
 
   // Add factors and values to the graph

@@ -39,7 +39,7 @@ class OdometryHandler : public LampDataHandlerBase{
         typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
-        typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+        typedef pcl::PointCloud<pcl::PointXYZ> PointCloud; // TODO make this common across packages somehow?
 
         
         // Public methods
@@ -52,7 +52,7 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // TODO: This function should be impletented as a template function in the base class
         // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
-        bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud& msg);
+        bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg);
 
 
     protected: 
@@ -63,7 +63,7 @@ class OdometryHandler : public LampDataHandlerBase{
         ros::Subscriber wheel_odom_sub_;
 
         // Pointclouud Subscribers 
-        ros::Subscriber pcld_sub_;
+        ros::Subscriber point_cloud_sub_;
 
         // Odometry Callbacks 
         void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg); 
@@ -106,6 +106,11 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // The node's name.
         std::string name_;
+
+        // Parameters
+        double keyed_scan_time_diff_limit_;
+        double pc_buffer_size_limit_;
+        double translation_threshold_;
               
 
     private:    

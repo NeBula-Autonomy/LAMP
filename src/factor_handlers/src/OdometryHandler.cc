@@ -11,11 +11,14 @@
 // Includes
 #include <factor_handlers/OdometryHandler.h>
 
-
+namespace pu = parameter_utils;
 
 // Constructor & Destructors 
 
-OdometryHandler::OdometryHandler() {
+OdometryHandler::OdometryHandler() :
+        keyed_scan_time_diff_limit_(0.2),
+        pc_buffer_size_limit_(10),
+        translation_threshold_(1.0) {
     ROS_INFO("Odometry Handler Class Constructor");
     }
 
@@ -46,6 +49,15 @@ bool OdometryHandler::Initialize(const ros::NodeHandle& n){
 
 bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
     ROS_INFO("LoadParameters method called in OdometryHandler"); 
+
+    // Thresholds to add new factors
+    if (!pu::Get("translation_threshold", translation_threshold_)) return false;
+
+    // Point Cloud buffer param
+    if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_)) return false;
+    if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_)) return false;
+
+
     // TODO: Load necessary parameters from yaml into local variables
     return true; 
 }
@@ -53,11 +65,16 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
 bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     ROS_INFO("%s: Registering online callbacks in OdometryHandler", name_.c_str());    
     ros::NodeHandle nl(n);    
+    // TODO - check what is a reasonable buffer size 
     lidar_odom_sub_ = nl.subscribe("LIDAR_ODOMETRY_TOPIC", 1000, &OdometryHandler::LidarOdometryCallback, this); 
     visual_odom_sub_ = nl.subscribe("VISUAL ODOMETRY TOPIC", 1000, &OdometryHandler::VisualOdometryCallback, this); 
     wheel_odom_sub_ = nl.subscribe("WHEEL_ODOMETRY_TOPIC", 1000, &OdometryHandler::WheelOdometryCallback, this);
+
+    // Point Cloud callback 
+    point_cloud_sub_ = nl.subscribe("velodyne_points", 10, &OdometryHandler::PointCloudCallback, this);
+
     return true;    
-    }
+}
 
 
 
@@ -101,6 +118,12 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
     PointCloud current_pointcloud; 
     pcl::fromROSMsg(*msg, current_pointcloud); 
     point_cloud_buffer_.insert({current_timestamp, current_pointcloud}); 
+
+    // Clear start of buffer if buffer is too large
+    if (point_cloud_buffer_.size() > pc_buffer_size_limit_){
+        // Clear the first entry in the buffer
+        point_cloud_buffer_.erase(point_cloud_buffer_.begin());
+    }
 }
 
 // TODO: This function should be defined in the base class
@@ -121,8 +144,9 @@ bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::v
 
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
-        if (CalculatePoseDelta(odom_buffer) > 1.0) {
-            ROS_INFO("Moved more than 1 meter");
+        double translation = CalculatePoseDelta(odom_buffer);
+        if (translation > translation_threshold_) {
+            ROS_INFO_STREAM("Moved more than threshold: " << translation_threshold_ << " m (" << translation << " m)");
             PrepareFactor(odom_buffer);
         }
     }     
@@ -174,22 +198,59 @@ gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_p
 
 // TODO: This function should be impletented as a template function in the base class
 // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
-bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp, PointCloud& msg) {
+bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg) {
+    
+    // Return false if there are not point clouds in the buffer
     if (point_cloud_buffer_.size() == 0) return false;
+
+    // Search to get the lower-bound - the first entry that is not less than the input timestamp
     auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
     auto time2 = itrTime->first;
+
+    // If this gives the start of the buffer, then take that point cloud
     if (itrTime == point_cloud_buffer_.begin()) {
-        msg = itrTime->second;
+        *msg = itrTime->second;
         return true;
     }
+
+    // Check if it is past the end of the buffer - if so, then take the last point cloud
+    if (itrTime == point_cloud_buffer_.end()) {
+        ROS_WARN("Timestamp past the end of the point cloud buffer");
+        itrTime--;
+        *msg = itrTime->second;
+        ROS_INFO_STREAM("input time is " << stamp.toSec() << "s, and latest time is " << itrTime->first << " s");
+        return true;
+    }
+
+    // Otherwise = step back by 1 to get the time before the input time (time1, stamp, time2)
     double time1 = std::prev(itrTime,1)->first;
+
+    double time_diff;
+
+    // If closer to time2, then use that 
     if (time2 - stamp.toSec() < stamp.toSec() - time1) {
-        msg = itrTime->second;
+        *msg = itrTime->second;
+
+        time_diff = time2 - stamp.toSec();
     }
     else {
-        msg = std::prev(itrTime,1)->second;
+        // Otherwise use time1
+        *msg = std::prev(itrTime,1)->second;
+
+        time_diff = stamp.toSec() - time1;
     }
+
+    // Clear the point cloud buffer
     point_cloud_buffer_.clear();
+
+    // Check if the time difference is too large
+    if (time_diff > keyed_scan_time_diff_limit_) { // TODO make this threshold a parameter
+        ROS_WARN("Time difference between request and latest point cloud is too large, returning no point cloud");
+        ROS_INFO_STREAM("Time difference is " << keyed_scan_time_diff_limit_ << "s" );
+        return false;
+    }
+
+    // Return true - have a point cloud for the timestamp 
     return true;
 }
 

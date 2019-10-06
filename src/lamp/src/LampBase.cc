@@ -74,18 +74,23 @@ gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
   // First key that is not less than timestamp
   auto iterTime = stamp_to_odom_key_.lower_bound(stamp.toSec());  
 
+  // Get the closest time after the input stamp
   double t2 = iterTime->first;
 
+  // If there is only one time - use that TODO consider throwing an error
   if (iterTime == stamp_to_odom_key_.begin()){
     ROS_WARN("Only one value in the graph - using that");
     return iterTime->second;
   }
+
+  // Get the time just before the stamp (time1, stamp, time2)
   double t1 = std::prev(iterTime,1)->first; 
 
   ROS_INFO_STREAM("Time 1 is: " << t1 << ", Time 2 is: " << t2);
 
   gtsam::Symbol key;
 
+  // Chose the key that is closer 
   if (t2 - stamp.toSec() < stamp.toSec() - t1) {
     // t2 is closer - use that key
     ROS_INFO_STREAM("Selecting later time: " << t2);
@@ -97,14 +102,14 @@ gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
     iterTime--;
   }
 
-  // std::cout << "Key is: " << key << std::endl;
-
+  // Check if the resulting iterator is before the start - special case so need to step forward 
   if (iterTime == std::prev(stamp_to_odom_key_.begin())){
     ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
     iterTime++;
     // iterTime = stamp_to_odom_key_.begin();
     key = iterTime->second;
   } else if(iterTime == stamp_to_odom_key_.end()) {
+    // Past end of the graph - just use the latest key
     ROS_WARN("Invalid time for graph (past end of graph range). take latest pose");
     key = key_ -1;
   }
