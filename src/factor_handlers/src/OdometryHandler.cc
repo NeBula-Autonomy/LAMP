@@ -50,15 +50,15 @@ bool OdometryHandler::Initialize(const ros::NodeHandle& n){
 bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("LoadParameters method called in OdometryHandler");
 
-  // Thresholds to add new factors
-  if (!pu::Get("translation_threshold", translation_threshold_))
-    return false;
+  //   // Thresholds to add new factors
+  //   if (!pu::Get("translation_threshold", translation_threshold_))
+  //     return false;
 
-  // Point Cloud buffer param
-  if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_))
-    return false;
-  if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
-    return false;
+  //   // Point Cloud buffer param
+  //   if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_))
+  //     return false;
+  //   if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
+  //     return false;
 
   // TODO: Load necessary parameters from yaml into local variables
   return true;

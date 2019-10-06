@@ -8,12 +8,13 @@
 #include <factor_handlers/OdometryHandler.h>
 
 class OdometryHandlerTest : public ::testing::Test {
-  
-  protected: 
+public:
+  OdometryHandler oh;
 
-    // Odometry Callbacks ------------------------------------------------   
-    void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-      myOdometryHandler.LidarOdometryCallback(msg);
+protected:
+  // Odometry Callbacks ------------------------------------------------
+  void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    myOdometryHandler.LidarOdometryCallback(msg);
     } 
 
     void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -44,8 +45,8 @@ class OdometryHandlerTest : public ::testing::Test {
 TEST_F(OdometryHandlerTest, Initialization) {
   ros::NodeHandle nh, pnh("~");
 
-  bool result = lr.Initialize(nh);
-  
+  bool result = oh.Initialize(nh);
+
   ASSERT_TRUE(result);
 }
 

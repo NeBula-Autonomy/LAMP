@@ -35,23 +35,25 @@ class TestLampRobot : public ::testing::Test {
 
 };
 
-TEST_F(TestLampRobot, SetInitialKey) {
+TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
+  // del params
+  ros::param::del("fiducial_calibration/position/y");
+  ros::param::del("fiducial_calibration/position/x");
+  ros::param::del("fiducial_calibration/position/z");
+  ros::param::del("fiducial_calibration/orientation/x");
+  ros::param::del("fiducial_calibration/orientation/y");
+  ros::param::del("fiducial_calibration/orientation/z");
+  ros::param::del("fiducial_calibration/orientation/w");
+  ros::param::del("init/position_sigma/x");
+  ros::param::del("init/position_sigma/y");
+  ros::param::del("init/position_sigma/z");
+  ros::param::del("init/orientation_sigma/roll");
+  ros::param::del("init/orientation_sigma/pitch");
+  ros::param::del("init/orientation_sigma/yaw");
 
-  // Set string
-  std::string prefix = "a";
-  ros::param::set("robot_prefix", prefix);
+  EXPECT_FALSE(SetInitialPosition());
 
-  // Set key (with Friend Class)
-  SetInitialKey();
-  
-  // Retrieve result
-  gtsam::Symbol key_gtsam = lr.GetInitialKey();
-  std::string key_string = std::string(key_gtsam);
-  // std::string key_string = gtsam::DefaultKeyFormatter(key_gtsam);
-
-  ROS_INFO_STREAM("Initial key is" << key_string);
-
-  EXPECT_EQ(std::string("a0"), key_string);
+  EXPECT_EQ(GetValuesSize(), 0);
 }
 
 TEST_F(TestLampRobot, TestSetInitialPosition) {
@@ -75,29 +77,23 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
   EXPECT_EQ(GetValuesSize(),1);
 }
 
+TEST_F(TestLampRobot, SetInitialKey) {
+  // Set string
+  std::string prefix = "a";
+  ros::param::set("robot_prefix", prefix);
 
-TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
-  // del params
-  ros::param::del("fiducial_calibration/position/y");
-  ros::param::del("fiducial_calibration/position/x");
-  ros::param::del("fiducial_calibration/position/z");
-  ros::param::del("fiducial_calibration/orientation/x");
-  ros::param::del("fiducial_calibration/orientation/y");
-  ros::param::del("fiducial_calibration/orientation/z");
-  ros::param::del("fiducial_calibration/orientation/w");
-  ros::param::del("init/position_sigma/x");
-  ros::param::del("init/position_sigma/y");
-  ros::param::del("init/position_sigma/z");
-  ros::param::del("init/orientation_sigma/roll");
-  ros::param::del("init/orientation_sigma/pitch");
-  ros::param::del("init/orientation_sigma/yaw");
+  // Set key (with Friend Class)
+  SetInitialKey();
 
-  EXPECT_FALSE(SetInitialPosition());
+  // Retrieve result
+  gtsam::Symbol key_gtsam = lr.GetInitialKey();
+  std::string key_string = std::string(key_gtsam);
+  // std::string key_string = gtsam::DefaultKeyFormatter(key_gtsam);
 
-  EXPECT_EQ(GetValuesSize(),0);
-  
+  ROS_INFO_STREAM("Initial key is" << key_string);
+
+  EXPECT_EQ(std::string("a0"), key_string);
 }
-
 
 TEST_F(TestLampRobot, SetFactorPrecisions) {
 
