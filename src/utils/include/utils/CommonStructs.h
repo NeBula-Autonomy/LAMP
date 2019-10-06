@@ -46,9 +46,9 @@ struct FactorData {
   // Vector for possible multiple factors
   std::vector<gtsam::Pose3> transforms;  // The transform (for odom, loop
                                          // closures etc.) and pose for TS
-  std::vector<Mat1212> covariances;      // Covariances for each transform
+  std::vector<gtsam::SharedNoiseModel> covariances;      // Covariances for each transform
   std::vector<std::pair<ros::Time, ros::Time>>
-      time_stamps;  // Time when the measurement as acquired
+      time_stamps;  // Time when the measurement as acquired (first, second)
   // TODO - use ros::Time or something else?
 
   std::vector<gtsam::Key> artifact_key;  // key for the artifacts

@@ -87,14 +87,20 @@ class LampBase {
   // instantiate all handlers that are being used in the derived classes
   virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0;
 
-  // retrieve data from all handlers
-  virtual bool CheckHandlers();
+    // Main update timer callback
+    virtual void ProcessTimerCallback(const ros::TimerEvent& ev) = 0;
+    double update_rate_;
+    ros::Timer update_timer_;
 
-  // Functions to publish
-  bool PublishPoseGraph();
+    // retrieve data from all handlers
+    virtual bool CheckHandlers(); 
 
-  // Convert timestamps to gtsam keys
-  gtsam::Key getKeyAtTime(const ros::Time& stamp) const;
+    // Functions to publish
+    bool PublishPoseGraph();
+    bool PublishPoseGraphForOptimizer();
+
+    // Convert timestamps to gtsam keys 
+    gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
 
   // Convert values to PoseGraphNode Messages
   bool ConvertValuesToNodeMsgs(
@@ -115,18 +121,25 @@ class LampBase {
   std::map<gtsam::Symbol, ros::Time> keyed_stamps_;  // All nodes
   std::map<double, gtsam::Symbol> stamp_to_odom_key_;
 
-  // List of all factors with additional information
-  std::vector<pose_graph_msgs::PoseGraphEdge>
-      edges_info_;  // TODO - revisit - do we want this to be a map for any
-                    // reason - to quickly access specific edges?
-  std::vector<pose_graph_msgs::PoseGraphNode> priors_info_;
+    // List of all factors with additional information
+    std::vector<pose_graph_msgs::PoseGraphEdge> edges_info_; // TODO - revisit - do we want this to be a map for any reason - to quickly access specific edges?
+    std::vector<pose_graph_msgs::PoseGraphNode> priors_info_;
+    
+    // New pose graph values from optimizer
+    virtual void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
 
-  // New pose graph values from optimizer
-  virtual void OptimizerUpdateCallback(
-      const pose_graph_msgs::PoseGraphConstPtr& msg);
+    // Tracking info for publishing messages
+    void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
+    void TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
 
-  // Booleans
-  bool b_run_optimization_;
+    // Booleans
+    bool b_has_new_factor_;
+    bool b_run_optimization_;
+
+    // Publishers
+    ros::Publisher pose_graph_pub_;
+    ros::Publisher pose_graph_to_optimize_pub_;
+    ros::Publisher keyed_scan_pub_;
 
   // Publishers
   ros::Publisher pose_graph_pub_;

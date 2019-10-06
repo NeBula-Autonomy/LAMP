@@ -1,3 +1,6 @@
+#ifndef MERGER_H
+#define MERGER_H
+
 #include <ros/ros.h>
 
 #include <pose_graph_msgs/PoseGraph.h>
@@ -7,7 +10,6 @@
 
 #include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
-#include <utils/CommonStructs.h>
 
 #include <tf2/transform_datatypes.h>
 
@@ -24,20 +26,20 @@ class Merger {
 public:
     Merger();
 
-    void on_fast_graph_msg(const pose_graph_msgs::PoseGraphConstPtr& msg);
+    void OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
-    void on_slow_graph_msg(const pose_graph_msgs::PoseGraphConstPtr& msg);
+    void OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
-    void on_fast_pose_msg(const geometry_msgs::PoseStamped::ConstPtr& msg);
+    void OnFastPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
-    void on_slow_pose_msg(const geometry_msgs::PoseStamped::ConstPtr& msg);
+    void OnSlowPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
 
     // Utility functions
-    void clean_up_map(const ros::Time &stamp);
+    void CleanUpMap(const ros::Time &stamp);
     pose_graph_msgs::PoseGraph GetCurrentGraph();
 
-    geometry_utils::Transform3 get_pose_at_time(const ros::Time &stamp);
+    geometry_utils::Transform3 GetPoseAtTime(const ros::Time &stamp);
 
 private:
 
@@ -62,4 +64,11 @@ private:
 
     ros::Publisher mergedGraphPub;
     ros::Publisher mergedPosePub;
+
+    pose_graph_msgs::PoseGraph merged_graph_;
+
+    // Test class fixtures
+    friend class TestMerger;
 };
+
+#endif

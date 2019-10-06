@@ -48,16 +48,13 @@ class LampRobot : public LampBase {
 
     virtual bool CreatePublishers(const ros::NodeHandle& n);
 
+    // Main update timer callback
+    virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
+
     // Initialization helper functions
     bool SetFactorPrecisions();
     bool SetInitialPosition();
     bool SetInitialKey();
-
-
-    void ProcessTimerCallback(const ros::TimerEvent& ev);
-    // TODO - move to base class?
-    double update_rate_;
-    ros::Timer update_timer_;
 
     void UpdateArtifactPositions();
 
@@ -89,7 +86,7 @@ class LampRobot : public LampBase {
 
 
     // Data Handler classes
-    // OdometryHandler odometry_handler_; 
+    OdometryHandler odometry_handler_; 
     // ArtifactHandler artifact_handler_;
     // AprilHandler april_handler_;
     // Manual LC
