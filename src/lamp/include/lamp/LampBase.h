@@ -88,11 +88,17 @@ class LampBase {
     // instantiate all handlers that are being used in the derived classes
     virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0; 
 
+    // Main update timer callback
+    virtual void ProcessTimerCallback(const ros::TimerEvent& ev) = 0;
+    double update_rate_;
+    ros::Timer update_timer_;
+
     // retrieve data from all handlers
     virtual bool CheckHandlers(); 
 
     // Functions to publish
     bool PublishPoseGraph();
+    bool PublishPoseGraphForOptimizer();
 
     // Convert timestamps to gtsam keys 
     gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
@@ -132,6 +138,7 @@ class LampBase {
 
     // Publishers
     ros::Publisher pose_graph_pub_;
+    ros::Publisher pose_graph_to_optimize_pub_;
     ros::Publisher keyed_scan_pub_;
 
     // Subscribers

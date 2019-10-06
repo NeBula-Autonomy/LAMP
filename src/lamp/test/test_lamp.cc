@@ -19,12 +19,19 @@ class TestLampRobot : public ::testing::Test {
 
     LampRobot lr;
 
+    // Pass-through functions
     bool SetInitialKey() {return lr.SetInitialKey();}
     bool SetFactorPrecisions() {return lr.SetFactorPrecisions();}
     bool SetInitialPosition() {return lr.SetInitialPosition();}
-
     int GetValuesSize() {return lr.values_.size();}
+    gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {return lr.GetKeyAtTime(stamp);}
 
+    // Access functions
+    void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
+      lr.stamp_to_odom_key_[stamp.toSec()] = key;
+    }
+
+    // Other utilities
 
 };
 
@@ -44,7 +51,7 @@ TEST_F(TestLampRobot, SetInitialKey) {
 
   ROS_INFO_STREAM("Initial key is" << key_string);
 
-  ASSERT_EQ(std::string("a0"), key_string);
+  EXPECT_EQ(std::string("a0"), key_string);
 }
 
 TEST_F(TestLampRobot, TestSetInitialPosition) {
@@ -65,10 +72,9 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
   ros::param::set("init/orientation_sigma/yaw", 1.0);
 
   EXPECT_TRUE(SetInitialPosition());
-
   EXPECT_EQ(GetValuesSize(),1);
-  
 }
+
 
 TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
   // del params
@@ -92,6 +98,7 @@ TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
   
 }
 
+
 TEST_F(TestLampRobot, SetFactorPrecisions) {
 
   // Set all parameter values  
@@ -105,37 +112,45 @@ TEST_F(TestLampRobot, SetFactorPrecisions) {
   ros::param::set("fiducial_trans_precision", 1.0);
   ros::param::set("fiducial_rot_precision", 1.0);
 
-  ASSERT_TRUE(SetFactorPrecisions());
+  EXPECT_TRUE(SetFactorPrecisions());
 }
   
+
+TEST_F(TestLampRobot, GetKeyAtTime) {
+  ros::Time::init();
+
+  // Build map
+  AddStampToOdomKey(ros::Time(0.0), gtsam::Symbol('a', 0));
+  AddStampToOdomKey(ros::Time(0.5), gtsam::Symbol('a', 1));
+  AddStampToOdomKey(ros::Time(1.0), gtsam::Symbol('a', 2));
+  AddStampToOdomKey(ros::Time(1.5), gtsam::Symbol('a', 3));
+  AddStampToOdomKey(ros::Time(2.0), gtsam::Symbol('a', 4));
+
+  // Exact matches
+  EXPECT_EQ(gtsam::Symbol('a', 0), GetKeyAtTime(ros::Time(0.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 1), GetKeyAtTime(ros::Time(0.5)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetKeyAtTime(ros::Time(1.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 3), GetKeyAtTime(ros::Time(1.5)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(2.0)));
+
+  // Rounding to nearest
+  EXPECT_EQ(gtsam::Symbol('a', 0), GetKeyAtTime(ros::Time(0.1)));
+  EXPECT_EQ(gtsam::Symbol('a', 1), GetKeyAtTime(ros::Time(0.4)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetKeyAtTime(ros::Time(0.76)));
+  EXPECT_EQ(gtsam::Symbol('a', 3), GetKeyAtTime(ros::Time(1.49999)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(2.1)));
+}
+
+
 
 TEST_F(TestLampRobot, Initialization) {
   ros::NodeHandle nh, pnh("~");
 
   bool result = lr.Initialize(nh);
   
-  ASSERT_TRUE(result);
+  EXPECT_TRUE(result);
 }
 
-
-
-// TEST_F(TestLampRobot, NoSetInitialKey) {
-
-//   // Delete param
-//   ros::param::del("robot_prefix");
-
-//   // Set key (with Friend Class)
-//   SetInitialKey();
-  
-//   // Retrieve result
-//   gtsam::Symbol key_gtsam = lr.GetInitialKey();
-//   std::string key_string = std::string(key_gtsam);
-//   // std::string key_string = gtsam::DefaultKeyFormatter(key_gtsam);
-
-//   ROS_INFO_STREAM("Initial key is" << key_string);
-  
-//   ASSERT_EQ(std::string("0"), key_string);
-// }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
