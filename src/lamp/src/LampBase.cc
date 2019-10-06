@@ -86,7 +86,7 @@ gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
 
   gtsam::Symbol key;
 
-  if (t2-stamp.toSec() < stamp.toSec() - t1) {
+  if (t2 - stamp.toSec() < stamp.toSec() - t1) {
     // t2 is closer - use that key
     ROS_INFO_STREAM("Selecting later time: " << t2);
     key = iterTime->second;

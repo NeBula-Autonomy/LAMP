@@ -1,9 +1,16 @@
 /*
  * Copyright Notes
  *
- * Authors: Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
+ * Authors:
+ * Alex Stephens       ()
+ * Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
+ * Kamak Ebadi          ()
+ * Matteo               ()
+ * Nobuhrio
+ * Yun
+ * Abhishek
+ * Eric Hieden
  */
-
 
 // Includes
 #include <lamp/LampRobot.h>
@@ -21,6 +28,7 @@ using gtsam::Pose3;
 using gtsam::PriorFactor;
 using gtsam::RangeFactor;
 using gtsam::Rot3;
+using gtsam::Symbol;
 using gtsam::Values;
 using gtsam::Vector3;
 
@@ -341,34 +349,38 @@ bool LampRobot::ProcessOdomData(FactorData data){
   // Record new factor being added - need to publish pose graph 
   b_has_new_factor_ = true;
 
+  // Number of factors from size of data vector
   int num_factors = data.time_stamps.size();
 
   // factors to add
   NonlinearFactorGraph new_factors;
 
+  // Values to add
+  Values new_values;
 
   // process data for each new factor 
   for (int i = 0; i < num_factors; i++) {
-      
-
-    gtsam::Pose3 transform = data.transforms[i];
+    // Get the transforms - odom transforms
+    Pose3 transform = data.transforms[i];
     gtsam::SharedNoiseModel covariance = data.covariances[i]; // TODO - fix
     std::pair<ros::Time, ros::Time> times = data.time_stamps[i];
 
+    // Get the previous key - special case for odom that we use key)
+    Symbol prev_key = key_ - 1;
+    // Get the current "new key" value stored in the global variable key_
+    Symbol current_key = key_;
+    // Increment key
+    key_ = key_ + 1;
 
-    gtsam::Symbol prev_key = GetKeyAtTime(times.first);
-    gtsam::Symbol current_key = GetKeyAtTime(times.second);
+    // TODO - use this for other handlers: Symbol prev_key =
+    // GetKeyAtTime(times.first);
 
     // create the factor
     new_factors.add(BetweenFactor<Pose3>(prev_key, current_key, transform, covariance));
 
-    // TODO develop and chek these
-    // TODO - move to another function?
-
-    // add factor to buffer to send to pgo
-    
-    // add to nfg_ and values_
-    
+    // Compute the new value
+    Pose3 last_pose = values_.at<Pose3>(prev_key);
+    new_values.insert(current_key, last_pose.compose(transform));
 
     // add  node/keyframe to keyed stamps
     keyed_stamps_.insert(
@@ -376,7 +388,7 @@ bool LampRobot::ProcessOdomData(FactorData data){
     stamp_to_odom_key_.insert(
         std::pair<double, gtsam::Symbol>(times.second.toSec(), current_key));
 
-
+    // Track the edges that have been added
     TrackEdges(prev_key, current_key, transform, covariance);
     
 
@@ -396,6 +408,10 @@ bool LampRobot::ProcessOdomData(FactorData data){
 
     // }
   }
+
+  // Add factors and values to the graph
+  nfg_.add(new_factors);
+  values_.insert(new_values);
 
   return true;
 }
