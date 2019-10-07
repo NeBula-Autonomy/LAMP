@@ -1,9 +1,16 @@
 /*
  * Copyright Notes
  *
- * Authors: Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
+ * Authors:
+ * Alex Stephens       ()
+ * Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
+ * Kamak Ebadi          ()
+ * Matteo               ()
+ * Nobuhrio
+ * Yun
+ * Abhishek
+ * Eric Hieden
  */
-
 
 // Includes
 #include <lamp/LampRobot.h>
@@ -16,17 +23,17 @@ namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 using gtsam::BetweenFactor;
-using gtsam::RangeFactor;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Pose3;
 using gtsam::PriorFactor;
+using gtsam::RangeFactor;
 using gtsam::Rot3;
+using gtsam::Symbol;
 using gtsam::Values;
 using gtsam::Vector3;
 
-// Constructor (if there is override)
-LampRobot::LampRobot() :
-  update_rate_(10) {}
+// Constructor
+LampRobot::LampRobot() {}
 
 //Destructor
 LampRobot::~LampRobot() {}
@@ -75,8 +82,8 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
 }
 
 bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
-
-  if (!pu::Get("update_rate", update_rate_)) return false;
+  if (!pu::Get("rate/update_rate", update_rate_))
+    return false;
 
   // TODO - bring in other parameter
 
@@ -115,8 +122,7 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  update_timer_ = nl.createTimer(
-    update_rate_, &LampRobot::ProcessTimerCallback, this);
+  update_timer_ = nl.createTimer(update_rate_, &LampRobot::ProcessTimerCallback, this);
     
   back_end_pose_graph_sub_ = nl.subscribe("back_end_pose_graph", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
 
@@ -130,6 +136,8 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
 
   pose_graph_pub_ =
     nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
+  pose_graph_to_optimize_pub_ =
+    nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
   keyed_scan_pub_ =
     nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
 
@@ -248,15 +256,21 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n){
 // Check for data from all of the handlers
 bool LampRobot::CheckHandlers() {
 
+  // b_has_new_factor_ will be set to true if there is a new factor
+  // b_run_optimization_ will be set to true if there is a new loop closure
+
+  bool b_have_odom_factors;
+  // bool b_have_loop_closure;
+  // bool b_have_new_artifacts;
+
   // Check the odom for adding new poses
-  // ProcessOdomData(odometry_handler_.GetData());
+  b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
   // ProcessArtifactData(artifact_handler_.GetData());
   // ProcessAprilData(april_handler_.GetData());
 
-
-  // Return true if there is a new node - or have a flag that we are ready to publish 
+  // TODO - determine what a true and false return means here
   return true;
 }
 
@@ -269,14 +283,13 @@ bool LampRobot::InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal:
   ros::Time stamp = ros::Time::now();
   keyed_stamps_[initial_key_] = stamp;
 
+  // Populate the priors_info vector
   TrackPriors(stamp, initial_key_, pose, covariance);
-
-  // Populate the priors_info vector 
 
   return true;
 }
 
-void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
+void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Print some debug messages
   ROS_INFO_STREAM("Checking for new data");
@@ -284,6 +297,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
   // Check the handlers
   CheckHandlers();
 
+  // Publish the pose graph
   if (b_has_new_factor_) {
     PublishPoseGraph();
 
@@ -292,16 +306,12 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev){
 
   // Start optimize, if needed
   if (b_run_optimization_) {
-      // tell LampPgo to optimize
-      // TODO Set up publisher for this
-
-      PublishPoseGraph();
+      PublishPoseGraphForOptimizer();
 
       b_run_optimization_ = false; 
   }
 
   // Publish anything that is needed 
-
   UpdateArtifactPositions();
 
 }
@@ -343,30 +353,38 @@ bool LampRobot::ProcessOdomData(FactorData data){
   // Record new factor being added - need to publish pose graph 
   b_has_new_factor_ = true;
 
+  // Number of factors from size of data vector
   int num_factors = data.time_stamps.size();
+
+  // factors to add
+  NonlinearFactorGraph new_factors;
+
+  // Values to add
+  Values new_values;
 
   // process data for each new factor 
   for (int i = 0; i < num_factors; i++) {
-      
-
-    gtsam::Pose3 transform = data.transforms[i];
+    // Get the transforms - odom transforms
+    Pose3 transform = data.transforms[i];
     gtsam::SharedNoiseModel covariance = data.covariances[i]; // TODO - fix
     std::pair<ros::Time, ros::Time> times = data.time_stamps[i];
 
+    // Get the previous key - special case for odom that we use key)
+    Symbol prev_key = key_ - 1;
+    // Get the current "new key" value stored in the global variable key_
+    Symbol current_key = key_;
+    // Increment key
+    key_ = key_ + 1;
 
-    gtsam::Symbol prev_key = GetKeyAtTime(times.first);
-    gtsam::Symbol current_key = GetKeyAtTime(times.second);
+    // TODO - use this for other handlers: Symbol prev_key =
+    // GetKeyAtTime(times.first);
 
     // create the factor
-    NonlinearFactorGraph new_factor;
-    new_factor.add(BetweenFactor<Pose3>(prev_key, current_key, transform, covariance));
+    new_factors.add(BetweenFactor<Pose3>(prev_key, current_key, transform, covariance));
 
-    // TODO develop and chek these
-    // TODO - move to another function?
-
-    // add factor to buffer to send to pgo
-    
-    // add to nfg_ and values_
+    // Compute the new value
+    Pose3 last_pose = values_.at<Pose3>(prev_key);
+    new_values.insert(current_key, last_pose.compose(transform));
 
     // add  node/keyframe to keyed stamps
     keyed_stamps_.insert(
@@ -374,31 +392,29 @@ bool LampRobot::ProcessOdomData(FactorData data){
     stamp_to_odom_key_.insert(
         std::pair<double, gtsam::Symbol>(times.second.toSec(), current_key));
 
-
+    // Track the edges that have been added
     TrackEdges(prev_key, current_key, transform, covariance);
+    
+    // Get keyed scan from odom handler
+    PointCloud::Ptr new_scan(new PointCloud);
 
-    // // check for keyed scans
-    // if (odometry_handler_.HasKeyedScanAtTime(times.second)) {
+    if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
+      // add new keyed scan to map
+      keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(current_key, new_scan));
 
-    //   // get keyed scan from odom handler
-    //   std::pair<gtsam::Symbol, PointCloud::ConstPtr> new_scan;
-    //   new_scan = odometry_handler_.GetKeyedScanAtTime();
-
-    //   // add new keyed scan to map
-    //   keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(new_scan.first, new_scan.second));
-
-
-    //   // publish keyed scan
-    //   pose_graph_msgs::KeyedScan keyed_scan_msg;
-    //   keyed_scan_msg.key = current_key_;
-    //   pcl::toROSMsg(*new_scan.second, keyed_scan_msg.scan);
-    //   keyed_scan_pub_.publish(keyed_scan_msg);
-
-    // }
-
+      // publish keyed scan
+      pose_graph_msgs::KeyedScan keyed_scan_msg;
+      keyed_scan_msg.key = current_key;
+      pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
+      keyed_scan_pub_.publish(keyed_scan_msg);
+    }
   }
 
-    
+  // Add factors and values to the graph
+  nfg_.add(new_factors);
+  values_.insert(new_values);
+
+  return true;
 }
 
 

@@ -12,91 +12,105 @@ Merger::Merger() :
 }
 
 void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
-    ROS_INFO_STREAM("Received slow graph, size "<< msg->nodes.size());
-    this->lastSlow = msg;
+  ROS_INFO_STREAM("Received slow graph, size "<< msg->nodes.size());
+  this->lastSlow = msg;
 }
 
 void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
-    ROS_INFO_STREAM("Received fast graph, size "<< msg->nodes.size());
-    if (lastSlow == nullptr) {
-        ROS_WARN("Fast graph recieved but no slow pose graph recieved");
-        return;
-    }
+ROS_INFO_STREAM("Received fast graph, size "<< msg->nodes.size());
 
-    //initialise merged graph as a copy of the most recent slow graph
-    merged_graph_.header = msg->header;
-
-    std::map<long unsigned int, int> merged_graph_KeyToIndex;
-
-    // Add slow graph nodes
-    for (const GraphNode& node : this->lastSlow->nodes) {
-        merged_graph_KeyToIndex[node.key] = merged_graph_.nodes.size();
-        merged_graph_.nodes.push_back(node);
-    }
-
-    // Add edges from the fast graph that connect nodes in the slow graph
-    for (const GraphEdge& edge : msg->edges) {
-        if (merged_graph_KeyToIndex.count(edge.key_from) != 0 && merged_graph_KeyToIndex.count(edge.key_to) != 0) {
-            merged_graph_.edges.push_back(edge);
-        }
-    }
-
-    //use map to order the new fast nodes by the order they were created in
-    std::map<unsigned int, const GraphNode*> newFastNodes;
-    std::map<long unsigned int, const GraphNode*> fastKeyToNode;
-
+  // If no slow graph has been received, merged graph is the fast graph only
+  if (lastSlow == nullptr) {
     for (const GraphNode& node : msg->nodes) {
-        if (merged_graph_KeyToIndex.count(node.key) != 0) continue; //skip if this node is in the slow graph
-
-        newFastNodes[node.header.seq] = &node;
-        fastKeyToNode[node.key] = &node;
-        ROS_INFO_STREAM("Added new fast node, key " << node.key);
+      merged_graph_.nodes.push_back(node);
     }
-
-    std::map<long unsigned int, std::set<const GraphEdge*>> fastOutAdjList;
-    std::map<long unsigned int, std::set<const GraphEdge*>> fastInAdjList;
     for (const GraphEdge& edge : msg->edges) {
-        fastOutAdjList[edge.key_from].insert(&edge);
-        fastInAdjList[edge.key_to].insert(&edge);
+      merged_graph_.edges.push_back(edge);
     }
+    return;
+  }
 
-    //for each node in the fast graph which is not in the graph
-    for (auto kv : fastKeyToNode) {
-        ROS_INFO_STREAM("Adding new node");
-        //the fast node to add to the merged_graph_
-        const GraphNode* fastNode = kv.second;
+  // Clear the existing merged graph
+  merged_graph_ = pose_graph_msgs::PoseGraph();
 
-        //edge in the fast graph to this fast node
-        const GraphEdge* edgeToFastNode = *fastInAdjList[fastNode->key].begin();
+  // Get header from the fastGraph - most recent graph
+  merged_graph_.header = msg->header;
 
-        //create a copy of the fast node and edge to add to the merged_graph_
-        GraphNode new_merged_graph_node = *fastNode;
-        GraphEdge new_merged_graph_edge = *edgeToFastNode;
+  std::map<long unsigned int, int> merged_graph_KeyToIndex;
 
-        //find the node in the merged_graph_ corresponding to previous node in fast graph
-        long unsigned int prevFastKey = edgeToFastNode->key_from;
-        const GraphNode* merged_graph_PrevNode = &merged_graph_.nodes[merged_graph_KeyToIndex[prevFastKey]];
+  // initialise merged graph as a copy of the most recent slow graph
+  // Add slow graph nodes
+  for (const GraphNode& node : this->lastSlow->nodes) {
+      merged_graph_KeyToIndex[node.key] = merged_graph_.nodes.size();
+      merged_graph_.nodes.push_back(node);
+  }
 
-        //calculate the pose of the new merged graph node by applying the edge transformation to the previous node
-        Eigen::Affine3d new_merged_graph_edge_tf;
-        tf::poseMsgToEigen(new_merged_graph_edge.pose, new_merged_graph_edge_tf);
-        // ROS_INFO_STREAM("edge tf is " << new_merged_graph_edge_tf.matrix());
+  // Add edges from the fast graph that connect nodes in the slow graph
+  for (const GraphEdge& edge : msg->edges) {
+    // Only add edges that connect two nodes that are in the slow graph
+    // These are not new edges for the optimized graph - others are
+    if (merged_graph_KeyToIndex.count(edge.key_from) != 0 &&
+        merged_graph_KeyToIndex.count(edge.key_to) != 0) {
+      merged_graph_.edges.push_back(edge);
+      }
+  }
 
-        Eigen::Affine3d merged_graph_PrevNodeTf;
-        tf::poseMsgToEigen(merged_graph_PrevNode->pose, merged_graph_PrevNodeTf);
-        // ROS_INFO_STREAM("prev node tf is " << merged_graph_PrevNodeTf.matrix());
+  //use map to order the new fast nodes by the order they were created in
+  std::map<unsigned int, const GraphNode*> newFastNodes;
+  std::map<long unsigned int, const GraphNode*> fastKeyToNode;
 
-        Eigen::Affine3d currGraphNodeTf;
-        currGraphNodeTf = merged_graph_PrevNodeTf * new_merged_graph_edge_tf;
-        // ROS_INFO_STREAM("Resulting tf is " << currGraphNodeTf.matrix());
-        tf::poseEigenToMsg(currGraphNodeTf, new_merged_graph_node.pose);
+  for (const GraphNode& node : msg->nodes) {
+      if (merged_graph_KeyToIndex.count(node.key) != 0) continue; //skip if this node is in the slow graph
 
-        merged_graph_KeyToIndex[new_merged_graph_node.key] = merged_graph_.nodes.size();
-        merged_graph_.nodes.push_back(new_merged_graph_node);
-        merged_graph_.edges.push_back(new_merged_graph_edge);
-    }
+      newFastNodes[node.header.seq] = &node;
+      fastKeyToNode[node.key] = &node;
+      ROS_INFO_STREAM("Added new fast node, key " << node.key);
+  }
 
-    ROS_INFO_STREAM("Finished merging graph, size " << merged_graph_.nodes.size());
+  std::map<long unsigned int, std::set<const GraphEdge*>> fastOutAdjList;
+  std::map<long unsigned int, std::set<const GraphEdge*>> fastInAdjList;
+  for (const GraphEdge& edge : msg->edges) {
+      fastOutAdjList[edge.key_from].insert(&edge);
+      fastInAdjList[edge.key_to].insert(&edge);
+  }
+
+  //for each node in the fast graph which is not in the graph
+  for (auto kv : fastKeyToNode) {
+      ROS_INFO_STREAM("Adding new node");
+      //the fast node to add to the merged_graph_
+      const GraphNode* fastNode = kv.second;
+
+      //edge in the fast graph to this fast node
+      const GraphEdge* edgeToFastNode = *fastInAdjList[fastNode->key].begin();
+
+      //create a copy of the fast node and edge to add to the merged_graph_
+      GraphNode new_merged_graph_node = *fastNode;
+      GraphEdge new_merged_graph_edge = *edgeToFastNode;
+
+      //find the node in the merged_graph_ corresponding to previous node in fast graph
+      long unsigned int prevFastKey = edgeToFastNode->key_from;
+      const GraphNode* merged_graph_PrevNode = &merged_graph_.nodes[merged_graph_KeyToIndex[prevFastKey]];
+
+      //calculate the pose of the new merged graph node by applying the edge transformation to the previous node
+      Eigen::Affine3d new_merged_graph_edge_tf;
+      tf::poseMsgToEigen(new_merged_graph_edge.pose, new_merged_graph_edge_tf);
+      // ROS_INFO_STREAM("edge tf is " << new_merged_graph_edge_tf.matrix());
+
+      Eigen::Affine3d merged_graph_PrevNodeTf;
+      tf::poseMsgToEigen(merged_graph_PrevNode->pose, merged_graph_PrevNodeTf);
+      // ROS_INFO_STREAM("prev node tf is " << merged_graph_PrevNodeTf.matrix());
+
+      Eigen::Affine3d currGraphNodeTf;
+      currGraphNodeTf = merged_graph_PrevNodeTf * new_merged_graph_edge_tf;
+      // ROS_INFO_STREAM("Resulting tf is " << currGraphNodeTf.matrix());
+      tf::poseEigenToMsg(currGraphNodeTf, new_merged_graph_node.pose);
+
+      merged_graph_KeyToIndex[new_merged_graph_node.key] = merged_graph_.nodes.size();
+      merged_graph_.nodes.push_back(new_merged_graph_node);
+      merged_graph_.edges.push_back(new_merged_graph_edge);
+  }
+
+  ROS_INFO_STREAM("Finished merging graph, size " << merged_graph_.nodes.size());
 }
 
 void Merger::OnSlowPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg) {

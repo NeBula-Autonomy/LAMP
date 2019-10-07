@@ -26,7 +26,9 @@ using gtsam::Vector3;
 
 // Constructor
 LampBase::LampBase():
-    prefix_("") {
+    prefix_(""),
+    update_rate_(10),
+    time_threshold_(0.001) {
      // any other things on construction 
     }
 
@@ -70,53 +72,42 @@ bool LampBase::CheckHandlers(){
 
 gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
 
-  auto iterTime = stamp_to_odom_key_.lower_bound(stamp.toSec()); // First key that is not less than timestamp 
-
-  // TODO - interpolate - currently just take one
-  double t2 = iterTime->first;
-
-  if (iterTime == stamp_to_odom_key_.begin()){
-    ROS_WARN("Only one value in the graph - using that");
-    return iterTime->second;
+  // If there are no keys, throw an error
+  if (stamp_to_odom_key_.size() == 0){
+    ROS_ERROR("Cannot get key at time - no keys stored");
+    return gtsam::Symbol();
   }
-  double t1 = std::prev(iterTime,1)->first; 
 
-  // std::cout << "Time 1 is: " << t1 << ", Time 2 is: " << t2 << std::endl;
+  // Iterators pointing immediately before and after the target time
+  auto iterAfter = stamp_to_odom_key_.lower_bound(stamp.toSec());
+  auto iterBefore = std::prev(iterAfter,1);
+  double t1 = iterBefore->first; 
+  double t2 = iterAfter->first;
 
-  gtsam::Symbol key;
-
-  // if (t2-stamp.toSec() < stamp.toSec() - t1) {
-  //   // t2 is closer - use that key
-  //   // std::cout << "Selecting later time: " << t2 << std::endl;
-  //   key = iterTime->second;
-  // } else {
-  //   // t1 is closer - use that key
-  //   // std::cout << "Selecting earlier time: " << t1 << std::endl;
-  //   key = std::prev(iterTime,1)->second;
-  //   iterTime--;
-  // }
-  // // std::cout << "Key is: " << key << std::endl;
-  // if (iterTime == std::prev(stamp_to_odom_key_.begin())){
-  //   ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
-  //   iterTime++;
-  //   // iterTime = stamp_to_odom_key_.begin();
-  //   key = iterTime->second;
-  // } else if(iterTime == stamp_to_odom_key_.end()) {
-  //   ROS_WARN("Invalid time for graph (past end of graph range). take latest pose");
-  //   key = key_ -1;
-  // }
-
-  return key; 
-
+  // Return whichever of of the nearest keys is within the threshold 
+  if (iterBefore != std::prev(stamp_to_odom_key_.begin()) && IsTimeWithinThreshold(t1, stamp)) {
+    return iterBefore->second;
+  }
+  else if (IsTimeWithinThreshold(t2, stamp)) {
+    return iterAfter->second;
+  }
+  else {
+    ROS_ERROR("No key exists at given time");
+    return gtsam::Symbol();
+  }
 }
 
+bool LampBase::IsTimeWithinThreshold(double time, const ros::Time& target) const {
+  return abs(time - target.toSec()) <= time_threshold_;
+}
 
 void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg) {
   
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
-  // Give merger the current graph // TODO
+  // Give merger the current graph (will likely have more nodes that the
+  // optimized)
   merger_.OnFastGraphMsg(ConvertPoseGraphToMsg());
 
   gtsam::Values new_values; 
@@ -128,11 +119,13 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
   // update the LAMP internal values_ and factors
   utils::PoseGraphMsgToGtsam(fused_graph, &nfg_, &values_);
 
+  // TODO-maybe - make the copy more efficient
 }
 
 // Convert the internally stored pose_graph to a pose graph message
 pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
-  // Uses internally stored info. 
+  // Uses internally stored info.
+  // Returns a pointer to handle passing more efficiently to the merger
 
   // Create the Pose Graph Message
   pose_graph_msgs::PoseGraph g;
@@ -146,7 +139,8 @@ pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
   // Get Values
   ConvertValuesToNodeMsgs(g.nodes);
 
-  // Add the factors  // BIG TODO - integrate this tracking with all handlers
+  // Add the factors  // TODO - check integration of this tracking with all
+  // handlers
   g.edges = edges_info_;
   g.priors = priors_info_;
 
@@ -162,10 +156,6 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
   // Converts the internal values 
 
   for (const auto& keyed_pose : values_) {
-    if (!values_.exists(keyed_pose.key)) {
-      ROS_WARN("Key, %lu, does not exist in PublishPoseGraph pose graph pub", keyed_pose.key);
-      return false;
-    }
 
     gu::Transform3 t = utils::ToGu(values_.at<gtsam::Pose3>(keyed_pose.key));
 
@@ -176,8 +166,9 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
     node.key = keyed_pose.key;
     node.header.frame_id = fixed_frame_id_;
     node.pose = gr::ToRosPose(t);
-    
+
     // Get timestamp
+    // Note keyed_stamps are for all nodes TODO - check this is followed
     node.header.stamp = keyed_stamps_[keyed_pose.key];
 
     // Get the IDs
@@ -204,8 +195,8 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
 }
 
 
-bool LampBase::PublishPoseGraph(){
-  // TODO - publish incremental
+bool LampBase::PublishPoseGraph() {
+  // TODO - incremental publishing instead of full graph
 
   // Convert master pose-graph to messages
   pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();
@@ -214,7 +205,19 @@ bool LampBase::PublishPoseGraph(){
   pose_graph_pub_.publish(*g);
 
   return true;
+}
 
+bool LampBase::PublishPoseGraphForOptimizer() {
+  
+  // TODO - incremental publishing instead of full graph
+
+  // Convert master pose-graph to messages
+  pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();
+
+  // Publish 
+  pose_graph_to_optimize_pub_.publish(*g);
+
+  return true;
 }
 
 //-------------------------------------- 

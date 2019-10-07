@@ -28,11 +28,18 @@ LampPgo::~LampPgo() {}
 bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Create subscriber and publisher
   ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+
+  // Publisher
   optimized_pub_ =
       nl.advertise<pose_graph_msgs::PoseGraph>("optimized_values", 10, false);
+  // TODO - make names uniform? - "optimized_values"(here) =
+  // "back_end_pose_graph"(lamp)
 
+  // Subscriber
   input_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "input_posegraph", 1, &LampPgo::InputCallback, this);
+  // TODO - make names uniform? - "input_posegraph"(here) =
+  // "pose_graph_to_optimize"(lamp)
 
   // Parse parameters
   // Optimizer backend
@@ -50,6 +57,8 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
     rpgo_params_.setNoRejection(
         KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection
   }
+
+  // TODO - have a better way of handling special symbols...
   std::vector<char> special_symbs{
       'l', 'm', 'n', 'o', 'p', 'q', 'u'};  // for artifacts
   rpgo_params_.specialSymbols = special_symbs;
@@ -57,9 +66,12 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // set solver
   int solver_num;
   if (!pu::Get("solver", solver_num)) return false;
+
   if (solver_num == 1) {
+    // Levenberg-Marquardt
     rpgo_params_.solver = KimeraRPGO::Solver::LM;
   } else if (solver_num == 2) {
+    // Gauss Newton
     rpgo_params_.solver = KimeraRPGO::Solver::GN;
   } else {
     ROS_ERROR("Unsupported solver parameter. Use 1 for LM and 2 for GN");
@@ -75,6 +87,7 @@ void LampPgo::InputCallback(
   // Callback for the input posegraph
   NonlinearFactorGraph all_factors, new_factors;
   Values all_values, new_values;
+
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
 
@@ -87,6 +100,8 @@ void LampPgo::InputCallback(
   }
 
   // Extract new values
+  // TODO - use the merger here? In case the state of the graph here is
+  // different from the lamp node Will that every be the case?
   gtsam::KeyVector key_list = all_values.keys();
   for (size_t i = 0; i < key_list.size(); i++) {
     if (!values_.exists(key_list[i])) {
@@ -94,6 +109,7 @@ void LampPgo::InputCallback(
     }
   }
 
+  // Run the optimizer
   pgo_solver_->updateBatch(
       new_factors, new_values, new_values.keys().front() - 1);
 
@@ -106,6 +122,7 @@ void LampPgo::InputCallback(
 }
 
 void LampPgo::PublishValues() const {
+  // TODO - check if we need to have the ID and stamp fields filled
   pose_graph_msgs::PoseGraph pose_graph_msg;
 
   // Then store the values as nodes

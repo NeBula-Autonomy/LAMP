@@ -10,8 +10,9 @@
 // Includes 
 #include <ros/ros.h>
 
-#include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
+#include <geometry_utils/Transform3.h>
+#include <parameter_utils/ParameterUtils.h>
 
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -19,8 +20,17 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
+#include <gtsam/base/Vector.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/Rot3.h>
+#include <gtsam/linear/NoiseModel.h>
+
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <utils/CommonStructs.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+
 
 namespace gu = geometry_utils;
 namespace gr = geometry_utils::ros;
@@ -44,8 +54,14 @@ class LampDataHandlerBase {
     bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
     bool CreatePublishers(const ros::NodeHandle& n);
 
-    // Callback functions 
-    // void DataCallback();    
+    // Reset Factor data
+    void ResetFactorData();
+
+    // Callback functions
+    // void DataCallback();
+
+    // LAMP Interface
+    FactorData factors_;
 
   private:
 

@@ -7,13 +7,22 @@
 #include <gtest/gtest.h>
 #include <factor_handlers/OdometryHandler.h>
 
-class OdometryHandlerTest : public ::testing::Test {
-  
-  protected: 
+typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 
-    // Odometry Callbacks ------------------------------------------------   
-    void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-      myOdometryHandler.LidarOdometryCallback(msg);
+class OdometryHandlerTest : public ::testing::Test {
+public:
+  OdometryHandlerTest() {
+    // Load Params
+    system("rosparam load $(rospack find "
+           "factor_handlers)/config/odom_parameters.yaml");
+  }
+
+  OdometryHandler oh;
+
+protected:
+  // Odometry Callbacks ------------------------------------------------
+  void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    myOdometryHandler.LidarOdometryCallback(msg);
     } 
 
     void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -27,7 +36,7 @@ class OdometryHandlerTest : public ::testing::Test {
     // Utilities 
     template <typename TYPE>
     int CheckBufferSize(const std::vector<TYPE>& x) {
-      return myOdometryHandler.CheckBufferSize(x);
+      return myOdometryHandler.CheckBufferSize<TYPE>(x);
     }
 
     double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer){
@@ -44,8 +53,8 @@ class OdometryHandlerTest : public ::testing::Test {
 TEST_F(OdometryHandlerTest, Initialization) {
   ros::NodeHandle nh, pnh("~");
 
-  bool result = lr.Initialize(nh);
-  
+  bool result = oh.Initialize(nh);
+
   ASSERT_TRUE(result);
 }
 
@@ -64,14 +73,12 @@ TEST CheckBufferSize method
   Check the resulting buffer size 
 */
 TEST_F (OdometryHandlerTest, TestCheckBufferSize) {
-  
-  typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
   // Create a buffer
   std::vector<PoseCovStamped> pose_buffer;
   // Create a message
   PoseCovStamped pose;
   int N = 10;
-  for (size_t x=0; x<N; x++){    
+  for (size_t x = 0; x < N; x++) {
     // Push the message in the buffer
     pose_buffer.push_back(pose);   
     std::cout << x << std::endl; 
@@ -108,7 +115,7 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
   // Call the method to test 
   double delta = CalculatePoseDelta(myBuffer);   
   EXPECT_EQ(delta, 1);
-  }
+}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

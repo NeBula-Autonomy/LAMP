@@ -52,10 +52,11 @@ void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
 
     // TODO(Yun) fill in covariance
     gtsam::Matrix66 covariance;
-    for (int i = 0; i < 3; ++i)
-      covariance(i, i) = 0.316 * 0.316;  // 0.4, 0.004; 0.2 m sd
-    for (int i = 3; i < 6; ++i)
-      covariance(i, i) = 0.141 * 0.141;  // 0.1, 0.01; sqrt(0.01) rad sd
+    for (size_t i = 0; i < msg_edge.covariance.size(); i++) {
+      size_t row = static_cast<size_t>(i / 6);
+      size_t col = i % 6;
+      covariance(row, col) = msg_edge.covariance[i];
+    }
     Gaussian::shared_ptr noise = Gaussian::Covariance(covariance);
     //-------------------------------------------------------------------------
 
@@ -141,7 +142,8 @@ void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
                      << gtsam::DefaultKeyFormatter(msg_prior.key));
     // create the prior factor
 
-    // create precisions
+    // create precisions // TODO - the precision should come from the message
+    // shouldn't it? As we will use priors for different applications
     gtsam::Vector6 prior_precisions;
     prior_precisions.head<3>().setConstant(0.0);
     prior_precisions.tail<3>().setConstant(10.0);
