@@ -36,6 +36,7 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Typedefs
         typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
+        typedef nav_msgs::Odometry Odometry;
         typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
@@ -65,9 +66,9 @@ class OdometryHandler : public LampDataHandlerBase{
         ros::Subscriber point_cloud_sub_;
 
         // Odometry Callbacks 
-        void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg); 
-        void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
-        void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
+        void LidarOdometryCallback(const Odometry::ConstPtr& msg); 
+        void VisualOdometryCallback(const Odometry::ConstPtr& msg);
+        void WheelOdometryCallback(const Odometry::ConstPtr& msg);
 
         // Pointcloud Callback 
         void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);

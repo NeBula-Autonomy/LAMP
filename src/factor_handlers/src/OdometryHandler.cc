@@ -59,7 +59,7 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
     return false;
 
   // TODO: Load necessary parameters from yaml into local variables
-  
+
   return true;
 }
 
@@ -84,23 +84,23 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 // Callbacks --------------------------------------------------------------------------------------------
 
-void OdometryHandler::LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
+void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
-    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
+    if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
         CheckOdometryBuffer(lidar_odometry_buffer_);
     }
 }
 
-void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
+void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
-    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
+    if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
         CheckOdometryBuffer(visual_odometry_buffer_);
     }
 }
 
-void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
+void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
+    if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
         CheckOdometryBuffer(wheel_odometry_buffer_);
     }
 }
