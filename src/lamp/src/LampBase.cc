@@ -27,7 +27,8 @@ using gtsam::Vector3;
 // Constructor
 LampBase::LampBase():
     prefix_(""),
-    update_rate_(10) {
+    update_rate_(10),
+    time_threshold_(0.001) {
      // any other things on construction 
     }
 
@@ -71,53 +72,34 @@ bool LampBase::CheckHandlers(){
 
 gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
 
-  // First key that is not less than timestamp
-  auto iterTime = stamp_to_odom_key_.lower_bound(stamp.toSec());
-
-  // Get the closest time after the input stamp
-  double t2 = iterTime->first;
-
-  // If there is only one time - use that TODO consider throwing an error
-  if (iterTime == stamp_to_odom_key_.begin()){
-    ROS_WARN("Only one value in the graph - using that");
-    return iterTime->second;
+  // If there are no keys, throw an error
+  if (stamp_to_odom_key_.size() == 0){
+    ROS_ERROR("Cannot get key at time - no keys stored");
+    return gtsam::Symbol();
   }
 
-  // Get the time just before the stamp (time1, stamp, time2)
-  double t1 = std::prev(iterTime,1)->first; 
+  // Iterators pointing immediately before and after the target time
+  auto iterAfter = stamp_to_odom_key_.lower_bound(stamp.toSec());
+  auto iterBefore = std::prev(iterAfter,1);
+  double t1 = iterBefore->first; 
+  double t2 = iterAfter->first;
 
-  ROS_INFO_STREAM("Time 1 is: " << t1 << ", Time 2 is: " << t2);
-
-  gtsam::Symbol key;
-
-  // Chose the key that is closer
-  if (t2 - stamp.toSec() < stamp.toSec() - t1) {
-    // t2 is closer - use that key
-    ROS_INFO_STREAM("Selecting later time: " << t2);
-    key = iterTime->second;
-  } else {
-    // t1 is closer - use that key
-    ROS_INFO_STREAM("Selecting earlier time: " << t1);
-    key = std::prev(iterTime,1)->second;
-    iterTime--;
+  // Return whichever of of the nearest keys is within the threshold 
+  if (iterBefore != std::prev(stamp_to_odom_key_.begin()) && IsTimeWithinThreshold(t1, stamp)) {
+    return iterBefore->second;
   }
-
-  // Check if the resulting iterator is before the start - special case so need
-  // to step forward
-  if (iterTime == std::prev(stamp_to_odom_key_.begin())){
-    ROS_WARN("Invalid time for graph (before start of graph range). Choosing next value");
-    iterTime++;
-    // iterTime = stamp_to_odom_key_.begin();
-    key = iterTime->second;
-  } else if(iterTime == stamp_to_odom_key_.end()) {
-    // Past end of the graph - just use the latest key
-    ROS_WARN("Invalid time for graph (past end of graph range). take latest pose");
-    key = key_ -1;
+  else if (IsTimeWithinThreshold(t2, stamp)) {
+    return iterAfter->second;
   }
-
-  return key; 
+  else {
+    ROS_ERROR("No key exists at given time");
+    return gtsam::Symbol();
+  }
 }
 
+bool LampBase::IsTimeWithinThreshold(double time, const ros::Time& target) const {
+  return abs(time - target.toSec()) <= time_threshold_;
+}
 
 void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg) {
   
