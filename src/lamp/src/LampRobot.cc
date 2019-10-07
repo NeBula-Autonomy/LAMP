@@ -448,19 +448,11 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
 }
 
-// TODO Function handler wrappers 
-// - hopefully a lot of copying code from others
-
+// TODO Function handler wrappers
+// - hopefully a lot of cutting code from others
 
 // TODO 
 // - Unit tests for these functions 
-// - Maps from timestamps to keys - base class
 // - How to handle relative measurements not directly at nodes 
-// - How to handle keyed scans
-// - How to publish the pose-graph (on update, or on timer)
-// 
-
-
-// Pose Graph merger class
 
 
