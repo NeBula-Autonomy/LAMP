@@ -209,7 +209,6 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
     // update hash
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
   }
-
   // Generate gtsam pose
   const gtsam::Pose3 R_pose_A 
       = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(R_artifact_position[0], 
@@ -219,6 +218,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Fill ArtifactInfo hash
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
+  // TODO Should I set artifact position to ArtifactInfo here
   bool result;
 
   // keep track of artifact info: add to hash if not added
@@ -228,12 +228,6 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   } else {
     ROS_INFO("Existing artifact detected");
     artifact_key2info_hash_[cur_artifact_key] = artifactinfo;
-  }
-
-  if (result){
-    std::cout << "adding artifact observation succeeded" << std::endl;
-  } else {
-    std::cout << "adding artifact observation failed" << std::endl;
   }
 
   // TODO Blamslam had a condition here and some stuff about map. Check if needed here. Should be called in lamp not here.
@@ -370,8 +364,9 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 void ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
   if (artifact_key2info_hash_.find(artifact_key) != artifact_key2info_hash_.end()) {
     artifact_key2info_hash_[artifact_key].global_pose = global_pose;
+  } else {
+    std::cout << "Key not found in the Artifact id to key map.";
   }
-  std::cout << "Key not found in the Artifact id to key map.";
 }
 
  /*! \brief  Publish Artifact. Need to see if publish_all is still relevant

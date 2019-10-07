@@ -54,6 +54,11 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     FactorData GetData();
 
+    /*! \brief  Get the artifact_key2info_hash_
+     * Returns  artifact_key2info_hash_
+     */
+    std::unordered_map<long unsigned int, ArtifactInfo>& GetArtifactKey2InfoHash() {return artifact_key2info_hash_;};
+
     protected:
     /*! \brief Load artifact parameters. 
      * n - Nodehandle
