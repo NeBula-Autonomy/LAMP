@@ -10,10 +10,12 @@
 typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 
 class OdometryHandlerTest : public ::testing::Test {
+
 public:
+
   OdometryHandlerTest() {
     // Load Params
-    //system("rosparam load $(rospack find factor_handlers)/config/odom_parameters.yaml");
+    system("rosparam load $(rospack find factor_handlers)/config/odom_parameters.yaml");
   }
 
   OdometryHandler oh;
