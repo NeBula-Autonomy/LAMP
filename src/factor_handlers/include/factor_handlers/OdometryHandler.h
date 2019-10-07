@@ -85,8 +85,8 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Protected methods
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
-        template <typename TYPE>
-        int CheckBufferSize(const std::vector<TYPE>& x);
+        template <typename T>
+        int CheckBufferSize(const std::vector<T>& x);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
         void PrepareFactor(OdomPoseBuffer& odom_buffer);        
         void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);

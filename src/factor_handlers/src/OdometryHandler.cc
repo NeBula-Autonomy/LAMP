@@ -13,7 +13,7 @@
 
 namespace pu = parameter_utils;
 
-// Constructor & Destructors
+// Constructor & Destructors ----------------------------------------------------------------------------
 
 OdometryHandler::OdometryHandler()
   : keyed_scan_time_diff_limit_(0.2),
@@ -26,7 +26,7 @@ OdometryHandler::~OdometryHandler() {
     ROS_INFO("Odometry Handler Class Destructor");
 }
 
-// Initialize 
+// Initialize -------------------------------------------------------------------------------------------
 
 bool OdometryHandler::Initialize(const ros::NodeHandle& n){
     
@@ -57,8 +57,7 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
     return false;
-
-  // TODO: Load necessary parameters from yaml into local variables
+  // TODO: Load necessary parameters from yaml into local variables - Matteo, doing this 
   return true;
 }
 
@@ -81,14 +80,10 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
-// Callbacks 
+// Callbacks --------------------------------------------------------------------------------------------
 
 void OdometryHandler::LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
-    // PoseCovStamped currentMsg;
-    // currentMsg.header = msg->header; 
-    // currentMsg.pose = msg->pose;
-    // lidar_odometry_buffer_.push_back(currentMsg);
     if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
         CheckOdometryBuffer(lidar_odometry_buffer_);
     }
@@ -96,10 +91,6 @@ void OdometryHandler::LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& 
 
 void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
-    // PoseCovStamped currentMsg;
-    // currentMsg.header = msg->header; 
-    // currentMsg.pose = msg->pose;
-    // visual_odometry_buffer_.push_back(currentMsg);
     if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
         CheckOdometryBuffer(visual_odometry_buffer_);
     }
@@ -107,10 +98,6 @@ void OdometryHandler::VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr&
 
 void OdometryHandler::WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    // PoseCovStamped currentMsg;
-    // currentMsg.header = msg->header; 
-    // currentMsg.pose = msg->pose;
-    // wheel_odometry_buffer_.push_back(currentMsg);
     if (InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
         CheckOdometryBuffer(wheel_odometry_buffer_);
     }
@@ -121,7 +108,6 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
     PointCloud current_pointcloud;
     pcl::fromROSMsg(*msg, current_pointcloud);
     point_cloud_buffer_.insert({current_timestamp, current_pointcloud});
-
     // Clear start of buffer if buffer is too large
     if (point_cloud_buffer_.size() > pc_buffer_size_limit_) {
       // Clear the first entry in the buffer
@@ -129,12 +115,14 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
     }
 }
 
-// TODO: This function should be defined in the base class
+// Utilities ---------------------------------------------------------------------------------------------
+
 template <typename T1, typename T2>
 bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+    // TODO: This function should be defined in the base class
     auto prev_size = CheckBufferSize<T2>(buffer);
     T2 stored_msg;
-    // TODO: The following two lines should be implemented in a function
+    // TODO: The following two lines should be implemented in a function - Matteo doing this 
     stored_msg.header = msg->header; 
     stored_msg.pose = msg->pose;
     buffer.push_back(stored_msg);
@@ -143,11 +131,14 @@ bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::v
     return true;
 }
 
-// Utilities 
+template <typename T>
+int OdometryHandler::CheckBufferSize(const std::vector<T>& x) {
+    return x.size();
+}
 
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
-      double translation = CalculatePoseDelta(odom_buffer);
+      double translation = CalculatePoseDelta(odom_buffer); 
       if (translation > translation_threshold_) {
         ROS_INFO_STREAM("Moved more than threshold: " << translation_threshold_
                                                       << " m (" << translation
@@ -155,11 +146,6 @@ void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
         PrepareFactor(odom_buffer);
         }
     }     
-}
-
-template <typename TYPE>
-int OdometryHandler::CheckBufferSize(const std::vector<TYPE>& x) {
-    return x.size();
 }
 
 double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
@@ -177,8 +163,7 @@ void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
   auto pose_cov_stamped_pair =
       std::make_pair(*first_odom_element, *last_odom_element);
   MakeFactor(pose_cov_stamped_pair);
-  // After MakeFactor has finished its job, reset the buffer and add
-  // last_odom_element as first element
+  // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element
   odom_buffer.clear();
   odom_buffer.push_back(*last_odom_element);
 }
@@ -192,8 +177,10 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
 }
 
-// Gets the transform between two pose stamped - the delta
+// Getters -----------------------------------------------------------------------------------------------
+
 gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
+    // Gets the transform between two pose stamped - the delta
     auto pose_first = gr::FromROS(pose_cov_stamped_pair.first.pose.pose); 
     auto pose_end = gr::FromROS(pose_cov_stamped_pair.second.pose.pose); 
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
@@ -201,10 +188,50 @@ gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_p
     return output;
 }
 
-// TODO: This function should be impletented as a template function in the base class
-// TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
-bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp,
-                                         PointCloud::Ptr& msg) {
+gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+  // TODO check which frame the covariances are in - ideally we have incremental
+  // in the relative frame If the covariances are absolute
+
+  gtsam::Matrix66 covariance;
+  for (size_t i = 0; i < pose_cov_stamped_pair.second.pose.covariance.size();
+       i++) {
+    size_t row = static_cast<size_t>(i / 6);
+    size_t col = i % 6;
+    covariance(row, col) = pose_cov_stamped_pair.second.pose.covariance[i] -
+        pose_cov_stamped_pair.first.pose.covariance[i];
+  }
+  gtsam::SharedNoiseModel noise =
+      gtsam::noiseModel::Gaussian::Covariance(covariance);
+
+  return noise;
+
+  // If we have incremental then we need to add all covariances in between
+
+  // gtsam::Vector6 biasSigmas;
+  //     for (int i = 0; i < 6; ++i) {
+  //       biasSigmas(i) = delta_pose(i,i);
+  //     }
+  // static const gtsam::SharedNoiseModel& odom_noise =
+  //     gtsam::noiseModel::Gaussian::Sigmas(biasSigmas);
+  // return point_noise;
+}
+
+std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
+  // Create a pair of the timestamps from and to - to be used in lamp to reference nodes
+  std::cout << "Needs to be implemented later"
+            << std::endl; // What needs to be implemented later? @Matteo
+  // Get the timestamps of interest from the received pair
+  ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
+  ros::Time second_timestamp = pose_cov_stamped_pair.first.header.stamp;
+  std::pair<ros::Time, ros::Time> timestamp_pair;
+  timestamp_pair.first = first_timestamp;
+  timestamp_pair.second = second_timestamp;
+  return timestamp_pair;
+}
+
+bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg) {
+  // TODO: This function should be impletented as a template function in the base class
+  // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
   // Return false if there are not point clouds in the buffer
   if (point_cloud_buffer_.size() == 0)
     return false;
@@ -267,19 +294,7 @@ bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp,
   return true;
 }
 
-// Create a pair of the timestamps from and to - to be used in lamp to reference
-// nodes
-std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
-  std::cout << "Needs to be implemented later"
-            << std::endl; // What needs to be implemented later? @Matteo
-  // Get the timestamps of interest from the received pair
-  ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
-  ros::Time second_timestamp = pose_cov_stamped_pair.first.header.stamp;
-  std::pair<ros::Time, ros::Time> timestamp_pair;
-  timestamp_pair.first = first_timestamp;
-  timestamp_pair.second = second_timestamp;
-  return timestamp_pair;
-}
+// Converters -------------------------------------------------------------------------------------------
 
 gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
   
@@ -294,35 +309,6 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
          pose.rotation(2, 0), pose.rotation(2, 1), pose.rotation(2, 2));
 
   return gtsam::Pose3(r, t);
-}
-
-gtsam::SharedNoiseModel
-OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
-  // TODO check which frame the covariances are in - ideally we have incremental
-  // in the relative frame If the covariances are absolute
-
-  gtsam::Matrix66 covariance;
-  for (size_t i = 0; i < pose_cov_stamped_pair.second.pose.covariance.size();
-       i++) {
-    size_t row = static_cast<size_t>(i / 6);
-    size_t col = i % 6;
-    covariance(row, col) = pose_cov_stamped_pair.second.pose.covariance[i] -
-        pose_cov_stamped_pair.first.pose.covariance[i];
-  }
-  gtsam::SharedNoiseModel noise =
-      gtsam::noiseModel::Gaussian::Covariance(covariance);
-
-  return noise;
-
-  // If we have incremental then we need to add all covariances in between
-
-  // gtsam::Vector6 biasSigmas;
-  //     for (int i = 0; i < 6; ++i) {
-  //       biasSigmas(i) = delta_pose(i,i);
-  //     }
-  // static const gtsam::SharedNoiseModel& odom_noise =
-  //     gtsam::noiseModel::Gaussian::Sigmas(biasSigmas);
-  // return point_noise;
 }
 
 /*

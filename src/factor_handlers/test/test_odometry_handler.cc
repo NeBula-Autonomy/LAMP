@@ -34,9 +34,14 @@ protected:
     } 
 
     // Utilities 
-    template <typename TYPE>
-    int CheckBufferSize(const std::vector<TYPE>& x) {
-      return myOdometryHandler.CheckBufferSize<TYPE>(x);
+    template <typename T>
+    int CheckBufferSize(const std::vector<T>& x) {
+      return myOdometryHandler.CheckBufferSize<T>(x);
+    }
+
+    template <typename T1, typename T2>
+    bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+      return myOdometryHandler.InsertMsgInBuffer<T1, T2>(msg, buffer);
     }
 
     double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer){
@@ -57,6 +62,15 @@ TEST_F(OdometryHandlerTest, Initialization) {
 
   ASSERT_TRUE(result);
 }
+
+
+// TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
+//   // Create a buffer
+//   std::vector<PoseCovStamped> myBuffer;
+//   nav_msgs::Odometry msg;
+//   bool result = InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, myBuffer);
+//   ASSERT_TRUE(result);
+// }
 
 /*
 TEST LidarOdometryCallback
@@ -115,6 +129,10 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
   // Call the method to test 
   double delta = CalculatePoseDelta(myBuffer);   
   EXPECT_EQ(delta, 1);
+}
+
+TEST_F (OdometryHandlerTest, TestGetKeyedScanAtTime) {
+  // Assignee: Nobuhiro
 }
 
 int main(int argc, char** argv) {
