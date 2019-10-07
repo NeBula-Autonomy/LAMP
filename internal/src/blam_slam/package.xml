@@ -20,8 +20,6 @@
   <build_depend>laser_loop_closure</build_depend>
   <build_depend>point_cloud_mapper</build_depend>
   <build_depend>point_cloud_localization</build_depend>
-  <build_depend>point_cloud_visualizer</build_depend>
-  <build_depend>pose_graph_visualizer</build_depend>
   <build_depend>geometry_utils</build_depend>
   <build_depend>parameter_utils</build_depend>
   <build_depend>pcl_ros</build_depend>
@@ -30,9 +28,9 @@
   <build_depend>uwb_msgs</build_depend>
   <build_depend>mesh_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
-  <build_depend>message_filters</build_depend>
   <build_depend>pose_graph_merger</build_depend>
   <build_depend>nav_msgs</build_depend>
+  <build_depend>tf_conversions</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>message_runtime</run_depend>
@@ -53,7 +51,10 @@
   <run_depend>uwb_msgs</run_depend>
   <run_depend>mesh_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
-  <run_depend>message_filters</run_depend>
   <run_depend>pose_graph_merger</run_depend>
   <run_depend>nav_msgs</run_depend>
+  <run_depend>tf_conversions</run_depend>
+
+  <test_depend>rostest</test_depend>
+  <test_depend>rosunit</test_depend>
 </package>

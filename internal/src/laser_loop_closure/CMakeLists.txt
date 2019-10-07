@@ -7,10 +7,12 @@ project(laser_loop_closure)
 
 SET(CMAKE_BUILD_TYPE Release)
 
-find_package(PCL REQUIRED COMPONENTS common registration)
+find_package(PCL 1.7 REQUIRED COMPONENTS common registration)
 if(NOT PCL_FOUND)
   message(FATAL_ERROR "This program requires the PCL library.")
 endif(NOT PCL_FOUND)
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 find_package(GTSAM REQUIRED)
 if (NOT GTSAM_FOUND)
@@ -52,10 +54,6 @@ catkin_package(
     eigen_conversions
 )
 
-
-find_package(PCL 1.7 REQUIRED)
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
 
 find_package(Boost 1.58 COMPONENTS filesystem program_options timer REQUIRED)
 

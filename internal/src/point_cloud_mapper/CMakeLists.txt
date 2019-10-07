@@ -7,10 +7,14 @@ project(point_cloud_mapper)
 
 SET(CMAKE_BUILD_TYPE Release)
 
-find_package(PCL REQUIRED COMPONENTS common octree)
+find_package(PCL 1.7 REQUIRED COMPONENTS common octree)
 if(NOT PCL_FOUND)
   message(FATAL_ERROR "This program requires the PCL library.")
 endif(NOT PCL_FOUND)
+
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -24,11 +28,6 @@ catkin_package(
     roscpp
     parameter_utils
 )
-
-find_package(PCL 1.7 REQUIRED)
-include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
 
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
