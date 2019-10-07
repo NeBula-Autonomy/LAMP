@@ -57,7 +57,7 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
     return false;
-  // TODO: Load necessary parameters from yaml into local variables - Matteo, doing this 
+  // TODO: Load necessary parameters from yaml into local variables
   return true;
 }
 
@@ -117,6 +117,7 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
 
 // Utilities ---------------------------------------------------------------------------------------------
 
+
 template <typename T1, typename T2>
 bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
     // TODO: This function should be defined in the base class
@@ -151,8 +152,12 @@ void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
 double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     // TODO: Should be implemented in a cleaner way
     auto pose_first = gr::FromROS((*(odom_buffer.begin())).pose.pose);
+    std::cout << pose_first << std::endl;
     auto pose_end   = gr::FromROS((*(std::prev(odom_buffer.end()))).pose.pose);
+    std::cout << pose_end << std::endl;
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
+    std::cout<<"CALCULATED POSE DELTA" << std::endl;
+    std::cout<<pose_delta<< std::endl;
     return pose_delta.translation.Norm();
 }
 
@@ -173,7 +178,7 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     factors_.b_has_data = true;
     factors_.type = "odom";
     factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
-    // factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
+    factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
     factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
 }
 
