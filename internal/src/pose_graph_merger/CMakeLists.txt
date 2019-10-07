@@ -106,12 +106,14 @@ find_package(Eigen3 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIRS}
+  INCLUDE_DIRS include
   LIBRARIES pose_graph_merger
   CATKIN_DEPENDS
     roscpp
     pose_graph_msgs
     geometry_utils
+  DEPENDS
+    Eigen3
 )
 
 ###########

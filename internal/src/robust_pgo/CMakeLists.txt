@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(robust_pgo)
 
 find_package(catkin REQUIRED)
@@ -11,9 +11,9 @@ catkin_package(
     RobustPGO
   CATKIN_DEPENDS
   DEPENDS
-    Boost
-    Eigen3
-    GTSAM
+    # Boost
+    # Eigen3
+    # GTSAM
 )
 
 ## Build RobustPGO

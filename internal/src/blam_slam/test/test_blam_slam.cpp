@@ -27,7 +27,7 @@ protected:
  * Dummy unit test for now
  */
 TEST_F(BlamSlamTest, RegisterLogCallbacks) {
-  bool log_var = test_variable->Initialize(nh, true);
+  bool log_var = true;
   EXPECT_EQ(log_var, true);
 }
 
