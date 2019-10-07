@@ -296,15 +296,34 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
   return gtsam::Pose3(r, t);
 }
 
-// gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
-//     gtsam::Vector6 biasSigmas;
-//         for (int i = 0; i < 6; ++i) {
-//           biasSigmas(i) = delta_pose(i,i);
-//         }
-//     static const gtsam::SharedNoiseModel& point_noise = 
-//         gtsam::noiseModel::Diagonal::Sigmas(biasSigmas);
-//     return point_noise;
-// }
+gtsam::SharedNoiseModel
+OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+  // TODO check which frame the covariances are in - ideally we have incremental
+  // in the relative frame If the covariances are absolute
+
+  gtsam::Matrix66 covariance;
+  for (size_t i = 0; i < pose_cov_stamped_pair.second.pose.covariance.size();
+       i++) {
+    size_t row = static_cast<size_t>(i / 6);
+    size_t col = i % 6;
+    covariance(row, col) = pose_cov_stamped_pair.second.pose.covariance[i] -
+        pose_cov_stamped_pair.first.pose.covariance[i];
+  }
+  gtsam::SharedNoiseModel noise =
+      gtsam::noiseModel::Gaussian::Covariance(covariance);
+
+  return noise;
+
+  // If we have incremental then we need to add all covariances in between
+
+  // gtsam::Vector6 biasSigmas;
+  //     for (int i = 0; i < 6; ++i) {
+  //       biasSigmas(i) = delta_pose(i,i);
+  //     }
+  // static const gtsam::SharedNoiseModel& odom_noise =
+  //     gtsam::noiseModel::Gaussian::Sigmas(biasSigmas);
+  // return point_noise;
+}
 
 /*
 DOCUMENTATION 
