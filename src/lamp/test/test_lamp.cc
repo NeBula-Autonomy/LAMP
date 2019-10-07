@@ -12,8 +12,18 @@ class TestLampRobot : public ::testing::Test {
 
   public: 
     TestLampRobot(){
-      // Set params
+      // Load params
+      system("rosparam load $(rospack find "
+             "lamp)/config/precision_parameters.yaml");
+      system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
+      system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
 
+      system("rosparam load $(rospack find "
+             "point_cloud_filter)/config/parameters.yaml");
+      system("rosparam load $(rospack find "
+             "point_cloud_mapper)/config/parameters.yaml");
+      system("rosparam load $(rospack find "
+             "factor_handlers)/config/odom_parameters.yaml");
     }
     ~TestLampRobot(){}
 
@@ -57,6 +67,8 @@ TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
 }
 
 TEST_F(TestLampRobot, TestSetInitialPosition) {
+  ros::Time::init();
+
   // Set params
   ros::param::set("fiducial_calibration/position/x", 1.0);
   ros::param::set("fiducial_calibration/position/y", 1.0);

@@ -82,8 +82,8 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
 }
 
 bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
-
-  if (!pu::Get("update_rate", update_rate_)) return false;
+  if (!pu::Get("rate/update_rate", update_rate_))
+    return false;
 
   // TODO - bring in other parameter
 
@@ -312,7 +312,6 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   }
 
   // Publish anything that is needed 
-
   UpdateArtifactPositions();
 
 }
@@ -396,7 +395,6 @@ bool LampRobot::ProcessOdomData(FactorData data){
     // Track the edges that have been added
     TrackEdges(prev_key, current_key, transform, covariance);
     
-
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 

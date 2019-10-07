@@ -23,11 +23,15 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
         return;
     }
 
-    //initialise merged graph as a copy of the most recent slow graph
+    // Clear the existing merged graph
+    merged_graph_ = pose_graph_msgs::PoseGraph();
+
+    // Get header from the fastGraph - most recent graph
     merged_graph_.header = msg->header;
 
     std::map<long unsigned int, int> merged_graph_KeyToIndex;
 
+    // initialise merged graph as a copy of the most recent slow graph
     // Add slow graph nodes
     for (const GraphNode& node : this->lastSlow->nodes) {
         merged_graph_KeyToIndex[node.key] = merged_graph_.nodes.size();
@@ -36,8 +40,11 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
 
     // Add edges from the fast graph that connect nodes in the slow graph
     for (const GraphEdge& edge : msg->edges) {
-        if (merged_graph_KeyToIndex.count(edge.key_from) != 0 && merged_graph_KeyToIndex.count(edge.key_to) != 0) {
-            merged_graph_.edges.push_back(edge);
+      // Only add edges that connect two nodes that are in the slow graph
+      // These are not new edges for the optimized graph - others are
+      if (merged_graph_KeyToIndex.count(edge.key_from) != 0 &&
+          merged_graph_KeyToIndex.count(edge.key_to) != 0) {
+        merged_graph_.edges.push_back(edge);
         }
     }
 

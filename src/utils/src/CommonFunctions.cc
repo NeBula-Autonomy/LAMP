@@ -142,7 +142,8 @@ void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
                      << gtsam::DefaultKeyFormatter(msg_prior.key));
     // create the prior factor
 
-    // create precisions
+    // create precisions // TODO - the precision should come from the message
+    // shouldn't it? As we will use priors for different applications
     gtsam::Vector6 prior_precisions;
     prior_precisions.head<3>().setConstant(0.0);
     prior_precisions.tail<3>().setConstant(10.0);

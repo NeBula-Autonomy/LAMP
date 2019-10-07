@@ -124,7 +124,8 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
-  // Give merger the current graph // TODO
+  // Give merger the current graph (will likely have more nodes that the
+  // optimized)
   merger_.OnFastGraphMsg(ConvertPoseGraphToMsg());
 
   gtsam::Values new_values; 
@@ -136,11 +137,13 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
   // update the LAMP internal values_ and factors
   utils::PoseGraphMsgToGtsam(fused_graph, &nfg_, &values_);
 
+  // TODO-maybe - make the copy more efficient
 }
 
 // Convert the internally stored pose_graph to a pose graph message
 pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
-  // Uses internally stored info. 
+  // Uses internally stored info.
+  // Returns a pointer to handle passing more efficiently to the merger
 
   // Create the Pose Graph Message
   pose_graph_msgs::PoseGraph g;
@@ -154,7 +157,8 @@ pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
   // Get Values
   ConvertValuesToNodeMsgs(g.nodes);
 
-  // Add the factors  // BIG TODO - integrate this tracking with all handlers
+  // Add the factors  // TODO - check integration of this tracking with all
+  // handlers
   g.edges = edges_info_;
   g.priors = priors_info_;
 
@@ -170,10 +174,6 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
   // Converts the internal values 
 
   for (const auto& keyed_pose : values_) {
-    if (!values_.exists(keyed_pose.key)) {
-      ROS_WARN("Key, %lu, does not exist in PublishPoseGraph pose graph pub", keyed_pose.key);
-      return false;
-    }
 
     gu::Transform3 t = utils::ToGu(values_.at<gtsam::Pose3>(keyed_pose.key));
 
@@ -184,8 +184,9 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
     node.key = keyed_pose.key;
     node.header.frame_id = fixed_frame_id_;
     node.pose = gr::ToRosPose(t);
-    
+
     // Get timestamp
+    // Note keyed_stamps are for all nodes TODO - check this is followed
     node.header.stamp = keyed_stamps_[keyed_pose.key];
 
     // Get the IDs
@@ -213,6 +214,7 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
 
 
 bool LampBase::PublishPoseGraph() {
+  // TODO - incremental publishing instead of full graph
 
   // Convert master pose-graph to messages
   pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();

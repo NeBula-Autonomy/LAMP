@@ -20,13 +20,11 @@ OdometryHandler::OdometryHandler()
     pc_buffer_size_limit_(10),
     translation_threshold_(1.0) {
   ROS_INFO("Odometry Handler Class Constructor");
-    }
+}
 
 OdometryHandler::~OdometryHandler() {
     ROS_INFO("Odometry Handler Class Destructor");
-    }
-
-
+}
 
 // Initialize 
 
@@ -50,15 +48,15 @@ bool OdometryHandler::Initialize(const ros::NodeHandle& n){
 bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("LoadParameters method called in OdometryHandler");
 
-  //   // Thresholds to add new factors
-  //   if (!pu::Get("translation_threshold", translation_threshold_))
-  //     return false;
+  // Thresholds to add new factors
+  if (!pu::Get("translation_threshold", translation_threshold_))
+    return false;
 
-  //   // Point Cloud buffer param
-  //   if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_))
-  //     return false;
-  //   if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
-  //     return false;
+  // Point Cloud buffer param
+  if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_))
+    return false;
+  if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
+    return false;
 
   // TODO: Load necessary parameters from yaml into local variables
   return true;
@@ -69,18 +67,12 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
            name_.c_str());
   ros::NodeHandle nl(n);
   // TODO - check what is a reasonable buffer size
-  lidar_odom_sub_ = nl.subscribe("LIDAR_ODOMETRY_TOPIC",
-                                 1000,
-                                 &OdometryHandler::LidarOdometryCallback,
-                                 this);
-  visual_odom_sub_ = nl.subscribe("VISUAL ODOMETRY TOPIC",
-                                  1000,
-                                  &OdometryHandler::VisualOdometryCallback,
-                                  this);
-  wheel_odom_sub_ = nl.subscribe("WHEEL_ODOMETRY_TOPIC",
-                                 1000,
-                                 &OdometryHandler::WheelOdometryCallback,
-                                 this);
+  lidar_odom_sub_ = nl.subscribe(
+      "lio_odom", 1000, &OdometryHandler::LidarOdometryCallback, this);
+  visual_odom_sub_ = nl.subscribe(
+      "vio_odom", 1000, &OdometryHandler::VisualOdometryCallback, this);
+  wheel_odom_sub_ = nl.subscribe(
+      "wio_odom", 1000, &OdometryHandler::WheelOdometryCallback, this);
 
   // Point Cloud callback
   point_cloud_sub_ = nl.subscribe(

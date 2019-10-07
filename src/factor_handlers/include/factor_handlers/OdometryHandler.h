@@ -39,8 +39,8 @@ class OdometryHandler : public LampDataHandlerBase{
         typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
-        typedef pcl::PointCloud<pcl::PointXYZ>
-            PointCloud; // TODO make this common across packages somehow?
+        typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+        // TODO make this common across packages somehow?
 
         // Public methods
         bool Initialize (const ros::NodeHandle& n);
