@@ -59,11 +59,11 @@ protected:
 /*
 TEST Initialize method 
 */
-// TEST_F(OdometryHandlerTest, Initialization) {
-//   ros::NodeHandle nh, pnh("~");
-//   bool result = oh.Initialize(nh);
-//   ASSERT_TRUE(result);
-// }
+TEST_F(OdometryHandlerTest, Initialization) {
+   ros::NodeHandle nh, pnh("~");
+   bool result = oh.Initialize(nh);
+   ASSERT_TRUE(result);
+}
 
 /*
 TEST CheckBufferSize method 
@@ -129,14 +129,6 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
 TEST_F (OdometryHandlerTest, TestGetKeyedScanAtTime) {
   
 }
-
-
-
-
-
-
-
-
 
 // TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
 //   // Create a buffer

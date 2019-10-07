@@ -57,7 +57,9 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
     return false;
+
   // TODO: Load necessary parameters from yaml into local variables
+  
   return true;
 }
 
@@ -134,6 +136,7 @@ bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::v
 
 template <typename T>
 int OdometryHandler::CheckBufferSize(const std::vector<T>& x) {
+    std::cout << x.size() << std::endl;
     return x.size();
 }
 
