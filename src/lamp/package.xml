@@ -68,4 +68,7 @@
   <run_depend>pose_graph_merger</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>tf2_ros</run_depend>
+
+  <test_depend>rostest</test_depend>
+  <test_depend>rosunit</test_depend>  
 </package>
