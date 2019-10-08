@@ -29,7 +29,13 @@ class TestMerger : public ::testing::Test {
 
     Merger merger;
 
+  protected:
+    // Tolerance on EXPECT_NEAR assertions
+    double tolerance_ = 1e-5;
+
+
   private:
+
 };
 
 
@@ -42,19 +48,16 @@ TEST_F(TestMerger, BasicMerge) {
   pose_graph_msgs::PoseGraphNode n0, n1, n2; 
   pose_graph_msgs::PoseGraphEdge e0, e1;
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 1.0;
   n1.pose.position.y = 0.0;
   n1.pose.position.z = 0.0;
 
-  n2.ID = "a2";
   n2.key = gtsam::Symbol('a', 2);
   n2.pose.position.x = 3.0;
   n2.pose.position.y = 0.0;
@@ -83,13 +86,11 @@ TEST_F(TestMerger, BasicMerge) {
   // Make the slow graph
   g = pose_graph_msgs::PoseGraph();
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 0.0;
   n1.pose.position.y = 1.0;
@@ -142,9 +143,9 @@ TEST_F(TestMerger, BasicMerge) {
   EXPECT_TRUE(found);
 
   // Check that final pose is correct
-  EXPECT_NEAR(0.0, x, 1e-5);
-  EXPECT_NEAR(3.0, y, 1e-5);
-  EXPECT_NEAR(0.0, z, 1e-5);
+  EXPECT_NEAR(0.0, x, tolerance_);
+  EXPECT_NEAR(3.0, y, tolerance_);
+  EXPECT_NEAR(0.0, z, tolerance_);
 }
 
 TEST_F(TestMerger, FastGraphOnly) {
@@ -156,19 +157,16 @@ TEST_F(TestMerger, FastGraphOnly) {
   pose_graph_msgs::PoseGraphNode n0, n1, n2; 
   pose_graph_msgs::PoseGraphEdge e0, e1;
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 2.0;
   n1.pose.position.y = 0.0;
   n1.pose.position.z = 0.0;
 
-  n2.ID = "a2";
   n2.key = gtsam::Symbol('a', 2);
   n2.pose.position.x = 5.0;
   n2.pose.position.y = 0.0;
@@ -222,9 +220,9 @@ TEST_F(TestMerger, FastGraphOnly) {
   EXPECT_TRUE(found);
 
   // Check that final pose is correct
-  EXPECT_NEAR(5.0, x, 1e-5);
-  EXPECT_NEAR(0.0, y, 1e-5);
-  EXPECT_NEAR(0.0, z, 1e-5);
+  EXPECT_NEAR(5.0, x, tolerance_);
+  EXPECT_NEAR(0.0, y, tolerance_);
+  EXPECT_NEAR(0.0, z, tolerance_);
 }
 
 
@@ -237,19 +235,16 @@ TEST_F(TestMerger, MergeWithValuesOnlyInSlowGraph) {
   pose_graph_msgs::PoseGraphNode n0, n1, n2; 
   pose_graph_msgs::PoseGraphEdge e0, e1;
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 5.0;
   n1.pose.position.y = 0.0;
   n1.pose.position.z = 0.0;
 
-  n2.ID = "a2";
   n2.key = gtsam::Symbol('a', 2);
   n2.pose.position.x = 8.0;
   n2.pose.position.y = 0.0;
@@ -278,13 +273,11 @@ TEST_F(TestMerger, MergeWithValuesOnlyInSlowGraph) {
   // Make the slow graph
   g = pose_graph_msgs::PoseGraph();
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 0.0;
   n1.pose.position.y = 5.0;
@@ -326,9 +319,9 @@ TEST_F(TestMerger, MergeWithValuesOnlyInSlowGraph) {
   EXPECT_TRUE(found);
 
   // Check that final pose is correct
-  EXPECT_NEAR(0.0, x, 1e-5);
-  EXPECT_NEAR(8.0, y, 1e-5);
-  EXPECT_NEAR(0.0, z, 1e-5);
+  EXPECT_NEAR(0.0, x, tolerance_);
+  EXPECT_NEAR(8.0, y, tolerance_);
+  EXPECT_NEAR(0.0, z, tolerance_);
 }
 
 TEST_F(TestMerger, DoubleMerge) {
@@ -339,31 +332,26 @@ TEST_F(TestMerger, DoubleMerge) {
   pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
 
   // Make the fast graphs
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 1.0;
   n1.pose.position.y = 0.0;
   n1.pose.position.z = 0.0;
 
-  n2.ID = "a2";
   n2.key = gtsam::Symbol('a', 2);
   n2.pose.position.x = 2.0;
   n2.pose.position.y = 0.0;
   n2.pose.position.z = 0.0;
 
-  n3.ID = "a3";
   n3.key = gtsam::Symbol('a', 3);
   n3.pose.position.x = 2.0;
   n3.pose.position.y = 1.0;
   n3.pose.position.z = 0.0;
 
-  n4.ID = "a4";
   n4.key = gtsam::Symbol('a', 4);
   n4.pose.position.x = 3.0;
   n4.pose.position.y = 1.0;
@@ -415,13 +403,11 @@ TEST_F(TestMerger, DoubleMerge) {
   // Make the first slow graph
   g = pose_graph_msgs::PoseGraph();
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 0.0;
   n1.pose.position.y = 1.0;
@@ -437,13 +423,11 @@ TEST_F(TestMerger, DoubleMerge) {
   // Make the second slow graph
   g = pose_graph_msgs::PoseGraph();
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = -1.0;
   n1.pose.position.y = 0.0;
@@ -451,7 +435,6 @@ TEST_F(TestMerger, DoubleMerge) {
   n1.pose.orientation.w = 0.0; 
   n1.pose.orientation.z = 1.0; // facing -x direction
 
-  n2.ID = "a2";
   n2.key = gtsam::Symbol('a', 2);
   n2.pose.position.x = -2.0;
   n2.pose.position.y = 0.0;
@@ -491,9 +474,9 @@ TEST_F(TestMerger, DoubleMerge) {
 
   // Check that the node exists and that its position is correct
   EXPECT_TRUE(found);
-  EXPECT_NEAR(-1.0, x, 1e-5);
-  EXPECT_NEAR(2.0, y, 1e-5);
-  EXPECT_NEAR(0.0, z, 1e-5);
+  EXPECT_NEAR(-1.0, x, tolerance_);
+  EXPECT_NEAR(2.0, y, tolerance_);
+  EXPECT_NEAR(0.0, z, tolerance_);
 
   // Send remaining graphs and get the final result
   merger.OnSlowGraphMsg(slow_graph_2);
@@ -515,9 +498,9 @@ TEST_F(TestMerger, DoubleMerge) {
 
   // Check that the node exists and that its position is correct
   EXPECT_TRUE(found);
-  EXPECT_NEAR(-3.0, x, 1e-5);
-  EXPECT_NEAR(-1.0, y, 1e-5);
-  EXPECT_NEAR(0.0, z, 1e-5);
+  EXPECT_NEAR(-3.0, x, tolerance_);
+  EXPECT_NEAR(-1.0, y, tolerance_);
+  EXPECT_NEAR(0.0, z, tolerance_);
 }
 
 
@@ -531,31 +514,26 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, a0; 
   pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 1.0;
   n1.pose.position.y = 0.0;
   n1.pose.position.z = 0.0;
 
-  n2.ID = "a2";
   n2.key = gtsam::Symbol('a', 2);
   n2.pose.position.x = 2.0;
   n2.pose.position.y = 0.0;
   n2.pose.position.z = 0.0;
 
-  n3.ID = "a3";
   n3.key = gtsam::Symbol('a', 3);
   n3.pose.position.x = 3.0;
   n3.pose.position.y = 0.0;
   n3.pose.position.z = 0.0;
 
-  a0.ID = "m0";
   a0.key = gtsam::Symbol('m', 0);
   a0.pose.position.x = 1.0;
   a0.pose.position.y = 1.0;
@@ -600,13 +578,11 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   // Make the slow graph
   g = pose_graph_msgs::PoseGraph();
 
-  n0.ID = "a0";
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
   
-  n1.ID = "a1";
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 0.0;
   n1.pose.position.y = 1.0;
@@ -614,7 +590,6 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   n1.pose.orientation.z = sqrt(0.5);
   n1.pose.orientation.w = sqrt(0.5);
 
-  n2.ID = "a2";
   n2.key = gtsam::Symbol('a', 2);
   n2.pose.position.x = 0.0;
   n2.pose.position.y = 1.0;
@@ -658,9 +633,9 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   EXPECT_TRUE(found);
 
   // Check that final pose is correct
-  EXPECT_NEAR(-1.0, x, 1e-5);
-  EXPECT_NEAR(1.0, y, 1e-5);
-  EXPECT_NEAR(0.0, z, 1e-5);
+  EXPECT_NEAR(-1.0, x, tolerance_);
+  EXPECT_NEAR(1.0, y, tolerance_);
+  EXPECT_NEAR(0.0, z, tolerance_);
 }
 
 int main(int argc, char** argv) {

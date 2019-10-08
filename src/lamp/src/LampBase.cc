@@ -223,12 +223,17 @@ bool LampBase::PublishPoseGraphForOptimizer() {
 //-------------------------------------- 
 // Tracking 
 
-void LampBase::TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance){
+void LampBase::TrackEdges(gtsam::Symbol key_from, 
+                          gtsam::Symbol key_to, 
+                          int type, 
+                          gtsam::Pose3 pose, 
+                          gtsam::SharedNoiseModel covariance){
 
   // Populate the message with the pose's data.
   pose_graph_msgs::PoseGraphEdge edge;
   edge.key_from = key_from;
   edge.key_to = key_to;
+  edge.type = type;
   // edge.header.frame_id = fixed_frame_id_;
   // edge.header.stamp = keyed_stamps_[key_to];
   edge.pose = gr::ToRosPose(utils::ToGu(pose));
@@ -236,7 +241,6 @@ void LampBase::TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, gtsam::P
   // TODO - add covariance 
 
   edges_info_.push_back(edge);
-
 }
 
 void LampBase::TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance){

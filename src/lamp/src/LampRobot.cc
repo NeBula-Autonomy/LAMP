@@ -393,13 +393,16 @@ bool LampRobot::ProcessOdomData(FactorData data){
         std::pair<double, gtsam::Symbol>(times.second.toSec(), current_key));
 
     // Track the edges that have been added
-    TrackEdges(prev_key, current_key, transform, covariance);
+    int type = pose_graph_msgs::PoseGraphEdge::ODOM;
+    TrackEdges(prev_key, current_key, type, transform, covariance);
     
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 
     if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
       // add new keyed scan to map
+
+      // TODO : filter before adding
       keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(current_key, new_scan));
 
       // publish keyed scan
