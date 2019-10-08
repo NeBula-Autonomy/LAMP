@@ -71,31 +71,47 @@ bool LampBase::CheckHandlers(){
   return false;
 }
 
-gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
+gtsam::Symbol LampBase::GetClosestKeyAtTime(const ros::Time& stamp) const {
 
   // If there are no keys, throw an error
   if (stamp_to_odom_key_.size() == 0){
-    ROS_ERROR("Cannot get key at time - no keys stored");
+    ROS_ERROR("Cannot get closest key - no keys are stored");
     return gtsam::Symbol();
   }
 
   // Iterators pointing immediately before and after the target time
   auto iterAfter = stamp_to_odom_key_.lower_bound(stamp.toSec());
-  auto iterBefore = std::prev(iterAfter,1);
+  auto iterBefore = std::prev(iterAfter);
   double t1 = iterBefore->first; 
   double t2 = iterAfter->first;
 
-  // Return whichever of of the nearest keys is within the threshold 
-  if (iterBefore != std::prev(stamp_to_odom_key_.begin()) && IsTimeWithinThreshold(t1, stamp)) {
-    return iterBefore->second;
-  }
-  else if (IsTimeWithinThreshold(t2, stamp)) {
+  // If time is before the start or after the end, return first/last key
+  if (iterAfter == stamp_to_odom_key_.begin()) {
+    ROS_WARN("Only one stored key");
     return iterAfter->second;
   }
+  else if (iterBefore == std::prev(stamp_to_odom_key_.end())) {
+    ROS_WARN("Only one stored key");
+    return iterBefore->second;
+  }
+
+  // Otherwise return the closer key
+  else if (stamp.toSec() - t1 < t2 - stamp.toSec()) {
+    return iterBefore->second;
+  }
   else {
+    return iterAfter->second;
+  }
+}
+
+gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
+
+  if (!stamp_to_odom_key_.count(stamp.toSec())) {
     ROS_ERROR("No key exists at given time");
     return gtsam::Symbol();
   }
+
+  return stamp_to_odom_key_.at(stamp.toSec());
 }
 
 bool LampBase::IsTimeWithinThreshold(double time, const ros::Time& target) const {
