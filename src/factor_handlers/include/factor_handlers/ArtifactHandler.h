@@ -4,6 +4,7 @@
 // Includes
 // For common datastructures
 #include "utils/CommonStructs.h"
+#include <tf2_ros/transform_listener.h>
 #include <core_msgs/Artifact.h>
 
 // Base class
@@ -141,6 +142,9 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     // Artifact output data
     FactorData artifact_data_;
+
+    // Transformer
+    tf2_ros::Buffer tf_buffer_;
 
     // Publisher
     ros::Publisher artifact_pub_;

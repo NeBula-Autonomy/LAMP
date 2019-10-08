@@ -436,7 +436,6 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     return false;
   }
 
-  // TODO - fill out this function 
   // Necessary variables
   Pose3 transform;
   gtsam::SharedNoiseModel covariance;
@@ -459,11 +458,10 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     // Get the artifact key
     cur_artifact_key = data.artifact_key[i];
 
-    // TODO: I suppose the distal and calibration part can be left out.
-    // add to pose graph 
+    // Was adding factor successful 
     bool result;
 
-    // create the factor
+    // create and add the factor
     // Would need a AddFactor function as this would be used by many handlers
     // result = AddFactor(pose_key, cur_artifact_key, transform, is_manual_loop_closure,
     //               artifact_rot_precision_, artifact_trans_precision_);
