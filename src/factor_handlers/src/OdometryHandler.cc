@@ -359,7 +359,7 @@ bool OdometryHandler::GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPose
   }
 }
 
-OdometryHandler::PoseCovStamped OdometryHandler::GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses){
+PoseCovStamped OdometryHandler::GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses){
   // TODO: Get the first and second pose, find the transformation between the two and return it 
   PoseCovStamped output; 
   PoseCovStamped first_pose = input_poses.first;

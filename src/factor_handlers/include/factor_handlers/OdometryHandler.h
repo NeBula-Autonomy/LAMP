@@ -17,6 +17,13 @@
 #include <factor_handlers/LampDataHandlerBase.h>
 
 
+// Typedefs - TODO make this common across packages somehow?
+typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
+typedef nav_msgs::Odometry Odometry;
+typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
+typedef std::vector<PoseCovStamped> OdomPoseBuffer;
+typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 
 // Class Definition 
@@ -33,15 +40,6 @@ class OdometryHandler : public LampDataHandlerBase{
         // Constructors and Destructors
         OdometryHandler();
         ~OdometryHandler();  
-
-        // Typedefs
-        typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
-        typedef nav_msgs::Odometry Odometry;
-        typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
-        typedef std::vector<PoseCovStamped> OdomPoseBuffer;
-        typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
-        typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-        // TODO make this common across packages somehow?
 
         // Public methods
         bool Initialize (const ros::NodeHandle& n);

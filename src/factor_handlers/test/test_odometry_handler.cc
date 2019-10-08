@@ -7,8 +7,6 @@
 #include <gtest/gtest.h>
 #include <factor_handlers/OdometryHandler.h>
 
-typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
-
 class OdometryHandlerTest : public ::testing::Test {
 
 public:
