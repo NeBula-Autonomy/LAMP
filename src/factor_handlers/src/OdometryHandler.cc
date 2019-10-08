@@ -58,6 +58,10 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
     return false;
 
+  // Timestamp threshold used in GetPoseAtTime method to return true to the caller
+  if (!pu::Get("ts_threshold", ts_threshold_))
+    return false;
+
   // TODO: Load necessary parameters from yaml into local variables
 
   return true;
