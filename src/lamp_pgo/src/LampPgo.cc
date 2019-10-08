@@ -101,7 +101,7 @@ void LampPgo::InputCallback(
 
   // Extract new values
   // TODO - use the merger here? In case the state of the graph here is
-  // different from the lamp node Will that every be the case?
+  // different from the lamp node Will that ever be the case?
   gtsam::KeyVector key_list = all_values.keys();
   for (size_t i = 0; i < key_list.size(); i++) {
     if (!values_.exists(key_list[i])) {
@@ -121,8 +121,8 @@ void LampPgo::InputCallback(
   PublishValues();
 }
 
+// TODO - check that this is ok including just the positions in the message
 void LampPgo::PublishValues() const {
-  // TODO - check if we need to have the ID and stamp fields filled
   pose_graph_msgs::PoseGraph pose_graph_msg;
 
   // Then store the values as nodes

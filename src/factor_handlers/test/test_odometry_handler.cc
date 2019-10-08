@@ -46,6 +46,12 @@ protected:
       return oh.InsertMsgInBuffer<T1, T2>(msg, buffer);
     }
 
+    // Utilities
+    // template <typename TYPE>
+    // int CheckBufferSize(const std::vector<TYPE>& x) {
+    //   return myOdometryHandler.CheckBufferSize<TYPE>(x);
+    // }
+
     double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer){
       return oh.CalculatePoseDelta(odom_buffer);
     }    
