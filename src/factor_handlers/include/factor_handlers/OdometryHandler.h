@@ -112,6 +112,12 @@ class OdometryHandler : public LampDataHandlerBase{
         double pc_buffer_size_limit_;
         double translation_threshold_;
 
+        // Fusion logic 
+        double ts_threshold_; 
+        bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output); 
+        bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses);
+
+
       private:
 };
 

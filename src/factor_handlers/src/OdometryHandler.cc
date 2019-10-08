@@ -319,6 +319,47 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
   return gtsam::Pose3(r, t);
 }
 
+
+// Fusion logic-----------------------------------------------------------------------------------------
+
+bool OdometryHandler::GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) {
+  // Create a PoseCovStamped message
+  PoseCovStamped myPoseCovStamped;
+  // Given a query timestamp 
+  auto query_timestamp = t.toSec();
+  // Declare a big timestamp difference 
+  double min_ts_diff = 1000;
+  // Iterate through the vector to find the element of interest 
+  for (size_t i=0; i<odom_buffer.size(); ++i){
+    double cur_ts_diff = odom_buffer[i].header.stamp.toSec() - query_timestamp;
+    if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
+      myPoseCovStamped = odom_buffer[i];
+      min_ts_diff = cur_ts_diff; 
+    }
+    // Here we've selected the most likely element we were searching for, make sure everything is correct    
+    if (abs(min_ts_diff)<abs(ts_threshold_)){
+      // If everything is fine, we fill the output message and return true to the caller
+      output = myPoseCovStamped; 
+      return true; 
+    }
+    else{
+      return false; 
+    }
+  }
+}
+
+bool OdometryHandler::GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) {
+  PoseCovStamped first_pose; 
+  PoseCovStamped second_pose; 
+  if (GetPoseAtTime(t1, odom_buffer, first_pose)){
+    if (GetPoseAtTime(t2, odom_buffer, second_pose)) {
+      output_poses = std::make_pair(first_pose, second_pose);
+    }
+  }
+}
+
+
+
 /*
 DOCUMENTATION 
 
