@@ -72,25 +72,14 @@ TEST_F(OdometryHandlerTest, Initialization) {
    bool result = oh.Initialize(nh);
    ASSERT_TRUE(result);
 }
- 
-TEST_F(OdometryHandlerTest, CheckBufferSize) {
-   std::vector<PoseCovStamped> myBuffer;
-   PoseCovStamped my_msg;
-   myBuffer.push_back(my_msg);
-   int size = CheckBufferSize(myBuffer);
-   EXPECT_EQ(size, 1);
+
+TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
+  std::vector<PoseCovStamped> myBuffer;
+  PoseCovStamped my_msg;
+  myBuffer.push_back(my_msg);
+  int size = CheckBufferSize(myBuffer);
+  EXPECT_EQ(size, 1);
 }
-
-
-
-TEST_F(OdometryHandlerTest, CheckBufferSize) {
-   std::vector<PoseCovStamped> myBuffer;
-   PoseCovStamped my_msg;
-   myBuffer.push_back(my_msg);
-   int size = CheckBufferSize(myBuffer);
-   EXPECT_EQ(size, 1);
-}
-
 
 
 /*
