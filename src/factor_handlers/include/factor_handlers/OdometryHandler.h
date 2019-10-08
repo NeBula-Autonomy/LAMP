@@ -55,6 +55,10 @@ class OdometryHandler : public LampDataHandlerBase{
         // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
         bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg);
 
+        bool GetDeltaBetweenTimes(const ros::Time t1,
+                                  const ros::Time t2,
+                                  gtsam::Pose3& delta);
+
       protected:
 
         // Odometry Subscribers 

@@ -134,6 +134,7 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
+  // Pose Graph publishers
   pose_graph_pub_ =
     nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   pose_graph_to_optimize_pub_ =
@@ -141,6 +142,8 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
   keyed_scan_pub_ =
     nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
 
+  // Publishers
+  pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>("lamp_pose", 10, false);
 
   return true; 
 }
@@ -420,7 +423,43 @@ bool LampRobot::ProcessOdomData(FactorData data){
   return true;
 }
 
+// Odometry update
+void LampRobot::UpdateAndPublishOdom() {
+  // Get the pose at the last key
+  Pose3 last_pose = values_.at<Pose3>(key_ - 1);
 
+  // Get the delta from the last pose to now
+  ros::Time stamp = ros::Time::now();
+  Pose3 delta_pose;
+  odometry_handler_.GetDeltaBetweenTimes(
+      keyed_stamps_[key_ - 1], stamp, delta_pose);
+
+  // Compose the delta
+  Pose3 new_pose = last_pose.compose(delta_pose);
+
+  // TODO use the covariance when we have it
+  // gtsam::Matrix66 covariance;
+  // odometry_handler_.GetDeltaCovarianceBetweenTimes(keyed_stamps_[key_-1],
+  // stamp, covariance);
+  //
+  // Compose covariance
+  // TODO
+
+  // Convert to ROS to publish
+  geometry_msgs::PoseStamped msg;
+  msg.pose = utils::GtsamToRosMsg(new_pose);
+  msg.header.frame_id = fixed_frame_id_;
+  msg.header.stamp = stamp;
+
+  // TODO - use the covariance when we have it
+  // geometry_msgs::PoseWithCovarianceStamped msg;
+  // msg.pose = utils::GtsamToRosMsg(new_pose, covariance);
+  // msg.header.frame_id = fixed_frame_id_;
+  // msg.header.stamp = stamp;
+
+  // Publish pose graph
+  pose_pub_.publish(msg);
+}
 
 /*! 
   \brief  Wrapper for the artifact class interactions
