@@ -124,20 +124,6 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
 // Utilities ---------------------------------------------------------------------------------------------
 
 
-template <typename T1, typename T2>
-bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
-    // TODO: This function should be defined in the base class
-    auto prev_size = CheckBufferSize<T2>(buffer);
-    T2 stored_msg;
-    // TODO: The following two lines should be implemented in a function 
-    stored_msg.header = msg->header; 
-    stored_msg.pose = msg->pose;
-    buffer.push_back(stored_msg);
-    auto current_size = CheckBufferSize<T2>(buffer);
-    if (current_size != (prev_size + 1)) return false;
-    return true;
-}
-
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
       double translation = CalculatePoseDelta(odom_buffer); 
@@ -319,7 +305,28 @@ bool OdometryHandler::GetDeltaBetweenTimes(const ros::Time t1,
                                            gtsam::Pose3& delta) {
   // Public function to access deltas from the odometry handler
   // TODO - implement
+  
+  // Call GetPoseAtTime(t1);
+
+  PoseCovStamped pose_first;
+
+   
+  //= GetPoseAtTime(t1);
+
+
+
 }
+
+
+PoseCovStamped OdometryHandler::GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses){
+  // TODO: Get the first and second pose, find the transformation between the two and return it 
+  PoseCovStamped output; 
+  PoseCovStamped first_pose = input_poses.first;
+  PoseCovStamped second_pose = input_poses.second;
+  // TODO: Integrate into geometry_utils a method that provide us the DeltaBetweenPoses preserving the covariance information
+  return output; 
+}
+
 
 bool OdometryHandler::GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) {
   // Create a PoseCovStamped message
@@ -355,15 +362,6 @@ bool OdometryHandler::GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPose
       output_poses = std::make_pair(first_pose, second_pose);
     }
   }
-}
-
-PoseCovStamped OdometryHandler::GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses){
-  // TODO: Get the first and second pose, find the transformation between the two and return it 
-  PoseCovStamped output; 
-  PoseCovStamped first_pose = input_poses.first;
-  PoseCovStamped second_pose = input_poses.second;
-  // TODO: Integrate into geometry_utils a method that provide us the DeltaBetweenPoses preserving the covariance information
-  return output; 
 }
 
 /*

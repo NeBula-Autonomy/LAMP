@@ -87,13 +87,27 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Protected methods
         // TODO: This function should be defined in the base class
-        template <typename T1, typename T2>
-        bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer);   
+ 
         template <typename T>
         int CheckBufferSize(const std::vector<T>& x) {
             std::cout << x.size() << std::endl;
             return x.size();
         }
+
+        template <typename T1, typename T2>
+        bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+            // TODO: This function should be defined in the base class
+            auto prev_size = CheckBufferSize<T2>(buffer);
+            T2 stored_msg;
+            // TODO: The following two lines should be implemented in a function 
+            stored_msg.header = msg->header; 
+            stored_msg.pose = msg->pose;
+            buffer.push_back(stored_msg);
+            auto current_size = CheckBufferSize<T2>(buffer);
+            if (current_size != (prev_size + 1)) return false;
+            return true;
+        }
+
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
         void PrepareFactor(OdomPoseBuffer& odom_buffer);        

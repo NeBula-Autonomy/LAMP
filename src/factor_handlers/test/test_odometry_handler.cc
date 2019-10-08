@@ -69,7 +69,19 @@ TEST_F(OdometryHandlerTest, Initialization) {
    ASSERT_TRUE(result);
 }
 
-/* TEST CheckBufferSize */ 
+/* TEST InsertMsgInBuffer */
+TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
+   // Create a buffer
+    std::vector<PoseCovStamped> myBuffer;
+    // Create a message
+    Odometry::ConstPtr msg;
+    // Call the method
+    bool result = InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, myBuffer);
+   // Check result is correct
+   ASSERT_TRUE(result);
+}
+
+/* TEST CheckBufferSize - TODO: Not passing the test*/ 
 TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
   std::vector<PoseCovStamped> myBuffer;
   PoseCovStamped my_msg;
@@ -110,7 +122,11 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
   EXPECT_EQ(delta, 1);
 }
 
-// Nobuhiro is now working on GetTransform function
+// GetTransform function unit test is done, will be pasted here later, Nobuhiro
+
+// Nobuhiro is working on GetCovariance function unit test
+
+// Nobuhiro is working on GetTimeStam function unit test
 
 
 // Test we pass but need more testing/implementation ---------------------------------
@@ -118,13 +134,7 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
 
 // Test we don't pass ----------------------------------------------------------------
 
-// TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
-//   // Create a buffer
-//   std::vector<PoseCovStamped> myBuffer;
-//   nav_msgs::Odometry msg;
-//   bool result = InsertMsgInBuffer<nav_msgs::Odometry, PoseCovStamped>(msg, myBuffer);
-//   ASSERT_TRUE(result);
-// }
+
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
