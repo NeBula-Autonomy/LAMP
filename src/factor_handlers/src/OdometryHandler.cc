@@ -18,7 +18,8 @@ namespace pu = parameter_utils;
 OdometryHandler::OdometryHandler()
   : keyed_scan_time_diff_limit_(0.2),
     pc_buffer_size_limit_(10),
-    translation_threshold_(1.0) {
+    translation_threshold_(1.0),
+    ts_threshold_(0.1) {
   ROS_INFO("Odometry Handler Class Constructor");
 }
 
@@ -29,8 +30,7 @@ OdometryHandler::~OdometryHandler() {
 // Initialize -------------------------------------------------------------------------------------------
 
 FactorData GetData(){
-  GtsamPosCov myGtsamPosCov;
-  myGtsamPosCov.b_has_value = true;
+  // TODO: Lamp should as 
   // Return factors
 }
 
