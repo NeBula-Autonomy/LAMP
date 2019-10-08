@@ -35,6 +35,7 @@ class TestLampRobot : public ::testing::Test {
     bool SetInitialPosition() {return lr.SetInitialPosition();}
     int GetValuesSize() {return lr.values_.size();}
     gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {return lr.GetKeyAtTime(stamp);}
+    gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {return lr.GetClosestKeyAtTime(stamp);}
     pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg() {return lr.ConvertPoseGraphToMsg();}
     gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
       return lr.SetFixedNoiseModels(type);
@@ -175,30 +176,12 @@ TEST_F(TestLampRobot, GetKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 3), GetKeyAtTime(ros::Time(1.5)));
   EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(2.0)));
 
-  // Rounding to nearest (within threshold)
-  EXPECT_EQ(gtsam::Symbol('a', 0), GetKeyAtTime(ros::Time(0.0000001)));
-  EXPECT_EQ(gtsam::Symbol('a', 1), GetKeyAtTime(ros::Time(0.4990001)));
-  EXPECT_EQ(gtsam::Symbol('a', 2), GetKeyAtTime(ros::Time(0.9999999)));
-  EXPECT_EQ(gtsam::Symbol('a', 3), GetKeyAtTime(ros::Time(1.5009999)));
-  EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(1.9999000)));
-}
-
-TEST_F(TestLampRobot, GetKeyAtTimeOutsideThreshold) {
-  ros::Time::init();
-  SetTimeThreshold(0.001);
-
-  // Build map
-  AddStampToOdomKey(ros::Time(0.0), gtsam::Symbol('a', 0));
-  AddStampToOdomKey(ros::Time(0.5), gtsam::Symbol('a', 1));
-  AddStampToOdomKey(ros::Time(1.0), gtsam::Symbol('a', 2));
-  AddStampToOdomKey(ros::Time(1.5), gtsam::Symbol('a', 3));
-  AddStampToOdomKey(ros::Time(2.0), gtsam::Symbol('a', 4));
-
-  // Expect empty keys from invalid inputs
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.002)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.25)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(2.2)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(100000.0)));
+  // Mismatches
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.0000001)));
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.4990001)));
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.9999999)));
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.5009999)));
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.9999000)));
 }
 
 TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
@@ -209,6 +192,38 @@ TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
   EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.0)));
   EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.0)));
 }
+
+TEST_F(TestLampRobot, GetClosestKeyAtTime) {
+  ros::Time::init();
+
+  SetTimeThreshold(0.001);
+
+  // Check single key 
+  AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
+  EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(500.0)));
+
+  // Add more keys
+  AddStampToOdomKey(ros::Time(50.0), gtsam::Symbol('a', 1));
+  AddStampToOdomKey(ros::Time(60.0), gtsam::Symbol('a', 2));
+  AddStampToOdomKey(ros::Time(80.0), gtsam::Symbol('a', 3));
+  AddStampToOdomKey(ros::Time(100.0), gtsam::Symbol('a', 4));
+
+  // Exact matches
+  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); // TODO - fix this
+  EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(50.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(80.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(100.0)));
+
+  // Closest key
+  EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.5)));
+  EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(54.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(63.43)));
+  EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(75.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(99.99999)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(100000.0)));
+}
+
 
 TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   ros::Time::init();
