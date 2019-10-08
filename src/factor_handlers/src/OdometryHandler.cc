@@ -134,11 +134,6 @@ bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::v
     return true;
 }
 
-template <typename T>
-int OdometryHandler::CheckBufferSize(const std::vector<T>& x) {
-    std::cout << x.size() << std::endl;
-    return x.size();
-}
 
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
@@ -361,6 +356,9 @@ bool OdometryHandler::GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPose
 OdometryHandler::PoseCovStamped OdometryHandler::GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses){
   // TODO: Get the first and second pose, find the transformation between the two and return it 
   PoseCovStamped output; 
+  PoseCovStamped first_pose = input_poses.first;
+  PoseCovStamped second_pose = input_poses.second;
+  // TODO: Integrate into geometry_utils a method that provide us the DeltaBetweenPoses preserving the covariance information
   return output; 
 }
 

@@ -86,7 +86,10 @@ class OdometryHandler : public LampDataHandlerBase{
         template <typename T1, typename T2>
         bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer);   
         template <typename T>
-        int CheckBufferSize(const std::vector<T>& x);
+        int CheckBufferSize(const std::vector<T>& x) {
+            std::cout << x.size() << std::endl;
+            return x.size();
+        }
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
         void PrepareFactor(OdomPoseBuffer& odom_buffer);        
@@ -117,7 +120,7 @@ class OdometryHandler : public LampDataHandlerBase{
         bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output); 
         bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses);
         PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
-        // TODO: Unify GetDeltaBetweenPoses and CalculatePoseDelta in only one function
+        // TODO: Unify GetDeltaBetweenPoses and CalculatePoseDelta into only one method
 
       private:
 };
