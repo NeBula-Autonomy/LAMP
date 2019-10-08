@@ -20,8 +20,8 @@ public:
 
 protected:
 
-  // Odometry Callbacks ------------------------------------------------
-  void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    // Odometry Callbacks ------------------------------------------------
+    void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
       oh.LidarOdometryCallback(msg);
     } 
 
@@ -44,14 +44,12 @@ protected:
       return oh.InsertMsgInBuffer<T1, T2>(msg, buffer);
     }
 
-    // Utilities
-    // template <typename TYPE>
-    // int CheckBufferSize(const std::vector<TYPE>& x) {
-    //   return myOdometryHandler.CheckBufferSize<TYPE>(x);
-    // }
-
     gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
       return oh.GetTransform(pose_cov_stamped_pair);
+    }
+    
+    std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
+      return oh.GetTimeStamps(pose_cov_stamped_pair);
     }
 
     double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
@@ -68,8 +66,7 @@ protected:
 
 /* TEST Initialize */ 
 TEST_F(OdometryHandlerTest, Initialization) {
-   ros::NodeHan
-   dle nh, pnh("~");
+   ros::NodeHandle nh;
    bool result = oh.Initialize(nh);
    ASSERT_TRUE(result);
 }
@@ -95,7 +92,7 @@ TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
    ASSERT_TRUE(result);
 }
 
-/* TEST CalculatePoseDelta*/
+/* TEST CalculatePoseDelta */
 TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
   // Create a buffer
   OdomPoseBuffer myBuffer; 
@@ -129,7 +126,7 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
 
 // Getters ------------------------------------------------------------
 
-// GetTransform function unit test is done, will be pasted here later, Nobuhiro
+/* TEST GetTransform */
 TEST_F (OdometryHandlerTest, TestGetTransform) {
   PoseCovStampedPair pose_cov_stamped_pair;
   geometry_msgs::Pose pose1;
@@ -158,8 +155,22 @@ TEST_F (OdometryHandlerTest, TestGetTransform) {
 }
 
 // Nobuhiro is working on GetCovariance function unit test
-
-// Nobuhiro is working on GetTimeStam function unit test
+/* TEST  GetTimeStamps */
+TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
+  double t1 = 1.0;
+  double t2 = 2.0;
+  ros::Time t1_ros;
+  ros::Time t2_ros;
+  t1_ros.fromSec(t1);
+  t2_ros.fromSec(t2);
+  PoseCovStampedPair pose_cov_stamped_pair;
+  pose_cov_stamped_pair.first.header.stamp = t1_ros;
+  pose_cov_stamped_pair.second.header.stamp = t2_ros;
+  std::pair<ros::Time, ros::Time> time_stamp_pair_actual = 
+    GetTimeStamps(pose_cov_stamped_pair);
+  EXPECT_EQ(time_stamp_pair_actual.first, t1_ros);
+  EXPECT_EQ(time_stamp_pair_actual.second, t2_ros);
+}
 
 
 // Test we pass but need more testing/implementation ---------------------------------
@@ -185,15 +196,15 @@ TEST_F (OdometryHandlerTest, TestGetTransform) {
 
 // CalculatePoseDelta: Done (Nobuhiro)
 
-// PrepareFactor: (Nobuhiro)
+// PrepareFactor
 
-// MakeFactor: (Nobuhiro)
+// MakeFactor
 
 // GetTransform: Done (Nobuhiro)
 
 // GetCovariance: Working (Nobuhiro)
 
-// GetTimeStamps: Working (Nobuhiro)
+// GetTimeStamps: Done (Nobuhiro)
 
 // GetKeyedScanAtTime
 
@@ -207,7 +218,7 @@ TEST_F (OdometryHandlerTest, TestGetTransform) {
 
 // GetPosesAtTimes
 
-// InserMsgInBuffer: Done
+// InsertMsgInBuffer: Done
 
 // CheckBufferSize: Done (Kamak)
 
