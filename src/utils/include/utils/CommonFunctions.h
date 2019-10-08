@@ -20,7 +20,15 @@
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Transform.h>
+#include <nav_msgs/Odometry.h>
+
 namespace gu = geometry_utils;
+namespace gr = gu::ros;
 
 namespace utils {
 
@@ -35,6 +43,12 @@ void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
 //                         gtsam::Values* graph_vals){
 
 // }
+
+geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose);
+
+// Convert gtsam data types to a ros message
+geometry_msgs::PoseWithCovariance GtsamToRosMsg(const gtsam::Pose3& pose,
+                                                gtsam::Matrix66& covariance);
 
 inline gu::Transform3 ToGu(const gtsam::Pose3& pose) {
   gu::Transform3 out;
