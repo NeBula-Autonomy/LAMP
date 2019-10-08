@@ -322,8 +322,6 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 }
 
 
-
-
 TEST_F(TestLampRobot, Initialization) {
   ros::NodeHandle nh, pnh("~");
 
