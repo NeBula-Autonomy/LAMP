@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
     eigen_conversions
     pose_graph_msgs
     geometry_utils
-    utils
 )
 
 find_package(Eigen3 REQUIRED)
@@ -33,13 +32,12 @@ find_package(Eigen3 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIRS}
+  INCLUDE_DIRS include 
   LIBRARIES pose_graph_merger
   CATKIN_DEPENDS
     roscpp
     pose_graph_msgs
     geometry_utils
-    utils
     eigen_conversions
 )
 
@@ -59,9 +57,13 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
 
 ## Declare a C++ library
- add_library(${PROJECT_NAME}
-   src/merger.cc
- )
+add_library(${PROJECT_NAME}
+  src/merger.cc
+)
+
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Testing ##

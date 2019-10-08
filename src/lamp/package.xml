@@ -27,9 +27,9 @@
   <build_depend>pose_graph_msgs</build_depend>
   <build_depend>uwb_msgs</build_depend>
   <build_depend>mesh_msgs</build_depend>
-  <build_depend>geometry_msgs</build_depend>  <build_depend>pose_graph_merger</build_depend>
+  <build_depend>geometry_msgs</build_depend>  
+  <build_depend>pose_graph_merger</build_depend>
   <build_depend>nav_msgs</build_depend>
-  <build_depend>lamp_pgo</build_depend>
   <build_depend>tf_conversions</build_depend>
   <build_depend>eigen_conversions</build_depend>
 

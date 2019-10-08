@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(lamp)
 
 #IF(NOT CMAKE_BUILD_TYPE)
@@ -44,7 +44,6 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   eigen_conversions
   pose_graph_merger
-  lamp_pgo
 )
 
 
@@ -70,7 +69,6 @@ catkin_package(
     geometry_msgs
     nav_msgs
     pose_graph_merger
-    lamp_pgo
   DEPENDS
     Boost
 )
