@@ -116,7 +116,8 @@ class OdometryHandler : public LampDataHandlerBase{
         double ts_threshold_; 
         bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output); 
         bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses);
-
+        PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
+        // TODO: Unify GetDeltaBetweenPoses and CalculatePoseDelta in only one function
 
       private:
 };
