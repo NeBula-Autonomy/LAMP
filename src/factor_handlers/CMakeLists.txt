@@ -83,9 +83,11 @@ target_link_libraries(${PROJECT_NAME}
 #############
 ## Testing ##
 #############
-
-## Add gtest based cpp test target and link libraries
-catkin_add_gtest(test_artifact_handler test/test_artifact_handler.cc)
-target_link_libraries(test_artifact_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
-catkin_add_gtest(test_odometry_handler test/test_odometry_handler.cc)
-target_link_libraries(test_odometry_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
+if (CATKIN_ENABLE_TESTING)
+  # add_subdirectory(test)
+  ## Add gtest based cpp test target and link libraries
+  catkin_add_gtest(test_odometry_handler test/test_odometry_handler.cc)
+  target_link_libraries(test_odometry_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
+  catkin_add_gtest(test_artifact_handler test/test_artifact_handler.cc)
+  target_link_libraries(test_artifact_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
+endif()

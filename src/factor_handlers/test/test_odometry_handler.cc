@@ -31,13 +31,13 @@ protected:
 
     void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
       myOdometryHandler.LidarOdometryCallback(msg);
-    } 
-
-    // Utilities 
-    template <typename TYPE>
-    int CheckBufferSize(const std::vector<TYPE>& x) {
-      return myOdometryHandler.CheckBufferSize<TYPE>(x);
     }
+
+    // Utilities
+    // template <typename TYPE>
+    // int CheckBufferSize(const std::vector<TYPE>& x) {
+    //   return myOdometryHandler.CheckBufferSize<TYPE>(x);
+    // }
 
     double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer){
       return myOdometryHandler.CalculatePoseDelta(odom_buffer);
@@ -72,23 +72,23 @@ TEST CheckBufferSize method
   Push message in the buffer 
   Check the resulting buffer size 
 */
-TEST_F (OdometryHandlerTest, TestCheckBufferSize) {
-  // Create a buffer
-  std::vector<PoseCovStamped> pose_buffer;
-  // Create a message
-  PoseCovStamped pose;
-  int N = 10;
-  for (size_t x = 0; x < N; x++) {
-    // Push the message in the buffer
-    pose_buffer.push_back(pose);   
-    std::cout << x << std::endl; 
-  }
-  // Compute current buffer size
-  int buffer_size = CheckBufferSize<PoseCovStamped>(pose_buffer);
+// TEST_F (OdometryHandlerTest, TestCheckBufferSize) {
+//   // Create a buffer
+//   std::vector<PoseCovStamped> pose_buffer;
+//   // Create a message
+//   PoseCovStamped pose;
+//   int N = 10;
+//   for (size_t x = 0; x < N; x++) {
+//     // Push the message in the buffer
+//     pose_buffer.push_back(pose);
+//     std::cout << x << std::endl;
+//   }
+//   // Compute current buffer size
+//   int buffer_size = CheckBufferSize<PoseCovStamped>(pose_buffer);
 
-  // Check that the result is the expected
-  EXPECT_EQ(buffer_size, N);
-}
+//   // Check that the result is the expected
+//   EXPECT_EQ(buffer_size, N);
+// }
 
 /*
 TEST CalculatePoseDelta method 
