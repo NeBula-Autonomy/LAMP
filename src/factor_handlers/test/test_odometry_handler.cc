@@ -50,9 +50,9 @@ protected:
     //   return myOdometryHandler.CheckBufferSize<TYPE>(x);
     // }
 
-    double CalculatePoseDelta(std::vector<geometry_msgs::PoseWithCovarianceStamped>& odom_buffer){
+    double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
       return oh.CalculatePoseDelta(odom_buffer);
-    }    
+    }   
 
     std::vector<geometry_msgs::PoseWithCovarianceStamped> lidar_odometry_buffer_ = oh.lidar_odometry_buffer_;
 
@@ -62,15 +62,14 @@ protected:
 
 // Test we pass ----------------------------------------------------------------------
 
-/*
-TEST Initialize method 
-*/
+/* TEST Initialize */ 
 TEST_F(OdometryHandlerTest, Initialization) {
    ros::NodeHandle nh, pnh("~");
    bool result = oh.Initialize(nh);
    ASSERT_TRUE(result);
 }
 
+/* TEST CheckBufferSize */ 
 TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
   std::vector<PoseCovStamped> myBuffer;
   PoseCovStamped my_msg;
@@ -79,30 +78,10 @@ TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
   EXPECT_EQ(size, 1);
 }
 
-
-/*
-TEST CheckBufferSize method 
-  Create a buffer 
-  Create a message 
-  Push message in the buffer 
-  Check the resulting buffer size 
-*/
-
-
-// Test we pass but need more testing/implementation ---------------------------------
-
-
-// Test we don't pass ----------------------------------------------------------------
-/*
-
-TEST CalculatePoseDelta method 
-  Create a buffer 
-  Fill the buffer with two messages 
-  Invoke the CalculatePoseDelta method
-
+/* TEST CalculatePoseDelta*/
 TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
   // Create a buffer
-  std::vector<geometry_msgs::PoseWithCovarianceStamped> myBuffer; 
+  OdomPoseBuffer myBuffer; 
   // Create two messages
   geometry_msgs::PoseWithCovarianceStamped msg_first; 
   geometry_msgs::PoseWithCovarianceStamped msg_second;
@@ -110,23 +89,34 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
   msg_first.pose.pose.position.x = 1; 
   msg_first.pose.pose.position.y = 0; 
   msg_first.pose.pose.position.z = 0; 
+  msg_first.pose.pose.orientation.x = 0;
+  msg_first.pose.pose.orientation.y = 0;
+  msg_first.pose.pose.orientation.z = 0;
+  msg_first.pose.pose.orientation.w = 1;
   msg_second.pose.pose.position.x = 0; 
   msg_second.pose.pose.position.y = 0; 
   msg_second.pose.pose.position.z = 0;
+  msg_second.pose.pose.orientation.x = 0;
+  msg_second.pose.pose.orientation.y = 0;
+  msg_second.pose.pose.orientation.z = 0;
+  msg_second.pose.pose.orientation.w = 1;
   // Push messages to buffer
   myBuffer.push_back(msg_first); 
   myBuffer.push_back(msg_second);   
   // Call the method to test 
   int size = CheckBufferSize(myBuffer);
   EXPECT_EQ(size, 2);
-  // double delta = CalculatePoseDelta(myBuffer);   
-  // EXPECT_EQ(delta, 1);
+  double delta = CalculatePoseDelta(myBuffer);   
+  EXPECT_EQ(delta, 1);
 }
 
+// Nobuhiro is now working on GetTransform function
 
-TEST_F (OdometryHandlerTest, TestGetKeyedScanAtTime) {
-  
-}
+
+// Test we pass but need more testing/implementation ---------------------------------
+
+
+// Test we don't pass ----------------------------------------------------------------
 
 // TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
 //   // Create a buffer
@@ -136,22 +126,8 @@ TEST_F (OdometryHandlerTest, TestGetKeyedScanAtTime) {
 //   ASSERT_TRUE(result);
 // }
 
-/*
-TEST LidarOdometryCallback
-  Create a pointer to the Odometry message 
-  Trigger the callback 
-  Check that the callback successfully pushed the received message in the buffer 
-*/
-
-
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_odometry_handler");
   return RUN_ALL_TESTS();
 }
-
-
-
-
-
-

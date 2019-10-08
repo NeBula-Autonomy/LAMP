@@ -6,4 +6,4 @@ keyed_scan_time_diff_limit: 0.5
 pc_buffer_size_limit: 10
 
 # Timestamp threshold 
-timestamp_threshold: 0.1
+ts_threshold: 0.1

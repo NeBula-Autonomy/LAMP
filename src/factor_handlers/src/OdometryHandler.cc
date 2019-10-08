@@ -129,7 +129,7 @@ bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::v
     // TODO: This function should be defined in the base class
     auto prev_size = CheckBufferSize<T2>(buffer);
     T2 stored_msg;
-    // TODO: The following two lines should be implemented in a function - Matteo doing this 
+    // TODO: The following two lines should be implemented in a function 
     stored_msg.header = msg->header; 
     stored_msg.pose = msg->pose;
     buffer.push_back(stored_msg);
@@ -153,12 +153,8 @@ void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
 double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     // TODO: Should be implemented in a cleaner way
     auto pose_first = gr::FromROS((*(odom_buffer.begin())).pose.pose);
-    std::cout << pose_first << std::endl;
     auto pose_end   = gr::FromROS((*(std::prev(odom_buffer.end()))).pose.pose);
-    std::cout << pose_end << std::endl;
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
-    std::cout<<"CALCULATED POSE DELTA" << std::endl;
-    std::cout<<pose_delta<< std::endl;
     return pose_delta.translation.Norm();
 }
 
@@ -224,8 +220,6 @@ gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_c
 
 std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
   // Create a pair of the timestamps from and to - to be used in lamp to reference nodes
-  std::cout << "Needs to be implemented later"
-            << std::endl; // What needs to be implemented later? @Matteo
   // Get the timestamps of interest from the received pair
   ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
   ros::Time second_timestamp = pose_cov_stamped_pair.first.header.stamp;
