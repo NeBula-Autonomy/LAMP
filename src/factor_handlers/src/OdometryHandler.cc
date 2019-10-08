@@ -28,6 +28,13 @@ OdometryHandler::~OdometryHandler() {
 
 // Initialize -------------------------------------------------------------------------------------------
 
+FactorData GetData(){
+  GtsamPosCov myGtsamPosCov;
+  myGtsamPosCov.b_has_value = true;
+  // Return factors
+}
+
+
 bool OdometryHandler::Initialize(const ros::NodeHandle& n){
     
     name_ = ros::names::append(n.getNamespace(), "OdometryHandler");
@@ -148,8 +155,7 @@ void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
   // Make a pair between the first and last elements in the odom buffer
   auto first_odom_element = odom_buffer.begin();
   auto last_odom_element = std::prev(odom_buffer.end());
-  auto pose_cov_stamped_pair =
-      std::make_pair(*first_odom_element, *last_odom_element);
+  auto pose_cov_stamped_pair = std::make_pair(*first_odom_element, *last_odom_element);
   MakeFactor(pose_cov_stamped_pair);
   // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element
   odom_buffer.clear();
@@ -192,23 +198,13 @@ gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_c
       gtsam::noiseModel::Gaussian::Covariance(covariance);
 
   return noise;
-
-  // If we have incremental then we need to add all covariances in between
-
-  // gtsam::Vector6 biasSigmas;
-  //     for (int i = 0; i < 6; ++i) {
-  //       biasSigmas(i) = delta_pose(i,i);
-  //     }
-  // static const gtsam::SharedNoiseModel& odom_noise =
-  //     gtsam::noiseModel::Gaussian::Sigmas(biasSigmas);
-  // return point_noise;
 }
 
 std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
   // Create a pair of the timestamps from and to - to be used in lamp to reference nodes
   // Get the timestamps of interest from the received pair
   ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
-  ros::Time second_timestamp = pose_cov_stamped_pair.first.header.stamp;
+  ros::Time second_timestamp = pose_cov_stamped_pair.second.header.stamp;
   std::pair<ros::Time, ros::Time> timestamp_pair;
   timestamp_pair.first = first_timestamp;
   timestamp_pair.second = second_timestamp;
@@ -300,21 +296,21 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
 
 // Fusion logic-----------------------------------------------------------------------------------------
 
+// TODO: This method should ideally be called with the specific odometry_buffer we are referring to - Doing with odometry now
 bool OdometryHandler::GetDeltaBetweenTimes(const ros::Time t1,
                                            const ros::Time t2,
                                            gtsam::Pose3& delta) {
   // Public function to access deltas from the odometry handler
-  // TODO - implement
-  
-  // Call GetPoseAtTime(t1);
-
   PoseCovStamped pose_first;
-
-   
-  //= GetPoseAtTime(t1);
-
-
-
+  PoseCovStamped pose_second;
+  if (GetPoseAtTime(t1, lidar_odometry_buffer_, pose_first)==true) {
+    if (GetPoseAtTime(t2, lidar_odometry_buffer_, pose_second)==true) {
+        // We obtained the two poses of interest, we can now call the method to get the delta
+        // TODO - Implement this in geometry_utils package, for now we do it locally 
+        //GetDeltaBetweenPoses(pose_first, pose_second);
+        // Here we have a PoseWithCovarianceStamped msg, why the caller wants a gtsam::Pose3? 
+    }  
+  }   
 }
 
 

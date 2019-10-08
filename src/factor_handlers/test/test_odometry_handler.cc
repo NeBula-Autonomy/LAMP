@@ -50,6 +50,10 @@ protected:
     //   return myOdometryHandler.CheckBufferSize<TYPE>(x);
     // }
 
+    gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
+      return oh.GetTransform(pose_cov_stamped_pair);
+    }
+
     double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
       return oh.CalculatePoseDelta(odom_buffer);
     }   
@@ -64,9 +68,19 @@ protected:
 
 /* TEST Initialize */ 
 TEST_F(OdometryHandlerTest, Initialization) {
-   ros::NodeHandle nh, pnh("~");
+   ros::NodeHan
+   dle nh, pnh("~");
    bool result = oh.Initialize(nh);
    ASSERT_TRUE(result);
+}
+
+/* TEST CheckBufferSize */ 
+TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
+  std::vector<PoseCovStamped> myBuffer;
+  PoseCovStamped my_msg;
+  myBuffer.push_back(my_msg);
+  int size = CheckBufferSize(myBuffer);
+  EXPECT_EQ(size, 1);
 }
 
 /* TEST InsertMsgInBuffer */
@@ -79,15 +93,6 @@ TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
     bool result = InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, myBuffer);
    // Check result is correct
    ASSERT_TRUE(result);
-}
-
-/* TEST CheckBufferSize - TODO: Not passing the test*/ 
-TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
-  std::vector<PoseCovStamped> myBuffer;
-  PoseCovStamped my_msg;
-  myBuffer.push_back(my_msg);
-  int size = CheckBufferSize(myBuffer);
-  EXPECT_EQ(size, 1);
 }
 
 /* TEST CalculatePoseDelta*/
@@ -122,7 +127,35 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
   EXPECT_EQ(delta, 1);
 }
 
+// Getters ------------------------------------------------------------
+
 // GetTransform function unit test is done, will be pasted here later, Nobuhiro
+TEST_F (OdometryHandlerTest, TestGetTransform) {
+  PoseCovStampedPair pose_cov_stamped_pair;
+  geometry_msgs::Pose pose1;
+  pose1.position.x = 0;
+  pose1.position.y = 0;
+  pose1.position.z = 0;
+  pose1.orientation.x = 0;
+  pose1.orientation.y = 0;
+  pose1.orientation.z = 0;
+  pose1.orientation.w = 1;
+  geometry_msgs::Pose pose2;
+  pose2.position.x = 1;
+  pose2.position.y = 0;
+  pose2.position.z = 0;
+  pose2.orientation.x = 0;
+  pose2.orientation.y = 0;
+  pose2.orientation.z = 0;
+  pose2.orientation.w = 1;
+  pose_cov_stamped_pair.first.pose.pose = pose1;
+  pose_cov_stamped_pair.second.pose.pose = pose2;
+  gtsam::Pose3 transform_actual = GetTransform(pose_cov_stamped_pair);
+  gtsam::Point3 position = gtsam::Point3(1,0,0);
+  gtsam::Rot3 rotation = gtsam::Rot3(1,0,0,0,1,0,0,0,1);
+  gtsam::Pose3 transform_expected = gtsam::Pose3(rotation, position);
+  ASSERT_TRUE(transform_actual.equals(transform_expected));
+}
 
 // Nobuhiro is working on GetCovariance function unit test
 
@@ -134,6 +167,49 @@ TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
 
 // Test we don't pass ----------------------------------------------------------------
 
+// Initialize: Done
+
+// LoadParameters
+
+// RegisterCallbacks
+
+// LidarOdometryCallback
+
+// VisualOdometryCallback
+
+// WheelOdometryCallback
+
+// PointCloudCallback
+
+// CheckOdometryBuffer
+
+// CalculatePoseDelta: Done (Nobuhiro)
+
+// PrepareFactor: (Nobuhiro)
+
+// MakeFactor: (Nobuhiro)
+
+// GetTransform: Done (Nobuhiro)
+
+// GetCovariance: Working (Nobuhiro)
+
+// GetTimeStamps: Working (Nobuhiro)
+
+// GetKeyedScanAtTime
+
+// ToGtsam
+
+// GetDeltaBetweenTimes
+
+// GetDeltaBetweenPoses
+
+// GetPoseAtTime
+
+// GetPosesAtTimes
+
+// InserMsgInBuffer: Done
+
+// CheckBufferSize: Done (Kamak)
 
 
 int main(int argc, char** argv) {

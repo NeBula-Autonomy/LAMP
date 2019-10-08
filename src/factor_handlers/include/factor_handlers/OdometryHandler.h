@@ -26,7 +26,17 @@ typedef std::vector<PoseCovStamped> OdomPoseBuffer;
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
+typedef struct {
+  bool b_has_value;
+  gtsam::Pose3 pose; 
+  gtsam::SharedNoiseModel covariance; 
+} GtsamPosCov;
 
+typedef struct  {
+  GtsamPosCov lidar_odom; 
+  GtsamPosCov visual_odom; 
+  GtsamPosCov wheel_odom;
+} GtsamOdom;
 
 // Class Definition 
 class OdometryHandler : public LampDataHandlerBase{
@@ -47,9 +57,6 @@ class OdometryHandler : public LampDataHandlerBase{
         bool Initialize (const ros::NodeHandle& n);
         bool LoadParameters(const ros::NodeHandle& n);
         bool RegisterCallbacks(const ros::NodeHandle& n);
-
-        // LAMP Interface
-        // FactorData GetData();
 
         // TODO: This function should be impletented as a template function in the base class
         // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
