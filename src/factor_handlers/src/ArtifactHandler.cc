@@ -19,6 +19,11 @@
  * Tests                   - Test needed.
  * covariances             - Make Covariance SharedNoiseModel 
  */
+
+// TODO: Does global artifact position needs to be there
+// TODO: Does the publish_all artifact needs to be there
+// TODO: Does the distal and calibration_left and right needs to be in artifact
+// TODO: Does after getting the factor the 
  
 
 // Constructor

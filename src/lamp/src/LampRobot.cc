@@ -267,7 +267,7 @@ bool LampRobot::CheckHandlers() {
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
-  // ProcessArtifactData(artifact_handler_.GetData());
+  ProcessArtifactData(artifact_handler_.GetData());
   // ProcessAprilData(april_handler_.GetData());
 
   // TODO - determine what a true and false return means here
@@ -323,13 +323,12 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   \date 01 Oct 2019
 */
 void LampRobot::UpdateArtifactPositions(){
-
-  //Get new positions of artifacts from the pose-graph 
+  //Get new positions of artifacts from the pose-graph for artifact_key 
   
   // Update global pose just for what has changed
-  // artifact_handler_.UpdateArtifactPositions(keyed_poses_global);
+  // artifact_handler_.UpdateGlobalPose(artifact_key, global_pose);
 
-  // artifact_handler_.PublishArtifacts();
+  // artifact_handler_.PublishArtifacts(artifact_key, global_pose);
 }
 
 //-------------------------------------------------------------------
@@ -432,18 +431,42 @@ bool LampRobot::ProcessArtifactData(FactorData data){
   // Check if there are new factors 
   if (!data.b_has_data) {
     return false;
-  }  
+  }
 
   // TODO - fill out this function 
+  // Necessary variables
+  Pose3 transform;
+  gtsam::SharedNoiseModel covariance;
+  std::pair<ros::Time, ros::Time> times;
+  gtsam::Key pose_key;
+  gtsam::Key cur_artifact_key;
 
   // process data for each new factor
   int num_factors = data.transforms.size();
 
   for (int i = 0; i < num_factors; i++) {
+    // Get the transforms
+    transform = data.transforms[i];
+    // Get the covariances
+    covariance = data.covariances[i];
+    // Get the time
+    times = data.time_stamps[i];
+    // Get the key where the artifact loop closure has to be added    
+    pose_key = GetKeyAtTime(times.first);
+    // Get the artifact key
+    cur_artifact_key = data.artifact_key[i];
+
+    // TODO: I suppose the distal and calibration part can be left out.
+    // add to pose graph 
+    bool result;
 
     // create the factor
+    // Would need a AddFactor function as this would be used by many handlers
+    // result = AddFactor(pose_key, cur_artifact_key, transform, is_manual_loop_closure,
+    //               artifact_rot_precision_, artifact_trans_precision_);
 
     // add factor to buffer to send to pgo
+
   }
 
 }
