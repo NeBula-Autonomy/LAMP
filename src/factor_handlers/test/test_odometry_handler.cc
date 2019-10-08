@@ -77,6 +77,16 @@ TEST_F(OdometryHandlerTest, CheckBufferSize) {
 
 
 
+TEST_F(OdometryHandlerTest, CheckBufferSize) {
+   std::vector<PoseCovStamped> myBuffer;
+   PoseCovStamped my_msg;
+   myBuffer.push_back(my_msg);
+   int size = CheckBufferSize(myBuffer);
+   EXPECT_EQ(size, 1);
+}
+
+
+
 /*
 TEST CheckBufferSize method 
   Create a buffer 

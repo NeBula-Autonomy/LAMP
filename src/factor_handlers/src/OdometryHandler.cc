@@ -134,7 +134,6 @@ bool OdometryHandler::InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::v
     return true;
 }
 
-
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
       double translation = CalculatePoseDelta(odom_buffer); 
