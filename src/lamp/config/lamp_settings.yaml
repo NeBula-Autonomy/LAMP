@@ -1,0 +1,6 @@
+#######################################
+# Higher level settings for LAMP for development purposes
+#######################################
+
+# Use fixed covariances, rather than computed
+b_use_fixed_covariances: true

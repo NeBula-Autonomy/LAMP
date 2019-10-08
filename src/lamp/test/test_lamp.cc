@@ -15,6 +15,8 @@ class TestLampRobot : public ::testing::Test {
              "lamp)/config/precision_parameters.yaml");
       system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
       system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
+      system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
+      system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
       system("rosparam load $(rospack find "
              "point_cloud_filter)/config/parameters.yaml");
@@ -34,6 +36,9 @@ class TestLampRobot : public ::testing::Test {
     int GetValuesSize() {return lr.values_.size();}
     gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {return lr.GetKeyAtTime(stamp);}
     pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg() {return lr.ConvertPoseGraphToMsg();}
+    gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
+      return lr.SetFixedNoiseModels(type);
+    }
     void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, int type, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance) {
       lr.TrackEdges(key_from, key_to, type, pose, covariance);
     }
@@ -142,7 +147,14 @@ TEST_F(TestLampRobot, SetFactorPrecisions) {
 
   EXPECT_TRUE(SetFactorPrecisions());
 }
-  
+
+TEST_F(TestLampRobot, Initialization) {
+  ros::NodeHandle nh, pnh("~");
+
+  bool result = lr.Initialize(nh);
+
+  EXPECT_TRUE(result);
+}
 
 TEST_F(TestLampRobot, GetKeyAtTime) {
   ros::Time::init();
@@ -321,17 +333,65 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   EXPECT_NEAR(0.0, n.pose.orientation.z, tolerance_);
 }
 
+// TODO - work out how to pass around SharedNoiseModels
+// TEST_F(TestLampRobot, TestSetFixedCovariancesOdom){
 
+//   double attitude_sigma = 0.1;
+//   double position_sigma = 0.2;
 
+//   ros::param::get("attitude_sigma",attitude_sigma);
+//   ros::param::get("position_sigma",position_sigma);
+//   // lr.attitude_sigma_ = attitude_sigma;
+//   // lr.position_sigma_ = position_sigma;
 
-TEST_F(TestLampRobot, Initialization) {
-  ros::NodeHandle nh, pnh("~");
+//   // Set the paramters
+//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("odom");
 
-  bool result = lr.Initialize(nh);
-  
-  EXPECT_TRUE(result);
-}
+//   EXPECT_NEAR(noise.sigmas()[0], attitude_sigma, tolerance_)
+//   EXPECT_NEAR(noise.sigmas()[3], position_sigma, tolerance_)
 
+// }
+
+// TEST_F(TestLampRobot, TestSetFixedCovariancesLaserLoopClosure){
+
+//   double laser_lc_rot_sigma_ = 0.1;
+//   double laser_lc_trans_sigma_ = 0.2;
+
+//   lr.laser_lc_rot_sigma_ = laser_lc_rot_sigma_;
+//   lr.laser_lc_trans_sigma_ = laser_lc_trans_sigma_;
+
+//   // Set the paramters
+//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("laser_loop_closure");
+
+//   EXPECT_NEAR(noise.sigmas()[0], laser_lc_rot_sigma_, tolerance_)
+//   EXPECT_NEAR(noise.sigmas()[3], laser_lc_trans_sigma_, tolerance_)
+
+// }
+
+// TEST_F(TestLampRobot, TestSetFixedCovariancesManualLoopClosure){
+
+//   double manual_lc_rot_precision_ = 0.1;
+//   double manual_lc_trans_precision_ = 0.2;
+
+//   lr.laser_lc_rot_sigma_ = manual_lc_rot_precision_;
+//   lr.laser_lc_trans_sigma_ = manual_lc_trans_precision_;
+
+//   // Set the paramters
+//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("manual_loop_closure");
+
+//   EXPECT_NEAR(noise.sigmas()[0], manual_lc_rot_precision_, tolerance_)
+//   EXPECT_NEAR(noise.sigmas()[3], manual_lc_trans_precision_, tolerance_)
+
+// }
+
+// TEST_F(TestLampRobot, TestSetFixedCovariancesError){
+
+//   // Set the paramters
+//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("something_wrong");
+
+//   // TODO - look at throwing error
+
+// }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

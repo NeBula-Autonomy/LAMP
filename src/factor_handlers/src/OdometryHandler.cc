@@ -320,6 +320,7 @@ bool OdometryHandler::GetDeltaBetweenTimes(const ros::Time t1,
                                            const ros::Time t2,
                                            gtsam::Pose3& delta) {
   // Public function to access deltas from the odometry handler
+  // TODO - implement
 }
 
 bool OdometryHandler::GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) {
