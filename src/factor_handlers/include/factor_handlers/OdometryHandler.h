@@ -36,6 +36,7 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Typedefs
         typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
+        typedef nav_msgs::Odometry Odometry;
         typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
         typedef std::vector<PoseCovStamped> OdomPoseBuffer;
         typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
@@ -55,25 +56,22 @@ class OdometryHandler : public LampDataHandlerBase{
         bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg);
 
       protected:
+
         // Odometry Subscribers 
         ros::Subscriber lidar_odom_sub_;
         ros::Subscriber visual_odom_sub_;
         ros::Subscriber wheel_odom_sub_;
 
-        // Pointclouud Subscribers
+        // Pointcloud Subscribers
         ros::Subscriber point_cloud_sub_;
 
         // Odometry Callbacks 
-        void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg); 
-        void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
-        void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
+        void LidarOdometryCallback(const Odometry::ConstPtr& msg); 
+        void VisualOdometryCallback(const Odometry::ConstPtr& msg);
+        void WheelOdometryCallback(const Odometry::ConstPtr& msg);
 
         // Pointcloud Callback 
         void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
-
-        // TODO: This function should be defined in the base class
-        template <typename T1, typename T2>
-        bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer);   
 
         // Odometry Storages 
         OdomPoseBuffer lidar_odometry_buffer_; 
@@ -84,19 +82,26 @@ class OdometryHandler : public LampDataHandlerBase{
         std::map<double, PointCloud> point_cloud_buffer_;
 
         // Protected methods
+        // TODO: This function should be defined in the base class
+        template <typename T1, typename T2>
+        bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer);   
+        template <typename T>
+        int CheckBufferSize(const std::vector<T>& x) {
+            std::cout << x.size() << std::endl;
+            return x.size();
+        }
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
-        template <typename TYPE>
-        int CheckBufferSize(const std::vector<TYPE>& x);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
         void PrepareFactor(OdomPoseBuffer& odom_buffer);        
         void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
+        
 
         // Getters 
         gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair);        
         gtsam::SharedNoiseModel GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
         std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
 
-        // Conversion utilities 
+        // Converters
         gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const; // TODO: This function should be defined in the base class
  
         // LAMP Interface
@@ -109,6 +114,13 @@ class OdometryHandler : public LampDataHandlerBase{
         double keyed_scan_time_diff_limit_;
         double pc_buffer_size_limit_;
         double translation_threshold_;
+
+        // Fusion logic 
+        double ts_threshold_; 
+        bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output); 
+        bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses);
+        PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
+        // TODO: Unify GetDeltaBetweenPoses and CalculatePoseDelta into only one method
 
       private:
 };
