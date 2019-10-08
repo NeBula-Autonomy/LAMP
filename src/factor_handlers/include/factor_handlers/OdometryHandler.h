@@ -86,7 +86,10 @@ class OdometryHandler : public LampDataHandlerBase{
         template <typename T1, typename T2>
         bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer);   
         template <typename T>
-        int CheckBufferSize(const std::vector<T>& x);
+        int CheckBufferSize(const std::vector<T>& x) {
+            std::cout << x.size() << std::endl;
+            return x.size();
+        }
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
         void PrepareFactor(OdomPoseBuffer& odom_buffer);        
