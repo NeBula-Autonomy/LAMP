@@ -132,7 +132,7 @@ class LampBase {
   virtual void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
 
   // Tracking info for publishing messages
-  void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
+  void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, int type, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
   void TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
 
   // Booleans
