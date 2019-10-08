@@ -57,6 +57,7 @@ class LampRobot : public LampBase {
     bool SetInitialKey();
 
     void UpdateArtifactPositions();
+    void UpdateAndPublishOdom();
 
     // Initial key
     gtsam::Symbol initial_key_;
@@ -70,6 +71,8 @@ class LampRobot : public LampBase {
     PointCloudFilter filter_;
     PointCloudMapper mapper_;
 
+    // Publishers
+    ros::Publisher pose_pub_;
 
   private:
     // Overwrite base classs functions where needed

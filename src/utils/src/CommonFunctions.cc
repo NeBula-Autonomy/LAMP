@@ -166,4 +166,28 @@ void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
   }
 }
 
+geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose) {
+  // Convert with existing tools - TODO - find a better way to do this
+  geometry_msgs::Pose msg = gr::ToRosPose(ToGu(pose));
+
+  return msg;
+}
+
+// Convert gtsam data types to a ros message
+geometry_msgs::PoseWithCovariance GtsamToRosMsg(const gtsam::Pose3& pose,
+                                                gtsam::Matrix66& covariance) {
+  geometry_msgs::PoseWithCovariance msg;
+
+  // Convert with existing tools - TODO - find a better way to do this
+  msg.pose = gr::ToRosPose(ToGu(pose));
+
+  for (size_t i = 0; i < msg.covariance.size(); i++) {
+    size_t row = static_cast<size_t>(i / 6);
+    size_t col = i % 6;
+    msg.covariance[i] = covariance(row, col);
+  }
+
+  return msg;
+}
+
 }  // namespace utils

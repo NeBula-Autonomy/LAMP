@@ -122,6 +122,10 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
   // TODO-maybe - make the copy more efficient
 }
 
+//------------------------------------------------------------------------------------------
+// Conversion and publish pose graph functions
+//------------------------------------------------------------------------------------------
+
 // Convert the internally stored pose_graph to a pose graph message
 pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
   // Uses internally stored info.
@@ -188,6 +192,8 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
       node.ID = "Artifact"; // TEMPORARY
     }
 
+    // TODO - fill covariance
+
     // Add to the vector of nodes
     nodes.push_back(node);
   }
@@ -220,8 +226,9 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   return true;
 }
 
-//-------------------------------------- 
-// Tracking 
+//------------------------------------------------------------------------------------------
+// Tracking
+//------------------------------------------------------------------------------------------
 
 void LampBase::TrackEdges(gtsam::Symbol key_from, 
                           gtsam::Symbol key_to, 
