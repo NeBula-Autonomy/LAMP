@@ -35,17 +35,17 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS})
 add_library(${PROJECT_NAME} src/CommonFunctions.cc)
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-  gtsam
-)
+# target_link_libraries(${PROJECT_NAME}
+#   ${catkin_LIBRARIES}
+#   gtsam
+# )
 
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
-)
+# install(DIRECTORY include/${PROJECT_NAME}/
+#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+#   FILES_MATCHING PATTERN "*.h"
+# )
 
-install(DIRECTORY cmake/
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  FILES_MATCHING PATTERN "*.cmake"
-)
+# install(DIRECTORY cmake/
+#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+#   FILES_MATCHING PATTERN "*.cmake"
+# )

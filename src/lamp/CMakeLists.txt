@@ -44,6 +44,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   eigen_conversions
   pose_graph_merger
+  lamp_pgo
 )
 
 
@@ -69,6 +70,7 @@ catkin_package(
     geometry_msgs
     nav_msgs
     pose_graph_merger
+    lamp_pgo
   DEPENDS
     Boost
 )
@@ -111,15 +113,16 @@ target_link_libraries(${PROJECT_NAME}_node
 #  gtsam
 #)
 
-# if (CATKIN_ENABLE_TESTING)
-#   add_subdirectory(test)
-# endif()
 
 
 #############
 ## Testing ##
 #############
+if (CATKIN_ENABLE_TESTING)
+  # add_subdirectory(test)
+  ## Add gtest based cpp test target and link libraries
+  catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cc)
+  target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
+endif()
 
-## Add gtest based cpp test target and link libraries
-catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cc)
-target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
+
