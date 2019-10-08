@@ -98,68 +98,26 @@ Eigen::Vector3d ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg
   // Get artifact position 
   Eigen::Vector3d artifact_position;
   artifact_position << msg.point.point.x, msg.point.point.y, msg.point.point.z;
-
-  Eigen::Vector3d R_artifact_position; // In robot frame
-
-  // Check if artifact is published in global frame 
-  // And convert to local frame to include in pose graph 
-  if (artifacts_in_global_) { // Already in fixed frame
-    // ---------------------------Should not come here------------------------------
-    // gtsam::Key pose_key = loop_closure_.GetKeyAtTime(msg.point.header.stamp);
-    // // TODO Needs loop closure
-    // geometry_utils::Transform3 global_pose = loop_closure_.GetPoseAtKey(pose_key);
-
-    // // Transform artifact pose from global frame to body frame 
-    // Eigen::Matrix<double, 3, 3> R_global = global_pose.rotation.Eigen();
-    // Eigen::Matrix<double, 3, 1> T_global = global_pose.translation.Eigen();
-    // // std::cout << "Global robot position is: " << T_global[0] << ", " << T_global[1] << ", " << T_global[2] << std::endl;
-    // // std::cout << "Global robot rotation is: " << R_global << std::endl;
-    // R_artifact_position = R_global.transpose() * (artifact_position - T_global); // Apply transform
-    // -------------------------------------------------------------------------------
-  } else {
-    R_artifact_position = artifact_position;
-  }
-
-  std::cout << "Artifact position in robot frame is: " << R_artifact_position[0] << ", "
-            << R_artifact_position[1] << ", " << R_artifact_position[2]
+  
+  std::cout << "Artifact position in robot frame is: " << artifact_position[0] << ", "
+            << artifact_position[1] << ", " << artifact_position[2]
             << std::endl;
-  return R_artifact_position;
+  return artifact_position;
 }
 
-/*! \brief  Get artifacts key and if not create one.
- * Returns Artifacts Key
+/*! \brief  Get artifacts ID from artifact key
+ * Returns Artifacts ID
  */
-gtsam::Key ArtifactHandler::GetArtifactKey(const core_msgs::Artifact& msg) {
-  // Should see this later
-  // // Get the artifact id
-  // std::string artifact_id = msg.parent_id; // Note that we are looking at the parent id here
-  
-  // // Artifact key
-  // gtsam::Key cur_artifact_key;
-  // bool b_is_new_artifact = false;
-
-  // // get artifact id / key -----------------------------------------------
-  // // Check if the ID of the object already exists in the object hash
-  // if (use_artifact_loop_closure_ && artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() && 
-  //     msg.label != "cellphone") {
-  //   // Take the ID for that object - no reconciliation in the pose-graph of a cell phone (for now)
-  //   cur_artifact_key = artifact_id2key_hash[artifact_id];
-  //   std::cout << "artifact previously observed, artifact id " << artifact_id 
-  //             << " with key in pose graph " 
-  //             << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
-  // } else {
-  //   // New artifact - increment the id counters
-  //   b_is_new_artifact = true;
-  //   cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
-  //   ++largest_artifact_id_;
-  //   std::cout << "new artifact observed, artifact id " << artifact_id 
-  //             << " with key in pose graph " 
-  //             << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
-  //   // update hash
-  //   artifact_id2key_hash[artifact_id] = cur_artifact_key;
-  // }
-  // return cur_artifact_key;
-  return 0;
+std::string ArtifactHandler::GetArtifactID(gtsam::Key artifact_key) {
+  std::string artifact_id;
+  for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end(); ++it) {
+    if (it->second == artifact_key) {
+      artifact_id = it->first; 
+      return artifact_id;
+    }
+  } 
+  std::cout << "Artifact ID not found for key" << gtsam::DefaultKeyFormatter(artifact_key) << std::endl;
+  return "";
 }
 
 /*! \brief  Callback for Artifacts.
@@ -242,10 +200,13 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
 
   // Extract covariance information
   // Added the position covariance to lower right block of Mat66
-  Mat66 cov;
+  gtsam::Matrix33 cov;
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
       cov(i+3, j+3) = msg.covariance[3*i+j];
+
+  gtsam::SharedNoiseModel noise =
+      gtsam::noiseModel::Gaussian::Covariance(cov);
 
   // Fill artifact_data_
   // Make new data true
@@ -255,7 +216,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Append transform
   artifact_data_.transforms.push_back(R_pose_A);
   // Append covariance
-  // artifact_data_.covariances.push_back(cov);
+  artifact_data_.covariances.push_back(noise);
   // Append std::pair<ros::Time, ros::Time(0.0)> for artifact
   artifact_data_.time_stamps.push_back(std::make_pair(msg.header.stamp, ros::Time(0.0)));
   // Append the artifact key
@@ -503,3 +464,10 @@ void ArtifactHandler::PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 glo
     usleep(10000);
   }
 }
+
+
+/**
+ * TODO:
+ * 
+ * 
+ */ 

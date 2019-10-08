@@ -90,10 +90,10 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg);
 
-    /*! \brief  Get artifacts key and if not create one.
-     * Returns Artifacts key
+    /*! \brief  Get artifacts ID from artifact key
+     * Returns Artifacts ID
      */
-    gtsam::Key GetArtifactKey(const core_msgs::Artifact& msg);
+    std::string GetArtifactID(gtsam::Key artifact_key);
 
     /*! \brief  Callback for Artifacts.
      * Returns  Void
