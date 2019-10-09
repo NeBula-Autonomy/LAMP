@@ -87,7 +87,6 @@ FactorData OdometryHandler::GetData(){
 
     auto fused_odom = FuseMultipleOdometry(gtsam_odom);
 
-    // TODO: The sequence to check the delta of fused_odom
     if (CalculatePoseDelta(fused_odom) > 1.0) {
       factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
       factors_.transforms.push_back(fused_odom.pose);
@@ -95,6 +94,7 @@ FactorData OdometryHandler::GetData(){
       factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
       // Reset the first time query for the next odometry handling
       query_timestamp_first_ = query_timestamp_second_;
+      ClearOdometryBuffers();
     }
     factors_.b_has_data = false;
     return factors_;
@@ -132,9 +132,14 @@ GtsamPosCov OdometryHandler::FuseMultipleOdometry(GtsamOdom& gtsam_odom) {
   // TODO: For the first implementation, pure lidar-based odometry is used.
   output_odom = lidar_odom;
 
-  // TODO: Reset the odometry buffers
-
   return output_odom;
+}
+
+void OdometryHandler::ClearOdometryBuffers() {
+  // TODO: The last few elements should be kept in buffer just in case
+  lidar_odometry_buffer_.clear();
+  visual_odometry_buffer_.clear();
+  wheel_odometry_buffer_.clear();
 }
 
 bool OdometryHandler::Initialize(const ros::NodeHandle& n){
