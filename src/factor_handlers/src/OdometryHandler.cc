@@ -77,15 +77,15 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
   // Point Cloud callback
   point_cloud_sub_ = nl.subscribe(
-      "velodyne_points", 10, &OdometryHandler::PointCloudCallback, this);
+      "pcld", 10, &OdometryHandler::PointCloudCallback, this);
 
   return true;
 }
 
 // Callbacks --------------------------------------------------------------------------------------------
-
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
+    
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
         CheckOdometryBuffer(lidar_odometry_buffer_);
     }
@@ -177,6 +177,10 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
     factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
     factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
+
+    ROS_INFO_STREAM("Made a new factor (" << pose_cov_stamped_pair.first.pose.pose.position.x << ", "
+                                          << pose_cov_stamped_pair.first.pose.pose.position.y << ", "
+                                          << pose_cov_stamped_pair.first.pose.pose.position.z << ")");
 }
 
 // Getters -----------------------------------------------------------------------------------------------
