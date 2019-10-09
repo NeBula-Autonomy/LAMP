@@ -197,9 +197,9 @@ TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
 
 // CalculatePoseDelta: Done (Nobuhiro)
 
-// PrepareFactor
+// PrepareFactor: (Nobuhiro)
 
-// MakeFactor
+// MakeFactor: (Nobuhiro)
 
 // GetTransform: Done (Nobuhiro)
 
@@ -207,17 +207,17 @@ TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
 
 // GetTimeStamps: Done (Nobuhiro)
 
-// GetKeyedScanAtTime
+// GetKeyedScanAtTime:
 
-// ToGtsam
+// ToGtsam: (Kamak)
 
-// GetDeltaBetweenTimes
+// GetDeltaBetweenTimes: (Kamak)
 
-// GetDeltaBetweenPoses
+// GetDeltaBetweenPoses: (Kamak)
 
-// GetPoseAtTime
+// GetPoseAtTime: (Kamak)
 
-// GetPosesAtTimes
+// GetPosesAtTimes: (Kamak)
 
 // InsertMsgInBuffer: Done
 

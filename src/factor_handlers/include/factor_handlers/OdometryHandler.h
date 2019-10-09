@@ -66,6 +66,8 @@ class OdometryHandler : public LampDataHandlerBase{
                                   const ros::Time t2,
                                   gtsam::Pose3& delta);
 
+        FactorData GetData();
+
       protected:
 
         // Odometry Subscribers 
@@ -94,6 +96,7 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Protected methods
         // TODO: This function should be defined in the base class
+        
  
         template <typename T>
         int CheckBufferSize(const std::vector<T>& x) {
@@ -141,6 +144,10 @@ class OdometryHandler : public LampDataHandlerBase{
         double translation_threshold_;
 
         // Fusion logic 
+        ros::Time query_timestamp_first_; 
+        ros::Time query_timestamp_second_; 
+       
+
         double ts_threshold_; 
         bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output); 
         bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses);

@@ -19,7 +19,9 @@ OdometryHandler::OdometryHandler()
   : keyed_scan_time_diff_limit_(0.2),
     pc_buffer_size_limit_(10),
     translation_threshold_(1.0),
-    ts_threshold_(0.1) {
+    ts_threshold_(0.1), 
+    query_timestamp_first_(0), 
+    query_timestamp_second_(0) {
   ROS_INFO("Odometry Handler Class Constructor");
 }
 
@@ -29,9 +31,26 @@ OdometryHandler::~OdometryHandler() {
 
 // Initialize -------------------------------------------------------------------------------------------
 
-FactorData GetData(){
-  // TODO: Lamp should as 
-  // Return factors
+FactorData OdometryHandler::GetData(){  
+
+  if (query_timestamp_first_.toSec()==0){
+    // If we never received a query before, store curren time as query_timestamp_first
+    query_timestamp_first_ = ros::Time::now();
+    // If we stored the first query timestamp, we're sure we don't have any query_timestamp_second_ so we return empty factors
+    factors_.b_has_data = false; 
+    ROS_WARN("OdometryHandler - Queried for the first time, return empty factors");
+    return factors_;
+  }
+
+  else {
+    // We already stored query_timestamp_first
+    query_timestamp_second_ = ros::Time::now();
+    ROS_INFO("Odometry Handler - Perform Fusion Logic");
+    // TODO: Call Fusion Logic 
+    factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold  
+    return factors_;
+  }
+
 }
 
 
