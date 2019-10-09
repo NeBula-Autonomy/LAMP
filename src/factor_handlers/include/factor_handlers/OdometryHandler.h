@@ -44,7 +44,6 @@ typedef struct  {
 class OdometryHandler : public LampDataHandlerBase{
 
 
-
     friend class OdometryHandlerTest;
     
 
@@ -64,9 +63,7 @@ class OdometryHandler : public LampDataHandlerBase{
         // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
         bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg);
 
-        bool GetDeltaBetweenTimes(const ros::Time t1,
-                                  const ros::Time t2,
-                                  gtsam::Pose3& delta);
+        bool GetDeltaBetweenTimes(const ros::Time t1, const ros::Time t2, gtsam::Pose3& output);
 
         // Interface functions
         FactorData GetData();
@@ -133,6 +130,7 @@ class OdometryHandler : public LampDataHandlerBase{
         gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair);        
         gtsam::SharedNoiseModel GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
         std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
+        ros::Time GetClosestLidarTime(ros::Time time);
 
         // Converters
         gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const; // TODO: This function should be defined in the base class
@@ -163,6 +161,8 @@ class OdometryHandler : public LampDataHandlerBase{
         // void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
         // void PrepareFactor(OdomPoseBuffer& odom_buffer);        
         // void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
+
+        GtsamPosCov fused_odom_;
 
       private:
 };
