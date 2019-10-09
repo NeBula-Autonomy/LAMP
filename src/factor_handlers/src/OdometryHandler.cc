@@ -69,20 +69,30 @@ FactorData OdometryHandler::GetData(){
           gtsam::SharedNoiseModel delta_cov_visual = GetCovariance(visual_poses);
           gtsam::SharedNoiseModel delta_cov_wheel = GetCovariance(wheel_poses);
           // Create three istances of GtsamPosCov and fill it with the values of interest    
-          GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;   
-          measurement_lidar.pose = delta_lidar;
-          measurement_visual.pose = delta_visual;
-          measurement_wheel.pose = delta_wheel;
+          GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;
+            
         }
       }  
     }
-    
+
     factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
 
     // TODO: Call Fusion Logic 
     factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold  
     return factors_;
 
+  }
+}
+
+void OdometryHandler::InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement) {
+  PoseCovStampedPair poses;
+  if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, odom_buffer, poses)) {
+    measurement.b_has_value = true;
+    measurement.pose = GetTransform(poses);
+    measurement.covariance = GetCovariance(poses);
+  }
+  else {
+    measurement.b_has_value = false;
   }
 }
 
