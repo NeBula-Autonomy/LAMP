@@ -269,13 +269,13 @@ bool LampRobot::CheckHandlers() {
 
   bool b_have_odom_factors;
   // bool b_have_loop_closure;
-  // bool b_have_new_artifacts;
+  bool b_have_new_artifacts;
 
   // Check the odom for adding new poses
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
-  ProcessArtifactData(artifact_handler_.GetData());
+  b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
   // ProcessAprilData(april_handler_.GetData());
 
   // TODO - determine what a true and false return means here
@@ -496,13 +496,20 @@ bool LampRobot::ProcessArtifactData(FactorData data){
   gtsam::Key pose_key;
   gtsam::Key cur_artifact_key;
 
-  // process data for each new factor
+  // New Factors to be added
+  NonlinearFactorGraph new_factors;
+
+  // New Values to be added
+  Values new_values;
+
+  // Get number of new measurements
   int num_factors = data.transforms.size();
 
+  // process data for each new factor
   for (int i = 0; i < num_factors; i++) {
     // Get the transforms
     transform = data.transforms[i];
-    // Get the covariances
+    // Get the covariances (Should be in relative frame as well)
     covariance = data.covariances[i];
     // Get the time
     times = data.time_stamps[i];
@@ -515,15 +522,27 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     bool result;
 
     // create and add the factor
-    // Would need a AddFactor function as this would be used by many handlers
-    // result = AddFactor(pose_key, cur_artifact_key, transform, is_manual_loop_closure,
-    //               artifact_rot_precision_, artifact_trans_precision_);
+    new_factors.add(BetweenFactor<Pose3>(pose_key, cur_artifact_key, transform, covariance));
 
-    // add factor to buffer to send to pgo
+    // Compute the value
+    Pose3 last_pose = values_.at<Pose3>(pose_key);
+    new_values.insert(cur_artifact_key, last_pose.compose(transform));
 
+    // TODO: Not inserting in keyed_stamps as both nodes are already present
+    // as this is a loop closure.
+
+    // Track the edges that have been added
+    int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+    TrackEdges(pose_key, cur_artifact_key, type, transform, covariance);
   }
+  // add factor to buffer to send to pgo
+  nfg_.add(new_factors);
+  values_.insert(new_values);
 
   // TODO - use the HandleRelativePoseMeasurement function below
+
+  return true;
+
 }
 
 // Function gets a relative pose and time, and returns the global pose and the
