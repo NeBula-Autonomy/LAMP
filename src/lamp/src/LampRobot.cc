@@ -133,7 +133,7 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
 
   update_timer_ = nl.createTimer(update_rate_, &LampRobot::ProcessTimerCallback, this);
     
-  back_end_pose_graph_sub_ = nl.subscribe("back_end_pose_graph", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
+  back_end_pose_graph_sub_ = nl.subscribe("optimizer_pg", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
 
   return true; 
 }
@@ -324,11 +324,18 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
 
     b_has_new_factor_ = false;
+
+    // Optimize every 10 factors
+    static int x = 0;
+    x++;
+    if (x % 10 == 0) {
+      b_run_optimization_ = true;
+    }
   }
 
   // Start optimize, if needed
   if (b_run_optimization_) {
-      ROS_INFO_STREAM("Publishing pose graph for optimisation");
+      ROS_INFO_STREAM("Publishing pose graph to optimizer");
       PublishPoseGraphForOptimizer();
 
       b_run_optimization_ = false; 

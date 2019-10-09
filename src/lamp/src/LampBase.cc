@@ -119,6 +119,8 @@ bool LampBase::IsTimeWithinThreshold(double time, const ros::Time& target) const
 }
 
 void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg) {
+
+  ROS_INFO_STREAM("Received new pose graph from optimizer - merging now --------------------------------------------------");
   
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
