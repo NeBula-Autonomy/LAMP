@@ -88,6 +88,7 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 // Callbacks --------------------------------------------------------------------------------------------
+
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
     
@@ -124,78 +125,17 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
 
 // Interface functions --------------------------------------------------------------------------------------------
 
-FactorData OdometryHandler::GetData(){  
-  if (query_timestamp_first_.toSec()==0){
-    // If we never received a query before, store current time as query_timestamp_first
-    query_timestamp_first_ = ros::Time::now();
-    // If we stored the first query timestamp, we're sure we don't have any query_timestamp_second_ so we return empty factors
-    factors_.b_has_data = false; 
-    ROS_WARN("OdometryHandler - Queried for the first time, return empty factors");
-    return factors_;
-  }
-  else {
-    // We already stored query_timestamp_first
-    // query_timestamp_second_ = ros::Time::now();
-    ROS_INFO("Odometry Handler - Perform Fusion Logic");
-    // Given the two timestamp of interest, we have a temporal window for potential fusion of data 
-    // auto fused_odom = FuseMultipleOdometry();
-    // if (CalculatePoseDelta(fused_odom) > 1.0) {
-    //   factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
-    //   factors_.transforms.push_back(fused_odom.pose);
-    //   factors_.covariances.push_back(fused_odom.covariance);
-    //   factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
-    //   // Reset the first time query for the next odometry handling
-    //   query_timestamp_first_ = query_timestamp_second_;
-    //   ClearOdometryBuffers();
-    // }
-    if (CalculatePoseDelta(fused_odom_) > 1.0) {
-      // TODO: The time queries need to be changed
-      ros::Time t1 = query_timestamp_first_;
-      ros::Time t2 = GetClosestLidarTime(ros::Time::now());
-      // fused_odom_ = GetDeltaBetweenTimes(t1, t2);
-      // factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
-      // factors_.transforms.push_back(fused_odom_.pose);
-      // factors_.covariances.push_back(fused_odom_.covariance);
-      // factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
-    }
-    else {
-      factors_.b_has_data = false;
-    }
-    return factors_;
-  }
-}
-
 void OdometryHandler::GetOdomDelta(ros::Time t_now, GtsamPosCov& delta_pose) {
-  ros::Time t1 = query_timestamp_first_;
-  ros::Time t2 = t_now;
-  // fused_odom_ = GetDeltaBetweenTimes(t1, t2);
-  // delta_pose = fused_odom_;
+  query_timestamp_second_ = t_now;
+  fused_odom_ = GetFusedOdomDeltaBetweenTimes();
+  delta_pose = fused_odom_;
 }
 
-ros::Time OdometryHandler::GetClosestLidarTime(ros::Time time) {
-  ros::Time closest_time;
-  // TODO: Check lidar_buffer
-  return closest_time;
-}
-
-
-void OdometryHandler::InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer, GtsamPosCov& pure_odom) {
-  PoseCovStampedPair poses;
-  if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, odom_buffer, poses)) {
-    pure_odom.b_has_value = true;
-    pure_odom.pose = GetTransform(poses);
-    pure_odom.covariance = GetCovariance(poses);
-  }
-  else {
-    pure_odom.b_has_value = false;
-  }
-}
-
-GtsamPosCov OdometryHandler::FuseMultipleOdometry() {
+GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes() {
   GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
-  InsertGtsamOdometryInfo(lidar_odometry_buffer_, lidar_odom);
-  InsertGtsamOdometryInfo(visual_odometry_buffer_, visual_odom);
-  InsertGtsamOdometryInfo(wheel_odometry_buffer_, wheel_odom);
+  FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom);
+  FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom);
+  FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom);
   if (lidar_odom.b_has_value == true) {
     // 
   }
@@ -208,6 +148,88 @@ GtsamPosCov OdometryHandler::FuseMultipleOdometry() {
   // TODO: For the first implementation, pure lidar-based odometry is used.
   output_odom = lidar_odom;
   return output_odom;
+}
+
+// Receive an odometric buffer, search within this buffer a pair of poses for the given timestamps
+// After finding the relative transformation between the two poses, fill the GtsamPosCov structured variable received as a parameter
+void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& pure_odom) {
+  PoseCovStampedPair poses;
+  if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, odom_buffer, poses)) {
+    pure_odom.b_has_value = true;
+    pure_odom.pose = GetTransform(poses);
+    pure_odom.covariance = GetCovariance(poses);
+  }
+  else {
+    pure_odom.b_has_value = false;
+  }
+}
+
+FactorData OdometryHandler::GetData(){  
+  if (query_timestamp_first_.toSec()==0){
+    // If we never received a query before, store current time as query_timestamp_first
+    query_timestamp_first_ = ros::Time::now();
+    // If we stored the first query timestamp, we're sure we don't have any query_timestamp_second_ so we return empty factors
+    factors_.b_has_data = false; 
+    ROS_WARN("OdometryHandler - Queried for the first time, return empty factors");
+    fused_odom_.pose = gtsam::Pose3(); // TODO: Make sure this is needed at runtime 
+    return factors_;
+  }
+  else {
+    ROS_INFO("Odometry Handler - Perform Fusion Logic");
+    // }
+    if (CalculatePoseDelta(fused_odom_) > 1.0) {
+      // TODO: The time queries need to be changed
+      query_timestamp_second_ = GetClosestLidarTime(ros::Time::now());
+      fused_odom_ = GetFusedOdomDeltaBetweenTimes();
+      factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
+      factors_.transforms.push_back(fused_odom_.pose);
+      factors_.covariances.push_back(fused_odom_.covariance);
+      factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
+      query_timestamp_first_ = query_timestamp_second_;
+      ResetFactorData();
+    }
+    else {
+      factors_.b_has_data = false;
+    }
+    return factors_;
+  }
+}
+
+// TODO: ResetFactors() clear all fields of private class member
+void OdometryHandler::ResetFactorData() {
+  factors_.b_has_data = false;
+  factors_.type = "odom";
+  factors_.transforms.clear();
+  factors_.covariances.clear();
+  factors_.time_stamps.clear();
+  factors_.artifact_key.clear();
+}
+
+/* -------------------------------------------------------------------------------------------------------
+
+External 
+
+    GetData 
+      INPUT: Nothing 
+      OUTPUT: FactorData 
+
+    GetOdomDelta 
+      INPUT: Current ros::Time timestamp and reference to the filled GtsamPosCov
+      OUTPUT: Fill the GtsamPosCov reference to the object received as parameter with the fused information 
+
+Internal 
+
+    GetFusedOdomDeltaBetweenTimes (GetDeltaBetweenTimes)
+      INPUT: two ros::Time timestamps 
+      OUTPUT: GtsamPosCov
+
+----------------------------------------------------------------------------------------------------------*/
+
+ros::Time OdometryHandler::GetClosestLidarTime(ros::Time time) {
+  ros::Time closest_time;
+  
+  // TODO: Check lidar_buffer
+  return closest_time;
 }
 
 void OdometryHandler::ClearOdometryBuffers() {

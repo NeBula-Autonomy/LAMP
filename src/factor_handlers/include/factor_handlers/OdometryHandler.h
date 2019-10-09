@@ -120,11 +120,11 @@ class OdometryHandler : public LampDataHandlerBase{
             return true;
         }
 
-        GtsamPosCov FuseMultipleOdometry();
-        void InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement);
+        void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
         double CalculatePoseDelta(GtsamPosCov gtsam_pos_cov);
         void ClearOdometryBuffers();
+        void ResetFactorData();
         
 
         // Getters 
@@ -153,6 +153,8 @@ class OdometryHandler : public LampDataHandlerBase{
         bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output); 
         bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses);
         PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
+        GtsamPosCov GetFusedOdomDeltaBetweenTimes();
+        
         // TODO: Unify GetDeltaBetweenPoses and CalculatePoseDelta into only one method
 
         // log

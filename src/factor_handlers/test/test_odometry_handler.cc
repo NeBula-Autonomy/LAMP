@@ -81,11 +81,11 @@ protected:
 // Test we pass ----------------------------------------------------------------------
 
 /* TEST Initialize */ 
-TEST_F(OdometryHandlerTest, Initialization) {
-   ros::NodeHandle nh;
-   bool result = oh.Initialize(nh);
-   ASSERT_TRUE(result);
-}
+// TEST_F(OdometryHandlerTest, Initialization) {
+//    ros::NodeHandle nh;
+//    bool result = oh.Initialize(nh);
+//    ASSERT_TRUE(result);
+// }
 
 /* TEST CheckBufferSize */ 
 TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
