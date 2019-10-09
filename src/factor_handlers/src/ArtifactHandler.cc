@@ -120,13 +120,7 @@ std::string ArtifactHandler::GetArtifactID(gtsam::Key artifact_key) {
 void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Subscribe to artifact messages, include in pose graph, publish global position 
   // Artifact information
-  std::cout << "Artifact message received is for id " << msg.id << std::endl;
-  std::cout << "\t Parent id: " << msg.parent_id << std::endl;
-  std::cout << "\t Confidence: " << msg.confidence << std::endl;
-  std::cout << "\t Position:\n[" << msg.point.point.x << ", "
-            << msg.point.point.y << ", " << msg.point.point.z << "]"
-            << std::endl;
-  std::cout << "\t Label: " << msg.label << std::endl;
+  PrintArtifactInputMessage(msg);
 
   // Check for NaNs and reject 
   if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) || std::isnan(msg.point.point.z)){
@@ -167,46 +161,19 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
   }
   // Generate gtsam pose
-  const gtsam::Pose3 R_pose_A 
+  const gtsam::Pose3 relative_pose 
       = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(R_artifact_position[0], 
                                                   R_artifact_position[1],
                                                   R_artifact_position[2]));
 
   // Fill ArtifactInfo hash
-  ArtifactInfo artifactinfo(msg.parent_id);
-  artifactinfo.msg = msg;
+  StoreArtifactInfo(cur_artifact_key, msg);
 
-  // keep track of artifact info: add to hash if not added
-  if (artifact_key2info_hash_.find(cur_artifact_key) == artifact_key2info_hash_.end()) {
-    // ROS_INFO_STREAM("New artifact detected with id" << artifact.id);
-    artifact_key2info_hash_[cur_artifact_key] = artifactinfo;
-  } else {
-    ROS_INFO("Existing artifact detected");
-    artifact_key2info_hash_[cur_artifact_key] = artifactinfo;
-  }
-
-  // Extract covariance information
-  gtsam::Matrix33 cov;
-  for (int i = 0; i < 3; ++i)
-    for (int j = 0; j < 3; ++j)
-      cov(i+3, j+3) = msg.covariance[3*i+j];
-
-  gtsam::SharedNoiseModel noise =
-      gtsam::noiseModel::Gaussian::Covariance(cov);
+  // Extract covariance
+  gtsam::SharedNoiseModel noise = ExtractCovariance(msg.covariance);
 
   // Fill artifact_data_
-  // Make new data true
-  artifact_data_.b_has_data = true;
-  // Fill type
-  artifact_data_.type = "artifact";
-  // Append transform
-  artifact_data_.transforms.push_back(R_pose_A);
-  // Append covariance
-  artifact_data_.covariances.push_back(noise);
-  // Append std::pair<ros::Time, ros::Time(0.0)> for artifact
-  artifact_data_.time_stamps.push_back(std::make_pair(msg.header.stamp, ros::Time(0.0)));
-  // Append the artifact key
-  artifact_data_.artifact_key.push_back(cur_artifact_key);
+  AddArtifactData(cur_artifact_key, std::make_pair(msg.header.stamp, ros::Time(0.0)), relative_pose, noise);
 }
 
 /*! \brief  Callback for ArtifactBase.
@@ -229,27 +196,24 @@ void ArtifactHandler::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& 
   ArtifactInfo artifactinfo(msg->parent_id);
   artifactinfo.msg = artifact;           // TODO check this
 
-  std::cout << "Artifact position in world is: " << artifact.point.point.x
-            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
-            << std::endl;
-  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
-
-  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
-  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
-  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
-            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
-            << std::endl;
-  std::cout << "\t Label: " << artifact.label << std::endl;
+  PrintArtifactInputMessage(artifact);
 
   // Publish artifacts - should be updated from the pose-graph
   // loop_closure_.PublishArtifacts();      // TODO Need publish function
 }
 
-/*! \brief  Gives the factors to be added.
+/*! \brief  Gives the factors to be added and clears to start afresh.
  * Returns  Factors 
  */
 FactorData ArtifactHandler::GetData() {
-  return artifact_data_;
+  // Create a temporary copy to return
+  FactorData temp_artifact_data_ = artifact_data_;
+
+  // Clear artifact data
+  ClearArtifactData();
+  
+  // Return artifact data
+  return temp_artifact_data_;
 }
 
 /*! \brief  Create the publishers to log data.
@@ -383,18 +347,87 @@ void ArtifactHandler::PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 glo
 
   // Print out
   // Transform at time of message
-  std::cout << "Artifact position in world is: " << new_msg.point.point.x
-            << ", " << new_msg.point.point.y << ", " << new_msg.point.point.z
-            << std::endl;
-  std::cout << "Frame ID is: " << new_msg.point.header.frame_id << std::endl;
-
-  std::cout << "\t Parent id: " << new_msg.parent_id << std::endl;
-  std::cout << "\t Confidence: " << new_msg.confidence << std::endl;
-  std::cout << "\t Position:\n[" << new_msg.point.point.x << ", "
-            << new_msg.point.point.y << ", " << new_msg.point.point.z << "]"
-            << std::endl;
-  std::cout << "\t Label: " << new_msg.label << std::endl;
+  PrintArtifactInputMessage(new_msg);
 
   // Publish
   artifact_pub_.publish(new_msg);
+}
+
+/*! \brief  Print Artifact input message for debugging
+  * Returns  Void
+  */
+void ArtifactHandler::PrintArtifactInputMessage(const core_msgs::Artifact& artifact) {
+  std::cout << "Artifact position in world is: " << artifact.point.point.x
+            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
+            << std::endl;
+  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
+
+  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
+  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
+  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
+            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
+            << std::endl;
+  std::cout << "\t Label: " << artifact.label << std::endl;  
+}
+
+/*! \brief  Extracts covariance from artifact message and converts to gtsam::SharedNoiseModel
+  * Returns  gtsam::SharedNoiseModel
+  */
+gtsam::SharedNoiseModel ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) {
+  // Extract covariance information
+  gtsam::Matrix33 cov;
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      cov(i+3, j+3) = covariance[3*i+j];
+
+  gtsam::SharedNoiseModel noise =
+      gtsam::noiseModel::Gaussian::Covariance(cov);
+  return noise;
+}
+
+/*! \brief  Clear artifact data
+  * Returns  Void
+  */
+void ArtifactHandler::ClearArtifactData() {
+  // Clear artifact data
+  artifact_data_.b_has_data = false;
+  artifact_data_.artifact_key.clear();
+  artifact_data_.covariances.clear();
+  artifact_data_.time_stamps.clear();
+  artifact_data_.transforms.clear();
+}
+
+/*! \brief  Add artifact data
+  * Returns  Void
+  */
+void ArtifactHandler::AddArtifactData(const gtsam::Key cur_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise) {
+   // Make new data true
+  artifact_data_.b_has_data = true;
+  // Fill type
+  artifact_data_.type = "artifact";
+  // Append transform
+  artifact_data_.transforms.push_back(transform);
+  // Append covariance
+  artifact_data_.covariances.push_back(noise);
+  // Append std::pair<ros::Time, ros::Time(0.0)> for artifact
+  artifact_data_.time_stamps.push_back(time_stamp);
+  // Append the artifact key
+  artifact_data_.artifact_key.push_back(cur_key);
+}
+
+/*! \brief  Stores/Updated artifactInfo Hash
+  * Returns  Void
+  */
+void ArtifactHandler::StoreArtifactInfo(const gtsam::Key artifact_key, const core_msgs::Artifact& msg) {
+  ArtifactInfo artifactinfo(msg.parent_id);
+  artifactinfo.msg = msg;
+
+  // keep track of artifact info: add to hash if not added
+  if (artifact_key2info_hash_.find(artifact_key) == artifact_key2info_hash_.end()) {
+    ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
+    artifact_key2info_hash_[artifact_key] = artifactinfo;
+  } else {
+    ROS_INFO("Existing artifact detected");
+    artifact_key2info_hash_[artifact_key] = artifactinfo;
+  }
 }

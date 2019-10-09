@@ -111,7 +111,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Trigger the callback
   ArtifactCallback(msg);
   // Get the data
-  FactorData stored_data = GetData();
+  FactorData& stored_data = GetArtifactData();
   // Check if data is flowing correctly
   // TODO Check next line
   EXPECT_EQ(gtsam::Symbol(stored_data.artifact_key[0]).index(), 0);

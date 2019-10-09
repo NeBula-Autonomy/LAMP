@@ -121,6 +121,31 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     void PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
 
+    /*! \brief  Print Artifact input message for debugging
+     * Returns  Void
+     */
+    void PrintArtifactInputMessage(const core_msgs::Artifact& msg);
+
+    /*! \brief  Extracts covariance from artifact message and converts to gtsam::SharedNoiseModel
+     * Returns  gtsam::SharedNoiseModel
+     */
+    gtsam::SharedNoiseModel ExtractCovariance(const boost::array<float, 9> covariance);
+
+    /*! \brief  Clear artifact data
+     * Returns  Void
+     */
+    void ClearArtifactData();
+
+    /*! \brief  Add artifact data
+     * Returns  Void
+     */
+    void AddArtifactData(const gtsam::Key artifact_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
+
+    /*! \brief  Stores/Updated artifactInfo Hash
+     * Returns  Void
+     */
+    void StoreArtifactInfo(const gtsam::Key artifact_key, const core_msgs::Artifact& msg);
+
     private:
     // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
     // from the pose graph
