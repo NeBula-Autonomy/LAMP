@@ -314,9 +314,7 @@ TEST_F(OdometryHandlerTest, TestGetPoseAtTime) {
 
 // CalculatePoseDelta: Done (Nobuhiro)
 
-// PrepareFactor: (Nobuhiro)
-
-// MakeFactor: (Nobuhiro)
+// CalculatePoseDelta(gtsam version): (Nobuhiro) 
 
 // GetTransform: Done (Nobuhiro)
 

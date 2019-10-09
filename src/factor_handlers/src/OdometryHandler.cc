@@ -94,21 +94,21 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
-        CheckOdometryBuffer(lidar_odometry_buffer_);
+        // CheckOdometryBuffer(lidar_odometry_buffer_);
     }
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
-        CheckOdometryBuffer(visual_odometry_buffer_);
+        // CheckOdometryBuffer(visual_odometry_buffer_);
     }
 }
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
-        CheckOdometryBuffer(wheel_odometry_buffer_);
+        // CheckOdometryBuffer(wheel_odometry_buffer_);
     }
 }
 
@@ -197,18 +197,6 @@ void OdometryHandler::ClearOdometryBuffers() {
 
 // Utilities ---------------------------------------------------------------------------------------------
 
-void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
-    if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
-      double translation = CalculatePoseDelta(odom_buffer); 
-      if (translation > translation_threshold_) {
-        ROS_INFO_STREAM("Moved more than threshold: " << translation_threshold_
-                                                      << " m (" << translation
-                                                      << " m)");
-        PrepareFactor(odom_buffer);
-        }
-    }     
-}
-
 double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     // TODO: Should be implemented in a cleaner way
     auto pose_first = gr::FromROS((*(odom_buffer.begin())).pose.pose);
@@ -222,25 +210,7 @@ double OdometryHandler::CalculatePoseDelta(GtsamPosCov gtsam_pos_cov) {
   return pose.translation().norm();
 }
 
-void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
-  // Make a pair between the first and last elements in the odom buffer
-  auto first_odom_element = odom_buffer.begin();
-  auto last_odom_element = std::prev(odom_buffer.end());
-  auto pose_cov_stamped_pair = std::make_pair(*first_odom_element, *last_odom_element);
-  MakeFactor(pose_cov_stamped_pair);
-  // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element
-  odom_buffer.clear();
-  odom_buffer.push_back(*last_odom_element);
-}
 
-void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
-    //Makes a new factor by filling the fields of FactorData
-    factors_.b_has_data = true;
-    factors_.type = "odom";
-    factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
-    factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
-    factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
-}
 
 // Getters -----------------------------------------------------------------------------------------------
 
@@ -430,6 +400,40 @@ bool OdometryHandler::GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPose
     }
   }
 }
+
+// log
+
+// void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
+//     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
+//       double translation = CalculatePoseDelta(odom_buffer); 
+//       if (translation > translation_threshold_) {
+//         ROS_INFO_STREAM("Moved more than threshold: " << translation_threshold_
+//                                                       << " m (" << translation
+//                                                       << " m)");
+//         PrepareFactor(odom_buffer);
+//         }
+//     }     
+// }
+
+// void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
+//   // Make a pair between the first and last elements in the odom buffer
+//   auto first_odom_element = odom_buffer.begin();
+//   auto last_odom_element = std::prev(odom_buffer.end());
+//   auto pose_cov_stamped_pair = std::make_pair(*first_odom_element, *last_odom_element);
+//   MakeFactor(pose_cov_stamped_pair);
+//   // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element
+//   odom_buffer.clear();
+//   odom_buffer.push_back(*last_odom_element);
+// }
+
+// void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
+//     //Makes a new factor by filling the fields of FactorData
+//     factors_.b_has_data = true;
+//     factors_.type = "odom";
+//     factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
+//     factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
+//     factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
+// }
 
 /*
 DOCUMENTATION 
