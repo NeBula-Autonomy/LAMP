@@ -88,6 +88,8 @@ void LampPgo::InputCallback(
   NonlinearFactorGraph all_factors, new_factors;
   Values all_values, new_values;
 
+  ROS_INFO_STREAM("PGO received graph of size " << graph_msg->nodes.size());
+
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
 
@@ -109,6 +111,9 @@ void LampPgo::InputCallback(
     }
   }
 
+  ROS_INFO_STREAM("PGO adding new values " << new_values.size());
+  ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
+
   // Run the optimizer
   pgo_solver_->updateBatch(
       new_factors, new_values, new_values.keys().front() - 1);
@@ -116,6 +121,8 @@ void LampPgo::InputCallback(
   // Extract the optimized values
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  ROS_INFO_STREAM("PGO stored values of size " << values_.size());
 
   // publish posegraph
   PublishValues();
