@@ -67,7 +67,8 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Interface functions
         FactorData GetData();
-        bool GetOdomDelta(ros::Time t, GtsamPosCov& delta_pose);
+
+        void GetOdomDelta(ros::Time t_now, GtsamPosCov& delta_pose);
 
       protected:
 

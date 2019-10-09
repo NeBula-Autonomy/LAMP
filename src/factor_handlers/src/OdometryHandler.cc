@@ -165,12 +165,11 @@ FactorData OdometryHandler::GetData(){
   }
 }
 
-bool OdometryHandler::GetOdomDelta(ros::Time t_now, GtsamPosCov& delta_pose) {
+void OdometryHandler::GetOdomDelta(ros::Time t_now, GtsamPosCov& delta_pose) {
   ros::Time t1 = query_timestamp_first_;
   ros::Time t2 = t_now;
   // fused_odom_ = GetDeltaBetweenTimes(t1, t2);
   // delta_pose = fused_odom_;
-  return true;
 }
 
 ros::Time OdometryHandler::GetClosestLidarTime(ros::Time time) {
