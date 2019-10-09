@@ -49,7 +49,7 @@ FactorData OdometryHandler::GetData(){
     // Given the two timestamp of interest, we have a temporal window for potential fusion of data 
 
     // Get the absolute poses at time t1 and t2 from all odometry buffer 
-    PoseCovStampedPair lidar_poses, visual_poses, wheel_poses; 
+    // PoseCovStampedPair lidar_poses, visual_poses, wheel_poses; 
 
     // Lidar Odometry Only Case - fill logic
 
@@ -74,6 +74,11 @@ FactorData OdometryHandler::GetData(){
     //     }
     //   }  
     // }
+
+    GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;
+    InsertGtsamOdometryInfo(lidar_odometry_buffer_, measurement_lidar);
+    InsertGtsamOdometryInfo(visual_odometry_buffer_, measurement_visual);
+    InsertGtsamOdometryInfo(wheel_odometry_buffer_, measurement_wheel);
 
     factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
 
