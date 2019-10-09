@@ -32,6 +32,8 @@ typedef struct {
   gtsam::SharedNoiseModel covariance; 
 } GtsamPosCov;
 
+typedef std::pair<GtsamPosCov, GtsamPosCov> GtsamPosCovPair;
+
 typedef struct  {
   GtsamPosCov lidar_odom; 
   GtsamPosCov visual_odom; 
@@ -66,7 +68,9 @@ class OdometryHandler : public LampDataHandlerBase{
                                   const ros::Time t2,
                                   gtsam::Pose3& delta);
 
+        // Interface functions
         FactorData GetData();
+        bool GetOdomDelta(ros::Time t, GtsamPosCov& delta_pose);
 
       protected:
 
