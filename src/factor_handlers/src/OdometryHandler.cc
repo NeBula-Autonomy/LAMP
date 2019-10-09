@@ -79,6 +79,12 @@ FactorData OdometryHandler::GetData(){
     InsertGtsamOdometryInfo(lidar_odometry_buffer_, measurement_lidar);
     InsertGtsamOdometryInfo(visual_odometry_buffer_, measurement_visual);
     InsertGtsamOdometryInfo(wheel_odometry_buffer_, measurement_wheel);
+    GtsamOdom gtsam_odom;
+    gtsam_odom.lidar_odom = measurement_lidar;
+    gtsam_odom.visual_odom = measurement_visual;
+    gtsam_odom.wheel_odom = measurement_wheel;
+
+    auto fused_odom = FuseMultipleOdometry(gtsam_odom);
 
     factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
 
@@ -99,6 +105,11 @@ void OdometryHandler::InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer,
   else {
     measurement.b_has_value = false;
   }
+}
+
+GtsamPosCov OdometryHandler::FuseMultipleOdometry(GtsamOdom& gtsam_odom) {
+  GtsamPosCov output_odom;
+  return output_odom;
 }
 
 bool OdometryHandler::Initialize(const ros::NodeHandle& n){
