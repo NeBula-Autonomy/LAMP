@@ -54,26 +54,26 @@ FactorData OdometryHandler::GetData(){
     // Lidar Odometry Only Case - fill logic
 
     // Mutliple Odometry Case
-    if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, lidar_odometry_buffer_, lidar_poses)==true){
-      if(GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, visual_odometry_buffer_, visual_poses)==true){
-        if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, wheel_odometry_buffer_, wheel_poses)==true){
-          ROS_INFO("Odometry Handler - Fusion Logic - Obtained all absolute pose pairs from odometry buffers");
-          // Given the absolute poses, compute the relative transformation calling methods of interest 
-          // TODO: Here we just need a PoseWithCovariance, no need of the timestamp field as it is a relative transformation 
-          gtsam::Pose3 delta_lidar = GetTransform(lidar_poses);
-          gtsam::Pose3 delta_visual = GetTransform(visual_poses);
-          gtsam::Pose3 delta_wheel = GetTransform(wheel_poses);
-          // Here we have all relative transformations of interest  
-          // Compute covariance delta between poses pairs 
-          gtsam::SharedNoiseModel delta_cov_lidar = GetCovariance(lidar_poses);
-          gtsam::SharedNoiseModel delta_cov_visual = GetCovariance(visual_poses);
-          gtsam::SharedNoiseModel delta_cov_wheel = GetCovariance(wheel_poses);
-          // Create three istances of GtsamPosCov and fill it with the values of interest    
-          GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;
-            
-        }
-      }  
-    }
+    // if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, lidar_odometry_buffer_, lidar_poses)==true){
+    //   if(GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, visual_odometry_buffer_, visual_poses)==true){
+    //     if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, wheel_odometry_buffer_, wheel_poses)==true){
+    //       ROS_INFO("Odometry Handler - Fusion Logic - Obtained all absolute pose pairs from odometry buffers");
+    //       // Given the absolute poses, compute the relative transformation calling methods of interest 
+    //       // TODO: Here we just need a PoseWithCovariance, no need of the timestamp field as it is a relative transformation 
+    //       gtsam::Pose3 delta_lidar = GetTransform(lidar_poses);
+    //       gtsam::Pose3 delta_visual = GetTransform(visual_poses);
+    //       gtsam::Pose3 delta_wheel = GetTransform(wheel_poses);
+    //       // Here we have all relative transformations of interest  
+    //       // Compute covariance delta between poses pairs 
+    //       gtsam::SharedNoiseModel delta_cov_lidar = GetCovariance(lidar_poses);
+    //       gtsam::SharedNoiseModel delta_cov_visual = GetCovariance(visual_poses);
+    //       gtsam::SharedNoiseModel delta_cov_wheel = GetCovariance(wheel_poses);
+    //       // Create three istances of GtsamPosCov and fill it with the values of interest    
+    //       GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;
+
+    //     }
+    //   }  
+    // }
 
     factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
 
