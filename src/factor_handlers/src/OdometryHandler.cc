@@ -150,7 +150,9 @@ FactorData OdometryHandler::GetData(){
       query_timestamp_first_ = query_timestamp_second_;
       ClearOdometryBuffers();
     }
-    factors_.b_has_data = false;
+    else {
+      factors_.b_has_data = false;
+    }
     return factors_;
   }
 }
