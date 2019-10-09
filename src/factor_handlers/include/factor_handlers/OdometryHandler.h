@@ -122,6 +122,7 @@ class OdometryHandler : public LampDataHandlerBase{
         void InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement);
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
         double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
+        double CalculatePoseDelta(GtsamPosCov gtsam_pos_cov);
         void PrepareFactor(OdomPoseBuffer& odom_buffer);        
         void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
         

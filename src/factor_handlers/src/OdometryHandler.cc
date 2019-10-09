@@ -88,18 +88,15 @@ FactorData OdometryHandler::GetData(){
     auto fused_odom = FuseMultipleOdometry(gtsam_odom);
 
     // TODO: The sequence to check the delta of fused_odom
-
-    factors_.transforms.push_back(fused_odom.pose);
-    factors_.covariances.push_back(fused_odom.covariance);
-    factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
-
-    // TODO: Call Fusion Logic 
-    factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
-
-    // Reset the first time query for the next odometry handling
-    query_timestamp_first_ = query_timestamp_second_;
-    
-    // TODO: Should GetData function return a boolean instead FactorData type variable?
+    if (CalculatePoseDelta(fused_odom) > 1.0) {
+      factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
+      factors_.transforms.push_back(fused_odom.pose);
+      factors_.covariances.push_back(fused_odom.covariance);
+      factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
+      // Reset the first time query for the next odometry handling
+      query_timestamp_first_ = query_timestamp_second_;
+    }
+    factors_.b_has_data = false;
     return factors_;
   }
 }
@@ -254,6 +251,11 @@ double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     auto pose_end   = gr::FromROS((*(std::prev(odom_buffer.end()))).pose.pose);
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
     return pose_delta.translation.Norm();
+}
+
+double OdometryHandler::CalculatePoseDelta(GtsamPosCov gtsam_pos_cov) {
+  auto pose = gtsam_pos_cov.pose;
+  return pose.translation().norm();
 }
 
 void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
