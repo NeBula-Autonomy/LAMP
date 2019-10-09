@@ -90,6 +90,10 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
 
+  // Load frame ids.
+  if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
+  if (!pu::Get("frame_id/base", base_frame_id_)) return false;
+
   // TODO - bring in other parameter
 
   // Set Precisions
@@ -313,6 +317,12 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     ROS_INFO_STREAM("Publishing pose graph with new factor");
     PublishPoseGraph();
 
+    // Update and publish the map
+    // GenerateMapPointCloud();
+    mapper_.PublishMap();
+    ROS_INFO_STREAM("Published new map");
+
+
     b_has_new_factor_ = false;
   }
 
@@ -420,10 +430,13 @@ bool LampRobot::ProcessOdomData(FactorData data){
     PointCloud::Ptr new_scan(new PointCloud);
 
     if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
-      // add new keyed scan to map
 
+      // Store the keyed scan and add it to the map
       // TODO : filter before adding
       keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(current_key, new_scan));
+      AddTransformedPointCloudToMap(current_key);
+      GenerateMapPointCloud();
+
 
       // publish keyed scan
       pose_graph_msgs::KeyedScan keyed_scan_msg;
@@ -440,6 +453,51 @@ bool LampRobot::ProcessOdomData(FactorData data){
   return true;
 }
 
+bool LampRobot::GenerateMapPointCloud() {
+
+  // Reset the map
+  mapper_.Reset();
+
+  // Iterate over poses in the graph, transforming their corresponding laser
+  // scans into world frame and appending them to the output.
+  for (const auto& keyed_pose : values_) {
+    const gtsam::Symbol key = keyed_pose.key;
+
+    // Append the world-frame point cloud to the output.
+    AddTransformedPointCloudToMap(key);
+  }
+}
+
+bool LampRobot::AddTransformedPointCloudToMap(gtsam::Symbol key) {
+  
+  // No key associated with the scan
+  if (!keyed_scans_.count(key)) {
+    ROS_WARN("Could not find scan associated with key");
+    return false;
+  }
+
+  // Check that the key exists
+  if (!values_.exists(key)) {
+    ROS_WARN("Key %u does not exist in values_", gtsam::DefaultKeyFormatter(key));
+    return false;
+  }
+  
+  const gu::Transform3 pose = utils::ToGu(values_.at<Pose3>(key));
+  Eigen::Matrix4d b2w;
+  b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
+  b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
+
+  // Transform the body-frame scan into world frame.
+  PointCloud::Ptr points(new PointCloud);
+  pcl::transformPointCloud(*keyed_scans_[key], *points, b2w);
+  
+  // Add to the map
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(points, unused.get());
+
+  return true;
+}
+
 // Odometry update
 void LampRobot::UpdateAndPublishOdom() {
   // Get the pose at the last key
@@ -447,12 +505,12 @@ void LampRobot::UpdateAndPublishOdom() {
 
   // Get the delta from the last pose to now
   ros::Time stamp = ros::Time::now();
-  Pose3 delta_pose;
-  odometry_handler_.GetDeltaBetweenTimes(
-      keyed_stamps_[key_ - 1], stamp, delta_pose);
+  // GtsamPosCov delta_pose;
+  // odometry_handler_.GetOdomDelta(stamp, delta_pose);
 
   // Compose the delta
-  Pose3 new_pose = last_pose.compose(delta_pose);
+  // Pose3 new_pose = last_pose.compose(delta_pose.pose);
+  Pose3 new_pose = last_pose;
 
   // TODO use the covariance when we have it
   // gtsam::Matrix66 covariance;
