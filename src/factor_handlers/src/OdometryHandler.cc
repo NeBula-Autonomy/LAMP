@@ -65,8 +65,6 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("ts_threshold", ts_threshold_))
     return false;
 
-  // TODO: Load necessary parameters from yaml into local variables
-
   return true;
 }
 
@@ -94,21 +92,21 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
-        // CheckOdometryBuffer(lidar_odometry_buffer_);
+        ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store message in buffer");
     }
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
-        // CheckOdometryBuffer(visual_odometry_buffer_);
+        ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store message in buffer");
     }
 }
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
-        // CheckOdometryBuffer(wheel_odometry_buffer_);
+        ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store message in buffer");
     }
 }
 
@@ -150,12 +148,22 @@ FactorData OdometryHandler::GetData(){
       query_timestamp_first_ = query_timestamp_second_;
       ClearOdometryBuffers();
     }
+    // if (CalculatePoseDelta(fused_odom_) > 1.0) {
+    //   fused_odom_ = GetDeltaBetweenTimes();
+    // }
     else {
       factors_.b_has_data = false;
     }
     return factors_;
   }
 }
+
+bool OdometryHandler::GetOdomDelta(ros::Time t, GtsamPosCov& delta_pose) {
+
+  return true;
+}
+
+
 
 void OdometryHandler::InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer, GtsamPosCov& pure_odom) {
   PoseCovStampedPair poses;
@@ -337,21 +345,11 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
 
 // Fusion logic-----------------------------------------------------------------------------------------
 
-// TODO: This method should ideally be called with the specific odometry_buffer we are referring to - Doing with odometry now
+// GetDeltaBetweenTimes returns the fused GtsamPosCov delta between t1 and t2
 bool OdometryHandler::GetDeltaBetweenTimes(const ros::Time t1,
                                            const ros::Time t2,
                                            gtsam::Pose3& delta) {
-  // Public function to access deltas from the odometry handler
-  PoseCovStamped pose_first;
-  PoseCovStamped pose_second;
-  if (GetPoseAtTime(t1, lidar_odometry_buffer_, pose_first)==true) {
-    if (GetPoseAtTime(t2, lidar_odometry_buffer_, pose_second)==true) {
-        // We obtained the two poses of interest, we can now call the method to get the delta
-        // TODO - Implement this in geometry_utils package, for now we do it locally 
-        //GetDeltaBetweenPoses(pose_first, pose_second);
-        // Here we have a PoseWithCovarianceStamped msg, why the caller wants a gtsam::Pose3? 
-    }  
-  }   
+  ROS_INFO("To be implemented");
 }
 
 
