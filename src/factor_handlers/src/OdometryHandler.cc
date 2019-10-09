@@ -75,6 +75,7 @@ FactorData OdometryHandler::GetData(){
     //   }  
     // }
 
+    // TODO: The following cords should be implemented in a smarter way
     GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;
     InsertGtsamOdometryInfo(lidar_odometry_buffer_, measurement_lidar);
     InsertGtsamOdometryInfo(visual_odometry_buffer_, measurement_visual);
@@ -86,14 +87,20 @@ FactorData OdometryHandler::GetData(){
 
     auto fused_odom = FuseMultipleOdometry(gtsam_odom);
 
+    // TODO: The sequence to check the delta of fused_odom
+
     factors_.transforms.push_back(fused_odom.pose);
     factors_.covariances.push_back(fused_odom.covariance);
     factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
 
     // TODO: Call Fusion Logic 
-    factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold  
-    return factors_;
+    factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
 
+    // Reset the first time query for the next odometry handling
+    query_timestamp_first_ = query_timestamp_second_;
+    
+    // TODO: Should GetData function return a boolean instead FactorData type variable?
+    return factors_;
   }
 }
 
