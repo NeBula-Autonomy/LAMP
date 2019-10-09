@@ -70,6 +70,9 @@ FactorData OdometryHandler::GetData(){
           gtsam::SharedNoiseModel delta_cov_wheel = GetCovariance(wheel_poses);
           // Create three istances of GtsamPosCov and fill it with the values of interest    
           GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;   
+          measurement_lidar.pose = delta_lidar;
+          measurement_visual.pose = delta_visual;
+          measurement_wheel.pose = delta_wheel;
         }
       }  
     }
