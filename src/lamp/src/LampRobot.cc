@@ -300,7 +300,7 @@ bool LampRobot::InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal:
 void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Print some debug messages
-  ROS_INFO_STREAM("Checking for new data");
+  // ROS_INFO_STREAM("Checking for new data");
 
   // Check the handlers
   CheckHandlers();
@@ -310,6 +310,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Publish the pose graph
   if (b_has_new_factor_) {
+    ROS_INFO_STREAM("Publishing pose graph with new factor");
     PublishPoseGraph();
 
     b_has_new_factor_ = false;
@@ -317,6 +318,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Start optimize, if needed
   if (b_run_optimization_) {
+      ROS_INFO_STREAM("Publishing pose graph for optimisation");
       PublishPoseGraphForOptimizer();
 
       b_run_optimization_ = false; 
@@ -375,6 +377,7 @@ bool LampRobot::ProcessOdomData(FactorData data){
 
   // process data for each new factor 
   for (int i = 0; i < num_factors; i++) {
+    ROS_INFO("Adding new odom factor to pose graph");
     // Get the transforms - odom transforms
     Pose3 transform = data.transforms[i];
     gtsam::SharedNoiseModel covariance =
