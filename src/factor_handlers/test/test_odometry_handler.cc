@@ -58,7 +58,15 @@ protected:
 
     double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
       return oh.CalculatePoseDelta(odom_buffer);
-    }   
+    }
+
+    gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const{
+      return oh.ToGtsam(pose);
+    }
+
+    bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) {
+      return oh.GetPoseAtTime(t, odom_buffer, output);
+    }
 
     std::vector<geometry_msgs::PoseWithCovarianceStamped> lidar_odometry_buffer_ = oh.lidar_odometry_buffer_;
 
@@ -185,6 +193,89 @@ TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
   EXPECT_EQ(time_stamp_pair_actual.first, t1_ros);
   EXPECT_EQ(time_stamp_pair_actual.second, t2_ros);
 }
+
+
+/* TEST ToGtsam */
+TEST_F(OdometryHandlerTest, TestToGtsam) {
+  gu::Transform3 pose;
+  pose.translation(0) = 1;
+  pose.translation(1) = 0;
+  pose.translation(2) = 0;
+  pose.rotation(0,0) = 1;
+  pose.rotation(0,1) = 0;
+  pose.rotation(0,2) = 0;
+  pose.rotation(1,0) = 0;
+  pose.rotation(1,1) = 1;
+  pose.rotation(1,2) = 0;
+  pose.rotation(2,0) = 0;
+  pose.rotation(2,1) = 0;
+  pose.rotation(2,2) = 1;
+  gtsam::Pose3 transform_actual = ToGtsam(pose);
+
+  gtsam::Point3 position = gtsam::Point3(1,0,0);
+  gtsam::Rot3 rotation = gtsam::Rot3(1,0,0,0,1,0,0,0,1);
+  gtsam::Pose3 transform_expected = gtsam::Pose3(rotation, position);
+
+  ASSERT_TRUE(transform_actual.equals(transform_expected));
+}
+
+TEST_F(OdometryHandlerTest, TestGetPoseAtTime) {
+  double t1 = 1.0;
+  double t2 = 2.0;
+  double t3 = 3.0;
+  ros::Time t1_ros;
+  ros::Time t2_ros;
+  ros::Time t3_ros;
+  t1_ros.fromSec(t1);
+  t2_ros.fromSec(t2);
+  t3_ros.fromSec(t3);
+
+  // Create an output
+  PoseCovStamped myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer; 
+  // Create two messages
+  geometry_msgs::PoseWithCovarianceStamped msg_first; 
+  geometry_msgs::PoseWithCovarianceStamped msg_second;
+  geometry_msgs::PoseWithCovarianceStamped msg_third;
+
+  // Fill the two messages
+  msg_first.header.stamp = t1_ros; 
+  msg_first.pose.pose.position.x = 1; 
+  msg_first.pose.pose.position.y = 0; 
+  msg_first.pose.pose.position.z = 0; 
+  msg_first.pose.pose.orientation.x = 0;
+  msg_first.pose.pose.orientation.y = 0;
+  msg_first.pose.pose.orientation.z = 0;
+  msg_first.pose.pose.orientation.w = 1;
+
+  msg_second.header.stamp = t2_ros; 
+  msg_second.pose.pose.position.x = 2; 
+  msg_second.pose.pose.position.y = 0; 
+  msg_second.pose.pose.position.z = 0;
+  msg_second.pose.pose.orientation.x = 0;
+  msg_second.pose.pose.orientation.y = 0;
+  msg_second.pose.pose.orientation.z = 0;
+  msg_second.pose.pose.orientation.w = 1;
+
+  msg_third.header.stamp = t3_ros; 
+  msg_third.pose.pose.position.x = 3; 
+  msg_third.pose.pose.position.y = 0; 
+  msg_third.pose.pose.position.z = 0;
+  msg_third.pose.pose.orientation.x = 0;
+  msg_third.pose.pose.orientation.y = 0;
+  msg_third.pose.pose.orientation.z = 0;
+  msg_third.pose.pose.orientation.w = 1;
+
+  // Push messages to buffer
+  myBuffer.push_back(msg_first); 
+  myBuffer.push_back(msg_second); 
+  myBuffer.push_back(msg_third);
+
+  bool result = GetPoseAtTime(t1_ros, myBuffer, myOutput);
+  ASSERT_TRUE(result);
+}
+
 
 
 // Test we pass but need more testing/implementation ---------------------------------
