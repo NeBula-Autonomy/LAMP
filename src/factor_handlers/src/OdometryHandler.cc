@@ -82,15 +82,15 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
   // Point Cloud callback
   point_cloud_sub_ = nl.subscribe(
-      "velodyne_points", 10, &OdometryHandler::PointCloudCallback, this);
+      "pcld", 10, &OdometryHandler::PointCloudCallback, this);
 
   return true;
 }
 
 // Callbacks --------------------------------------------------------------------------------------------
-
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");
+    
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
         ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store message in buffer");
     }
@@ -232,7 +232,6 @@ double OdometryHandler::CalculatePoseDelta(GtsamPosCov gtsam_pos_cov) {
   auto pose = gtsam_pos_cov.pose;
   return pose.translation().norm();
 }
-
 
 
 // Getters -----------------------------------------------------------------------------------------------

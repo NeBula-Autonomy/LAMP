@@ -134,9 +134,6 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Converters
         gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const; // TODO: This function should be defined in the base class
- 
-        // LAMP Interface
-        FactorData factors_;         
 
         // The node's name.
         std::string name_;

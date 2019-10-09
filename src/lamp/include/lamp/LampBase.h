@@ -103,6 +103,7 @@ class LampBase {
 
   // Convert timestamps to gtsam keys 
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
+  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) const;
   bool IsTimeWithinThreshold(double time, const ros::Time& target) const;
 
   // Convert values to PoseGraphNode Messages
