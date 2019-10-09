@@ -19,8 +19,8 @@ void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
 void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr &msg) {
 ROS_INFO_STREAM("Received fast graph, size "<< msg->nodes.size());
 
-  // If no slow graph has been received, merged graph is the fast graph only
-  if (lastSlow == nullptr) {
+  // If no slow graph (or an empty slow graph only) has been received, merged graph is the fast graph only
+  if (lastSlow == nullptr || lastSlow->nodes.size() == 0) {
     for (const GraphNode& node : msg->nodes) {
       merged_graph_.nodes.push_back(node);
     }
