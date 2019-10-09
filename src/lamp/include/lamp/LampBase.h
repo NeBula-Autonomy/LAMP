@@ -103,6 +103,7 @@ class LampBase {
 
   // Convert timestamps to gtsam keys 
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
+  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) const;
   bool IsTimeWithinThreshold(double time, const ros::Time& target) const;
 
   // Convert values to PoseGraphNode Messages
@@ -111,6 +112,24 @@ class LampBase {
 
   // Convert internal pose graph to message
   pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg();
+
+  // Placeholder for setting fixed noise
+  gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
+
+  // New pose graph values from optimizer
+  virtual void
+  OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
+
+  // Tracking info for publishing messages
+  void TrackEdges(gtsam::Symbol key_from,
+                  gtsam::Symbol key_to,
+                  int type,
+                  gtsam::Pose3 pose,
+                  gtsam::SharedNoiseModel covariance);
+  void TrackPriors(ros::Time stamp,
+                   gtsam::Symbol key,
+                   gtsam::Pose3 pose,
+                   gtsam::SharedNoiseModel covariance);
 
   // Typedef for stored point clouds.
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -127,17 +146,6 @@ class LampBase {
     // List of all factors with additional information
   std::vector<pose_graph_msgs::PoseGraphEdge> edges_info_; // TODO - revisit - do we want this to be a map for any reason - to quickly access specific edges?
   std::vector<pose_graph_msgs::PoseGraphNode> priors_info_;
-  
-  // New pose graph values from optimizer
-  virtual void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr &msg);
-
-  // Tracking info for publishing messages
-  void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, int type, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
-  void TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance);
-
-  // Booleans
-  bool b_has_new_factor_;
-  bool b_run_optimization_;
 
   // Publishers
   ros::Publisher pose_graph_pub_;
@@ -152,6 +160,11 @@ class LampBase {
   // Message filters (if any)
   std::string prefix_;
 
+  // Booleans
+  bool b_has_new_factor_;
+  bool b_run_optimization_;
+  bool b_use_fixed_covariances_;
+
   // Frames.
   std::string fixed_frame_id_;
   std::string base_frame_id_;
@@ -162,6 +175,8 @@ class LampBase {
   Merger merger_;
 
   // Precisions
+  double attitude_sigma_;
+  double position_sigma_;
   double manual_lc_rot_precision_;
   double manual_lc_trans_precision_;
   double artifact_rot_precision_;

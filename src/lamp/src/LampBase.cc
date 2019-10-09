@@ -25,11 +25,12 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampBase::LampBase():
-    prefix_(""),
+LampBase::LampBase()
+  : prefix_(""),
     update_rate_(10),
-    time_threshold_(0.001) {
-     // any other things on construction 
+    time_threshold_(0.001),
+    b_use_fixed_covariances_(false) {
+  // any other things on construction
     }
 
 // Destructor
@@ -70,31 +71,47 @@ bool LampBase::CheckHandlers(){
   return false;
 }
 
-gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
+gtsam::Symbol LampBase::GetClosestKeyAtTime(const ros::Time& stamp) const {
 
   // If there are no keys, throw an error
   if (stamp_to_odom_key_.size() == 0){
-    ROS_ERROR("Cannot get key at time - no keys stored");
+    ROS_ERROR("Cannot get closest key - no keys are stored");
     return gtsam::Symbol();
   }
 
   // Iterators pointing immediately before and after the target time
   auto iterAfter = stamp_to_odom_key_.lower_bound(stamp.toSec());
-  auto iterBefore = std::prev(iterAfter,1);
+  auto iterBefore = std::prev(iterAfter);
   double t1 = iterBefore->first; 
   double t2 = iterAfter->first;
 
-  // Return whichever of of the nearest keys is within the threshold 
-  if (iterBefore != std::prev(stamp_to_odom_key_.begin()) && IsTimeWithinThreshold(t1, stamp)) {
-    return iterBefore->second;
-  }
-  else if (IsTimeWithinThreshold(t2, stamp)) {
+  // If time is before the start or after the end, return first/last key
+  if (iterAfter == stamp_to_odom_key_.begin()) {
+    ROS_WARN("Only one stored key");
     return iterAfter->second;
   }
+  else if (iterBefore == std::prev(stamp_to_odom_key_.end())) {
+    ROS_WARN("Only one stored key");
+    return iterBefore->second;
+  }
+
+  // Otherwise return the closer key
+  else if (stamp.toSec() - t1 < t2 - stamp.toSec()) {
+    return iterBefore->second;
+  }
   else {
+    return iterAfter->second;
+  }
+}
+
+gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {
+
+  if (!stamp_to_odom_key_.count(stamp.toSec())) {
     ROS_ERROR("No key exists at given time");
     return gtsam::Symbol();
   }
+
+  return stamp_to_odom_key_.at(stamp.toSec());
 }
 
 bool LampBase::IsTimeWithinThreshold(double time, const ros::Time& target) const {
@@ -121,6 +138,10 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
 
   // TODO-maybe - make the copy more efficient
 }
+
+//------------------------------------------------------------------------------------------
+// Conversion and publish pose graph functions
+//------------------------------------------------------------------------------------------
 
 // Convert the internally stored pose_graph to a pose graph message
 pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
@@ -188,6 +209,8 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
       node.ID = "Artifact"; // TEMPORARY
     }
 
+    // TODO - fill covariance
+
     // Add to the vector of nodes
     nodes.push_back(node);
   }
@@ -220,8 +243,9 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   return true;
 }
 
-//-------------------------------------- 
-// Tracking 
+//------------------------------------------------------------------------------------------
+// Tracking
+//------------------------------------------------------------------------------------------
 
 void LampBase::TrackEdges(gtsam::Symbol key_from, 
                           gtsam::Symbol key_to, 
@@ -255,5 +279,47 @@ void LampBase::TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose
   // TODO - add covariance 
 
   priors_info_.push_back(prior);
+}
 
+// Placeholder function to used fixed covariances while proper covariances are
+// being developed
+gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
+  gtsam::Vector6 zero;
+  zero << 0, 0, 0, 0, 0, 0;
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(zero);
+
+  // Switch based on type
+  if (type == "odom") {
+    gtsam::Vector6 noise_vec;
+    noise_vec.head<3>().setConstant(attitude_sigma_);
+    noise_vec.tail<3>().setConstant(position_sigma_);
+    noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
+  } else if (type == "laser_loop_closure") {
+    gtsam::Vector6 noise_vec;
+    noise_vec.head<3>().setConstant(laser_lc_rot_sigma_);
+    noise_vec.tail<3>().setConstant(laser_lc_trans_sigma_);
+    noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
+  } else if (type == "manual_loop_closure") {
+    gtsam::Vector6 noise_vec;
+    noise_vec.head<3>().setConstant(manual_lc_rot_precision_);
+    noise_vec.tail<3>().setConstant(manual_lc_trans_precision_);
+    noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
+  } else if (type == "artifact") {
+    gtsam::Vector6 precisions;
+    precisions.head<3>().setConstant(artifact_rot_precision_);
+    precisions.tail<3>().setConstant(artifact_trans_precision_);
+    noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
+
+  } else if (type == "april") {
+    gtsam::Vector6 precisions;
+    precisions.head<3>().setConstant(fiducial_rot_precision_);
+    precisions.tail<3>().setConstant(fiducial_trans_precision_);
+    noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
+  } else if (type == "total_station") {
+  } else {
+    ROS_ERROR("Incorrect input into SetFixedNoiseModels - invalid type");
+  }
+  // TODO - implement others
+
+  return noise;
 }

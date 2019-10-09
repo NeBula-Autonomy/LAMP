@@ -58,6 +58,7 @@ class LampRobot : public LampBase {
     bool SetInitialKey();
 
     void UpdateArtifactPositions();
+    void UpdateAndPublishOdom();
 
     // Initial key
     gtsam::Symbol initial_key_;
@@ -71,6 +72,8 @@ class LampRobot : public LampBase {
     PointCloudFilter filter_;
     PointCloudMapper mapper_;
 
+    // Publishers
+    ros::Publisher pose_pub_;
 
   private:
     // Overwrite base classs functions where needed
@@ -85,6 +88,11 @@ class LampRobot : public LampBase {
     // Example use:
     // ProcessArtifactData(artifact_handler_.GetData());
 
+    void HandleRelativePoseMeasurement(const ros::Time& time,
+                                       const gtsam::Pose3& relative_pose,
+                                       gtsam::Pose3& transform,
+                                       gtsam::Pose3& global_pose,
+                                       gtsam::Symbol& key_from);
 
     // Data Handler classes
     OdometryHandler odometry_handler_; 

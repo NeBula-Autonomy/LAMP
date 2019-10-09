@@ -35,10 +35,10 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS})
 add_library(${PROJECT_NAME} src/CommonFunctions.cc)
-# target_link_libraries(${PROJECT_NAME}
-#   ${catkin_LIBRARIES}
-#   gtsam
-# )
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  gtsam
+)
 
 # install(DIRECTORY include/${PROJECT_NAME}/
 #   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
@@ -49,3 +49,14 @@ add_library(${PROJECT_NAME} src/CommonFunctions.cc)
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 #   FILES_MATCHING PATTERN "*.cmake"
 # )
+
+#############
+## Testing ##
+#############
+if (CATKIN_ENABLE_TESTING)
+  # add_subdirectory(test)
+  ## Add gtest based cpp test target and link libraries
+  catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cc)
+  target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
+endif()
+

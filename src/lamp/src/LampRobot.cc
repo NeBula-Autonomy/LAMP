@@ -82,7 +82,12 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
 }
 
 bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
+  // Rates
   if (!pu::Get("rate/update_rate", update_rate_))
+    return false;
+
+  // Settings for precisions
+  if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
 
   // TODO - bring in other parameter
@@ -134,6 +139,7 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
+  // Pose Graph publishers
   pose_graph_pub_ =
     nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   pose_graph_to_optimize_pub_ =
@@ -141,6 +147,8 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
   keyed_scan_pub_ =
     nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
 
+  // Publishers
+  pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>("lamp_pose", 10, false);
 
   return true; 
 }
@@ -297,6 +305,9 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Check the handlers
   CheckHandlers();
 
+  // Publish odom
+  UpdateAndPublishOdom();
+
   // Publish the pose graph
   if (b_has_new_factor_) {
     PublishPoseGraph();
@@ -365,7 +376,13 @@ bool LampRobot::ProcessOdomData(FactorData data){
   for (int i = 0; i < num_factors; i++) {
     // Get the transforms - odom transforms
     Pose3 transform = data.transforms[i];
-    gtsam::SharedNoiseModel covariance = data.covariances[i]; // TODO - fix
+    gtsam::SharedNoiseModel covariance =
+        data.covariances[i]; // TODO - check format
+
+    if (b_use_fixed_covariances_) {
+      covariance = SetFixedNoiseModels("odom");
+    }
+
     std::pair<ros::Time, ros::Time> times = data.time_stamps[i];
 
     // Get the previous key - special case for odom that we use key)
@@ -419,7 +436,43 @@ bool LampRobot::ProcessOdomData(FactorData data){
   return true;
 }
 
+// Odometry update
+void LampRobot::UpdateAndPublishOdom() {
+  // Get the pose at the last key
+  Pose3 last_pose = values_.at<Pose3>(key_ - 1);
 
+  // Get the delta from the last pose to now
+  ros::Time stamp = ros::Time::now();
+  Pose3 delta_pose;
+  odometry_handler_.GetDeltaBetweenTimes(
+      keyed_stamps_[key_ - 1], stamp, delta_pose);
+
+  // Compose the delta
+  Pose3 new_pose = last_pose.compose(delta_pose);
+
+  // TODO use the covariance when we have it
+  // gtsam::Matrix66 covariance;
+  // odometry_handler_.GetDeltaCovarianceBetweenTimes(keyed_stamps_[key_-1],
+  // stamp, covariance);
+  //
+  // Compose covariance
+  // TODO
+
+  // Convert to ROS to publish
+  geometry_msgs::PoseStamped msg;
+  msg.pose = utils::GtsamToRosMsg(new_pose);
+  msg.header.frame_id = fixed_frame_id_;
+  msg.header.stamp = stamp;
+
+  // TODO - use the covariance when we have it
+  // geometry_msgs::PoseWithCovarianceStamped msg;
+  // msg.pose = utils::GtsamToRosMsg(new_pose, covariance);
+  // msg.header.frame_id = fixed_frame_id_;
+  // msg.header.stamp = stamp;
+
+  // Publish pose graph
+  pose_pub_.publish(msg);
+}
 
 /*! 
   \brief  Wrapper for the artifact class interactions
@@ -470,6 +523,33 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
   }
 
+  // TODO - use the HandleRelativePoseMeasurement function below
+}
+
+// Function gets a relative pose and time, and returns the global pose and the
+// transform from the closest node in time, as well as the key of the closest
+// node
+void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
+                                              const gtsam::Pose3& relative_pose,
+                                              gtsam::Pose3& transform,
+                                              gtsam::Pose3& global_pose,
+                                              gtsam::Symbol& key_from) {
+  // Get the key from:
+  key_from = GetKeyAtTime(stamp);
+
+  // Time from this key - closest time that there is anode
+  ros::Time stamp_from = keyed_stamps_[key_from];
+
+  // Get the delta pose from the key_from to the time of the observation
+  Pose3 delta_pose;
+  odometry_handler_.GetDeltaBetweenTimes(stamp_from, stamp, delta_pose);
+
+  // Compose the transforms to get the between factor
+  transform = delta_pose.compose(relative_pose);
+
+  // Compose from the node in the graph to get the global position
+  // TODO - maybe do this outside this function
+  global_pose = values_.at<Pose3>(key_from).compose(transform);
 }
 
 // TODO Function handler wrappers
@@ -478,5 +558,3 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 // TODO 
 // - Unit tests for these functions 
 // - How to handle relative measurements not directly at nodes 
-
-

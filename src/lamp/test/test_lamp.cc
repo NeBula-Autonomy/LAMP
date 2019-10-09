@@ -15,6 +15,8 @@ class TestLampRobot : public ::testing::Test {
              "lamp)/config/precision_parameters.yaml");
       system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
       system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
+      system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
+      system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
       system("rosparam load $(rospack find "
              "point_cloud_filter)/config/parameters.yaml");
@@ -33,7 +35,11 @@ class TestLampRobot : public ::testing::Test {
     bool SetInitialPosition() {return lr.SetInitialPosition();}
     int GetValuesSize() {return lr.values_.size();}
     gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {return lr.GetKeyAtTime(stamp);}
+    gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {return lr.GetClosestKeyAtTime(stamp);}
     pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg() {return lr.ConvertPoseGraphToMsg();}
+    gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
+      return lr.SetFixedNoiseModels(type);
+    }
     void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, int type, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance) {
       lr.TrackEdges(key_from, key_to, type, pose, covariance);
     }
@@ -142,7 +148,14 @@ TEST_F(TestLampRobot, SetFactorPrecisions) {
 
   EXPECT_TRUE(SetFactorPrecisions());
 }
-  
+
+TEST_F(TestLampRobot, Initialization) {
+  ros::NodeHandle nh, pnh("~");
+
+  bool result = lr.Initialize(nh);
+
+  EXPECT_TRUE(result);
+}
 
 TEST_F(TestLampRobot, GetKeyAtTime) {
   ros::Time::init();
@@ -163,30 +176,12 @@ TEST_F(TestLampRobot, GetKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 3), GetKeyAtTime(ros::Time(1.5)));
   EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(2.0)));
 
-  // Rounding to nearest (within threshold)
-  EXPECT_EQ(gtsam::Symbol('a', 0), GetKeyAtTime(ros::Time(0.0000001)));
-  EXPECT_EQ(gtsam::Symbol('a', 1), GetKeyAtTime(ros::Time(0.4990001)));
-  EXPECT_EQ(gtsam::Symbol('a', 2), GetKeyAtTime(ros::Time(0.9999999)));
-  EXPECT_EQ(gtsam::Symbol('a', 3), GetKeyAtTime(ros::Time(1.5009999)));
-  EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(1.9999000)));
-}
-
-TEST_F(TestLampRobot, GetKeyAtTimeOutsideThreshold) {
-  ros::Time::init();
-  SetTimeThreshold(0.001);
-
-  // Build map
-  AddStampToOdomKey(ros::Time(0.0), gtsam::Symbol('a', 0));
-  AddStampToOdomKey(ros::Time(0.5), gtsam::Symbol('a', 1));
-  AddStampToOdomKey(ros::Time(1.0), gtsam::Symbol('a', 2));
-  AddStampToOdomKey(ros::Time(1.5), gtsam::Symbol('a', 3));
-  AddStampToOdomKey(ros::Time(2.0), gtsam::Symbol('a', 4));
-
-  // Expect empty keys from invalid inputs
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.002)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.25)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(2.2)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(100000.0)));
+  // Mismatches
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.0000001)));
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.4990001)));
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.9999999)));
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.5009999)));
+  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.9999000)));
 }
 
 TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
@@ -197,6 +192,38 @@ TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
   EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.0)));
   EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.0)));
 }
+
+TEST_F(TestLampRobot, GetClosestKeyAtTime) {
+  ros::Time::init();
+
+  SetTimeThreshold(0.001);
+
+  // Check single key 
+  AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
+  EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(500.0)));
+
+  // Add more keys
+  AddStampToOdomKey(ros::Time(50.0), gtsam::Symbol('a', 1));
+  AddStampToOdomKey(ros::Time(60.0), gtsam::Symbol('a', 2));
+  AddStampToOdomKey(ros::Time(80.0), gtsam::Symbol('a', 3));
+  AddStampToOdomKey(ros::Time(100.0), gtsam::Symbol('a', 4));
+
+  // Exact matches
+  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); // TODO - fix this
+  EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(50.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(80.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(100.0)));
+
+  // Closest key
+  EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.5)));
+  EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(54.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(63.43)));
+  EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(75.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(99.99999)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(100000.0)));
+}
+
 
 TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   ros::Time::init();
@@ -321,17 +348,65 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   EXPECT_NEAR(0.0, n.pose.orientation.z, tolerance_);
 }
 
+// TODO - work out how to pass around SharedNoiseModels
+// TEST_F(TestLampRobot, TestSetFixedCovariancesOdom){
 
+//   double attitude_sigma = 0.1;
+//   double position_sigma = 0.2;
 
+//   ros::param::get("attitude_sigma",attitude_sigma);
+//   ros::param::get("position_sigma",position_sigma);
+//   // lr.attitude_sigma_ = attitude_sigma;
+//   // lr.position_sigma_ = position_sigma;
 
-TEST_F(TestLampRobot, Initialization) {
-  ros::NodeHandle nh, pnh("~");
+//   // Set the paramters
+//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("odom");
 
-  bool result = lr.Initialize(nh);
-  
-  EXPECT_TRUE(result);
-}
+//   EXPECT_NEAR(noise.sigmas()[0], attitude_sigma, tolerance_)
+//   EXPECT_NEAR(noise.sigmas()[3], position_sigma, tolerance_)
 
+// }
+
+// TEST_F(TestLampRobot, TestSetFixedCovariancesLaserLoopClosure){
+
+//   double laser_lc_rot_sigma_ = 0.1;
+//   double laser_lc_trans_sigma_ = 0.2;
+
+//   lr.laser_lc_rot_sigma_ = laser_lc_rot_sigma_;
+//   lr.laser_lc_trans_sigma_ = laser_lc_trans_sigma_;
+
+//   // Set the paramters
+//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("laser_loop_closure");
+
+//   EXPECT_NEAR(noise.sigmas()[0], laser_lc_rot_sigma_, tolerance_)
+//   EXPECT_NEAR(noise.sigmas()[3], laser_lc_trans_sigma_, tolerance_)
+
+// }
+
+// TEST_F(TestLampRobot, TestSetFixedCovariancesManualLoopClosure){
+
+//   double manual_lc_rot_precision_ = 0.1;
+//   double manual_lc_trans_precision_ = 0.2;
+
+//   lr.laser_lc_rot_sigma_ = manual_lc_rot_precision_;
+//   lr.laser_lc_trans_sigma_ = manual_lc_trans_precision_;
+
+//   // Set the paramters
+//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("manual_loop_closure");
+
+//   EXPECT_NEAR(noise.sigmas()[0], manual_lc_rot_precision_, tolerance_)
+//   EXPECT_NEAR(noise.sigmas()[3], manual_lc_trans_precision_, tolerance_)
+
+// }
+
+// TEST_F(TestLampRobot, TestSetFixedCovariancesError){
+
+//   // Set the paramters
+//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("something_wrong");
+
+//   // TODO - look at throwing error
+
+// }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
