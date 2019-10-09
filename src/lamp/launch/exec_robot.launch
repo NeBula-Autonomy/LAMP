@@ -31,7 +31,7 @@
       <remap from="~optimizer_pg" to="lamp_pgo/optimized_values"/>
 
       <remap from="~artifact" to="~artifact_global" />
-      <remap from="~artifact_relative" to="/artifact_reconciliation/reconciled_artifact" />
+      <remap from="~artifact_relative" to="/reconciled_artifact" />
       <remap from="~uwb_signal" to="/comm/uwb/anchor" />
 
       <!-- Initial pose -->

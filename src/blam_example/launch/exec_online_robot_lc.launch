@@ -23,7 +23,7 @@
 
       <!-- Topics -->
       <remap from="~artifact" to="~artifact_global" />
-      <remap from="~artifact_relative" to="artifact_reconciliation/reconciled_artifact" />
+      <remap from="~artifact_relative" to="reconciled_artifact" />
       <remap from="~uwb_signal" to="comm/uwb/anchor" />
       <remap from="~localization_integrated_estimate" to="~localization_integrated_estimate_lc" />
 
