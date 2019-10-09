@@ -86,6 +86,8 @@ FactorData OdometryHandler::GetData(){
 
     auto fused_odom = FuseMultipleOdometry(gtsam_odom);
 
+    factors_.transforms.push_back(fused_odom.pose);
+    factors_.covariances.push_back(fused_odom.covariance);
     factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
 
     // TODO: Call Fusion Logic 
@@ -109,6 +111,25 @@ void OdometryHandler::InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer,
 
 GtsamPosCov OdometryHandler::FuseMultipleOdometry(GtsamOdom& gtsam_odom) {
   GtsamPosCov output_odom;
+  GtsamPosCov lidar_odom = gtsam_odom.lidar_odom;
+  GtsamPosCov visual_odom = gtsam_odom.visual_odom;
+  GtsamPosCov wheel_odom = gtsam_odom.wheel_odom;
+
+  if (lidar_odom.b_has_value == true) {
+    // 
+  }
+  if (visual_odom.b_has_value == true) {
+    // 
+  }
+  if (wheel_odom.b_has_value == true) {
+    // 
+  }
+
+  // TODO: For the first implementation, pure lidar-based odometry is used.
+  output_odom = lidar_odom;
+
+  // TODO: Reset the odometry buffers
+
   return output_odom;
 }
 
