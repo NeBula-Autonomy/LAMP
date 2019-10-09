@@ -289,62 +289,62 @@ TEST_F(OdometryHandlerTest, TestGetPoseAtTime) {
   // EXPECT_EQ(myBuffer[1].header.stamp.toSec(),2);
 }
 
-// TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
-//   double t1 = 1.0;
-//   double t2 = 2.0;
-//   double t3 = 3.0;
-//   ros::Time t1_ros;
-//   ros::Time t2_ros;
-//   ros::Time t3_ros;
-//   t1_ros.fromSec(t1);
-//   t2_ros.fromSec(t2);
-//   t3_ros.fromSec(t3);
+TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
+  double t1 = 1.0;
+  double t2 = 2.0;
+  double t3 = 3.0;
+  ros::Time t1_ros;
+  ros::Time t2_ros;
+  ros::Time t3_ros;
+  t1_ros.fromSec(t1);
+  t2_ros.fromSec(t2);
+  t3_ros.fromSec(t3);
 
-//   // Create an output
-//   PoseCovStampedPair myOutput;
-//   // Create a buffer
-//   OdomPoseBuffer myBuffer; 
-//   // Create two messages
-//   geometry_msgs::PoseWithCovarianceStamped msg_first; 
-//   geometry_msgs::PoseWithCovarianceStamped msg_second;
-//   geometry_msgs::PoseWithCovarianceStamped msg_third;
+  // Create an output
+  PoseCovStampedPair myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer; 
+  // Create two messages
+  geometry_msgs::PoseWithCovarianceStamped msg_first; 
+  geometry_msgs::PoseWithCovarianceStamped msg_second;
+  geometry_msgs::PoseWithCovarianceStamped msg_third;
 
-//   // Fill the two messages
-//   msg_first.header.stamp = t1_ros; 
-//   msg_first.pose.pose.position.x = 1; 
-//   msg_first.pose.pose.position.y = 0; 
-//   msg_first.pose.pose.position.z = 0; 
-//   msg_first.pose.pose.orientation.x = 0;
-//   msg_first.pose.pose.orientation.y = 0;
-//   msg_first.pose.pose.orientation.z = 0;
-//   msg_first.pose.pose.orientation.w = 1;
+  // Fill the two messages
+  msg_first.header.stamp = t1_ros; 
+  msg_first.pose.pose.position.x = 1; 
+  msg_first.pose.pose.position.y = 0; 
+  msg_first.pose.pose.position.z = 0; 
+  msg_first.pose.pose.orientation.x = 0;
+  msg_first.pose.pose.orientation.y = 0;
+  msg_first.pose.pose.orientation.z = 0;
+  msg_first.pose.pose.orientation.w = 1;
 
-//   msg_second.header.stamp = t2_ros; 
-//   msg_second.pose.pose.position.x = 2; 
-//   msg_second.pose.pose.position.y = 0; 
-//   msg_second.pose.pose.position.z = 0;
-//   msg_second.pose.pose.orientation.x = 0;
-//   msg_second.pose.pose.orientation.y = 0;
-//   msg_second.pose.pose.orientation.z = 0;
-//   msg_second.pose.pose.orientation.w = 1;
+  msg_second.header.stamp = t2_ros; 
+  msg_second.pose.pose.position.x = 2; 
+  msg_second.pose.pose.position.y = 0; 
+  msg_second.pose.pose.position.z = 0;
+  msg_second.pose.pose.orientation.x = 0;
+  msg_second.pose.pose.orientation.y = 0;
+  msg_second.pose.pose.orientation.z = 0;
+  msg_second.pose.pose.orientation.w = 1;
 
-//   msg_third.header.stamp = t3_ros; 
-//   msg_third.pose.pose.position.x = 3; 
-//   msg_third.pose.pose.position.y = 0; 
-//   msg_third.pose.pose.position.z = 0;
-//   msg_third.pose.pose.orientation.x = 0;
-//   msg_third.pose.pose.orientation.y = 0;
-//   msg_third.pose.pose.orientation.z = 0;
-//   msg_third.pose.pose.orientation.w = 1;
+  msg_third.header.stamp = t3_ros; 
+  msg_third.pose.pose.position.x = 3; 
+  msg_third.pose.pose.position.y = 0; 
+  msg_third.pose.pose.position.z = 0;
+  msg_third.pose.pose.orientation.x = 0;
+  msg_third.pose.pose.orientation.y = 0;
+  msg_third.pose.pose.orientation.z = 0;
+  msg_third.pose.pose.orientation.w = 1;
 
-//   // Push messages to buffer
-//   myBuffer.push_back(msg_first); 
-//   myBuffer.push_back(msg_second); 
-//   myBuffer.push_back(msg_third);
+  // Push messages to buffer
+  myBuffer.push_back(msg_first); 
+  myBuffer.push_back(msg_second); 
+  myBuffer.push_back(msg_third);
 
-//   bool result = GetPosesAtTimes(t1_ros, t2_ros, myBuffer, myOutput);
-//   ASSERT_TRUE(result);
-// }
+  bool result = GetPosesAtTimes(t1_ros, t2_ros, myBuffer, myOutput);
+  ASSERT_TRUE(result);
+}
 
 
 
