@@ -118,30 +118,30 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle &nh_,
       "artifact_id_markers", 10, false);
 
   keyed_scan_sub_ = nh.subscribe<pose_graph_msgs::KeyedScan>(
-      "blam_slam/keyed_scans", 10, &PoseGraphVisualizer::KeyedScanCallback,
+      "lamp/keyed_scans", 10, &PoseGraphVisualizer::KeyedScanCallback,
       this);
   pose_graph_sub_ = nh.subscribe<pose_graph_msgs::PoseGraph>(
-      "blam_slam/pose_graph", 10, &PoseGraphVisualizer::PoseGraphCallback,
+      "lamp/pose_graph", 10, &PoseGraphVisualizer::PoseGraphCallback,
       this);
   pose_graph_edge_sub_ = nh.subscribe<pose_graph_msgs::PoseGraphEdge>(
-      "blam_slam/pose_graph_edge", 10,
+      "lamp/pose_graph_edge", 10,
       &PoseGraphVisualizer::PoseGraphEdgeCallback, this);
   pose_graph_node_sub_ = nh.subscribe<pose_graph_msgs::PoseGraphNode>(
-      "blam_slam/pose_graph_node", 10,
+      "lamp/pose_graph_node", 10,
       &PoseGraphVisualizer::PoseGraphNodeCallback, this);
   erase_posegraph_sub_ =
-      nh.subscribe<std_msgs::Bool>("blam_slam/erase_posegraph",
+      nh.subscribe<std_msgs::Bool>("lamp/erase_posegraph",
                                    10,
                                    &PoseGraphVisualizer::ErasePosegraphCallback,
                                    this);
 
   remove_factor_viz_sub_ = nh.subscribe<std_msgs::Bool>(
-      "blam_slam/remove_factor_viz",
+      "lamp/remove_factor_viz",
       10,
       &PoseGraphVisualizer::RemoveFactorVizCallback,
       this);
 
-  artifact_sub_ = nh.subscribe("blam_slam/artifact_global",
+  artifact_sub_ = nh.subscribe("lamp/artifact_global",
                                10,
                                &PoseGraphVisualizer::ArtifactCallback,
                                this);

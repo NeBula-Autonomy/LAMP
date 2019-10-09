@@ -33,9 +33,6 @@
       <remap from="~artifact_relative" to="/artifact_reconciliation/reconciled_artifact" />
       <remap from="~uwb_signal" to="/comm/uwb/anchor" />
 
-      <!-- Serives -->
-      <remap from="~drop_uwb_anchor" to="drop_uwb_anchor"/>
-
       <!-- Initial pose -->
       <rosparam param="init">
         position: {x: 0.0, y: 0.0, z: 0.0}
@@ -53,19 +50,16 @@
       <!-- LAMP settings -->
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
       <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/>
+      <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/>
 
       <!-- Factor handlers settings -->
       <rosparam file="$(find factor_handlers)/config/odom_parameters.yaml" subst_value="true"/>
-
 
       <!-- Rates -->
       <rosparam file="$(find lamp)/config/lamp_rates.yaml"/>
 
       <!-- Frames -->
       <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>
-
-      <!-- List of UWB anchors -->
-      <!-- <rosparam file="$(find lamp)/config/dropped_items_list.yaml"/> -->
 
       <!-- Point cloud filter -->
       <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
@@ -99,9 +93,11 @@
           output="screen">
       <!-- Frames -->
       <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>      
+      <!-- Config - TODO move the proximity_threshold param elsewhere -->
+      <rosparam file="$(find factor_handlers)/config/odom_parameters.yaml" subst_value="true"/>      
     </node>
 
-    <!-- Trotthling input cloud -->
+    <!-- Throttling input cloud -->
     <node name="point_cloud_throttler" type="throttle" pkg="topic_tools" args="messages velodyne_points $(arg vlp_throttle_freq)">
     </node>
 
