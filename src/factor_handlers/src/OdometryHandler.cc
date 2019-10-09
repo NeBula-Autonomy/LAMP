@@ -49,9 +49,7 @@ FactorData OdometryHandler::GetData(){
     // Given the two timestamp of interest, we have a temporal window for potential fusion of data 
 
     // Get the absolute poses at time t1 and t2 from all odometry buffer 
-    PoseCovStampedPair lidar_poses; 
-    PoseCovStampedPair visual_poses;
-    PoseCovStampedPair wheel_poses; 
+    PoseCovStampedPair lidar_poses, visual_poses, wheel_poses; 
 
     // Lidar Odometry Only Case - fill logic
 
@@ -70,7 +68,8 @@ FactorData OdometryHandler::GetData(){
           gtsam::SharedNoiseModel delta_cov_lidar = GetCovariance(lidar_poses);
           gtsam::SharedNoiseModel delta_cov_visual = GetCovariance(visual_poses);
           gtsam::SharedNoiseModel delta_cov_wheel = GetCovariance(wheel_poses);
-          // Create three istances of GtsamPosCov and fill it with the values of interest         
+          // Create three istances of GtsamPosCov and fill it with the values of interest    
+          GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;   
         }
       }  
     }
