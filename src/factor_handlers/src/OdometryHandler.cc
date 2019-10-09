@@ -75,17 +75,7 @@ FactorData OdometryHandler::GetData(){
     //   }  
     // }
 
-    // TODO: The following cords should be implemented in a smarter way
-    GtsamPosCov measurement_lidar, measurement_visual, measurement_wheel;
-    InsertGtsamOdometryInfo(lidar_odometry_buffer_, measurement_lidar);
-    InsertGtsamOdometryInfo(visual_odometry_buffer_, measurement_visual);
-    InsertGtsamOdometryInfo(wheel_odometry_buffer_, measurement_wheel);
-    GtsamOdom gtsam_odom;
-    gtsam_odom.lidar_odom = measurement_lidar;
-    gtsam_odom.visual_odom = measurement_visual;
-    gtsam_odom.wheel_odom = measurement_wheel;
-
-    auto fused_odom = FuseMultipleOdometry(gtsam_odom);
+    auto fused_odom = FuseMultipleOdometry();
 
     if (CalculatePoseDelta(fused_odom) > 1.0) {
       factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
@@ -101,23 +91,23 @@ FactorData OdometryHandler::GetData(){
   }
 }
 
-void OdometryHandler::InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement) {
+void OdometryHandler::InsertGtsamOdometryInfo(const OdomPoseBuffer& odom_buffer, GtsamPosCov& pure_odom) {
   PoseCovStampedPair poses;
   if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, odom_buffer, poses)) {
-    measurement.b_has_value = true;
-    measurement.pose = GetTransform(poses);
-    measurement.covariance = GetCovariance(poses);
+    pure_odom.b_has_value = true;
+    pure_odom.pose = GetTransform(poses);
+    pure_odom.covariance = GetCovariance(poses);
   }
   else {
-    measurement.b_has_value = false;
+    pure_odom.b_has_value = false;
   }
 }
 
-GtsamPosCov OdometryHandler::FuseMultipleOdometry(GtsamOdom& gtsam_odom) {
-  GtsamPosCov output_odom;
-  GtsamPosCov lidar_odom = gtsam_odom.lidar_odom;
-  GtsamPosCov visual_odom = gtsam_odom.visual_odom;
-  GtsamPosCov wheel_odom = gtsam_odom.wheel_odom;
+GtsamPosCov OdometryHandler::FuseMultipleOdometry() {
+  GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
+  InsertGtsamOdometryInfo(lidar_odometry_buffer_, lidar_odom);
+  InsertGtsamOdometryInfo(visual_odometry_buffer_, visual_odom);
+  InsertGtsamOdometryInfo(wheel_odometry_buffer_, wheel_odom);
 
   if (lidar_odom.b_has_value == true) {
     // 
