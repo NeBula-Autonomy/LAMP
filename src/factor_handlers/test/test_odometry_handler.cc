@@ -47,6 +47,10 @@ protected:
     gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
       return oh.GetTransform(pose_cov_stamped_pair);
     }
+
+    gtsam::SharedNoiseModel GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+      return oh.GetCovariance(pose_cov_stamped_pair);
+    }
     
     std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
       return oh.GetTimeStamps(pose_cov_stamped_pair);
@@ -142,6 +146,28 @@ TEST_F (OdometryHandlerTest, TestGetTransform) {
   ASSERT_TRUE(transform_actual.equals(transform_expected));
 }
 
+TEST_F(OdometryHandlerTest, TestGetCovariance) {
+  PoseCovStampedPair pose_cov_stamped_pair;
+  PoseCovStamped pose_cov_stamped_1;
+  PoseCovStamped pose_cov_stamped_2;
+  for (size_t i = 0; i < 36; i++) {
+    pose_cov_stamped_1.pose.covariance[i] = 1;
+    pose_cov_stamped_2.pose.covariance[i] = 3;
+  }
+  pose_cov_stamped_pair.first = pose_cov_stamped_1;
+  pose_cov_stamped_pair.second = pose_cov_stamped_2;
+  gtsam::SharedNoiseModel noise_actual = GetCovariance(pose_cov_stamped_pair);
+  gtsam::Matrix66 covariance_expected;
+  for (size_t i = 0; i < 6; i++) {
+    for (size_t j = 0; j < 6; j++) {
+      covariance_expected(i,j) = 2;
+    }
+  }
+  gtsam::SharedNoiseModel noise_expected =
+      gtsam::noiseModel::Gaussian::Covariance(covariance_expected);
+  ASSERT_TRUE((*noise_actual).equals(*noise_expected));
+}
+
 // Nobuhiro is working on GetCovariance function unit test
 /* TEST  GetTimeStamps */
 TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
@@ -203,7 +229,7 @@ TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
 
 // GetTransform: Done (Nobuhiro)
 
-// GetCovariance: Working (Nobuhiro)
+// GetCovariance: Done (Nobuhiro)
 
 // GetTimeStamps: Done (Nobuhiro)
 
