@@ -147,6 +147,9 @@ class LampBase {
                    gtsam::Pose3 pose,
                    gtsam::SharedNoiseModel covariance);
 
+  // Set artifact positions
+  virtual void UpdateArtifactPositions();
+
   // Typedef for stored point clouds.
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 

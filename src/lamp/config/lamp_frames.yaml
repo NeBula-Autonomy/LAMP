@@ -3,4 +3,4 @@ frame_id:
   base: $(arg robot_namespace)/base_link
   imu: $(arg robot_namespace)/vn100
   odometry: $(arg robot_namespace)/base_link_lamp_odometry
-  artifacts_in_global: true
+  artifacts_in_global: false

@@ -65,6 +65,13 @@
       <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax1')"/>
       <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
 
+      <!-- The artifact prefix dependent of robot_namespace -->
+      <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
+      <param name="artifact_prefix" value="m" if="$(eval robot_namespace == 'husky2')"/>
+      <param name="artifact_prefix" value="n" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="artifact_prefix" value="q" if="$(eval robot_namespace == 'husky4')"/>
+      <param name="artifact_prefix" value="o" if="$(eval robot_namespace == 'telemax1')"/>
+      <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
     </node>
 
     <!-- Pose graph optimizer -->
