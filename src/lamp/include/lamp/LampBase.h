@@ -103,6 +103,9 @@ class LampBase {
   // Callback for loop closures
   void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg);
   void AddLoopClosureToGraph(const pose_graph_msgs::PoseGraphConstPtr msg);
+  pose_graph_msgs::PoseGraph
+  ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
+                            gtsam::SharedNoiseModel noise);
 
   // Functions to publish
   bool PublishPoseGraph();
@@ -124,6 +127,9 @@ class LampBase {
 
   // Placeholder for setting fixed noise
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
+  gtsam::SharedNoiseModel laser_lc_noise_;
+  gtsam::SharedNoiseModel odom_noise_;
+  gtsam::SharedNoiseModel artifact_noise_;
 
   // New pose graph values from optimizer
   virtual void

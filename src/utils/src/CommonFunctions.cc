@@ -46,6 +46,7 @@ gtsam::Pose3 EdgeMessageToPose(pose_graph_msgs::PoseGraphEdge msg_edge) {
   return delta;
 }
 
+// TODO - unit tests for these
 Gaussian::shared_ptr
 EdgeMessageToCovariance(pose_graph_msgs::PoseGraphEdge msg_edge) {
   gtsam::Matrix66 covariance;
@@ -57,6 +58,23 @@ EdgeMessageToCovariance(pose_graph_msgs::PoseGraphEdge msg_edge) {
   Gaussian::shared_ptr noise = Gaussian::Covariance(covariance);
 
   return noise;
+}
+
+void UpdateEdgeCovariance(pose_graph_msgs::PoseGraphEdge& msg_edge,
+                          gtsam::Matrix66 covariance) {
+  for (size_t i = 0; i < msg_edge.covariance.size(); i++) {
+    size_t row = static_cast<size_t>(i / 6);
+    size_t col = i % 6;
+    msg_edge.covariance[i] = covariance(row, col);
+  }
+}
+
+void UpdateEdgeCovariance(pose_graph_msgs::PoseGraphEdge& msg_edge,
+                          gtsam::SharedNoiseModel noise) {
+  gtsam::Matrix66 covariance =
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>(noise)
+          ->covariance();
+  UpdateEdgeCovariance(msg_edge, covariance);
 }
 
 // Pose graph msg to gtsam conversion
