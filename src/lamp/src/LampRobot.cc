@@ -513,13 +513,16 @@ void LampRobot::UpdateAndPublishOdom() {
   Pose3 last_pose = values_.at<Pose3>(key_ - 1);
 
   // Get the delta from the last pose to now
-  ros::Time stamp = ros::Time::now();
-  // GtsamPosCov delta_pose;
-  // odometry_handler_.GetOdomDelta(stamp, delta_pose);
+  ros::Time stamp = ros::Time::now();  
+  GtsamPosCov delta_pose_cov;
+  odometry_handler_.GetOdomDelta(stamp, delta_pose_cov);
+  // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp, delta_pose);
 
   // Compose the delta
-  // Pose3 new_pose = last_pose.compose(delta_pose.pose);
-  Pose3 new_pose = last_pose;
+  auto delta_pose = delta_pose_cov.pose;
+  auto delta_cov = delta_pose_cov.covariance;
+
+  Pose3 new_pose = last_pose.compose(delta_pose);
 
   // TODO use the covariance when we have it
   // gtsam::Matrix66 covariance;
@@ -590,10 +593,12 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   ros::Time stamp_from = keyed_stamps_[key_from];
 
   // Get the delta pose from the key_from to the time of the observation
-  Pose3 delta_pose;
-  odometry_handler_.GetDeltaBetweenTimes(stamp_from, stamp, delta_pose);
+  GtsamPosCov delta_pose_cov; 
+  delta_pose_cov = odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
 
   // Compose the transforms to get the between factor
+  gtsam::Pose3 delta_pose = delta_pose_cov.pose;
+  gtsam::SharedNoiseModel delta_cov = delta_pose_cov.covariance;
   transform = delta_pose.compose(relative_pose);
 
   // Compose from the node in the graph to get the global position
