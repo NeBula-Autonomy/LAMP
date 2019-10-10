@@ -89,7 +89,13 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 // Callbacks --------------------------------------------------------------------------------------------
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
-    ROS_INFO("LidarOdometryCallback");    
+    ROS_INFO("LidarOdometryCallback");   
+    
+    if (OdometryHandler::InsertMsgInBufferMap(*msg, lidar_odometry_buffer_map_)){
+        ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store message in buffer");
+
+    } 
+
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
         ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store message in buffer");
     }
@@ -97,13 +103,26 @@ void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
+
+    if (InsertMsgInBufferMap(*msg, visual_odometry_buffer_map_)){
+        ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store message in buffer");
+
+    } 
+
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
         ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store message in buffer");
     }
+
 }
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
+
+    if (InsertMsgInBufferMap(*msg, wheel_odometry_buffer_map_)){
+        ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store message in buffer");
+
+    } 
+
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
         ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store message in buffer");
     }

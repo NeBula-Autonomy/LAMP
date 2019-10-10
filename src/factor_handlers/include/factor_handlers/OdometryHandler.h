@@ -113,7 +113,7 @@ class OdometryHandler : public LampDataHandlerBase{
             if (current_size != (prev_size + 1)) return false;
             return true;
         }
-
+        
         // This method receives an Odometry message, it transforms it into a PosCovStamped message and stores that in a map
         bool InsertMsgInBufferMap(const Odometry& odom_msg, OdomPoseBufferMap& buffer_map) {
             // TODO: Check intial map size, and ensure next map size has increased values, if so return true 
