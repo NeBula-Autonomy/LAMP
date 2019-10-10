@@ -246,14 +246,10 @@ void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 
   // Get the artifact pose
   Eigen::Vector3d artifact_position = global_pose.translation().vector();
   std::string artifact_label;
-  gtsam::Symbol artifact_symbol_key = gtsam::Symbol(artifact_key);
 
-  if (!(artifact_symbol_key.chr() == 'l' || 
-        artifact_symbol_key.chr() == 'm' || 
-        artifact_symbol_key.chr() == 'n' || 
-        artifact_symbol_key.chr() == 'o' || 
-        artifact_symbol_key.chr() == 'p' || 
-        artifact_symbol_key.chr() == 'q')){
+  if (!(artifact_key.chr() == 'l' || artifact_key.chr() == 'm' ||
+        artifact_key.chr() == 'n' || artifact_key.chr() == 'o' ||
+        artifact_key.chr() == 'p' || artifact_key.chr() == 'q')) {
     ROS_WARN("ERROR - have a non-landmark ID");
     ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
     return;

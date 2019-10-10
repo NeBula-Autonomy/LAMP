@@ -261,11 +261,15 @@ bool LampRobot::InitializeGraph(
 }
 
 bool LampRobot::InitializeHandlers(const ros::NodeHandle& n){
+  if (!odometry_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the odometry handler.", name_.c_str());
+    return false;
+  }
 
-    if (!odometry_handler_.Initialize(n)) {
-      ROS_ERROR("%s: Failed to initialize the odometry handler.", name_.c_str());
-      return false;
-    }
+  if (!artifact_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the artifact handler.", name_.c_str());
+    return false;
+  }
 
   return true; 
 }
