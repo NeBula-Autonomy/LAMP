@@ -526,10 +526,12 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   ros::Time stamp_from = keyed_stamps_[key_from];
 
   // Get the delta pose from the key_from to the time of the observation
-  Pose3 delta_pose;
-  odometry_handler_.GetDeltaBetweenTimes(stamp_from, stamp, delta_pose);
+  GtsamPosCov delta_pose_cov; 
+  delta_pose_cov = odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
 
   // Compose the transforms to get the between factor
+  gtsam::Pose3 delta_pose = delta_pose_cov.pose;
+  gtsam::SharedNoiseModel delta_cov = delta_pose_cov.covariance;
   transform = delta_pose.compose(relative_pose);
 
   // Compose from the node in the graph to get the global position

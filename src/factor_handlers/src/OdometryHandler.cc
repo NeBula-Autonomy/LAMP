@@ -20,8 +20,7 @@ OdometryHandler::OdometryHandler()
     pc_buffer_size_limit_(10),
     translation_threshold_(1.0),
     ts_threshold_(0.1), 
-    query_timestamp_first_(0), 
-    query_timestamp_second_(0) {
+    query_timestamp_first_(0) {
   ROS_INFO("Odometry Handler Class Constructor");
 }
 
@@ -123,53 +122,13 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
     }
 }
 
-// Interface functions --------------------------------------------------------------------------------------------
+// Interfaces  --------------------------------------------------------------------------------------------
 
-void OdometryHandler::GetOdomDelta(ros::Time t_now, GtsamPosCov& delta_pose) {
-  query_timestamp_second_ = t_now;
-  fused_odom_ = GetFusedOdomDeltaBetweenTimes();
+void OdometryHandler::GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
+  // This is dynamically set by GetData and represents the timestamp of the last created node
+  ros::Time t1 = query_timestamp_first_;  
+  fused_odom_ = GetFusedOdomDeltaBetweenTimes(t1, t_now);
   delta_pose = fused_odom_;
-}
-
-// -----------------------------------------------------------------------------
-GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes() {
-  GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
-  FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom);
-  FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom);
-  FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom);
-  if (lidar_odom.b_has_value == true) {
-    // 
-  }
-  if (visual_odom.b_has_value == true) {
-    // 
-  }
-  if (wheel_odom.b_has_value == true) {
-    // 
-  }
-  // TODO: For the first implementation, pure lidar-based odometry is used.
-  output_odom = lidar_odom;
-  return output_odom;
-}
-
-// GetDeltaBetweenTimes returns the fused GtsamPosCov delta between t1 and t2
-bool OdometryHandler::GetDeltaBetweenTimes(const ros::Time t1, const ros::Time t2, gtsam::Pose3& output) {
-  ROS_INFO("To be implemented");  
-}
-
-// -----------------------------------------------------------------------------
-
-// Receive an odometric buffer, search within this buffer a pair of poses for the given timestamps
-// After finding the relative transformation between the two poses, fill the GtsamPosCov structured variable received as a parameter
-void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& pure_odom) {
-  PoseCovStampedPair poses;
-  if (GetPosesAtTimes(query_timestamp_first_, query_timestamp_second_, odom_buffer, poses)) {
-    pure_odom.b_has_value = true;
-    pure_odom.pose = GetTransform(poses);
-    pure_odom.covariance = GetCovariance(poses);
-  }
-  else {
-    pure_odom.b_has_value = false;
-  }
 }
 
 FactorData OdometryHandler::GetData(){  
@@ -187,19 +146,125 @@ FactorData OdometryHandler::GetData(){
     // }
     if (CalculatePoseDelta(fused_odom_) > 1.0) {
       // TODO: The time queries need to be changed
-      query_timestamp_second_ = GetClosestLidarTime(ros::Time::now());
-      fused_odom_ = GetFusedOdomDeltaBetweenTimes();
+      auto t2 = GetClosestLidarTime(ros::Time::now());
+      fused_odom_ = GetFusedOdomDeltaBetweenTimes(query_timestamp_first_, t2);
       factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
       factors_.transforms.push_back(fused_odom_.pose);
       factors_.covariances.push_back(fused_odom_.covariance);
-      factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, query_timestamp_second_));
-      query_timestamp_first_ = query_timestamp_second_;
+      factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, t2));
+      query_timestamp_first_ = t2;
       ResetFactorData();
     }
     else {
       factors_.b_has_data = false;
     }
     return factors_;
+  }
+}
+
+bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
+  // TODO: This function should be impletented as a template function in the base class
+  // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
+  // Return false if there are not point clouds in the buffer
+  if (point_cloud_buffer_.size() == 0)
+    return false;
+
+  // Search to get the lower-bound - the first entry that is not less than the
+  // input timestamp
+  auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
+  auto time2 = itrTime->first;
+
+  // If this gives the start of the buffer, then take that point cloud
+  if (itrTime == point_cloud_buffer_.begin()) {
+    *msg = itrTime->second;
+    return true;
+  }
+
+  // Check if it is past the end of the buffer - if so, then take the last point
+  // cloud
+  if (itrTime == point_cloud_buffer_.end()) {
+    ROS_WARN("Timestamp past the end of the point cloud buffer");
+    itrTime--;
+    *msg = itrTime->second;
+    ROS_INFO_STREAM("input time is " << stamp.toSec()
+                                     << "s, and latest time is "
+                                     << itrTime->first << " s");
+    return true;
+  }
+
+  // Otherwise = step back by 1 to get the time before the input time (time1,
+  // stamp, time2)
+  double time1 = std::prev(itrTime, 1)->first;
+
+  double time_diff;
+
+  // If closer to time2, then use that
+  if (time2 - stamp.toSec() < stamp.toSec() - time1) {
+    *msg = itrTime->second;
+
+    time_diff = time2 - stamp.toSec();
+  } else {
+    // Otherwise use time1
+    *msg = std::prev(itrTime, 1)->second;
+
+    time_diff = stamp.toSec() - time1;
+  }
+
+  // Clear the point cloud buffer
+  point_cloud_buffer_.clear();
+
+  // Check if the time difference is too large
+  if (time_diff >
+      keyed_scan_time_diff_limit_) { // TODO make this threshold a parameter
+    ROS_WARN("Time difference between request and latest point cloud is too "
+             "large, returning no point cloud");
+    ROS_INFO_STREAM("Time difference is " << keyed_scan_time_diff_limit_
+                                          << "s");
+    return false;
+  }
+
+  // Return true - have a point cloud for the timestamp
+  return true;
+}
+
+// Utilities -----------------------------------------------------------------------------------------------------
+
+GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) {
+  // Returns the fused GtsamPosCov delta between t1 and t2
+  GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
+  FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2);
+  FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2);
+  FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2);
+  if (lidar_odom.b_has_value == true) {
+    // 
+  }
+  if (visual_odom.b_has_value == true) {
+    // 
+  }
+  if (wheel_odom.b_has_value == true) {
+    // 
+  }
+  // TODO: For the first implementation, pure lidar-based odometry is used.
+  output_odom = lidar_odom;
+  return output_odom;
+}
+
+void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, 
+                                          GtsamPosCov& pure_odom,
+                                          const ros::Time t1,
+                                          const ros::Time t2) {
+  /*
+  Receives odometric buffer, search within it a pair of poses for the given timestamp, 
+  Computes the relative transformation between the two poses and fills the GtsamPosCov struct
+  */
+  PoseCovStampedPair poses;
+  if (GetPosesAtTimes(t1, t2, odom_buffer, poses)) {
+    pure_odom.b_has_value = true;
+    pure_odom.pose = GetTransform(poses);
+    pure_odom.covariance = GetCovariance(poses);
+  }
+  else {
+    pure_odom.b_has_value = false;
   }
 }
 
@@ -292,70 +357,7 @@ gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_c
   return noise;
 }
 
-bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg) {
-  // TODO: This function should be impletented as a template function in the base class
-  // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
-  // Return false if there are not point clouds in the buffer
-  if (point_cloud_buffer_.size() == 0)
-    return false;
 
-  // Search to get the lower-bound - the first entry that is not less than the
-  // input timestamp
-  auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
-  auto time2 = itrTime->first;
-
-  // If this gives the start of the buffer, then take that point cloud
-  if (itrTime == point_cloud_buffer_.begin()) {
-    *msg = itrTime->second;
-    return true;
-  }
-
-  // Check if it is past the end of the buffer - if so, then take the last point
-  // cloud
-  if (itrTime == point_cloud_buffer_.end()) {
-    ROS_WARN("Timestamp past the end of the point cloud buffer");
-    itrTime--;
-    *msg = itrTime->second;
-    ROS_INFO_STREAM("input time is " << stamp.toSec()
-                                     << "s, and latest time is "
-                                     << itrTime->first << " s");
-    return true;
-  }
-
-  // Otherwise = step back by 1 to get the time before the input time (time1,
-  // stamp, time2)
-  double time1 = std::prev(itrTime, 1)->first;
-
-  double time_diff;
-
-  // If closer to time2, then use that
-  if (time2 - stamp.toSec() < stamp.toSec() - time1) {
-    *msg = itrTime->second;
-
-    time_diff = time2 - stamp.toSec();
-  } else {
-    // Otherwise use time1
-    *msg = std::prev(itrTime, 1)->second;
-
-    time_diff = stamp.toSec() - time1;
-  }
-
-  // Clear the point cloud buffer
-  point_cloud_buffer_.clear();
-
-  // Check if the time difference is too large
-  if (time_diff >
-      keyed_scan_time_diff_limit_) { // TODO make this threshold a parameter
-    ROS_WARN("Time difference between request and latest point cloud is too "
-             "large, returning no point cloud");
-    ROS_INFO_STREAM("Time difference is " << keyed_scan_time_diff_limit_
-                                          << "s");
-    return false;
-  }
-
-  // Return true - have a point cloud for the timestamp
-  return true;
-}
 
 // Converters -------------------------------------------------------------------------------------------
 
