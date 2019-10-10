@@ -361,7 +361,7 @@ void LampRobot::UpdateArtifactPositions(){
   for (auto const& it : artifact_info_hash)
   {
     // Get the key
-    gtsam::Key artifact_key = it.first;
+    gtsam::Symbol artifact_key = gtsam::Symbol(it.first);
     // Get the pose from the pose graph
     Pose3 artifact_pose = values_.at<Pose3>(artifact_key);
     // Update global pose just for what has changed. returns bool
@@ -569,8 +569,8 @@ bool LampRobot::ProcessArtifactData(FactorData data){
   Pose3 transform;
   gtsam::SharedNoiseModel covariance;
   std::pair<ros::Time, ros::Time> times;
-  gtsam::Key pose_key;
-  gtsam::Key cur_artifact_key;
+  gtsam::Symbol pose_key;
+  gtsam::Symbol cur_artifact_key;
 
   // New Factors to be added
   NonlinearFactorGraph new_factors;
