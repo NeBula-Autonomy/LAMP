@@ -19,8 +19,9 @@ OdometryHandler::OdometryHandler()
   : keyed_scan_time_diff_limit_(0.2),
     pc_buffer_size_limit_(10),
     translation_threshold_(1.0),
-    ts_threshold_(0.1), 
-    query_timestamp_first_(0) {
+    ts_threshold_(0.1),
+    query_timestamp_first_(0),
+    b_is_first_query_(true) {
   ROS_INFO("Odometry Handler Class Constructor");
 }
 
@@ -90,23 +91,29 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     // ROS_INFO("LidarOdometryCallback");
-    
-    if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
-        ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store message in buffer");
+
+    if (!InsertMsgInBuffer<Odometry, PoseCovStamped>(msg,
+                                                     lidar_odometry_buffer_)) {
+      ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store "
+               "message in buffer");
     }
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
-    if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, visual_odometry_buffer_)) {
-        ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store message in buffer");
+    if (!InsertMsgInBuffer<Odometry, PoseCovStamped>(msg,
+                                                     visual_odometry_buffer_)) {
+      ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store "
+               "message in buffer");
     }
 }
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, wheel_odometry_buffer_)) {
-        ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store message in buffer");
+    if (!InsertMsgInBuffer<Odometry, PoseCovStamped>(msg,
+                                                     wheel_odometry_buffer_)) {
+      ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store "
+               "message in buffer");
     }
 }
 
@@ -127,14 +134,30 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
 void OdometryHandler::GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
   // query_timestamp_first_ is dynamically set by GetData but is initialized
   // here It represents the timestamp of the last created node
-  if (query_timestamp_first_.toSec() == 0) {
-    GetClosestLidarTime(ros::Time::now(), query_timestamp_first_);
+  if (query_timestamp_first_.toSec() == 0 && b_is_first_query_) {
+    // GetClosestLidarTime(ros::Time::now(), query_timestamp_first_);
+    if (lidar_odometry_buffer_.size() > 0) {
+      query_timestamp_first_ = lidar_odometry_buffer_[0].header.stamp;
+    } else {
+      query_timestamp_first_ = ros::Time::now();
+    }
+
+    ROS_INFO_STREAM("First query to Odometry Handler, Input timestamp is "
+                    << t_now.toSec() << ". setting first timestamp to "
+                    << query_timestamp_first_.toSec());
 
     // Set Fused odom to zero pose - no movement yet
     fused_odom_.pose =
         gtsam::Pose3(); // TODO: Make sure this is needed at runtime
+
+    b_is_first_query_ = false;
+
   } else {
+    ROS_INFO_STREAM("Delta between times is: "
+                    << (query_timestamp_first_.toSec() - t_now.toSec()));
     fused_odom_ = GetFusedOdomDeltaBetweenTimes(query_timestamp_first_, t_now);
+
+    ROS_INFO_STREAM("Fused odom in GetOdomDelta is " << fused_odom_.pose);
     // TODO - unit test to see what happens at the start when
     // query_timestamp_fist is very close to t_now
   }
@@ -151,6 +174,7 @@ FactorData OdometryHandler::GetData() {
   GtsamPosCov fused_odom_for_factor;
 
   if (CalculatePoseDelta(fused_odom_) > translation_threshold_) {
+    ROS_INFO("Adding a new node");
     // Get the time closest to a lidar timestamp
     ros::Time t2;
     GetClosestLidarTime(ros::Time::now(), t2);
@@ -253,7 +277,12 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr
 
 GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const {
   // Returns the fused GtsamPosCov delta between t1 and t2
+  ROS_INFO_STREAM("Timestamps are: " << t1.toSec() << " and " << t2.toSec()
+                                     << ". Difference is: "
+                                     << t2.toSec() - t1.toSec());
   GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
+  ROS_INFO_STREAM("Lidar buffer size in GetFusedOdom is: "
+                  << lidar_odometry_buffer_.size());
   FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2);
   FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2);
   FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2);
@@ -315,15 +344,17 @@ void OdometryHandler::ClearOdometryBuffers() {
 bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const {
   ros::Time output_time;
   auto query_timestamp = time.toSec();
-  double min_ts_diff = 1000;
+  double min_ts_diff = 1e12;
   // Iterate through the vector to find the element of interest 
   for (size_t i=lidar_odometry_buffer_.size(); i>0; --i){
         double cur_ts_diff = lidar_odometry_buffer_[i].header.stamp.toSec() - query_timestamp;
     if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
       output_time = lidar_odometry_buffer_[i].header.stamp;
-      min_ts_diff = cur_ts_diff; 
+      min_ts_diff = fabs(cur_ts_diff);
     } 
   }
+  ROS_INFO_STREAM("Minimum time is " << min_ts_diff
+                                     << " in GetClosestLidarTime");
   if (fabs(min_ts_diff)<ts_threshold_){
     closest_time = output_time;
     return true;
@@ -341,20 +372,24 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odo
   // Given a query timestamp 
   auto query_timestamp = t.toSec();
   // Declare a big timestamp difference
-  double min_ts_diff = 1000;
-  // Iterate through the vector to find the element of interest 
+  double min_ts_diff = 1e12;
+
+  // TODO - make this more efficient!
+  // Iterate through the vector to find the element of interest
   for (size_t i=0; i<odom_buffer.size(); ++i){
         double cur_ts_diff = odom_buffer[i].header.stamp.toSec() - query_timestamp;
     if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
       myPoseCovStamped = odom_buffer[i];
-      min_ts_diff = cur_ts_diff; 
+      min_ts_diff = fabs(cur_ts_diff);
     }
     // Here we've selected the most likely element we were searching for, make sure everything is correct    
   }
   if (fabs(min_ts_diff)<fabs(ts_threshold_)){
       // If everything is fine, we fill the output message and return true to the caller
-    output = myPoseCovStamped; 
-    return true; 
+      ROS_INFO_STREAM(
+          "Selecting odom buffer here with time diff: " << min_ts_diff);
+      output = myPoseCovStamped;
+      return true;
   }
   else{
     return false; 

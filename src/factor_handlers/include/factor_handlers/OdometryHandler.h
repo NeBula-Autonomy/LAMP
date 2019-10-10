@@ -137,6 +137,8 @@ class OdometryHandler : public LampDataHandlerBase{
         bool GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const;
         GtsamPosCov fused_odom_;
 
+        bool b_is_first_query_;
+
       private:
 };
 
