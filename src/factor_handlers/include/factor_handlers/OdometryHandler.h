@@ -159,8 +159,6 @@ class OdometryHandler : public LampDataHandlerBase{
         double ts_threshold_; 
         ros::Time query_timestamp_first_; 
         // ros::Time query_timestamp_second_; 
-        bool GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const; 
-        bool GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const;
         GtsamPosCov fused_odom_;
 
         // New methods to deal with maps 

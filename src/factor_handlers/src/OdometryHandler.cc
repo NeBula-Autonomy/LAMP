@@ -311,27 +311,6 @@ void OdometryHandler::ClearOdometryBuffers() {
   wheel_odometry_buffer_.clear();
 }
 
-bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const {
-  ros::Time output_time;
-  auto query_timestamp = time.toSec();
-  double min_ts_diff = 1000;
-  // Iterate through the vector to find the element of interest 
-  for (size_t i=lidar_odometry_buffer_.size(); i>0; --i){
-        double cur_ts_diff = lidar_odometry_buffer_[i].header.stamp.toSec() - query_timestamp;
-    if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
-      output_time = lidar_odometry_buffer_[i].header.stamp;
-      min_ts_diff = cur_ts_diff; 
-    } 
-  }
-  if (fabs(min_ts_diff)<ts_threshold_){
-    closest_time = output_time;
-    return true;
-  }
-  else {
-    return false;
-  }
-}
-
 // Getters -----------------------------------------------------------------------------------------------
 
 // We are not passing the odom_buffer_map as a const reference anymore as after finding the correct element, we want to clear the buffer
@@ -379,8 +358,8 @@ bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time stamp, OdomPoseBuffe
     time_diff = stamp.toSec() - time1;
   }
 
-  // Clear the odometry buffer
-  odom_buffer_map.clear();
+  // Clear the odometry buffer  
+  odom_buffer_map.clear(); // TODO: Shoudl we do so here, maybe not?
 
   
   // Check if the time difference is too large
@@ -406,45 +385,28 @@ bool OdometryHandler::GetPosesAtTimesFromMap (const ros::Time t1, const ros::Tim
   }
 }
 
-bool OdometryHandler::GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const {
-  // Create a PoseCovStamped message
-  PoseCovStamped myPoseCovStamped;
-  // Given a query timestamp 
-  auto query_timestamp = t.toSec();
-  // Declare a big timestamp difference
+// TODO: Change this as well
+bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const {
+  ros::Time output_time;
+  auto query_timestamp = time.toSec();
   double min_ts_diff = 1000;
   // Iterate through the vector to find the element of interest 
-  for (size_t i=0; i<odom_buffer.size(); ++i){
-        double cur_ts_diff = odom_buffer[i].header.stamp.toSec() - query_timestamp;
+  for (size_t i=lidar_odometry_buffer_.size(); i>0; --i){
+        double cur_ts_diff = lidar_odometry_buffer_[i].header.stamp.toSec() - query_timestamp;
     if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
-      myPoseCovStamped = odom_buffer[i];
+      output_time = lidar_odometry_buffer_[i].header.stamp;
       min_ts_diff = cur_ts_diff; 
-    }
-    // Here we've selected the most likely element we were searching for, make sure everything is correct    
+    } 
   }
-  if (fabs(min_ts_diff)<fabs(ts_threshold_)){
-      // If everything is fine, we fill the output message and return true to the caller
-    output = myPoseCovStamped; 
-    return true; 
-  }
-  else{
-    return false; 
-  }
-}
-
-bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const {
-  PoseCovStamped first_pose; 
-  PoseCovStamped second_pose; 
-  if (GetPoseAtTime(t1, odom_buffer, first_pose)){
-    if (GetPoseAtTime(t2, odom_buffer, second_pose)) {
-      output_poses = std::make_pair(first_pose, second_pose);
-      return true;
-    }
+  if (fabs(min_ts_diff)<ts_threshold_){
+    closest_time = output_time;
+    return true;
   }
   else {
     return false;
   }
 }
+
 
 gtsam::Pose3 OdometryHandler::GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const {
     // Gets the transform between two pose stamped - the delta
