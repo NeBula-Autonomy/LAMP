@@ -328,7 +328,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     // Optimize every 10 factors
     static int x = 0;
     x++;
-    if (x % 10 == 0) {
+    if (x % 100 == 0) {
       b_run_optimization_ = true;
     }
   }
