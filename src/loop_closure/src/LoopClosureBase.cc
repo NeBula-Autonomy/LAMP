@@ -47,6 +47,9 @@ void LoopClosure::InputCallback(
     std::vector<pose_graph_msgs::PoseGraphEdge> loop_closure_edges;
     // first find loop closures
     if (FindLoopClosures(new_key, &loop_closure_edges)) {
+      ROS_INFO_STREAM("----------------------Found Loop "
+                      "Closure----------------------\n from key "
+                      << new_key);
       PublishLoopClosures(loop_closure_edges);
     }
   }
