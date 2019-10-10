@@ -131,6 +131,7 @@ void OdometryHandler::GetOdomDelta(ros::Time t_now, GtsamPosCov& delta_pose) {
   delta_pose = fused_odom_;
 }
 
+// -----------------------------------------------------------------------------
 GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes() {
   GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
   FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom);
@@ -149,6 +150,13 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes() {
   output_odom = lidar_odom;
   return output_odom;
 }
+
+// GetDeltaBetweenTimes returns the fused GtsamPosCov delta between t1 and t2
+bool OdometryHandler::GetDeltaBetweenTimes(const ros::Time t1, const ros::Time t2, gtsam::Pose3& output) {
+  ROS_INFO("To be implemented");  
+}
+
+// -----------------------------------------------------------------------------
 
 // Receive an odometric buffer, search within this buffer a pair of poses for the given timestamps
 // After finding the relative transformation between the two poses, fill the GtsamPosCov structured variable received as a parameter
@@ -284,17 +292,6 @@ gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_c
   return noise;
 }
 
-std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
-  // Create a pair of the timestamps from and to - to be used in lamp to reference nodes
-  // Get the timestamps of interest from the received pair
-  ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
-  ros::Time second_timestamp = pose_cov_stamped_pair.second.header.stamp;
-  std::pair<ros::Time, ros::Time> timestamp_pair;
-  timestamp_pair.first = first_timestamp;
-  timestamp_pair.second = second_timestamp;
-  return timestamp_pair;
-}
-
 bool OdometryHandler::GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg) {
   // TODO: This function should be impletented as a template function in the base class
   // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
@@ -380,11 +377,6 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
 
 // Fusion logic-----------------------------------------------------------------------------------------
 
-// GetDeltaBetweenTimes returns the fused GtsamPosCov delta between t1 and t2
-bool OdometryHandler::GetDeltaBetweenTimes(const ros::Time t1, const ros::Time t2, gtsam::Pose3& output) {
-  ROS_INFO("To be implemented");  
-}
-
 
 PoseCovStamped OdometryHandler::GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses){
   // TODO: Get the first and second pose, find the transformation between the two and return it 
@@ -436,40 +428,6 @@ bool OdometryHandler::GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPose
   }
 }
 
-// log
-
-// void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
-//     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
-//       double translation = CalculatePoseDelta(odom_buffer); 
-//       if (translation > translation_threshold_) {
-//         ROS_INFO_STREAM("Moved more than threshold: " << translation_threshold_
-//                                                       << " m (" << translation
-//                                                       << " m)");
-//         PrepareFactor(odom_buffer);
-//         }
-//     }     
-// }
-
-// void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
-//   // Make a pair between the first and last elements in the odom buffer
-//   auto first_odom_element = odom_buffer.begin();
-//   auto last_odom_element = std::prev(odom_buffer.end());
-//   auto pose_cov_stamped_pair = std::make_pair(*first_odom_element, *last_odom_element);
-//   MakeFactor(pose_cov_stamped_pair);
-//   // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element
-//   odom_buffer.clear();
-//   odom_buffer.push_back(*last_odom_element);
-// }
-
-// void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
-//     //Makes a new factor by filling the fields of FactorData
-//     factors_.b_has_data = true;
-//     factors_.type = "odom";
-//     factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
-//     factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
-//     factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
-// }
-
 /*
 DOCUMENTATION 
 
@@ -496,4 +454,51 @@ DOCUMENTATION
             std::vector<std::pair<ros::Time, ros::Time>> time_stamps; // Time when the measurement as acquired
             std::vector<gtsam::Key> artifact_key; // key for the artifacts
         };
+*/
+
+/*
+UNUSED ----------------------------------------------------------------------------------------------------------------
+
+void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
+    if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {
+      double translation = CalculatePoseDelta(odom_buffer); 
+      if (translation > translation_threshold_) {
+        ROS_INFO_STREAM("Moved more than threshold: " << translation_threshold_
+                                                      << " m (" << translation
+                                                      << " m)");
+        PrepareFactor(odom_buffer);
+        }
+    }     
+}
+
+void OdometryHandler::PrepareFactor(OdomPoseBuffer& odom_buffer) {
+  // Make a pair between the first and last elements in the odom buffer
+  auto first_odom_element = odom_buffer.begin();
+  auto last_odom_element = std::prev(odom_buffer.end());
+  auto pose_cov_stamped_pair = std::make_pair(*first_odom_element, *last_odom_element);
+  MakeFactor(pose_cov_stamped_pair);
+  // After MakeFactor has finished its job, reset the buffer and add last_odom_element as first element
+  odom_buffer.clear();
+  odom_buffer.push_back(*last_odom_element);
+}
+
+void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
+    //Makes a new factor by filling the fields of FactorData
+    factors_.b_has_data = true;
+    factors_.type = "odom";
+    factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
+    factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
+    factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
+}
+
+std::pair<ros::Time, ros::Time> OdometryHandler::GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
+  // Create a pair of the timestamps from and to - to be used in lamp to reference nodes
+  // Get the timestamps of interest from the received pair
+  ros::Time first_timestamp = pose_cov_stamped_pair.first.header.stamp;
+  ros::Time second_timestamp = pose_cov_stamped_pair.second.header.stamp;
+  std::pair<ros::Time, ros::Time> timestamp_pair;
+  timestamp_pair.first = first_timestamp;
+  timestamp_pair.second = second_timestamp;
+  return timestamp_pair;
+}
 */
