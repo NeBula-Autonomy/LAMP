@@ -52,10 +52,6 @@ protected:
       return oh.GetCovariance(pose_cov_stamped_pair);
     }
 
-    double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
-      return oh.CalculatePoseDelta(odom_buffer);
-    }
-
     gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const{
       return oh.ToGtsam(pose);
     }
@@ -92,37 +88,6 @@ TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
   EXPECT_EQ(size, 1);
 }
 
-/* TEST CalculatePoseDelta */
-TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
-  // Create a buffer
-  OdomPoseBuffer myBuffer; 
-  // Create two messages
-  geometry_msgs::PoseWithCovarianceStamped msg_first; 
-  geometry_msgs::PoseWithCovarianceStamped msg_second;
-  // Fill the two messages
-  msg_first.pose.pose.position.x = 1; 
-  msg_first.pose.pose.position.y = 0; 
-  msg_first.pose.pose.position.z = 0; 
-  msg_first.pose.pose.orientation.x = 0;
-  msg_first.pose.pose.orientation.y = 0;
-  msg_first.pose.pose.orientation.z = 0;
-  msg_first.pose.pose.orientation.w = 1;
-  msg_second.pose.pose.position.x = 0; 
-  msg_second.pose.pose.position.y = 0; 
-  msg_second.pose.pose.position.z = 0;
-  msg_second.pose.pose.orientation.x = 0;
-  msg_second.pose.pose.orientation.y = 0;
-  msg_second.pose.pose.orientation.z = 0;
-  msg_second.pose.pose.orientation.w = 1;
-  // Push messages to buffer
-  myBuffer.push_back(msg_first); 
-  myBuffer.push_back(msg_second);   
-  // Call the method to test 
-  int size = CheckBufferSize(myBuffer);
-  EXPECT_EQ(size, 2);
-  double delta = CalculatePoseDelta(myBuffer);   
-  EXPECT_EQ(delta, 1);
-}
 
 // Getters ------------------------------------------------------------
 
@@ -395,6 +360,45 @@ int main(int argc, char** argv) {
 /*
 UNUSED 
     
+
+double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
+  return oh.CalculatePoseDelta(odom_buffer);
+}
+
+
+
+TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
+  // Create a buffer
+  OdomPoseBuffer myBuffer; 
+  // Create two messages
+  geometry_msgs::PoseWithCovarianceStamped msg_first; 
+  geometry_msgs::PoseWithCovarianceStamped msg_second;
+  // Fill the two messages
+  msg_first.pose.pose.position.x = 1; 
+  msg_first.pose.pose.position.y = 0; 
+  msg_first.pose.pose.position.z = 0; 
+  msg_first.pose.pose.orientation.x = 0;
+  msg_first.pose.pose.orientation.y = 0;
+  msg_first.pose.pose.orientation.z = 0;
+  msg_first.pose.pose.orientation.w = 1;
+  msg_second.pose.pose.position.x = 0; 
+  msg_second.pose.pose.position.y = 0; 
+  msg_second.pose.pose.position.z = 0;
+  msg_second.pose.pose.orientation.x = 0;
+  msg_second.pose.pose.orientation.y = 0;
+  msg_second.pose.pose.orientation.z = 0;
+  msg_second.pose.pose.orientation.w = 1;
+  // Push messages to buffer
+  myBuffer.push_back(msg_first); 
+  myBuffer.push_back(msg_second);   
+  // Call the method to test 
+  int size = CheckBufferSize(myBuffer);
+  EXPECT_EQ(size, 2);
+  double delta = CalculatePoseDelta(myBuffer);   
+  EXPECT_EQ(delta, 1);
+}
+
+
 std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
   return oh.GetTimeStamps(pose_cov_stamped_pair);
 }
