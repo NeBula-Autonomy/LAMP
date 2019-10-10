@@ -10,8 +10,6 @@
 // Base class
 #include "LampDataHandlerBase.h"
 
-// TODO Namespaces. Needs to be removed once this goes into header of LampDataHadlerBase
-#include <parameter_utils/ParameterUtils.h>
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 

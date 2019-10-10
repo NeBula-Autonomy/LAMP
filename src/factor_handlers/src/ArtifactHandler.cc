@@ -242,8 +242,12 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   ROS_INFO("%s: Registering online callbacks.", name_.c_str());
 
   // Create a local nodehandle to manage callback subscriptions.
-  // ros::NodeHandle nl(n);
+  ros::NodeHandle nl(n);
 
+  artifact_sub_ = nl.subscribe(
+    "artifact_relative", 10, &ArtifactHandler::ArtifactCallback, this);
+
+  // TODO: Is the code for the basestation and lo_front_end needed.
   // if (!b_is_basestation_ && !b_use_lo_frontend_ && !b_is_front_end_){
   //   artifact_sub_ = nl.subscribe(
   //       "artifact_relative", 10, &ArtifactCallback, this);
