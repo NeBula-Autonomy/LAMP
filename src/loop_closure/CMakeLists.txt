@@ -74,3 +74,21 @@ target_link_libraries(${PROJECT_NAME}
   ${Boost_LIBRARIES}
   gtsam
 )
+
+add_executable(laser_${PROJECT_NAME}_node src/laser_${PROJECT_NAME}_node.cc)
+target_link_libraries(laser_${PROJECT_NAME}_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+#############
+## Testing ##
+#############
+# if (CATKIN_ENABLE_TESTING)
+#   # add_subdirectory(test)
+#   ## Add gtest based cpp test target and link libraries
+#   catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cc)
+#   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
+# endif()

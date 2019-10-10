@@ -202,6 +202,9 @@ void LampBase::AddLoopClosureToGraph(
     // Add to tracked edges
     TrackEdges(edge.key_from, edge.key_to, edge.type, transform, covariance);
   }
+
+  // Set flag to optimize
+  b_run_optimization_ = true;
 }
 
 //------------------------------------------------------------------------------------------

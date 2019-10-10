@@ -14,7 +14,7 @@ LoopClosure::LoopClosure(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
 
   keyed_stamps_sub_ = nl.subscribe<pose_graph_msgs::PoseGraphNode>(
-      "new_node", 10, &LoopClosure::InputCallback, this);
+      "pose_graph_incremental", 10, &LoopClosure::InputCallback, this);
 }
 
 LoopClosure::~LoopClosure(){};
