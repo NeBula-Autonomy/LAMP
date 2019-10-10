@@ -182,7 +182,10 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
   utils::PoseGraphMsgToGtsam(fused_graph, &nfg_, &values_);
 
   // TODO-maybe - make the copy more efficient
+  UpdateArtifactPositions();
 }
+
+void LampBase::UpdateArtifactPositions(){};
 
 // Callback from a laser loop closure message
 void LampBase::LaserLoopClosureCallback(
@@ -206,6 +209,8 @@ void LampBase::LaserLoopClosureCallback(
     // Add to the graph
     AddLoopClosureToGraph(msg);
   }
+
+  b_has_new_factor_ = true;
 }
 
 // Generic addition of loop closure information to the graph
@@ -430,16 +435,8 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
 
   // Switch based on type
   if (type == "odom") {
-    // gtsam::Vector6 noise_vec;
-    // noise_vec.head<3>().setConstant(attitude_sigma_);
-    // noise_vec.tail<3>().setConstant(position_sigma_);
-    // noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
     noise = odom_noise_;
   } else if (type == "laser_loop_closure") {
-    // gtsam::Vector6 noise_vec;
-    // noise_vec.head<3>().setConstant(laser_lc_rot_sigma_);
-    // noise_vec.tail<3>().setConstant(laser_lc_trans_sigma_);
-    // noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
     noise = laser_lc_noise_;
   } else if (type == "manual_loop_closure") {
     gtsam::Vector6 noise_vec;
@@ -447,10 +444,6 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
     noise_vec.tail<3>().setConstant(manual_lc_trans_precision_);
     noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
   } else if (type == "artifact") {
-    // gtsam::Vector6 precisions;
-    // precisions.head<3>().setConstant(artifact_rot_precision_);
-    // precisions.tail<3>().setConstant(artifact_trans_precision_);
-    // noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
     noise = artifact_noise_;
   } else if (type == "april") {
     gtsam::Vector6 precisions;

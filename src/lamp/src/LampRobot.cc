@@ -287,7 +287,6 @@ bool LampRobot::CheckHandlers() {
 
   // Check all handlers
   b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
-  // ProcessAprilData(april_handler_.GetData());
 
   // TODO - determine what a true and false return means here
   return true;
@@ -298,11 +297,11 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Print some debug messages
   // ROS_INFO_STREAM("Checking for new data");
 
-  // Check the handlers
-  CheckHandlers();
-
   // Publish odom
   UpdateAndPublishOdom();
+
+  // Check the handlers
+  CheckHandlers();
 
   // Publish the pose graph
   if (b_has_new_factor_) {
@@ -313,7 +312,6 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     // GenerateMapPointCloud();
     mapper_.PublishMap();
     ROS_INFO_STREAM("Published new map");
-
 
     b_has_new_factor_ = false;
 
@@ -334,28 +332,30 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   }
 
   // Publish anything that is needed 
-  UpdateArtifactPositions();
 
 }
 
-
-/*! 
+/*!
   \brief  Calls handler function to update global position of the artifacts
-  \author Benjamin Morrell
-  \date 01 Oct 2019
+  \author Abhishek Thakur
+  \date 09 Oct 2019
 */
 void LampRobot::UpdateArtifactPositions(){
   //Get new positions of artifacts from the pose-graph for artifact_key 
   std::unordered_map<long unsigned int, ArtifactInfo>& artifact_info_hash = artifact_handler_.GetArtifactKey2InfoHash();
+
   // Result of updating the global pose
   bool result;
+
   // Loop over to update global pose.
   for (auto const& it : artifact_info_hash)
   {
     // Get the key
     gtsam::Symbol artifact_key = gtsam::Symbol(it.first);
+
     // Get the pose from the pose graph
     Pose3 artifact_pose = values_.at<Pose3>(artifact_key);
+
     // Update global pose just for what has changed. returns bool
     result = result || artifact_handler_.UpdateGlobalPose(artifact_key, artifact_pose);    
   }
@@ -545,13 +545,13 @@ void LampRobot::UpdateAndPublishOdom() {
   pose_pub_.publish(msg);
 }
 
-/*! 
+/*!
   \brief  Wrapper for the artifact class interactions
-  Creates factors from the artifact output 
+  Creates factors from the artifact output
   \param   data - the output data struct from the ArtifactHandler class
   \warning ...
-  \author Alex Stephens
-  \date 01 Oct 2019
+  \author Abhishek Thakur
+  \date 08 Oct 2019
 */
 bool LampRobot::ProcessArtifactData(FactorData data){
 
@@ -560,10 +560,13 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     return false;
   }
 
+  b_has_new_factor_ = true;
+
   // Necessary variables
   Pose3 transform;
+  Pose3 global_pose;
   gtsam::SharedNoiseModel covariance;
-  std::pair<ros::Time, ros::Time> times;
+  ros::Time timestamp;
   gtsam::Symbol pose_key;
   gtsam::Symbol cur_artifact_key;
 
@@ -578,36 +581,45 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
   // process data for each new factor
   for (int i = 0; i < num_factors; i++) {
-    // Get the transforms
-    transform = data.transforms[i];
-    // Get the covariances (Should be in relative frame as well)
-    covariance = data.covariances[i];
     // Get the time
-    times = data.time_stamps[i];
-    // Get the key where the artifact loop closure has to be added    
-    pose_key = GetKeyAtTime(times.first);
+    timestamp = data.time_stamps[i].first;
+
     // Get the artifact key
     cur_artifact_key = data.artifact_key[i];
 
-    // Was adding factor successful 
-    bool result;
+    // Is a relative tranform, so need to handle linking to the pose-graph
+    HandleRelativePoseMeasurement(
+        timestamp, data.transforms[i], transform, global_pose, pose_key);
+
+    // Get the covariances (Should be in relative frame as well)
+    // TODO - handle this better - need to add covariances from the odom - do in
+    // the function above
+    covariance = data.covariances[i];
+
+    if (b_use_fixed_covariances_) {
+      covariance = SetFixedNoiseModels("artifact");
+    }
 
     // create and add the factor
     new_factors.add(BetweenFactor<Pose3>(pose_key, cur_artifact_key, transform, covariance));
 
-    // Compute the value
-    Pose3 last_pose = values_.at<Pose3>(pose_key);
-    // Compute the pose of the artifact from the last pose and relative transform
-    Pose3 artifact_pose = last_pose.compose(transform);
-    // Insert into the values
-    new_values.insert(cur_artifact_key, artifact_pose);
-
-    // TODO: Not inserting in keyed_stamps as both nodes are already present
-    // as this is a loop closure.
-
-    // Check for new artifacts and publish artifacts if they are new
+    // Check if it is a new artifact or not
     if (!values_.exists(cur_artifact_key)) {
-      artifact_handler_.PublishArtifacts(cur_artifact_key, artifact_pose);
+      // Insert into the values
+      new_values.insert(cur_artifact_key, global_pose);
+
+      // Add keyed stamps
+      keyed_stamps_.insert(
+          std::pair<gtsam::Symbol, ros::Time>(cur_artifact_key, timestamp));
+
+      // Publish the new artifact, with the global pose
+      artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
+
+    } else {
+      // Second sighting of an artifact - we have a loop closure
+      ROS_INFO_STREAM("Artifact re-sighted with key: "
+                      << gtsam::DefaultKeyFormatter(cur_artifact_key));
+      b_run_optimization_ = true;
     }
 
     // Track the edges that have been added
@@ -616,9 +628,7 @@ bool LampRobot::ProcessArtifactData(FactorData data){
   }
   // add factor to buffer to send to pgo
   nfg_.add(new_factors);
-  values_.insert(new_values);
-
-  // TODO - use the HandleRelativePoseMeasurement function below
+  AddNewValues(new_values);
 
   return true;
 
@@ -627,6 +637,15 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 // Function gets a relative pose and time, and returns the global pose and the
 // transform from the closest node in time, as well as the key of the closest
 // node
+/*!
+  \brief  Function to handle relative measurements and adding them to the
+  pose-graph \param   stamp          - The time of the measurement \param
+  relative_pose  - The observed relative pose \param   transform      - The
+  output transform (for a between factor) \param   global pose    - The output
+  global pose estimate \param   key_from       - The output key from which the
+  new relative measurement is attached \warning ... \author Benjamin Morrell
+  \date 01 Oct 2019
+*/
 void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
                                               const gtsam::Pose3& relative_pose,
                                               gtsam::Pose3& transform,
@@ -641,6 +660,8 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   // Get the delta pose from the key_from to the time of the observation
   GtsamPosCov delta_pose_cov; 
   delta_pose_cov = odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
+
+  // TODO - do covariances as well
 
   // Compose the transforms to get the between factor
   gtsam::Pose3 delta_pose = delta_pose_cov.pose;
