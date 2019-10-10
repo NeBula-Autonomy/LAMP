@@ -131,10 +131,18 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
 
 // Utilities ---------------------------------------------------------------------------------------------
 
-void OdometryHandler::GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
+bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
+                                   GtsamPosCov& delta_pose) {
+  // Check odometry buffer size - return false otherwise
+  if (!CheckOdomSize()) {
+    ROS_WARN("Buffers are empty, returning no data");
+    return false;
+  }
+
   // query_timestamp_first_ is dynamically set by GetData but is initialized
   // here It represents the timestamp of the last created node
-  if (query_timestamp_first_.toSec() == 0 && b_is_first_query_) {
+
+  if (b_is_first_query_) {
     // GetClosestLidarTime(ros::Time::now(), query_timestamp_first_);
     if (lidar_odometry_buffer_.size() > 0) {
       query_timestamp_first_ = lidar_odometry_buffer_[0].header.stamp;
@@ -164,11 +172,19 @@ void OdometryHandler::GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pos
 
   // Fill in what is needed for the output
   delta_pose = fused_odom_;
+
+  return true;
 }
 
 // Main interface with lamp for getting factor information
 FactorData OdometryHandler::GetData() {
   FactorData factors_output = factors_;
+  factors_output.b_has_data = false;
+
+  if (!CheckOdomSize()) {
+    ROS_WARN("Buffers are emptyin GetData Call, returning no data");
+    return factors_output;
+  }
 
   ROS_INFO("Odometry Handler - Perform Fusion Logic");
   GtsamPosCov fused_odom_for_factor;
@@ -322,6 +338,17 @@ void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
   else {
     measurement.b_has_value = false;
   }
+}
+
+bool OdometryHandler::CheckOdomSize() {
+  bool b_odom_has_data;
+
+  b_odom_has_data = (lidar_odometry_buffer_.size() > 1);
+
+  b_odom_has_data = b_odom_has_data || (visual_odometry_buffer_.size() > 1);
+  b_odom_has_data = b_odom_has_data || (wheel_odometry_buffer_.size() > 1);
+
+  return b_odom_has_data;
 }
 
 void OdometryHandler::ResetFactorData() {

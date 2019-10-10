@@ -22,3 +22,4 @@ windows:
     - sleep 3; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME
     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /velodyne /$ROBOT_NAME/base_link # only for Eagle mine
     - sleep 3; rosparam set /use_sim_time true;rosrun rviz rviz
+    - sleep 5; rostopic hz /$ROBOT_NAME/lamp/pose_graph_incremental

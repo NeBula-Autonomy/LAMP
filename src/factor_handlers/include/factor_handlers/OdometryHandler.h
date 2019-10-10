@@ -54,7 +54,7 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // LAMP Interface 
         FactorData GetData();
-        void GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose);
+        bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose);
         bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg);
         GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const;
         
@@ -92,6 +92,8 @@ class OdometryHandler : public LampDataHandlerBase{
             // std::cout << x.size() << std::endl;
             return x.size();
         }
+
+        bool CheckOdomSize();
 
         template <typename T1, typename T2>
         bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
