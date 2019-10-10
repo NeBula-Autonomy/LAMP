@@ -229,6 +229,7 @@ bool ArtifactHandler::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Create publisher for artifact
+  artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
 
   return true;
 }
