@@ -89,8 +89,7 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 // Callbacks --------------------------------------------------------------------------------------------
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
-    // ROS_INFO("LidarOdometryCallback");
-    
+    ROS_INFO("LidarOdometryCallback");    
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
         ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store message in buffer");
     }

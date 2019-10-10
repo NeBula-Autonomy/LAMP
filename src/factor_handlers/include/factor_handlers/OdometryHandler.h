@@ -23,6 +23,7 @@ typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 typedef nav_msgs::Odometry Odometry;
 typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
 typedef std::vector<PoseCovStamped> OdomPoseBuffer;
+typedef std::map<double, PoseCovStamped> OdomPoseBufferMap; 
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
@@ -81,6 +82,12 @@ class OdometryHandler : public LampDataHandlerBase{
         OdomPoseBuffer lidar_odometry_buffer_; 
         OdomPoseBuffer visual_odometry_buffer_;
         OdomPoseBuffer wheel_odometry_buffer_;
+
+        // Maps for Odometry Storage
+        OdomPoseBufferMap lidar_odometry_buffer_map_;
+        OdomPoseBufferMap visual_odometry_buffer_map_;
+        OdomPoseBufferMap wheel_odometry_buffer_map_; 
+        
         
         // Point Cloud Storage (Time stamp and point cloud)
         std::map<double, PointCloud> point_cloud_buffer_;
@@ -105,6 +112,16 @@ class OdometryHandler : public LampDataHandlerBase{
             auto current_size = CheckBufferSize<T2>(buffer);
             if (current_size != (prev_size + 1)) return false;
             return true;
+        }
+
+        bool InsertMsgInBufferMap(const Odometry& odom_msg, OdomPoseBufferMap& buffer_map) {
+            // Check intial map size, and ensure next map size has increased values, if so return true 
+            PoseCovStamped current_msg;
+            current_msg.header = odom_msg.header; 
+            current_msg.pose = odom_msg.pose; 
+            double current_time = odom_msg.header.stamp.toSec();
+            buffer_map.insert({current_time, current_msg});       
+            return true;               
         }
 
         void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
