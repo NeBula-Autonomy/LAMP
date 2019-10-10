@@ -4,8 +4,3 @@ translation_threshold: 1.0
 # Point cloud storing parameters
 keyed_scan_time_diff_limit: 0.5
 pc_buffer_size_limit: 10
-
-# When searching through old poses for loop closures, only consider old poses
-# that are within this distance of the current pose.
-# TODO: move this to the loop closure package
-proximity_threshold: 5

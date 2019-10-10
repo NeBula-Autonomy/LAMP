@@ -34,24 +34,12 @@
       <remap from="~artifact_relative" to="/reconciled_artifact" />
       <remap from="~uwb_signal" to="/comm/uwb/anchor" />
 
-      <!-- Initial pose -->
-      <rosparam param="init">
-        position: {x: 0.0, y: 0.0, z: 0.0}
-        orientation: {roll: 0.0, pitch: 0.0, yaw: 0.0}
-        position_sigma: {x: 0.316, y: 0.316, z: 0.316}
-        orientation_sigma: {roll: 0.141, pitch: 0.141, yaw: 0.141}
-      </rosparam>
-
-      <!-- Noise parameters -->
-      <rosparam param="noise">
-        odom_position_sigma: 0.6324
-        odom_attitude_sigma: 0.316
-      </rosparam>      
+   
 
       <!-- LAMP settings -->
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
       <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/>
-      <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/>
+      <rosparam file="$(find lamp)/config/lamp_init_noise.yaml" subst_value="true"/>
 
       <!-- Factor handlers settings -->
       <rosparam file="$(find factor_handlers)/config/odom_parameters.yaml" subst_value="true"/>
@@ -65,12 +53,6 @@
       <!-- Point cloud filter -->
       <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
 
-      <!-- Point cloud odometry -->
-      <rosparam file="$(find point_cloud_odometry)/config/parameters.yaml"/>
-
-      <!-- Point cloud localization -->
-      <rosparam file="$(find point_cloud_localization)/config/parameters.yaml"/>
-
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
 
@@ -82,7 +64,7 @@
       <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
       <param name="robot_prefix" value="c" if="$(eval robot_namespace == 'husky3')"/>
       <param name="robot_prefix" value="f" if="$(eval robot_namespace == 'husky4')"/>
-      <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax')"/>
+      <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax1')"/>
       <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
 
     </node>
@@ -105,7 +87,7 @@
       <!-- Frames -->
       <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>      
       <!-- Config - TODO move the proximity_threshold param elsewhere -->
-      <rosparam file="$(find factor_handlers)/config/odom_parameters.yaml" subst_value="true"/>      
+      <rosparam file="$(find pose_graph_visualizer)/config/visualizer_parameters.yaml" subst_value="true"/>      
     </node>
 
     <!-- Throttling input cloud -->
@@ -121,24 +103,6 @@
                 'nav_msgs.msg.Odometry(header=m.header, pose=geometry_msgs.msg.PoseWithCovariance(pose=m.pose))' --import nav_msgs geometry_msgs">
     </node>
 
-
-    <!-- PC throttling and filtering -->
-    <!-- <group if="$(arg process_map)">
-        <include file="$(find blam_example)/launch/map_processing.launch">
-          <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-          <arg name="map_update_freq" value="$(arg map_update_freq)"/>
-          <arg name="map_topic_input" value="$(arg map_topic_input)"/>
-          <arg name="map_topic_output" value="$(arg map_topic_output)"/>
-        </include>
-    </group> -->
-
-    <!-- BLAM frame/process manager -->
-    <!-- <node pkg="lamp"
-          name="blam_manager"
-          type="reinit_blam.py">
-      <param name="map_frame" value="$(arg robot_namespace)/map"/>
-      <param name="blam_frame" value="$(arg robot_namespace)/blam"/>
-    </node> -->
 
     <node pkg="tf" 
         type="static_transform_publisher"
