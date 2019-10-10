@@ -122,8 +122,15 @@ class OdometryHandler : public LampDataHandlerBase{
             current_msg.header = odom_msg.header; 
             current_msg.pose = odom_msg.pose; 
             double current_time = odom_msg.header.stamp.toSec();
-            buffer_map.insert({current_time, current_msg});       
-            return true;               
+            buffer_map.insert({current_time, current_msg});     
+            int final_map_size = buffer_map.size();
+            if (final_map_size == (initial_map_size+1)){
+              // Msg insertion was successful, return true to the caller
+              return true;
+            }
+            else {
+              return false;
+            }               
         }
 
         void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
