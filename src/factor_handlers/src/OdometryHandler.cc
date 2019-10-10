@@ -284,7 +284,7 @@ void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBufferMap& odom_buffer,
   Computes the relative transformation between the two poses and fills the GtsamPosCov struct
   */
   PoseCovStampedPair poses;
-  if (GetPosesAtTimesFromMap(t1, t2, odom_buffer, poses)) {
+  if (GetPosesAtTimes(t1, t2, odom_buffer, poses)) {
     measurement.b_has_value = true;
     measurement.pose = GetTransform(poses);
     measurement.covariance = GetCovariance(poses);
@@ -315,7 +315,7 @@ void OdometryHandler::ClearOdometryBuffers() {
 
 // We are not passing the odom_buffer_map as a const reference anymore as after finding the correct element, we want to clear the buffer
 // Removing const definition of the method as well, as we need to reset a private class memeber 
-bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time stamp, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) const {
+bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) const {
   
   // If map is empty, return false to the caller 
   if (odom_buffer_map.size() == 0){
@@ -368,10 +368,10 @@ bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time stamp, const OdomPos
   return true; 
 }
 
-bool OdometryHandler::GetPosesAtTimesFromMap (const ros::Time t1, const ros::Time t2, const OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) const {
+bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) const {
   PoseCovStamped first_pose, second_pose; 
-  if (GetPoseAtTimeFromMap(t1, odom_buffer_map, first_pose)){
-    if (GetPoseAtTimeFromMap(t2, odom_buffer_map, second_pose)) {
+  if (GetPoseAtTime(t1, odom_buffer_map, first_pose)){
+    if (GetPoseAtTime(t2, odom_buffer_map, second_pose)) {
       output_poses = std::make_pair(first_pose, second_pose);
       return true;
     }

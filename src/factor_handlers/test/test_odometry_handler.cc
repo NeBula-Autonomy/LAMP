@@ -61,10 +61,6 @@ protected:
     }
 
 
-    bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
-      return oh.GetKeyedScanAtTime(stamp, msg);
-    }
-
     std::vector<geometry_msgs::PoseWithCovarianceStamped> lidar_odometry_buffer_ = oh.lidar_odometry_buffer_;
 
   private:    
@@ -142,64 +138,6 @@ TEST_F(OdometryHandlerTest, TestToGtsam) {
   gtsam::Pose3 transform_expected = gtsam::Pose3(rotation, position);
 
   ASSERT_TRUE(transform_actual.equals(transform_expected));
-}
-
-TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
-
-  // Create time stamps
-  double t1 = 1.0;
-  double t2 = 2.0;
-  double t3 = 3.0;
-  double t4 = 4.0;
-  double t5 = 5.0;
-  double t6 = 6.0;
-  ros::Time t1_ros;
-  ros::Time t2_ros;
-  ros::Time t3_ros;
-  ros::Time t4_ros;
-  ros::Time t5_ros;
-  ros::Time t6_ros;
-  t1_ros.fromSec(t1);
-  t2_ros.fromSec(t2);
-  t3_ros.fromSec(t3);
-  t4_ros.fromSec(t4);
-  t5_ros.fromSec(t5);
-  t6_ros.fromSec(t6);
-
-  // Create keyed scans
-  sensor_msgs::PointCloud2 msg1;
-  sensor_msgs::PointCloud2 msg2;
-  sensor_msgs::PointCloud2 msg3;
-  sensor_msgs::PointCloud2 msg4;
-  sensor_msgs::PointCloud2 msg5;
-  sensor_msgs::PointCloud2 msg6;
-
-  msg1.header.stamp = t1_ros;
-  msg2.header.stamp = t2_ros;
-  msg3.header.stamp = t3_ros;
-  msg4.header.stamp = t4_ros;
-  msg5.header.stamp = t5_ros;
-  msg6.header.stamp = t6_ros;
-
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(new sensor_msgs::PointCloud2(msg1));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(new sensor_msgs::PointCloud2(msg2));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(new sensor_msgs::PointCloud2(msg3));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(new sensor_msgs::PointCloud2(msg4));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr5(new sensor_msgs::PointCloud2(msg5));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr6(new sensor_msgs::PointCloud2(msg6));
-
-  
-  PointCloudCallback(pc_ptr1);
-  PointCloudCallback(pc_ptr2);
-  PointCloudCallback(pc_ptr3);
-  PointCloudCallback(pc_ptr4);
-  PointCloudCallback(pc_ptr5);
-  PointCloudCallback(pc_ptr6);
-
-  // Create the keyed scan to be filled by GetKeyedScanAtTime method
-  PointCloud::Ptr my_keyed_scan;
-  bool result = GetKeyedScanAtTime(t3_ros, my_keyed_scan);
-  ASSERT_TRUE(result);
 }
 
     // PointCloud current_pointcloud;
@@ -506,6 +444,69 @@ TEST_F(OdometryHandlerTest, TestFillGtsamPosCovOdom) {
 
 // ------------------------------------------------------------------------------
 
+bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
+  return oh.GetKeyedScanAtTime(stamp, msg);
+}
+
+TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
+
+  // Create time stamps
+  double t1 = 1.0;
+  double t2 = 2.0;
+  double t3 = 3.0;
+  double t4 = 4.0;
+  double t5 = 5.0;
+  double t6 = 6.0;
+  ros::Time t1_ros;
+  ros::Time t2_ros;
+  ros::Time t3_ros;
+  ros::Time t4_ros;
+  ros::Time t5_ros;
+  ros::Time t6_ros;
+  t1_ros.fromSec(t1);
+  t2_ros.fromSec(t2);
+  t3_ros.fromSec(t3);
+  t4_ros.fromSec(t4);
+  t5_ros.fromSec(t5);
+  t6_ros.fromSec(t6);
+
+  // Create keyed scans
+  sensor_msgs::PointCloud2 msg1;
+  sensor_msgs::PointCloud2 msg2;
+  sensor_msgs::PointCloud2 msg3;
+  sensor_msgs::PointCloud2 msg4;
+  sensor_msgs::PointCloud2 msg5;
+  sensor_msgs::PointCloud2 msg6;
+
+  msg1.header.stamp = t1_ros;
+  msg2.header.stamp = t2_ros;
+  msg3.header.stamp = t3_ros;
+  msg4.header.stamp = t4_ros;
+  msg5.header.stamp = t5_ros;
+  msg6.header.stamp = t6_ros;
+
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(new sensor_msgs::PointCloud2(msg1));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(new sensor_msgs::PointCloud2(msg2));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(new sensor_msgs::PointCloud2(msg3));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(new sensor_msgs::PointCloud2(msg4));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr5(new sensor_msgs::PointCloud2(msg5));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr6(new sensor_msgs::PointCloud2(msg6));
+
+  
+  PointCloudCallback(pc_ptr1);
+  PointCloudCallback(pc_ptr2);
+  PointCloudCallback(pc_ptr3);
+  PointCloudCallback(pc_ptr4);
+  PointCloudCallback(pc_ptr5);
+  PointCloudCallback(pc_ptr6);
+
+  // Create the keyed scan to be filled by GetKeyedScanAtTime method
+  PointCloud::Ptr my_keyed_scan;
+  bool result = GetKeyedScanAtTime(t3_ros, my_keyed_scan);
+  ASSERT_TRUE(result);
+}
+
+// ------------------------------------------------------------------------------
 
 unit tests
 // CalculatePoseDelta: Done (Nobuhiro)
