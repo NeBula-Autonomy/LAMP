@@ -32,6 +32,33 @@ namespace gu = geometry_utils;
 
 namespace utils {
 
+gtsam::Pose3 EdgeMessageToPose(pose_graph_msgs::PoseGraphEdge msg_edge) {
+  gtsam::Point3 delta_translation(msg_edge.pose.position.x,
+                                  msg_edge.pose.position.y,
+                                  msg_edge.pose.position.z);
+  gtsam::Rot3 delta_orientation(
+      gtsam::Rot3::quaternion(msg_edge.pose.orientation.w,
+                              msg_edge.pose.orientation.x,
+                              msg_edge.pose.orientation.y,
+                              msg_edge.pose.orientation.z));
+  gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
+
+  return delta;
+}
+
+Gaussian::shared_ptr
+EdgeMessageToCovariance(pose_graph_msgs::PoseGraphEdge msg_edge) {
+  gtsam::Matrix66 covariance;
+  for (size_t i = 0; i < msg_edge.covariance.size(); i++) {
+    size_t row = static_cast<size_t>(i / 6);
+    size_t col = i % 6;
+    covariance(row, col) = msg_edge.covariance[i];
+  }
+  Gaussian::shared_ptr noise = Gaussian::Covariance(covariance);
+
+  return noise;
+}
+
 // Pose graph msg to gtsam conversion
 void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
                          NonlinearFactorGraph* graph_nfg,
@@ -40,24 +67,28 @@ void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
   *graph_vals = Values();
 
   for (const auto& msg_edge : graph_msg->edges) {
-    gtsam::Point3 delta_translation(msg_edge.pose.position.x,
-                                    msg_edge.pose.position.y,
-                                    msg_edge.pose.position.z);
-    gtsam::Rot3 delta_orientation(
-        gtsam::Rot3::quaternion(msg_edge.pose.orientation.w,
-                                msg_edge.pose.orientation.x,
-                                msg_edge.pose.orientation.y,
-                                msg_edge.pose.orientation.z));
-    gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
+    // gtsam::Point3 delta_translation(msg_edge.pose.position.x,
+    //                                 msg_edge.pose.position.y,
+    //                                 msg_edge.pose.position.z);
+    // gtsam::Rot3 delta_orientation(
+    //     gtsam::Rot3::quaternion(msg_edge.pose.orientation.w,
+    //                             msg_edge.pose.orientation.x,
+    //                             msg_edge.pose.orientation.y,
+    //                             msg_edge.pose.orientation.z));
+    // gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
 
-    // TODO(Yun) fill in covariance
-    gtsam::Matrix66 covariance;
-    for (size_t i = 0; i < msg_edge.covariance.size(); i++) {
-      size_t row = static_cast<size_t>(i / 6);
-      size_t col = i % 6;
-      covariance(row, col) = msg_edge.covariance[i];
-    }
-    Gaussian::shared_ptr noise = Gaussian::Covariance(covariance);
+    gtsam::Pose3 delta = EdgeMessageToPose(msg_edge);
+
+    Gaussian::shared_ptr noise = EdgeMessageToCovariance(msg_edge);
+
+    // // TODO(Yun) fill in covariance
+    // gtsam::Matrix66 covariance;
+    // for (size_t i = 0; i < msg_edge.covariance.size(); i++) {
+    //   size_t row = static_cast<size_t>(i / 6);
+    //   size_t col = i % 6;
+    //   covariance(row, col) = msg_edge.covariance[i];
+    // }
+    // Gaussian::shared_ptr noise = Gaussian::Covariance(covariance);
     //-------------------------------------------------------------------------
 
     if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {

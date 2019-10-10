@@ -30,6 +30,10 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback, this);
 
+  // Publishers
+  loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
+      "laser_loop_closures", 10, false);
+
   // Parameters
   double distance_to_skip_recent_poses;
   // Load loop closing parameters.

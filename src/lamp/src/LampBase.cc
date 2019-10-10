@@ -84,13 +84,9 @@ bool LampBase::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   pose_graph_pub_ =
       nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
+  pose_graph_incremental_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
+      "pose_graph_incremental", 10, false);
 }
-
-// bool LampBase::RegisterCallbacks(const ros::NodeHandle& n){
-//   ros::NodeHandle nl(n);
-
-//   return false;
-// }
 
 bool LampBase::InitializeHandlers(const ros::NodeHandle& n){
   return false;
@@ -156,7 +152,8 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
 
   // Give merger the current graph (will likely have more nodes that the
   // optimized)
-  merger_.OnFastGraphMsg(ConvertPoseGraphToMsg());
+  merger_.OnFastGraphMsg(
+      ConvertPoseGraphToMsg(values_, edges_info_, priors_info_));
 
   gtsam::Values new_values; 
   gtsam::Symbol key;
@@ -170,12 +167,51 @@ void LampBase::OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr 
   // TODO-maybe - make the copy more efficient
 }
 
+// Callback from a laser loop closure message
+void LampBase::LaserLoopClosureCallback(
+    const pose_graph_msgs::PoseGraphConstPtr msg) {
+  ROS_INFO_STREAM("Received laser loop closure message "
+                  "--------------------------------------------------");
+
+  // Do things particular to loop closures from the laser
+
+  // Add to the graph
+  AddLoopClosureToGraph(msg);
+}
+
+// Generic addition of loop closure information to the graph
+void LampBase::AddLoopClosureToGraph(
+    const pose_graph_msgs::PoseGraphConstPtr msg) {
+  // Add to nfg
+  gtsam::NonlinearFactorGraph new_factors;
+  gtsam::Values blank_values;
+  utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
+  nfg_.add(new_factors);
+
+  // Get info for publishing later - in edges_info
+  gtsam::Pose3 transform;
+  gtsam::SharedNoiseModel covariance;
+
+  // Add the factors to the pose_graph - loop through in case of multiple loop
+  // closures
+  for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
+    // Transform to gtsam format
+    transform = utils::EdgeMessageToPose(edge);
+    covariance = utils::EdgeMessageToCovariance(edge);
+
+    // Add to tracked edges
+    TrackEdges(edge.key_from, edge.key_to, edge.type, transform, covariance);
+  }
+}
+
 //------------------------------------------------------------------------------------------
 // Conversion and publish pose graph functions
 //------------------------------------------------------------------------------------------
 
 // Convert the internally stored pose_graph to a pose graph message
-pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
+// Can be used for incremental or full graph
+pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(
+    gtsam::Values values, EdgeMessages edges_info, PriorMessages priors_info) {
   // Uses internally stored info.
   // Returns a pointer to handle passing more efficiently to the merger
 
@@ -184,17 +220,13 @@ pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
   g.header.frame_id = fixed_frame_id_;
   g.header.stamp = keyed_stamps_[key_ - 1]; // Get timestamp from latest keyed pose
 
-  // Flag on whether it is incremental or not
-  // TODO make incremental Pose Graph publishing
-  g.incremental = false;
-
   // Get Values
-  ConvertValuesToNodeMsgs(g.nodes);
+  ConvertValuesToNodeMsgs(values, g.nodes);
 
   // Add the factors  // TODO - check integration of this tracking with all
   // handlers
-  g.edges = edges_info_;
-  g.priors = priors_info_;
+  g.edges = edges_info;
+  g.priors = priors_info;
 
   pose_graph_msgs::PoseGraphConstPtr g_ptr(new pose_graph_msgs::PoseGraph(g));
 
@@ -204,12 +236,12 @@ pose_graph_msgs::PoseGraphConstPtr LampBase::ConvertPoseGraphToMsg(){
 
 
 // Function returns a vector of node messages from an input values
-bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNode>& nodes){
-  // Converts the internal values 
+bool LampBase::ConvertValuesToNodeMsgs(
+    gtsam::Values values, std::vector<pose_graph_msgs::PoseGraphNode>& nodes) {
+  // Converts the internal values
 
-  for (const auto& keyed_pose : values_) {
-
-    gu::Transform3 t = utils::ToGu(values_.at<gtsam::Pose3>(keyed_pose.key));
+  for (const auto& keyed_pose : values) {
+    gu::Transform3 t = utils::ToGu(values.at<gtsam::Pose3>(keyed_pose.key));
 
     gtsam::Symbol sym_key = gtsam::Symbol(keyed_pose.key);
 
@@ -250,13 +282,34 @@ bool LampBase::ConvertValuesToNodeMsgs(std::vector<pose_graph_msgs::PoseGraphNod
 
 
 bool LampBase::PublishPoseGraph() {
-  // TODO - incremental publishing instead of full graph
+  // TODO -
 
-  // Convert master pose-graph to messages
-  pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();
+  // Incremental publishing
+  if (pose_graph_incremental_pub_.getNumSubscribers() > 0) {
+    // Convert new parts of the pose-graph to messages
+    pose_graph_msgs::PoseGraphConstPtr g_inc =
+        ConvertPoseGraphToMsg(values_new_, edges_info_new_, priors_info_new_);
+    // TODO - change interface to just take a flag? Then do the clear in there?
+    // - no want to make sure it is published
 
-  // Publish 
-  pose_graph_pub_.publish(*g);
+    // Publish
+    pose_graph_incremental_pub_.publish(*g_inc);
+
+    // Reset new tracking
+    values_new_.clear();
+    edges_info_new_.clear();
+    priors_info_new_.clear();
+  }
+
+  // Full pose graph publishing
+  if (pose_graph_pub_.getNumSubscribers() > 0) {
+    // Convert master pose-graph to messages
+    pose_graph_msgs::PoseGraphConstPtr g_full =
+        ConvertPoseGraphToMsg(values_, edges_info_, priors_info_);
+
+    // Publish
+    pose_graph_pub_.publish(*g_full);
+  }
 
   return true;
 }
@@ -266,7 +319,8 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   // TODO - incremental publishing instead of full graph
 
   // Convert master pose-graph to messages
-  pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();
+  pose_graph_msgs::PoseGraphConstPtr g =
+      ConvertPoseGraphToMsg(values_, edges_info_, priors_info_);
 
   // Publish 
   pose_graph_to_optimize_pub_.publish(*g);
@@ -277,6 +331,15 @@ bool LampBase::PublishPoseGraphForOptimizer() {
 //------------------------------------------------------------------------------------------
 // Tracking
 //------------------------------------------------------------------------------------------
+
+// Helper to add to new values tacking variable as well
+void LampBase::AddNewValues(gtsam::Values new_values) {
+  // Main values variable
+  values_.insert(new_values);
+
+  // New values tracking
+  values_new_.insert(new_values);
+}
 
 void LampBase::TrackEdges(gtsam::Symbol key_from, 
                           gtsam::Symbol key_to, 
@@ -296,6 +359,7 @@ void LampBase::TrackEdges(gtsam::Symbol key_from,
   // TODO - add covariance 
 
   edges_info_.push_back(edge);
+  edges_info_new_.push_back(edge);
 }
 
 void LampBase::TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance){
@@ -310,6 +374,7 @@ void LampBase::TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose
   // TODO - add covariance 
 
   priors_info_.push_back(prior);
+  priors_info_new_.push_back(prior);
 }
 
 // Placeholder function to used fixed covariances while proper covariances are

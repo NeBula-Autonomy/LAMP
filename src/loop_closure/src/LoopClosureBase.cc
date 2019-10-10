@@ -12,8 +12,7 @@ Loop closure base class
 
 LoopClosure::LoopClosure(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
-  loop_closure_pub_ =
-      nl.advertise<pose_graph_msgs::PoseGraph>("loop_closures", 10, false);
+
   keyed_stamps_sub_ = nl.subscribe<pose_graph_msgs::PoseGraphNode>(
       "new_node", 10, &LoopClosure::InputCallback, this);
 }

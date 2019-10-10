@@ -135,6 +135,11 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
     
   back_end_pose_graph_sub_ = nl.subscribe("optimizer_pg", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
 
+  laser_loop_closure_sub_ = nl.subscribe("laser_loop_closure",
+                                         1,
+                                         &LampRobot::LaserLoopClosureCallback,
+                                         dynamic_cast<LampBase*>(this));
+
   return true; 
 }
 
@@ -244,6 +249,7 @@ bool LampRobot::InitializeGraph(
   values_ = Values();
   nfg_.add(PriorFactor<Pose3>(initial_key_, pose, covariance));
   values_.insert(initial_key_, pose);
+  values_new_ = values_; // init this to track new values
 
   ros::Time stamp = ros::Time::now();
   keyed_stamps_[initial_key_] = stamp;
@@ -286,22 +292,6 @@ bool LampRobot::CheckHandlers() {
   // TODO - determine what a true and false return means here
   return true;
 }
-
-// bool LampRobot::InitializeGraph(gtsam::Pose3& pose,
-// gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
-//   nfg_ = NonlinearFactorGraph();
-//   values_ = Values();
-//   nfg_.add(PriorFactor<Pose3>(initial_key_, pose, covariance));
-//   values_.insert(initial_key_, pose);
-
-//   ros::Time stamp = ros::Time::now();
-//   keyed_stamps_[initial_key_] = stamp;
-
-//   // Populate the priors_info vector
-//   TrackPriors(stamp, initial_key_, pose, covariance);
-
-//   return true;
-// }
 
 void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
@@ -457,7 +447,7 @@ bool LampRobot::ProcessOdomData(FactorData data){
 
   // Add factors and values to the graph
   nfg_.add(new_factors);
-  values_.insert(new_values);
+  AddNewValues(new_values);
 
   return true;
 }

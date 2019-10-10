@@ -37,12 +37,13 @@ void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
                          gtsam::NonlinearFactorGraph* graph_nfg,
                          gtsam::Values* graph_vals);
 
-// inline ConvertMsgToPoseGraph(const pose_graph_msgs::PoseGraph::ConstPtr&
-// graph_msg,
-//                         gtsam::NonlinearFactorGraph* graph_nfg,
-//                         gtsam::Values* graph_vals){
+// Converte edge message to gtsam pose
+gtsam::Pose3 EdgeMessageToPose(pose_graph_msgs::PoseGraphEdge msg_edge);
 
-// }
+// Extrac the covariance (as Gaussian Covariance in Shared Noise Model) from
+// edge message
+Gaussian::shared_ptr
+EdgeMessageToCovariance(pose_graph_msgs::PoseGraphEdge msg_edge);
 
 geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose);
 

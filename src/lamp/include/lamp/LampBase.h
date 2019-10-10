@@ -65,15 +65,17 @@
 // Class definition
 class LampBase {
  public:
-  // Constructor
-  LampBase();
+   typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
+   typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
+   // Constructor
+   LampBase();
 
-  // Destructor
-  ~LampBase();
+   // Destructor
+   ~LampBase();
 
-  // Define main interface functions
+   // Define main interface functions
 
-  virtual bool Initialize(const ros::NodeHandle& n);
+   virtual bool Initialize(const ros::NodeHandle& n);
 
  protected:
   // TODO: make most of these pure virtual
@@ -96,7 +98,11 @@ class LampBase {
   ros::Timer update_timer_;
 
   // retrieve data from all handlers
-  virtual bool CheckHandlers(); 
+  virtual bool CheckHandlers();
+
+  // Callback for loop closures
+  void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg);
+  void AddLoopClosureToGraph(const pose_graph_msgs::PoseGraphConstPtr msg);
 
   // Functions to publish
   bool PublishPoseGraph();
@@ -108,11 +114,13 @@ class LampBase {
   bool IsTimeWithinThreshold(double time, const ros::Time& target) const;
 
   // Convert values to PoseGraphNode Messages
-  bool ConvertValuesToNodeMsgs(
-      std::vector<pose_graph_msgs::PoseGraphNode>& nodes);
+  bool
+  ConvertValuesToNodeMsgs(gtsam::Values values,
+                          std::vector<pose_graph_msgs::PoseGraphNode>& nodes);
 
   // Convert internal pose graph to message
-  pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg();
+  pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg(
+      gtsam::Values values, EdgeMessages edges_info, PriorMessages priors_info);
 
   // Placeholder for setting fixed noise
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
@@ -122,6 +130,7 @@ class LampBase {
   OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
   // Tracking info for publishing messages
+  void AddNewValues(gtsam::Values new_values);
   void TrackEdges(gtsam::Symbol key_from,
                   gtsam::Symbol key_to,
                   int type,
@@ -145,16 +154,23 @@ class LampBase {
   std::map<double, gtsam::Symbol> stamp_to_odom_key_;
 
     // List of all factors with additional information
-  std::vector<pose_graph_msgs::PoseGraphEdge> edges_info_; // TODO - revisit - do we want this to be a map for any reason - to quickly access specific edges?
-  std::vector<pose_graph_msgs::PoseGraphNode> priors_info_;
+  EdgeMessages edges_info_;
+  PriorMessages priors_info_;
+
+  // Variables for tracking the new features only
+  gtsam::Values values_new_;
+  EdgeMessages edges_info_new_;
+  PriorMessages priors_info_new_;
 
   // Publishers
   ros::Publisher pose_graph_pub_;
+  ros::Publisher pose_graph_incremental_pub_;
   ros::Publisher pose_graph_to_optimize_pub_;
   ros::Publisher keyed_scan_pub_;
 
   // Subscribers
   ros::Subscriber back_end_pose_graph_sub_;
+  ros::Subscriber laser_loop_closure_sub_;
 
   // Services
 

@@ -8,22 +8,25 @@
 #include "lamp/LampRobot.h"
 
 class TestLampRobot : public ::testing::Test {
-  public: 
-    TestLampRobot(){
-      // Load params
-      system("rosparam load $(rospack find "
-             "lamp)/config/precision_parameters.yaml");
-      system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
-      system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
-      system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
-      system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
+public:
+  typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
+  typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
 
-      system("rosparam load $(rospack find "
-             "point_cloud_filter)/config/parameters.yaml");
-      system("rosparam load $(rospack find "
-             "point_cloud_mapper)/config/parameters.yaml");
-      system("rosparam load $(rospack find "
-             "factor_handlers)/config/odom_parameters.yaml");
+  TestLampRobot() {
+    // Load params
+    system("rosparam load $(rospack find "
+           "lamp)/config/precision_parameters.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
+
+    system("rosparam load $(rospack find "
+           "point_cloud_filter)/config/parameters.yaml");
+    system("rosparam load $(rospack find "
+           "point_cloud_mapper)/config/parameters.yaml");
+    system("rosparam load $(rospack find "
+           "factor_handlers)/config/odom_parameters.yaml");
     }
     ~TestLampRobot(){}
 
@@ -36,7 +39,12 @@ class TestLampRobot : public ::testing::Test {
     int GetValuesSize() {return lr.values_.size();}
     gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {return lr.GetKeyAtTime(stamp);}
     gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {return lr.GetClosestKeyAtTime(stamp);}
-    pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg() {return lr.ConvertPoseGraphToMsg();}
+    pose_graph_msgs::PoseGraphConstPtr
+    ConvertPoseGraphToMsg(gtsam::Values values,
+                          EdgeMessages edges_info,
+                          PriorMessages priors_info) {
+      return lr.ConvertPoseGraphToMsg(values, edges_info, priors_info);
+    }
     gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
       return lr.SetFixedNoiseModels(type);
     }
@@ -58,6 +66,15 @@ class TestLampRobot : public ::testing::Test {
     void SetPrefix(char c) {lr.prefix_ = c;}
     void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) { lr.values_.insert(key, pose); }
 
+    gtsam::Values GetValues() {
+      return lr.values_;
+    }
+    EdgeMessages GetEdges() {
+      return lr.edges_info_;
+    }
+    PriorMessages GetPriors() {
+      return lr.priors_info_;
+    }
     // Other utilities
 
   protected: 
@@ -224,7 +241,6 @@ TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(100000.0)));
 }
 
-
 TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   ros::Time::init();
 
@@ -263,7 +279,8 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 
 
   // Convert pose-graph to message
-  pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();
+  pose_graph_msgs::PoseGraphConstPtr g =
+      ConvertPoseGraphToMsg(GetValues(), GetEdges(), GetPriors());
 
   float x,y,z;
   for (auto n : g->nodes) {
