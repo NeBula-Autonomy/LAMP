@@ -353,6 +353,16 @@ bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& close
 
 // Getters -----------------------------------------------------------------------------------------------
 
+bool OdometryHandler::GetPosesAtTimeFromMap (const ros::Time t, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) {
+  ROS_INFO("To be implemented");
+  // TODO: If you are able to retrieve the element of interest within criteria, return true to the caller
+  return true; 
+}
+
+bool OdometryHandler::GetPosesAtTimesFromMap (const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer_map){
+  ROS_INFO("To be immplemented");
+}
+
 bool OdometryHandler::GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const {
   // Create a PoseCovStamped message
   PoseCovStamped myPoseCovStamped;
