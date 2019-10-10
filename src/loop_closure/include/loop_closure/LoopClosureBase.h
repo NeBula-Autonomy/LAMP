@@ -10,6 +10,7 @@ Loop closure base class
 #include <map>
 #include <unordered_map>
 
+#include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 #include <ros/console.h>
@@ -38,7 +39,7 @@ class LoopClosure {
       gtsam::Key new_key,
       std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {}
 
-  void InputCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr& node_msg);
+  void InputCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
 
   void PublishLoopClosures(
       const std::vector<pose_graph_msgs::PoseGraphEdge> edges) const;
