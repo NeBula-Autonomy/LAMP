@@ -2,64 +2,28 @@
 #include "factor_handlers/ArtifactHandler.h"
 
 /**
- * Constructor
- * Initialize
- * LoadParameters
- * RegisterCallbacks      -     Not sure here
- * ComputeTransform
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
+ * Constructor             - Done
+ * Initialize              - Done
+ * LoadParameters          - Done
+ * RegisterCallbacks       - Not sure here
+ * ComputeTransform        - Done
+ * GetData                 - Done
+ * PublishArtifacts        - Done
+ * RegisterOnlineCallbacks - b_is_basestation_ and b_use_lo_frontend_ and b_is_front_end_ in lamp. else Nearly Done
+ * GetArtifactID           - Done
+ * ArtifactCallback        - Check if this needs more
+ * ArtifactBaseCallback    - Need to check this
+ * RegisterLogCallbacks    - Done
+ * CreatePublishers        - Done
+ * UpdateGlobalPose        - Done
+ * Tests                   - Test needed.
+ * covariances             - Done
  */
-
-/**
-#ifndef COMMON_STRUCTS_H
-#define COMMON_STRUCTS_H
-
-#include <geometry_utils/Transform3.h>
-#include <geometry_utils/GeometryUtilsROS.h>
-
-// Typedef for 6x6 covariance matrices (x, y, z, roll, pitch, yaw).
-typedef geometry_utils::MatrixNxNBase<double, 3> Mat33;
-typedef geometry_utils::MatrixNxNBase<double, 6> Mat66;
-typedef geometry_utils::MatrixNxNBase<double, 12> Mat1212;
-
-// GTSAM edge types
-typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
-typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
-typedef std::pair<gtsam::Symbol, gtsam::Pose3> Prior; 
-
-
-// Struct definition 
-struct FactorData {
-  bool b_has_data; // False if there is no data
-  std::string type; // odom, artifact, loop clsoure
-  // Vector for possible multiple factors
-  std::vector<gtsam::Pose3> transforms; // The transform (for odom, loop closures etc.) and pose for TS
-  std::vector<Mat1212> covariances; // Covariances for each transform 
-  std::vector<std::pair<ros::Time, ros::Time>> time_stamps; // Time when the measurement as acquired
-  // TODO - use ros::Time or something else?
-
-  std::vector<gtsam::Key> artifact_key; // key for the artifacts
-};
-
-#endif
- */ 
 
 // Constructor
 ArtifactHandler::ArtifactHandler()
                 : largest_artifact_id_(0),
                   use_artifact_loop_closure_(false) {
-                    // TODO Initialize artifact_data_
-                    // artifact_data_ = 
                   }
 
 /*! \brief Initialize parameters and callbacks. 
@@ -128,48 +92,55 @@ Eigen::Vector3d ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg
   // Get artifact position 
   Eigen::Vector3d artifact_position;
   artifact_position << msg.point.point.x, msg.point.point.y, msg.point.point.z;
-
-  Eigen::Vector3d R_artifact_position; // In robot frame
-
-  // Check if artifact is published in global frame 
-  // And convert to local frame to include in pose graph 
-  if (artifacts_in_global_) { // Already in fixed frame
-    // ---------------------------Should not come here------------------------------
-    // gtsam::Key pose_key = loop_closure_.GetKeyAtTime(msg.point.header.stamp);
-    // // TODO Needs loop closure
-    // geometry_utils::Transform3 global_pose = loop_closure_.GetPoseAtKey(pose_key);
-
-    // // Transform artifact pose from global frame to body frame 
-    // Eigen::Matrix<double, 3, 3> R_global = global_pose.rotation.Eigen();
-    // Eigen::Matrix<double, 3, 1> T_global = global_pose.translation.Eigen();
-    // // std::cout << "Global robot position is: " << T_global[0] << ", " << T_global[1] << ", " << T_global[2] << std::endl;
-    // // std::cout << "Global robot rotation is: " << R_global << std::endl;
-    // R_artifact_position = R_global.transpose() * (artifact_position - T_global); // Apply transform
-    // -------------------------------------------------------------------------------
-  } else {
-    R_artifact_position = artifact_position;
-  }
-
-  std::cout << "Artifact position in robot frame is: " << R_artifact_position[0] << ", "
-            << R_artifact_position[1] << ", " << R_artifact_position[2]
+  
+  std::cout << "Artifact position in robot frame is: " << artifact_position[0] << ", "
+            << artifact_position[1] << ", " << artifact_position[2]
             << std::endl;
-  return R_artifact_position;
+  return artifact_position;
 }
 
-/*! \brief  Get artifacts key and if not create one.
- * Returns Artifacts Key
+/*! \brief  Get artifacts ID from artifact key
+ * Returns Artifacts ID
  */
-gtsam::Key ArtifactHandler::GetArtifactKey(const core_msgs::Artifact& msg) {
+std::string ArtifactHandler::GetArtifactID(gtsam::Symbol artifact_key) {
+  std::string artifact_id;
+  for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end(); ++it) {
+    if (it->second == artifact_key) {
+      artifact_id = it->first; 
+      return artifact_id;
+    }
+  } 
+  std::cout << "Artifact ID not found for key" << gtsam::DefaultKeyFormatter(artifact_key) << std::endl;
+  return "";
+}
+
+/*! \brief  Callback for Artifacts.
+  * Returns  Void
+  */
+void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
+  // Subscribe to artifact messages, include in pose graph, publish global position 
+  // Artifact information
+  PrintArtifactInputMessage(msg);
+
+  // Check for NaNs and reject 
+  if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) || std::isnan(msg.point.point.z)){
+    ROS_WARN("NAN positions input from artifact message - ignoring");
+    return;
+  }
+
+  // Get the transformation
+  Eigen::Vector3d R_artifact_position = ComputeTransform(msg);
+
   // Get the artifact id
   std::string artifact_id = msg.parent_id; // Note that we are looking at the parent id here
   
   // Artifact key
-  gtsam::Key cur_artifact_key;
+  gtsam::Symbol cur_artifact_key;
   bool b_is_new_artifact = false;
 
   // get artifact id / key -----------------------------------------------
   // Check if the ID of the object already exists in the object hash
-  if (use_artifact_loop_closure_ && !IsNewArtifact(artifact_id) && 
+  if (use_artifact_loop_closure_ && artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() && 
       msg.label != "cellphone") {
     // Take the ID for that object - no reconciliation in the pose-graph of a cell phone (for now)
     cur_artifact_key = artifact_id2key_hash[artifact_id];
@@ -186,117 +157,35 @@ gtsam::Key ArtifactHandler::GetArtifactKey(const core_msgs::Artifact& msg) {
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
     // update hash
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
-
-    ArtifactInfo artifactinfo(msg.parent_id);
-    // create hashmap for artifact id to artifact_info
-    artifact_id_to_info_[artifact_id] = artifactinfo;
   }
-  return cur_artifact_key;
-}
-
-/*! \brief  Checks if artifact is a new one.
- * Returns  True if new or false otherwise 
- */
-bool ArtifactHandler::IsNewArtifact(const std::string artifact_id) {
-  return artifact_id2key_hash.find(artifact_id) == artifact_id2key_hash.end();
-}
-
-/*! \brief  Callback for Artifacts.
-  * Returns  Void
-  */
-void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
-  // Subscribe to artifact messages, include in pose graph, publish global position 
-  // Artifact information
-  std::cout << "Artifact message received is for id " << msg.id << std::endl;
-  std::cout << "\t Parent id: " << msg.parent_id << std::endl;
-  std::cout << "\t Confidence: " << msg.confidence << std::endl;
-  std::cout << "\t Position:\n[" << msg.point.point.x << ", "
-            << msg.point.point.y << ", " << msg.point.point.z << "]"
-            << std::endl;
-  std::cout << "\t Label: " << msg.label << std::endl;
-
-  // Check for NaNs and reject 
-  if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) || std::isnan(msg.point.point.z)){
-    ROS_WARN("NAN positions input from artifact message - ignoring");
-    return;
-  }
-
-  // Compute the transformation (from relative / global pose)
-  Eigen::Vector3d R_artifact_position = ComputeTransform(msg);
-
-  // Get Artifact key
-  gtsam::Key cur_artifact_key = GetArtifactKey(msg);
-
-  // Extract covariance information
-  Mat33 cov;
-  for (int i = 0; i < 3; ++i)
-    for (int j = 0; j < 3; ++j)
-      cov(i, j) = msg.covariance[3*i+j];
-
   // Generate gtsam pose
-  const gtsam::Pose3 R_pose_A 
+  const gtsam::Pose3 relative_pose 
       = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(R_artifact_position[0], 
                                                   R_artifact_position[1],
                                                   R_artifact_position[2]));
-  
+
+  // Fill ArtifactInfo hash
+  StoreArtifactInfo(cur_artifact_key, msg);
+
+  // Extract covariance
+  gtsam::SharedNoiseModel noise = ExtractCovariance(msg.covariance);
+
   // Fill artifact_data_
-  // Make new data true
-  artifact_data_.b_has_data = true;
-  // Fill type
-  artifact_data_.type = "artifact";
-  // Append transform
-  artifact_data_.transforms.push_back(R_pose_A);
-  // Append covariance
-  // TODO How to push Mat33 to Mat1212 
-  // artifact_data_.covariances.push_back(cov);
-  // Append std::pair<ros::Time, ros::Time(0.0)> for artifact
-  artifact_data_.time_stamps.push_back(std::make_pair(msg.header.stamp, ros::Time(0.0)));
-  // Append the artifact key
-  artifact_data_.artifact_key.push_back(cur_artifact_key);
+  AddArtifactData(cur_artifact_key, std::make_pair(msg.header.stamp, ros::Time(0.0)), relative_pose, noise);
 }
 
-/*! \brief  Callback for ArtifactBase.
- * Returns  Void
- */
-void ArtifactHandler::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
-  ROS_INFO_STREAM("Artifact message recieved");
-  core_msgs::Artifact artifact;
-  artifact.header = msg->header;
-  artifact.name = msg->name;
-  artifact.parent_id = msg->parent_id;
-  artifact.seq = msg->seq;
-  artifact.hotspot_name = msg->hotspot_name;
-  artifact.point = msg->point;
-  artifact.covariance = msg->covariance;
-  artifact.confidence = msg->confidence;
-  artifact.label = msg->label;
-  artifact.thumbnail = msg->thumbnail;
-
-  ArtifactInfo artifactinfo(msg->parent_id);
-  // artifactinfo.msg = artifact;           // TODO check this
-
-  std::cout << "Artifact position in world is: " << artifact.point.point.x
-            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
-            << std::endl;
-  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
-
-  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
-  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
-  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
-            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
-            << std::endl;
-  std::cout << "\t Label: " << artifact.label << std::endl;
-
-  // Publish artifacts - should be updated from the pose-graph
-  // loop_closure_.PublishArtifacts();      // TODO Need publish function
-}
-
-/*! \brief  Gives the factors to be added.
+/*! \brief  Gives the factors to be added and clears to start afresh.
  * Returns  Factors 
  */
-// TODO Need to either return FactorData or have it as pointer
-void ArtifactHandler::GetData(FactorData artifact_data) {
-  artifact_data = artifact_data_;
+FactorData ArtifactHandler::GetData() {
+  // Create a temporary copy to return
+  FactorData temp_artifact_data_ = artifact_data_;
+
+  // Clear artifact data
+  ClearArtifactData();
+  
+  // Return artifact data
+  return temp_artifact_data_;
 }
 
 /*! \brief  Create the publishers to log data.
@@ -312,6 +201,7 @@ bool ArtifactHandler::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Create publisher for artifact
+  artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
 
   return true;
 }
@@ -326,49 +216,168 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  // if (!b_is_basestation_ && !b_use_lo_frontend_){
-  //   artifact_sub_ = nl.subscribe(
-  //       "artifact_relative", 10, &ArtifactCallback, this);
-  // }
+  artifact_sub_ = nl.subscribe(
+    "artifact_relative", 10, &ArtifactHandler::ArtifactCallback, this);
 
-  // // Create pose-graph callbacks for base station
-  // if(b_is_basestation_){
-  //   int num_robots = robot_names_.size();
-  //   // init size of subscribers
-  //   // loop through each robot to set up subscriber
-  //   for (size_t i = 0; i < num_robots; i++) {
-  //     ros::Subscriber artifact_base_sub =
-  //         nl.subscribe("/" + robot_names_[i] + "/blam_slam/artifact_global",
-  //                      10,
-  //                      &ArtifactBaseCallback,
-  //                      this);
-  //     Subscriber_artifactList_.push_back(artifact_base_sub);
-  //     ROS_INFO_STREAM(i);
-  //   }    
-  // }
-
-  // if (!b_is_front_end_){
-  //   ros::Subscriber artifact_base_sub =
-  //       nl.subscribe("artifact_global_sub",
-  //                     10,
-  //                     &ArtifactBaseCallback,
-  //                     this);
-  //   Subscriber_artifactList_.push_back(artifact_base_sub);
-  // }
   return CreatePublishers(n);  
 }
 
 /*! \brief  Updates the global pose of an artifact 
  * Returns  Void
  */
-void ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
-  std::string artifact_id;
-  for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end(); ++it) {
-    if (it->second == artifact_key) {
-      artifact_id = it->first; 
-      artifact_id_to_info_[artifact_id].global_pose = global_pose;
-      return;
-    }
-  } 
-  std::cout << "Key not found in the Artifact id to key map.";
+bool ArtifactHandler::UpdateGlobalPose(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose) {
+  if (artifact_key2info_hash_.find(artifact_key) != artifact_key2info_hash_.end()) {
+    artifact_key2info_hash_[artifact_key].global_pose = global_pose;
+    return true;
+  } else {
+    std::cout << "Key not found in the Artifact id to key map.";
+    return false;
+  }
+}
+
+ /*! \brief  Publish Artifact. Need to see if publish_all is still relevant
+  * I am considering publishing if we have the key and the pose without 
+  * any further processing.
+  * TODO Resolve the frame and transform between world and map
+  * in output message. 
+  * Returns  Void
+  */
+void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose) {
+  // Get the artifact pose
+  Eigen::Vector3d artifact_position = global_pose.translation().vector();
+  std::string artifact_label;
+  gtsam::Symbol artifact_symbol_key = gtsam::Symbol(artifact_key);
+
+  if (!(artifact_symbol_key.chr() == 'l' || 
+        artifact_symbol_key.chr() == 'm' || 
+        artifact_symbol_key.chr() == 'n' || 
+        artifact_symbol_key.chr() == 'o' || 
+        artifact_symbol_key.chr() == 'p' || 
+        artifact_symbol_key.chr() == 'q')){
+    ROS_WARN("ERROR - have a non-landmark ID");
+    ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
+    return;
+  }
+
+  // Using the artifact key to publish that artifact
+  ROS_INFO("Publishing the new artifact");
+  ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(artifact_key));
+
+  // Check that the key exists
+  if (artifact_key2info_hash_.count(artifact_key) == 0) {
+    ROS_WARN("Artifact key is not in hash, nothing to publish");
+    return;
+  }
+
+  // Get label 
+  artifact_label = artifact_key2info_hash_[artifact_key].msg.label;
+  
+  // Increment update count
+  artifact_key2info_hash_[artifact_key].num_updates++;
+
+  std::cout << "Number of updates of artifact is: "
+            << artifact_key2info_hash_[artifact_key].num_updates
+            << std::endl;
+
+  // Fill artifact message
+  core_msgs::Artifact new_msg = artifact_key2info_hash_[artifact_key].msg;
+  
+  // Update the time
+  new_msg.header.stamp = ros::Time::now();
+
+  // Fill the new message positions
+  new_msg.point.point.x = artifact_position[0];
+  new_msg.point.point.y = artifact_position[1];
+  new_msg.point.point.z = artifact_position[2];
+  // TODO Need to check the frame id and transform
+  // new_msg.point.header.frame_id = fixed_frame_id_;
+  // Transform to world frame from map frame
+  // new_msg.point = tf_buffer_.transform(
+    // new_msg.point, "world", new_msg.point.header.stamp, "world");
+
+  // Print out
+  // Transform at time of message
+  PrintArtifactInputMessage(new_msg);
+
+  // Publish
+  artifact_pub_.publish(new_msg);
+}
+
+/*! \brief  Print Artifact input message for debugging
+  * Returns  Void
+  */
+void ArtifactHandler::PrintArtifactInputMessage(const core_msgs::Artifact& artifact) {
+  std::cout << "Artifact position in world is: " << artifact.point.point.x
+            << ", " << artifact.point.point.y << ", " << artifact.point.point.z
+            << std::endl;
+  std::cout << "Frame ID is: " << artifact.point.header.frame_id << std::endl;
+
+  std::cout << "\t Parent id: " << artifact.parent_id << std::endl;
+  std::cout << "\t Confidence: " << artifact.confidence << std::endl;
+  std::cout << "\t Position:\n[" << artifact.point.point.x << ", "
+            << artifact.point.point.y << ", " << artifact.point.point.z << "]"
+            << std::endl;
+  std::cout << "\t Label: " << artifact.label << std::endl;  
+}
+
+/*! \brief  Extracts covariance from artifact message and converts to gtsam::SharedNoiseModel
+  * Returns  gtsam::SharedNoiseModel
+  */
+gtsam::SharedNoiseModel ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) {
+  // Extract covariance information
+  gtsam::Matrix33 cov;
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      cov(i+3, j+3) = covariance[3*i+j];
+
+  gtsam::SharedNoiseModel noise =
+      gtsam::noiseModel::Gaussian::Covariance(cov);
+  return noise;
+}
+
+/*! \brief  Clear artifact data
+  * Returns  Void
+  */
+void ArtifactHandler::ClearArtifactData() {
+  // Clear artifact data
+  artifact_data_.b_has_data = false;
+  artifact_data_.artifact_key.clear();
+  artifact_data_.covariances.clear();
+  artifact_data_.time_stamps.clear();
+  artifact_data_.transforms.clear();
+}
+
+/*! \brief  Add artifact data
+  * Returns  Void
+  */
+void ArtifactHandler::AddArtifactData(const gtsam::Symbol cur_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise) {
+   // Make new data true
+  artifact_data_.b_has_data = true;
+  // Fill type
+  artifact_data_.type = "artifact";
+  // Append transform
+  artifact_data_.transforms.push_back(transform);
+  // Append covariance
+  artifact_data_.covariances.push_back(noise);
+  // Append std::pair<ros::Time, ros::Time(0.0)> for artifact
+  artifact_data_.time_stamps.push_back(time_stamp);
+  // Append the artifact key
+  artifact_data_.artifact_key.push_back(cur_key);
+}
+
+/*! \brief  Stores/Updated artifactInfo Hash
+  * Returns  Void
+  */
+void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key, const core_msgs::Artifact& msg) {
+  ArtifactInfo artifactinfo(msg.parent_id);
+  artifactinfo.msg = msg;
+
+  // keep track of artifact info: add to hash if not added
+  if (artifact_key2info_hash_.find(artifact_key) == artifact_key2info_hash_.end()) {
+    ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
+    artifact_key2info_hash_[artifact_key] = artifactinfo;
+  } else {
+    ROS_INFO("Existing artifact detected");
+    artifact_key2info_hash_[artifact_key] = artifactinfo;
+  }
 }

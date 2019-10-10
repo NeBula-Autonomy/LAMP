@@ -4,18 +4,14 @@
 // Includes
 // For common datastructures
 #include "utils/CommonStructs.h"
+#include <tf2_ros/transform_listener.h>
 #include <core_msgs/Artifact.h>
 
 // Base class
 #include "LampDataHandlerBase.h"
 
-// TODO Namespaces. Needs to be removed once this goes into header of LampDataHadlerBase
-#include <parameter_utils/ParameterUtils.h>
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
-
-// TODO Move to CommonStructs
-typedef geometry_utils::MatrixNxNBase<double, 3> Mat33;
 
 /*! \brief Stores Artifact information
  */
@@ -23,6 +19,7 @@ struct ArtifactInfo {
   std::string           id;                   // this corresponds to parent_id
   int                   num_updates;          // how many times the optimizer has updated this
   gtsam::Pose3          global_pose;          // Global pose of the artifact
+  core_msgs::Artifact   msg;                  // All fields in the artifact message that we need  
   ArtifactInfo(std::string art_id="") :
                id(art_id), 
                num_updates(0),
@@ -54,7 +51,22 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
-    void GetData(FactorData artifact_data);
+    FactorData GetData();
+
+    /*! \brief  Get the artifact_key2info_hash_
+     * Returns  artifact_key2info_hash_
+     */
+    std::unordered_map<long unsigned int, ArtifactInfo>& GetArtifactKey2InfoHash() {return artifact_key2info_hash_;};
+
+    /*! \brief  Updates the global pose of an artifact 
+     * Returns  bool
+     */
+    bool UpdateGlobalPose(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose);
+
+    /*! \brief  Publish Artifact
+     * Returns  Void
+     */
+    void PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose);
 
     protected:
     /*! \brief Load artifact parameters. 
@@ -87,16 +99,10 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg);
 
-    /*! \brief  Get artifacts key and if not create one.
-     * Returns Artifacts key
+    /*! \brief  Get artifacts ID from artifact key
+     * Returns Artifacts ID
      */
-    gtsam::Key GetArtifactKey(const core_msgs::Artifact& msg);
-
-
-    /*! \brief  Checks if artifact is a new one.
-     * Returns  True if new or false otherwise 
-     */
-    bool IsNewArtifact(const std::string artifact_id);
+    std::string GetArtifactID(gtsam::Symbol artifact_key);
 
     /*! \brief  Callback for Artifacts.
      * Returns  Void
@@ -108,22 +114,39 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     bool CreatePublishers(const ros::NodeHandle& n);
 
-    /*! \brief  Updates the global pose of an artifact 
+    /*! \brief  Print Artifact input message for debugging
      * Returns  Void
      */
-    void UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
-    
-    /*! \brief  TODO Incomplete
+    void PrintArtifactInputMessage(const core_msgs::Artifact& msg);
+
+    /*! \brief  Extracts covariance from artifact message and converts to gtsam::SharedNoiseModel
+     * Returns  gtsam::SharedNoiseModel
+     */
+    gtsam::SharedNoiseModel ExtractCovariance(const boost::array<float, 9> covariance);
+
+    /*! \brief  Clear artifact data
      * Returns  Void
      */
-    void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
+    void ClearArtifactData();
+
+    /*! \brief  Add artifact data
+     * Returns  Void
+     */
+    void AddArtifactData(const gtsam::Symbol artifact_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
+
+    /*! \brief  Stores/Updated artifactInfo Hash
+     * Returns  Void
+     */
+    void StoreArtifactInfo(const gtsam::Symbol artifact_key, const core_msgs::Artifact& msg);
 
     private:
     // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
     // from the pose graph
-    std::unordered_map<std::string, ArtifactInfo> artifact_id_to_info_;
+    std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
+
     // Mapping between a artifact id and the node where it is present in the pose graph
-    std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
+    // TODO: Make keys as symbols gtsam.
+    std::unordered_map<std::string, gtsam::Symbol> artifact_id2key_hash;
 
     
     // Parameters
@@ -140,11 +163,18 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Artifact output data
     FactorData artifact_data_;
 
+    // Transformer
+    tf2_ros::Buffer tf_buffer_;
+
     // Publisher
+    ros::Publisher artifact_pub_;
 
     // Subscribers
     ros::Subscriber artifact_sub_;
     std::vector<ros::Subscriber> Subscriber_artifactList_;
+
+    // Test class
+    friend class TestArtifactHandler;
 };
 
 #endif // !ARTIFACT_HANDLER_H

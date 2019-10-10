@@ -11,6 +11,7 @@
 #include <lamp/LampBase.h>
 
 #include <factor_handlers/OdometryHandler.h>
+#include <factor_handlers/ArtifactHandler.h>
 #include <pcl/common/transforms.h>
 
 // Services
@@ -91,7 +92,7 @@ class LampRobot : public LampBase {
 
     // Data Handler classes
     OdometryHandler odometry_handler_; 
-    // ArtifactHandler artifact_handler_;
+    ArtifactHandler artifact_handler_;
     // AprilHandler april_handler_;
     // Manual LC
     // IMU

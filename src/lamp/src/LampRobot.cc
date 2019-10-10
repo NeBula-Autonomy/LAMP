@@ -280,13 +280,13 @@ bool LampRobot::CheckHandlers() {
 
   bool b_have_odom_factors;
   // bool b_have_loop_closure;
-  // bool b_have_new_artifacts;
+  bool b_have_new_artifacts;
 
   // Check the odom for adding new poses
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
-  // ProcessArtifactData(artifact_handler_.GetData());
+  b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
   // ProcessAprilData(april_handler_.GetData());
 
   // TODO - determine what a true and false return means here
@@ -345,13 +345,20 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   \date 01 Oct 2019
 */
 void LampRobot::UpdateArtifactPositions(){
-
-  //Get new positions of artifacts from the pose-graph 
-  
-  // Update global pose just for what has changed
-  // artifact_handler_.UpdateArtifactPositions(keyed_poses_global);
-
-  // artifact_handler_.PublishArtifacts();
+  //Get new positions of artifacts from the pose-graph for artifact_key 
+  std::unordered_map<long unsigned int, ArtifactInfo>& artifact_info_hash = artifact_handler_.GetArtifactKey2InfoHash();
+  // Result of updating the global pose
+  bool result;
+  // Loop over to update global pose.
+  for (auto const& it : artifact_info_hash)
+  {
+    // Get the key
+    gtsam::Symbol artifact_key = gtsam::Symbol(it.first);
+    // Get the pose from the pose graph
+    Pose3 artifact_pose = values_.at<Pose3>(artifact_key);
+    // Update global pose just for what has changed. returns bool
+    result = result || artifact_handler_.UpdateGlobalPose(artifact_key, artifact_pose);    
+  }
 }
 
 //-------------------------------------------------------------------
@@ -551,21 +558,70 @@ bool LampRobot::ProcessArtifactData(FactorData data){
   // Check if there are new factors 
   if (!data.b_has_data) {
     return false;
-  }  
-
-  // TODO - fill out this function 
-
-  // process data for each new factor
-  int num_factors = data.transforms.size();
-
-  for (int i = 0; i < num_factors; i++) {
-
-    // create the factor
-
-    // add factor to buffer to send to pgo
   }
 
+  // Necessary variables
+  Pose3 transform;
+  gtsam::SharedNoiseModel covariance;
+  std::pair<ros::Time, ros::Time> times;
+  gtsam::Symbol pose_key;
+  gtsam::Symbol cur_artifact_key;
+
+  // New Factors to be added
+  NonlinearFactorGraph new_factors;
+
+  // New Values to be added
+  Values new_values;
+
+  // Get number of new measurements
+  int num_factors = data.transforms.size();
+
+  // process data for each new factor
+  for (int i = 0; i < num_factors; i++) {
+    // Get the transforms
+    transform = data.transforms[i];
+    // Get the covariances (Should be in relative frame as well)
+    covariance = data.covariances[i];
+    // Get the time
+    times = data.time_stamps[i];
+    // Get the key where the artifact loop closure has to be added    
+    pose_key = GetKeyAtTime(times.first);
+    // Get the artifact key
+    cur_artifact_key = data.artifact_key[i];
+
+    // Was adding factor successful 
+    bool result;
+
+    // create and add the factor
+    new_factors.add(BetweenFactor<Pose3>(pose_key, cur_artifact_key, transform, covariance));
+
+    // Compute the value
+    Pose3 last_pose = values_.at<Pose3>(pose_key);
+    // Compute the pose of the artifact from the last pose and relative transform
+    Pose3 artifact_pose = last_pose.compose(transform);
+    // Insert into the values
+    new_values.insert(cur_artifact_key, artifact_pose);
+
+    // TODO: Not inserting in keyed_stamps as both nodes are already present
+    // as this is a loop closure.
+
+    // Check for new artifacts and publish artifacts if they are new
+    if (!values_.exists(cur_artifact_key)) {
+      artifact_handler_.PublishArtifacts(cur_artifact_key, artifact_pose);
+    }
+
+    // Track the edges that have been added
+    int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+    TrackEdges(pose_key, cur_artifact_key, type, transform, covariance);
+  }
+  // add factor to buffer to send to pgo
+  nfg_.add(new_factors);
+  values_.insert(new_values);
+
   // TODO - use the HandleRelativePoseMeasurement function below
+
+  return true;
+
 }
 
 // Function gets a relative pose and time, and returns the global pose and the
