@@ -91,7 +91,7 @@ class OdometryHandler : public LampDataHandlerBase{
         bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer);   
         template <typename T>
         int CheckBufferSize(const std::vector<T>& x) {
-            std::cout << x.size() << std::endl;
+            // std::cout << x.size() << std::endl;
             return x.size();
         }
         void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
@@ -107,9 +107,6 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Converters
         gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const; // TODO: This function should be defined in the base class
- 
-        // LAMP Interface
-        FactorData factors_;         
 
         // The node's name.
         std::string name_;

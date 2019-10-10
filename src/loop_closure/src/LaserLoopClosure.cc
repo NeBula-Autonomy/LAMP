@@ -25,9 +25,12 @@ LaserLoopClosure::~LaserLoopClosure() {}
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+
+  // Subscribers
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback, this);
 
+  // Parameters
   double distance_to_skip_recent_poses;
   // Load loop closing parameters.
   if (!pu::Get("translation_threshold_nodes", translation_threshold_nodes_))
@@ -39,10 +42,13 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get("distance_before_reclosing", distance_before_reclosing_))
     return false;
 
-  // Load ICP parameters.
-  if (!pu::Get("icp/tf_epsilon", icp_tf_epsilon_)) return false;
-  if (!pu::Get("icp/corr_dist", icp_corr_dist_)) return false;
-  if (!pu::Get("icp/iterations", icp_iterations_)) return false;
+  // Load ICP parameters (from point_cloud localization)
+  if (!pu::Get("icp_lc/tf_epsilon", icp_tf_epsilon_))
+    return false;
+  if (!pu::Get("icp_lc/corr_dist", icp_corr_dist_))
+    return false;
+  if (!pu::Get("icp_lc/iterations", icp_iterations_))
+    return false;
 
   // Hard coded covariances
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;

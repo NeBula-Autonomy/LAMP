@@ -77,15 +77,15 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
   // Point Cloud callback
   point_cloud_sub_ = nl.subscribe(
-      "velodyne_points", 10, &OdometryHandler::PointCloudCallback, this);
+      "pcld", 10, &OdometryHandler::PointCloudCallback, this);
 
   return true;
 }
 
 // Callbacks --------------------------------------------------------------------------------------------
-
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
-    ROS_INFO("LidarOdometryCallback");
+    // ROS_INFO("LidarOdometryCallback");
+    
     if (InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, lidar_odometry_buffer_)) {
         CheckOdometryBuffer(lidar_odometry_buffer_);
     }
@@ -149,12 +149,12 @@ void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
 double OdometryHandler::CalculatePoseDelta(OdomPoseBuffer& odom_buffer) {
     // TODO: Should be implemented in a cleaner way
     auto pose_first = gr::FromROS((*(odom_buffer.begin())).pose.pose);
-    std::cout << pose_first << std::endl;
+    // std::cout << pose_first << std::endl;
     auto pose_end   = gr::FromROS((*(std::prev(odom_buffer.end()))).pose.pose);
-    std::cout << pose_end << std::endl;
+    // std::cout << pose_end << std::endl;
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
-    std::cout<<"CALCULATED POSE DELTA" << std::endl;
-    std::cout<<pose_delta<< std::endl;
+    // ROS_INFO_STREAM("CALCULATED POSE DELTA");
+    // ROS_INFO_STREAM(pose_delta);
     return pose_delta.translation.Norm();
 }
 
@@ -177,6 +177,10 @@ void OdometryHandler::MakeFactor(PoseCovStampedPair pose_cov_stamped_pair) {
     factors_.transforms.push_back(GetTransform(pose_cov_stamped_pair));
     factors_.covariances.push_back(GetCovariance(pose_cov_stamped_pair));
     factors_.time_stamps.push_back(GetTimeStamps(pose_cov_stamped_pair));
+
+    ROS_INFO_STREAM("Made a new factor (" << pose_cov_stamped_pair.first.pose.pose.position.x << ", "
+                                          << pose_cov_stamped_pair.first.pose.pose.position.y << ", "
+                                          << pose_cov_stamped_pair.first.pose.pose.position.z << ")");
 }
 
 // Getters -----------------------------------------------------------------------------------------------
