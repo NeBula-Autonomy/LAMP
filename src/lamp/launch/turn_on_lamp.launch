@@ -85,9 +85,9 @@
     </node>
 
     <!-- Loop Closure  -->
-    <!-- <include file="$(find loop_closure)/launch/laser_loop_closure.launch"> -->
-      <!-- <arg name="robot_namespace" value="$(arg robot_namespace)"/> -->
-    <!-- </include> -->
+    <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include>
 
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"
