@@ -253,9 +253,9 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr
 GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const {
   // Returns the fused GtsamPosCov delta between t1 and t2
   GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
-  FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2);
-  FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2);
-  FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2);
+  FillGtsamPosCovOdom(lidar_odometry_buffer_map_, lidar_odom, t1, t2);
+  FillGtsamPosCovOdom(visual_odometry_buffer_map_, visual_odom, t1, t2);
+  FillGtsamPosCovOdom(wheel_odometry_buffer_map_, wheel_odom, t1, t2);
   if (lidar_odom.b_has_value == true) {
     // 
   }
@@ -275,7 +275,7 @@ double OdometryHandler::CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) cons
   return pose.translation().norm();
 }
 
-void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, 
+void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBufferMap& odom_buffer, 
                                           GtsamPosCov& measurement,
                                           const ros::Time t1,
                                           const ros::Time t2) const {
@@ -284,7 +284,7 @@ void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
   Computes the relative transformation between the two poses and fills the GtsamPosCov struct
   */
   PoseCovStampedPair poses;
-  if (GetPosesAtTimes(t1, t2, odom_buffer, poses)) {
+  if (GetPosesAtTimesFromMap(t1, t2, odom_buffer, poses)) {
     measurement.b_has_value = true;
     measurement.pose = GetTransform(poses);
     measurement.covariance = GetCovariance(poses);
@@ -315,7 +315,7 @@ void OdometryHandler::ClearOdometryBuffers() {
 
 // We are not passing the odom_buffer_map as a const reference anymore as after finding the correct element, we want to clear the buffer
 // Removing const definition of the method as well, as we need to reset a private class memeber 
-bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time stamp, OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) {
+bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time stamp, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) const {
   
   // If map is empty, return false to the caller 
   if (odom_buffer_map.size() == 0){
@@ -358,10 +358,6 @@ bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time stamp, OdomPoseBuffe
     time_diff = stamp.toSec() - time1;
   }
 
-  // Clear the odometry buffer  
-  odom_buffer_map.clear(); // TODO: Shoudl we do so here, maybe not?
-
-  
   // Check if the time difference is too large
   if (time_diff > ts_threshold_) { 
     ROS_WARN("Time difference between request and latest PosCovStamped is too large, returning no PosC");
@@ -372,7 +368,7 @@ bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time stamp, OdomPoseBuffe
   return true; 
 }
 
-bool OdometryHandler::GetPosesAtTimesFromMap (const ros::Time t1, const ros::Time t2, OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) {
+bool OdometryHandler::GetPosesAtTimesFromMap (const ros::Time t1, const ros::Time t2, const OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) const {
   PoseCovStamped first_pose, second_pose; 
   if (GetPoseAtTimeFromMap(t1, odom_buffer_map, first_pose)){
     if (GetPoseAtTimeFromMap(t2, odom_buffer_map, second_pose)) {

@@ -133,7 +133,7 @@ class OdometryHandler : public LampDataHandlerBase{
             }               
         }
 
-        void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
+        void FillGtsamPosCovOdom(const OdomPoseBufferMap& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
         double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
         void ClearOdometryBuffers();
         void ResetFactorData();        
@@ -162,8 +162,8 @@ class OdometryHandler : public LampDataHandlerBase{
         GtsamPosCov fused_odom_;
 
         // New methods to deal with maps 
-        bool GetPoseAtTimeFromMap (const ros::Time stamp, OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output);
-        bool GetPosesAtTimesFromMap (const ros::Time t1, const ros::Time t2, OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses);
+        bool GetPoseAtTimeFromMap (const ros::Time stamp, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) const;
+        bool GetPosesAtTimesFromMap (const ros::Time t1, const ros::Time t2, const OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) const;
 
       private:
 };
