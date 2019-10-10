@@ -131,15 +131,18 @@ void OdometryHandler::GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pos
   delta_pose = fused_odom_;
 }
 
-FactorData OdometryHandler::GetData(){  
+FactorData OdometryHandler::GetData() {
+  FactorData factors_output = factors_;
+
   if (query_timestamp_first_.toSec()==0){
     // If we never received a query before, store current time as query_timestamp_first
     query_timestamp_first_ = ros::Time::now();
     // If we stored the first query timestamp, we're sure we don't have any query_timestamp_second_ so we return empty factors
     factors_.b_has_data = false; 
     ROS_WARN("OdometryHandler - Queried for the first time, return empty factors");
-    fused_odom_.pose = gtsam::Pose3(); // TODO: Make sure this is needed at runtime 
-    return factors_;
+    fused_odom_.pose =
+        gtsam::Pose3(); // TODO: Make sure this is needed at runtime
+    return factors_output;
   }
   else {
     ROS_INFO("Odometry Handler - Perform Fusion Logic");
@@ -149,17 +152,22 @@ FactorData OdometryHandler::GetData(){
       // auto t2 = GetClosestLidarTime(ros::Time::now());
       auto t2 = ros::Time::now();
       fused_odom_ = GetFusedOdomDeltaBetweenTimes(query_timestamp_first_, t2);
-      factors_.b_has_data = true; // TODO: Do this only if Fusion Logic output exceeds threshold
-      factors_.transforms.push_back(fused_odom_.pose);
-      factors_.covariances.push_back(fused_odom_.covariance);
-      factors_.time_stamps.push_back(TimeStampedPair(query_timestamp_first_, t2));
+      factors_output.b_has_data =
+          true; // TODO: Do this only if Fusion Logic output exceeds threshold
+      factors_output.transforms.push_back(fused_odom_.pose);
+      factors_output.covariances.push_back(fused_odom_.covariance);
+      factors_output.time_stamps.push_back(
+          TimeStampedPair(query_timestamp_first_, t2));
       query_timestamp_first_ = t2;
+
+      // Clear the stored data, now that it has been processed
+      // This will clear factors_ - hence we have created factors_output
       ResetFactorData();
     }
     else {
-      factors_.b_has_data = false;
+      factors_output.b_has_data = false;
     }
-    return factors_;
+    return factors_output;
   }
 }
 

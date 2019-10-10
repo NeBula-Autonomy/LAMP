@@ -447,7 +447,6 @@ bool LampRobot::ProcessOdomData(FactorData data){
       AddTransformedPointCloudToMap(current_key);
       GenerateMapPointCloud();
 
-
       // publish keyed scan
       pose_graph_msgs::KeyedScan keyed_scan_msg;
       keyed_scan_msg.key = current_key;
