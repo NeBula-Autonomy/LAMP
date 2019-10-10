@@ -135,7 +135,7 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
     
   back_end_pose_graph_sub_ = nl.subscribe("optimizer_pg", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
 
-  laser_loop_closure_sub_ = nl.subscribe("laser_loop_closure",
+  laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
                                          1,
                                          &LampRobot::LaserLoopClosureCallback,
                                          dynamic_cast<LampBase*>(this));
