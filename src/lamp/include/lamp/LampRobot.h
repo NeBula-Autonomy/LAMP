@@ -53,7 +53,6 @@ class LampRobot : public LampBase {
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
     // Initialization helper functions
-    bool SetFactorPrecisions();
     bool SetInitialPosition();
     bool SetInitialKey();
 
@@ -64,14 +63,6 @@ class LampRobot : public LampBase {
     bool GenerateMapPointCloud();
     bool AddTransformedPointCloudToMap(gtsam::Symbol key);
 
-    // Initial key
-    gtsam::Symbol initial_key_;
-
-    // Current key
-    gtsam::Symbol key_;
-
-    // Main process name
-    std::string name_;
 
     PointCloudFilter filter_;
     PointCloudMapper mapper_;

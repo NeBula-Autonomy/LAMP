@@ -349,64 +349,60 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 }
 
 // TODO - work out how to pass around SharedNoiseModels
-// TEST_F(TestLampRobot, TestSetFixedCovariancesOdom){
+TEST_F(TestLampRobot, TestSetFixedCovariancesOdom) {
+  double attitude_sigma;
+  double position_sigma;
 
-//   double attitude_sigma = 0.1;
-//   double position_sigma = 0.2;
+  ros::NodeHandle nh, pnh("~");
 
-//   ros::param::get("attitude_sigma",attitude_sigma);
-//   ros::param::get("position_sigma",position_sigma);
-//   // lr.attitude_sigma_ = attitude_sigma;
-//   // lr.position_sigma_ = position_sigma;
+  lr.Initialize(nh);
 
-//   // Set the paramters
-//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("odom");
+  ros::param::get("attitude_sigma", attitude_sigma);
+  ros::param::get("position_sigma", position_sigma);
 
-//   EXPECT_NEAR(noise.sigmas()[0], attitude_sigma, tolerance_)
-//   EXPECT_NEAR(noise.sigmas()[3], position_sigma, tolerance_)
+  // Set the paramters
+  gtsam::Vector sigma_out =
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>(
+          SetFixedNoiseModels("odom"))
+          ->sigmas();
+  // Diagonal noise model does not have a covariance call - just Sigmas
+  // Casting to something that it is not and calling functions will work, but
+  // will point to garbage
 
-// }
+  EXPECT_NEAR(sigma_out[0], attitude_sigma, tolerance_);
+  EXPECT_NEAR(sigma_out[3], position_sigma, tolerance_);
+}
 
-// TEST_F(TestLampRobot, TestSetFixedCovariancesLaserLoopClosure){
+TEST_F(TestLampRobot, TestSetFixedCovariancesLoopClosure) {
+  double laser_lc_rot_sigma;
+  double laser_lc_trans_sigma;
 
-//   double laser_lc_rot_sigma_ = 0.1;
-//   double laser_lc_trans_sigma_ = 0.2;
+  ros::NodeHandle nh, pnh("~");
 
-//   lr.laser_lc_rot_sigma_ = laser_lc_rot_sigma_;
-//   lr.laser_lc_trans_sigma_ = laser_lc_trans_sigma_;
+  lr.Initialize(nh);
 
-//   // Set the paramters
-//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("laser_loop_closure");
+  ros::param::get("laser_lc_rot_sigma", laser_lc_rot_sigma);
+  ros::param::get("laser_lc_trans_sigma", laser_lc_trans_sigma);
 
-//   EXPECT_NEAR(noise.sigmas()[0], laser_lc_rot_sigma_, tolerance_)
-//   EXPECT_NEAR(noise.sigmas()[3], laser_lc_trans_sigma_, tolerance_)
+  // Set the paramters
+  gtsam::Vector sigma_out =
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>(
+          SetFixedNoiseModels("laser_loop_closure"))
+          ->sigmas();
+  // Diagonal noise model does not have a covariance call - just Sigmas
+  // Casting to something that it is not and calling functions will work, but
+  // will point to garbage
 
-// }
+  EXPECT_NEAR(sigma_out[0], laser_lc_rot_sigma, tolerance_);
+  EXPECT_NEAR(sigma_out[3], laser_lc_trans_sigma, tolerance_);
+}
 
-// TEST_F(TestLampRobot, TestSetFixedCovariancesManualLoopClosure){
+TEST_F(TestLampRobot, TestSetFixedCovariancesError) {
+  // Set the paramters
+  EXPECT_ANY_THROW(SetFixedNoiseModels("something_wrong"));
 
-//   double manual_lc_rot_precision_ = 0.1;
-//   double manual_lc_trans_precision_ = 0.2;
-
-//   lr.laser_lc_rot_sigma_ = manual_lc_rot_precision_;
-//   lr.laser_lc_trans_sigma_ = manual_lc_trans_precision_;
-
-//   // Set the paramters
-//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("manual_loop_closure");
-
-//   EXPECT_NEAR(noise.sigmas()[0], manual_lc_rot_precision_, tolerance_)
-//   EXPECT_NEAR(noise.sigmas()[3], manual_lc_trans_precision_, tolerance_)
-
-// }
-
-// TEST_F(TestLampRobot, TestSetFixedCovariancesError){
-
-//   // Set the paramters
-//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("something_wrong");
-
-//   // TODO - look at throwing error
-
-// }
+  // TODO - look at throwing error
+}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

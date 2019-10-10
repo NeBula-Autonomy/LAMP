@@ -173,21 +173,6 @@ bool LampRobot::SetInitialKey(){
   }
 }
 
-bool LampRobot::SetFactorPrecisions() {
-  if (!pu::Get("manual_lc_rot_precision", manual_lc_rot_precision_)) return false;
-  if (!pu::Get("manual_lc_trans_precision", manual_lc_trans_precision_)) return false;
-  if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;
-  if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_)) return false;
-  if (!pu::Get("artifact_rot_precision", artifact_rot_precision_)) return false; 
-  if (!pu::Get("artifact_trans_precision", artifact_trans_precision_)) return false;
-  if (!pu::Get("point_estimate_precision", point_estimate_precision_)) return false;
-
-  if(!pu::Get("fiducial_trans_precision", fiducial_trans_precision_)) return false;
-  if(!pu::Get("fiducial_rot_precision", fiducial_rot_precision_)) return false;
-
-  return true;
-}
-
 bool LampRobot::SetInitialPosition() {
 
   // Load initial position and orientation.
@@ -253,6 +238,22 @@ bool LampRobot::SetInitialPosition() {
   return true;
 }
 
+bool LampRobot::InitializeGraph(
+    gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
+  nfg_ = NonlinearFactorGraph();
+  values_ = Values();
+  nfg_.add(PriorFactor<Pose3>(initial_key_, pose, covariance));
+  values_.insert(initial_key_, pose);
+
+  ros::Time stamp = ros::Time::now();
+  keyed_stamps_[initial_key_] = stamp;
+
+  // Populate the priors_info vector
+  TrackPriors(stamp, initial_key_, pose, covariance);
+
+  return true;
+}
+
 bool LampRobot::InitializeHandlers(const ros::NodeHandle& n){
 
     if (!odometry_handler_.Initialize(n)) {
@@ -286,20 +287,21 @@ bool LampRobot::CheckHandlers() {
   return true;
 }
 
-bool LampRobot::InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
-  nfg_ = NonlinearFactorGraph();
-  values_ = Values();
-  nfg_.add(PriorFactor<Pose3>(initial_key_, pose, covariance));
-  values_.insert(initial_key_, pose);
+// bool LampRobot::InitializeGraph(gtsam::Pose3& pose,
+// gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
+//   nfg_ = NonlinearFactorGraph();
+//   values_ = Values();
+//   nfg_.add(PriorFactor<Pose3>(initial_key_, pose, covariance));
+//   values_.insert(initial_key_, pose);
 
-  ros::Time stamp = ros::Time::now();
-  keyed_stamps_[initial_key_] = stamp;
+//   ros::Time stamp = ros::Time::now();
+//   keyed_stamps_[initial_key_] = stamp;
 
-  // Populate the priors_info vector
-  TrackPriors(stamp, initial_key_, pose, covariance);
+//   // Populate the priors_info vector
+//   TrackPriors(stamp, initial_key_, pose, covariance);
 
-  return true;
-}
+//   return true;
+// }
 
 void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 

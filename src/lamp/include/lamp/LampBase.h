@@ -81,9 +81,10 @@ class LampBase {
   // Use this for any "private" things to be used in the derived class
   // Node initialization.
   virtual bool LoadParameters(const ros::NodeHandle& n);
-  // bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
-  // bool RegisterLogCallbacks(const ros::NodeHandle& n);
-  // virtual bool RegisterCallbacks(const ros::NodeHandle& n);
+
+  // Set precisions for fixed covariance settings
+  bool SetFactorPrecisions();
+
   virtual bool CreatePublishers(const ros::NodeHandle& n);
 
   // instantiate all handlers that are being used in the derived classes
@@ -160,6 +161,15 @@ class LampBase {
   // Message filters (if any)
   std::string prefix_;
 
+  // Initial key
+  gtsam::Symbol initial_key_;
+
+  // Current key
+  gtsam::Symbol key_;
+
+  // Main process name
+  std::string name_;
+
   // Booleans
   bool b_has_new_factor_;
   bool b_run_optimization_;
@@ -168,8 +178,6 @@ class LampBase {
   // Frames.
   std::string fixed_frame_id_;
   std::string base_frame_id_;
-
-  gtsam::Symbol key_;
 
   // Pose graph merger
   Merger merger_;

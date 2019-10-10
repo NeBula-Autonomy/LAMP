@@ -29,7 +29,8 @@ LampBase::LampBase()
   : prefix_(""),
     update_rate_(10),
     time_threshold_(0.001),
-    b_use_fixed_covariances_(false) {
+    b_use_fixed_covariances_(false),
+    initial_key_(0) {
   // any other things on construction
     }
 
@@ -48,6 +49,34 @@ bool LampBase::Initialize(const ros::NodeHandle& n) {
 // Load Parameters
 bool LampBase::LoadParameters(const ros::NodeHandle& n) {
 
+}
+
+bool LampBase::SetFactorPrecisions() {
+  if (!pu::Get("attitude_sigma", attitude_sigma_))
+    return false;
+  if (!pu::Get("position_sigma", position_sigma_))
+    return false;
+  if (!pu::Get("manual_lc_rot_precision", manual_lc_rot_precision_))
+    return false;
+  if (!pu::Get("manual_lc_trans_precision", manual_lc_trans_precision_))
+    return false;
+  if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
+    return false;
+  if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_))
+    return false;
+  if (!pu::Get("artifact_rot_precision", artifact_rot_precision_))
+    return false;
+  if (!pu::Get("artifact_trans_precision", artifact_trans_precision_))
+    return false;
+  if (!pu::Get("point_estimate_precision", point_estimate_precision_))
+    return false;
+
+  if (!pu::Get("fiducial_trans_precision", fiducial_trans_precision_))
+    return false;
+  if (!pu::Get("fiducial_rot_precision", fiducial_rot_precision_))
+    return false;
+
+  return true;
 }
 
 // Create Publishers
@@ -311,7 +340,6 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
     precisions.head<3>().setConstant(artifact_rot_precision_);
     precisions.tail<3>().setConstant(artifact_trans_precision_);
     noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
-
   } else if (type == "april") {
     gtsam::Vector6 precisions;
     precisions.head<3>().setConstant(fiducial_rot_precision_);
@@ -320,6 +348,7 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
   } else if (type == "total_station") {
   } else {
     ROS_ERROR("Incorrect input into SetFixedNoiseModels - invalid type");
+    throw std::invalid_argument("set fixed noise models");
   }
   // TODO - implement others
 
