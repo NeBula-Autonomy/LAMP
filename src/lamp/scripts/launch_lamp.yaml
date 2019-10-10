@@ -1,0 +1,24 @@
+session_name: husky_refactor
+
+# before_script: "~/sim_/scripts/cleanup.sh"
+
+# Default environment variables; Overwrite from command line
+environment:
+  LOG_PATH: /home/costar/bags/Eagle_mine_standard/
+  ROBOT_NAME: husky1
+
+options:
+  default-command: /bin/bash
+
+windows:
+- window_name: lamp
+  focus: true
+  layout: tiled
+  panes:
+    - roscore
+    - sleep 2; roslaunch lamp exec_robot.launch robot_namespace:=$ROBOT_NAME
+    - sleep 2; rosbag play -l -s90 $LOG_PATH/*.bag --prefix=/$ROBOT_NAME 
+    - sleep 2; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME
+    - rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /velodyne /$ROBOT_NAME/base_link # only for Eagle mine
+    - sleep 3; rosrun rviz rviz
+    - sleep 3; rostopic list

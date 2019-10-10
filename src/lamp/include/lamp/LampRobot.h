@@ -11,6 +11,7 @@
 #include <lamp/LampBase.h>
 
 #include <factor_handlers/OdometryHandler.h>
+#include <pcl/common/transforms.h>
 
 // Services
 
@@ -58,6 +59,10 @@ class LampRobot : public LampBase {
 
     void UpdateArtifactPositions();
     void UpdateAndPublishOdom();
+
+    // Generate map from keyed scans
+    bool GenerateMapPointCloud();
+    bool AddTransformedPointCloudToMap(gtsam::Symbol key);
 
     // Initial key
     gtsam::Symbol initial_key_;

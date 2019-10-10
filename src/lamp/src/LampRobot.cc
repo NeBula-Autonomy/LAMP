@@ -90,6 +90,10 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
 
+  // Load frame ids.
+  if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
+  if (!pu::Get("frame_id/base", base_frame_id_)) return false;
+
   // TODO - bring in other parameter
 
   // Set Precisions
@@ -129,7 +133,7 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
 
   update_timer_ = nl.createTimer(update_rate_, &LampRobot::ProcessTimerCallback, this);
     
-  back_end_pose_graph_sub_ = nl.subscribe("back_end_pose_graph", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
+  back_end_pose_graph_sub_ = nl.subscribe("optimizer_pg", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
 
   return true; 
 }
@@ -313,12 +317,25 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     ROS_INFO_STREAM("Publishing pose graph with new factor");
     PublishPoseGraph();
 
+    // Update and publish the map
+    // GenerateMapPointCloud();
+    mapper_.PublishMap();
+    ROS_INFO_STREAM("Published new map");
+
+
     b_has_new_factor_ = false;
+
+    // Optimize every 10 factors
+    static int x = 0;
+    x++;
+    if (x % 100 == 0) {
+      b_run_optimization_ = true;
+    }
   }
 
   // Start optimize, if needed
   if (b_run_optimization_) {
-      ROS_INFO_STREAM("Publishing pose graph for optimisation");
+      ROS_INFO_STREAM("Publishing pose graph to optimizer");
       PublishPoseGraphForOptimizer();
 
       b_run_optimization_ = false; 
@@ -420,10 +437,13 @@ bool LampRobot::ProcessOdomData(FactorData data){
     PointCloud::Ptr new_scan(new PointCloud);
 
     if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
-      // add new keyed scan to map
 
+      // Store the keyed scan and add it to the map
       // TODO : filter before adding
       keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(current_key, new_scan));
+      AddTransformedPointCloudToMap(current_key);
+      GenerateMapPointCloud();
+
 
       // publish keyed scan
       pose_graph_msgs::KeyedScan keyed_scan_msg;
@@ -436,6 +456,51 @@ bool LampRobot::ProcessOdomData(FactorData data){
   // Add factors and values to the graph
   nfg_.add(new_factors);
   values_.insert(new_values);
+
+  return true;
+}
+
+bool LampRobot::GenerateMapPointCloud() {
+
+  // Reset the map
+  mapper_.Reset();
+
+  // Iterate over poses in the graph, transforming their corresponding laser
+  // scans into world frame and appending them to the output.
+  for (const auto& keyed_pose : values_) {
+    const gtsam::Symbol key = keyed_pose.key;
+
+    // Append the world-frame point cloud to the output.
+    AddTransformedPointCloudToMap(key);
+  }
+}
+
+bool LampRobot::AddTransformedPointCloudToMap(gtsam::Symbol key) {
+  
+  // No key associated with the scan
+  if (!keyed_scans_.count(key)) {
+    ROS_WARN("Could not find scan associated with key");
+    return false;
+  }
+
+  // Check that the key exists
+  if (!values_.exists(key)) {
+    ROS_WARN("Key %u does not exist in values_", gtsam::DefaultKeyFormatter(key));
+    return false;
+  }
+  
+  const gu::Transform3 pose = utils::ToGu(values_.at<Pose3>(key));
+  Eigen::Matrix4d b2w;
+  b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
+  b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
+
+  // Transform the body-frame scan into world frame.
+  PointCloud::Ptr points(new PointCloud);
+  pcl::transformPointCloud(*keyed_scans_[key], *points, b2w);
+  
+  // Add to the map
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(points, unused.get());
 
   return true;
 }

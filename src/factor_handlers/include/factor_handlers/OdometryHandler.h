@@ -88,8 +88,8 @@ class OdometryHandler : public LampDataHandlerBase{
         // Utilities 
 
         template <typename T>
-        int CheckBufferSize(const std::vector<T>& x) const {
-            std::cout << x.size() << std::endl;
+        int CheckBufferSize(const std::vector<T>& x) {
+            // std::cout << x.size() << std::endl;
             return x.size();
         }
 
