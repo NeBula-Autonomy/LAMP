@@ -230,7 +230,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr
 
 // Utilities ---------------------------------------------------------------------------------------------
 
-GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) {
+GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const {
   // Returns the fused GtsamPosCov delta between t1 and t2
   GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
   FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2);
@@ -250,22 +250,27 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, c
   return output_odom;
 }
 
+double OdometryHandler::CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const {
+  auto pose = gtsam_pos_cov.pose;
+  return pose.translation().norm();
+}
+
 void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, 
-                                          GtsamPosCov& pure_odom,
+                                          GtsamPosCov& measurement,
                                           const ros::Time t1,
-                                          const ros::Time t2) {
+                                          const ros::Time t2) const {
   /*
   Receives odometric buffer, search within it a pair of poses for the given timestamp, 
   Computes the relative transformation between the two poses and fills the GtsamPosCov struct
   */
   PoseCovStampedPair poses;
   if (GetPosesAtTimes(t1, t2, odom_buffer, poses)) {
-    pure_odom.b_has_value = true;
-    pure_odom.pose = GetTransform(poses);
-    pure_odom.covariance = GetCovariance(poses);
+    measurement.b_has_value = true;
+    measurement.pose = GetTransform(poses);
+    measurement.covariance = GetCovariance(poses);
   }
   else {
-    pure_odom.b_has_value = false;
+    measurement.b_has_value = false;
   }
 }
 
@@ -279,12 +284,6 @@ void OdometryHandler::ResetFactorData() {
   factors_.artifact_key.clear();
 }
 
-ros::Time OdometryHandler::GetClosestLidarTime(ros::Time time) {
-  ros::Time closest_time;  
-  // TODO: Implement
-  return closest_time;
-}
-
 void OdometryHandler::ClearOdometryBuffers() {
   // TODO: The last few elements should be kept in buffer just in case
   lidar_odometry_buffer_.clear();
@@ -292,17 +291,14 @@ void OdometryHandler::ClearOdometryBuffers() {
   wheel_odometry_buffer_.clear();
 }
 
-// CalculatePoseDelta ---------------------------------------------------------------------------------------------
-
-double OdometryHandler::CalculatePoseDelta(GtsamPosCov gtsam_pos_cov) {
-  auto pose = gtsam_pos_cov.pose;
-  return pose.translation().norm();
+bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const{
+  // TODO: Implement
+  return true;
 }
-
 
 // Getters -----------------------------------------------------------------------------------------------
 
-bool OdometryHandler::GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) {
+bool OdometryHandler::GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const {
   // Create a PoseCovStamped message
   PoseCovStamped myPoseCovStamped;
   // Given a query timestamp 
@@ -328,7 +324,7 @@ bool OdometryHandler::GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buff
   }
 }
 
-bool OdometryHandler::GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) {
+bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const {
   PoseCovStamped first_pose; 
   PoseCovStamped second_pose; 
   if (GetPoseAtTime(t1, odom_buffer, first_pose)){
@@ -342,7 +338,7 @@ bool OdometryHandler::GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPose
   }
 }
 
-gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
+gtsam::Pose3 OdometryHandler::GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const {
     // Gets the transform between two pose stamped - the delta
     auto pose_first = gr::FromROS(pose_cov_stamped_pair.first.pose.pose); 
     auto pose_end = gr::FromROS(pose_cov_stamped_pair.second.pose.pose); 
@@ -351,7 +347,7 @@ gtsam::Pose3 OdometryHandler::GetTransform(PoseCovStampedPair pose_cov_stamped_p
     return output;
 }
 
-gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+gtsam::SharedNoiseModel OdometryHandler::GetCovariance(const PoseCovStampedPair pose_cov_stamped_pair) const {
   // TODO check which frame the covariances are in - ideally we have incremental
   // in the relative frame If the covariances are absolute
 
@@ -367,15 +363,6 @@ gtsam::SharedNoiseModel OdometryHandler::GetCovariance(PoseCovStampedPair pose_c
       gtsam::noiseModel::Gaussian::Covariance(covariance);
 
   return noise;
-}
-
-PoseCovStamped OdometryHandler::GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses){
-  // TODO: Get the first and second pose, find the transformation between the two and return it 
-  PoseCovStamped output; 
-  PoseCovStamped first_pose = input_poses.first;
-  PoseCovStamped second_pose = input_poses.second;
-  // TODO: Integrate into geometry_utils a method that provide us the DeltaBetweenPoses preserving the covariance information
-  return output; 
 }
 
 // Converters -------------------------------------------------------------------------------------------
@@ -426,7 +413,14 @@ DOCUMENTATION
 /*
 UNUSED ----------------------------------------------------------------------------------------------------------------
 
-
+PoseCovStamped OdometryHandler::GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses){
+  // TODO: Get the first and second pose, find the transformation between the two and return it 
+  PoseCovStamped output; 
+  PoseCovStamped first_pose = input_poses.first;
+  PoseCovStamped second_pose = input_poses.second;
+  // TODO: Integrate into geometry_utils a method that provide us the DeltaBetweenPoses preserving the covariance information
+  return output; 
+}
 
 void OdometryHandler::CheckOdometryBuffer(OdomPoseBuffer& odom_buffer) {
     if (CheckBufferSize<PoseCovStamped>(odom_buffer) > 2) {

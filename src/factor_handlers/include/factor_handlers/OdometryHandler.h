@@ -56,7 +56,7 @@ class OdometryHandler : public LampDataHandlerBase{
         FactorData GetData();
         void GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose);
         bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg);
-        GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2);
+        GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const;
         
 
       protected:
@@ -107,16 +107,16 @@ class OdometryHandler : public LampDataHandlerBase{
             return true;
         }
 
-        void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2);
-        double CalculatePoseDelta(GtsamPosCov gtsam_pos_cov);
+        void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
+        double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
         void ClearOdometryBuffers();
         void ResetFactorData();        
 
         // Getters 
 
-        gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair);        
-        gtsam::SharedNoiseModel GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
-        ros::Time GetClosestLidarTime(ros::Time time);
+        gtsam::Pose3 GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const;        
+        gtsam::SharedNoiseModel GetCovariance(const PoseCovStampedPair pose_cov_stamped_pair) const; 
+        bool GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const;
 
         // Converters
         gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const; // TODO: This function should be defined in the base class
@@ -133,10 +133,8 @@ class OdometryHandler : public LampDataHandlerBase{
         double ts_threshold_; 
         ros::Time query_timestamp_first_; 
         // ros::Time query_timestamp_second_; 
-        bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output); 
-        bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses);
-        PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
-        GtsamPosCov GetFusedOdomDeltaBetweenTimes();
+        bool GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const; 
+        bool GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const;
         GtsamPosCov fused_odom_;
 
       private:
@@ -151,4 +149,5 @@ void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
 void PrepareFactor(OdomPoseBuffer& odom_buffer);        
 void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
 double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
+PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
 */

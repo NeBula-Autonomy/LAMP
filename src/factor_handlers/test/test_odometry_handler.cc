@@ -51,10 +51,6 @@ protected:
     gtsam::SharedNoiseModel GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
       return oh.GetCovariance(pose_cov_stamped_pair);
     }
-    
-    std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
-      return oh.GetTimeStamps(pose_cov_stamped_pair);
-    }
 
     double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
       return oh.CalculatePoseDelta(odom_buffer);
@@ -179,25 +175,6 @@ TEST_F(OdometryHandlerTest, TestGetCovariance) {
       gtsam::noiseModel::Gaussian::Covariance(covariance_expected);
   ASSERT_TRUE((*noise_actual).equals(*noise_expected));
 }
-
-// Nobuhiro is working on GetCovariance function unit test
-/* TEST  GetTimeStamps */
-TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
-  double t1 = 1.0;
-  double t2 = 2.0;
-  ros::Time t1_ros;
-  ros::Time t2_ros;
-  t1_ros.fromSec(t1);
-  t2_ros.fromSec(t2);
-  PoseCovStampedPair pose_cov_stamped_pair;
-  pose_cov_stamped_pair.first.header.stamp = t1_ros;
-  pose_cov_stamped_pair.second.header.stamp = t2_ros;
-  std::pair<ros::Time, ros::Time> time_stamp_pair_actual = 
-    GetTimeStamps(pose_cov_stamped_pair);
-  EXPECT_EQ(time_stamp_pair_actual.first, t1_ros);
-  EXPECT_EQ(time_stamp_pair_actual.second, t2_ros);
-}
-
 
 /* TEST ToGtsam */
 TEST_F(OdometryHandlerTest, TestToGtsam) {
@@ -414,3 +391,27 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "test_odometry_handler");
   return RUN_ALL_TESTS();
 }
+
+/*
+UNUSED 
+    
+std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
+  return oh.GetTimeStamps(pose_cov_stamped_pair);
+}
+
+TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
+  double t1 = 1.0;
+  double t2 = 2.0;
+  ros::Time t1_ros;
+  ros::Time t2_ros;
+  t1_ros.fromSec(t1);
+  t2_ros.fromSec(t2);
+  PoseCovStampedPair pose_cov_stamped_pair;
+  pose_cov_stamped_pair.first.header.stamp = t1_ros;
+  pose_cov_stamped_pair.second.header.stamp = t2_ros;
+  std::pair<ros::Time, ros::Time> time_stamp_pair_actual = 
+    GetTimeStamps(pose_cov_stamped_pair);
+  EXPECT_EQ(time_stamp_pair_actual.first, t1_ros);
+  EXPECT_EQ(time_stamp_pair_actual.second, t2_ros);
+}
+*/
