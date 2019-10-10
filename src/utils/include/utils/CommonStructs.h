@@ -51,7 +51,7 @@ struct FactorData {
       time_stamps;  // Time when the measurement as acquired (first, second)
   // TODO - use ros::Time or something else?
 
-  std::vector<gtsam::Key> artifact_key;  // key for the artifacts
+  std::vector<gtsam::Symbol> artifact_key;  // key for the artifacts
 };
 
 #endif

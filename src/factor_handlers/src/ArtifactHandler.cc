@@ -102,7 +102,7 @@ Eigen::Vector3d ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg
 /*! \brief  Get artifacts ID from artifact key
  * Returns Artifacts ID
  */
-std::string ArtifactHandler::GetArtifactID(gtsam::Key artifact_key) {
+std::string ArtifactHandler::GetArtifactID(gtsam::Symbol artifact_key) {
   std::string artifact_id;
   for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end(); ++it) {
     if (it->second == artifact_key) {
@@ -131,13 +131,11 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Get the transformation
   Eigen::Vector3d R_artifact_position = ComputeTransform(msg);
 
-  // Get Artifact key
-  // gtsam::Key cur_artifact_key = GetArtifactKey(msg);
   // Get the artifact id
   std::string artifact_id = msg.parent_id; // Note that we are looking at the parent id here
   
   // Artifact key
-  gtsam::Key cur_artifact_key;
+  gtsam::Symbol cur_artifact_key;
   bool b_is_new_artifact = false;
 
   // get artifact id / key -----------------------------------------------
@@ -227,7 +225,7 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 /*! \brief  Updates the global pose of an artifact 
  * Returns  Void
  */
-bool ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
+bool ArtifactHandler::UpdateGlobalPose(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose) {
   if (artifact_key2info_hash_.find(artifact_key) != artifact_key2info_hash_.end()) {
     artifact_key2info_hash_[artifact_key].global_pose = global_pose;
     return true;
@@ -244,7 +242,7 @@ bool ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 glo
   * in output message. 
   * Returns  Void
   */
-void ArtifactHandler::PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
+void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose) {
   // Get the artifact pose
   Eigen::Vector3d artifact_position = global_pose.translation().vector();
   std::string artifact_label;
@@ -352,7 +350,7 @@ void ArtifactHandler::ClearArtifactData() {
 /*! \brief  Add artifact data
   * Returns  Void
   */
-void ArtifactHandler::AddArtifactData(const gtsam::Key cur_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise) {
+void ArtifactHandler::AddArtifactData(const gtsam::Symbol cur_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise) {
    // Make new data true
   artifact_data_.b_has_data = true;
   // Fill type
@@ -370,7 +368,7 @@ void ArtifactHandler::AddArtifactData(const gtsam::Key cur_key, std::pair<ros::T
 /*! \brief  Stores/Updated artifactInfo Hash
   * Returns  Void
   */
-void ArtifactHandler::StoreArtifactInfo(const gtsam::Key artifact_key, const core_msgs::Artifact& msg) {
+void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key, const core_msgs::Artifact& msg) {
   ArtifactInfo artifactinfo(msg.parent_id);
   artifactinfo.msg = msg;
 

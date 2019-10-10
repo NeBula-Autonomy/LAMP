@@ -61,12 +61,12 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Updates the global pose of an artifact 
      * Returns  bool
      */
-    bool UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
+    bool UpdateGlobalPose(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose);
 
     /*! \brief  Publish Artifact
      * Returns  Void
      */
-    void PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
+    void PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose);
 
     protected:
     /*! \brief Load artifact parameters. 
@@ -102,7 +102,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Get artifacts ID from artifact key
      * Returns Artifacts ID
      */
-    std::string GetArtifactID(gtsam::Key artifact_key);
+    std::string GetArtifactID(gtsam::Symbol artifact_key);
 
     /*! \brief  Callback for Artifacts.
      * Returns  Void
@@ -132,12 +132,12 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Add artifact data
      * Returns  Void
      */
-    void AddArtifactData(const gtsam::Key artifact_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
+    void AddArtifactData(const gtsam::Symbol artifact_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
 
     /*! \brief  Stores/Updated artifactInfo Hash
      * Returns  Void
      */
-    void StoreArtifactInfo(const gtsam::Key artifact_key, const core_msgs::Artifact& msg);
+    void StoreArtifactInfo(const gtsam::Symbol artifact_key, const core_msgs::Artifact& msg);
 
     private:
     // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
@@ -146,7 +146,7 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     // Mapping between a artifact id and the node where it is present in the pose graph
     // TODO: Make keys as symbols gtsam.
-    std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
+    std::unordered_map<std::string, gtsam::Symbol> artifact_id2key_hash;
 
     
     // Parameters

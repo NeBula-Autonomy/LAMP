@@ -17,12 +17,12 @@ class TestArtifactHandler : public ::testing::Test{
     ~TestArtifactHandler(){}
     bool LoadParameters() {return art_handle.LoadParameters(nh);}
     bool RegisterCallbacks() {return art_handle.RegisterCallbacks(nh, false);};
-    bool UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {art_handle.UpdateGlobalPose(artifact_key, global_pose);};
+    bool UpdateGlobalPose(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose) {art_handle.UpdateGlobalPose(artifact_key, global_pose);};
     FactorData& GetArtifactData() {return art_handle.artifact_data_;};
     FactorData GetData() {return art_handle.GetData();};
     bool ArtifactCallback(core_msgs::Artifact msg) {art_handle.ArtifactCallback(msg);};
     std::unordered_map<long unsigned int, ArtifactInfo> GetKeyInfoMap() {return art_handle.artifact_key2info_hash_;};
-    std::unordered_map<std::string, gtsam::Key> GetStringKeyMap() {return art_handle.artifact_id2key_hash;};
+    std::unordered_map<std::string, gtsam::Symbol> GetStringKeyMap() {return art_handle.artifact_id2key_hash;};
 };
 
 TEST_F(TestArtifactHandler, ArtifactInfoInitialize)
@@ -53,7 +53,7 @@ TEST_F(TestArtifactHandler, RegisterCallbacks)
 TEST_F(TestArtifactHandler, UpdateGlobalPose)
 {
   // Key is 1
-  gtsam::Key artifact_key = 1;
+  gtsam::Symbol artifact_key = 1;
   // Global pose
   gtsam::Pose3 global_pose = gtsam::Pose3(gtsam::Rot3(0.1, 0,0,
                                                       0, 0.1,0,
@@ -114,7 +114,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   FactorData& stored_data = GetArtifactData();
   // Check if data is flowing correctly
   // TODO Check next line
-  EXPECT_EQ(gtsam::Symbol(stored_data.artifact_key[0]).index(), 0);
+  EXPECT_EQ(stored_data.artifact_key[0].index(), 0);
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(stored_data.time_stamps[0].second, ros::Time(0.0));
@@ -142,7 +142,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Get the data
   stored_data = GetData();
   // Check data
-  EXPECT_EQ(gtsam::Symbol(stored_data.artifact_key[1]).index(), 0);
+  EXPECT_EQ(stored_data.artifact_key[1].index(), 0);
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(stored_data.time_stamps[1].second, ros::Time(0.0));
