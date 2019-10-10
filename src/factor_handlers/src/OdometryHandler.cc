@@ -209,7 +209,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr
   if (point_cloud_buffer_.size() == 0)
     return false;
 
-  // Search to get the lower-bound - the first entry that is not less than the
+  // Search to get the lower-bound - the first entry that is not less than the 
   // input timestamp
   auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
   auto time2 = itrTime->first;
@@ -353,15 +353,76 @@ bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& close
 
 // Getters -----------------------------------------------------------------------------------------------
 
-bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time t, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) const {
-  ROS_INFO("To be implemented");
-  // TODO: If you are able to retrieve the element of interest within criteria, return true to the caller
+// We are not passing the odom_buffer_map as a const reference anymore as after finding the correct element, we want to clear the buffer
+// Removing const definition of the method as well, as we need to reset a private class memeber 
+bool OdometryHandler::GetPoseAtTimeFromMap (const ros::Time stamp, OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) {
+  
+  // If map is empty, return false to the caller 
+  if (odom_buffer_map.size() == 0){
+    return false;
+  }
+
+  // Given the input timestamp, search for lower bound (first entry that is not less than the given timestamp)
+  auto itrTime = odom_buffer_map.lower_bound(stamp.toSec());
+  auto time2 = itrTime->first; 
+
+  // If this gives the start of the buffer, then take that PosCovStamped
+  if (itrTime == odom_buffer_map.begin()) {
+    output = itrTime->second;
+    return true;
+  }
+
+  // Check if it is past the end of the buffer - if so, then take the last PosCovStamped
+  if (itrTime == odom_buffer_map.end()) {
+    ROS_WARN("Timestamp past the end of the odometry buffer");
+    itrTime--;
+    output = itrTime->second;
+    ROS_INFO_STREAM("input time is " << stamp.toSec()
+                                     << "s, and latest time is "
+                                     << itrTime->first << " s");
+    return true;
+  }
+
+  // Otherwise step back by 1 to get the time before the input time (time1, stamp, time2)
+  double time1 = std::prev(itrTime, 1)->first;
+  double time_diff;
+
+  // If closer to time2, then use that
+  if (time2 - stamp.toSec() < stamp.toSec() - time1) {
+    output = itrTime->second;
+    time_diff = time2 - stamp.toSec();
+  } 
+  else {
+    // Otherwise use time1
+    output = std::prev(itrTime, 1)->second;
+    time_diff = stamp.toSec() - time1;
+  }
+
+  // Clear the odometry buffer
+  odom_buffer_map.clear();
+
+  
+  // Check if the time difference is too large
+  if (time_diff > ts_threshold_) { 
+    ROS_WARN("Time difference between request and latest PosCovStamped is too large, returning no PosC");
+    ROS_INFO_STREAM("Time difference is " << time_diff << "s");
+    return false;
+  } 
+  
   return true; 
 }
 
-bool OdometryHandler::GetPosesAtTimesFromMap (const ros::Time t1, const ros::Time t2, const OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) const {
-  ROS_INFO("To be immplemented");
-  return true;
+bool OdometryHandler::GetPosesAtTimesFromMap (const ros::Time t1, const ros::Time t2, OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) {
+  PoseCovStamped first_pose, second_pose; 
+  if (GetPoseAtTimeFromMap(t1, odom_buffer_map, first_pose)){
+    if (GetPoseAtTimeFromMap(t2, odom_buffer_map, second_pose)) {
+      output_poses = std::make_pair(first_pose, second_pose);
+      return true;
+    }
+  }
+  else {
+    return false;
+  }
 }
 
 bool OdometryHandler::GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const {
