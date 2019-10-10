@@ -123,7 +123,6 @@ class OdometryHandler : public LampDataHandlerBase{
             current_msg.pose = odom_msg.pose; 
             double current_time = odom_msg.header.stamp.toSec();
             buffer_map.insert({current_time, current_msg});       
-            int 
             return true;               
         }
 
