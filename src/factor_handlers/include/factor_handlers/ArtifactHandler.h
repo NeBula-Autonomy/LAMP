@@ -171,7 +171,7 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     // Subscribers
     ros::Subscriber artifact_sub_;
-    std::vector<ros::Subscriber> Subscriber_artifactList_;
+    // std::vector<ros::Subscriber> Subscriber_artifactList_;
 
     // Test class
     friend class TestArtifactHandler;

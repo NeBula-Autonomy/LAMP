@@ -226,8 +226,8 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
  * Returns  Void
  */
 bool ArtifactHandler::UpdateGlobalPose(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose) {
-  if (artifact_key2info_hash_.find(artifact_key) != artifact_key2info_hash_.end()) {
-    artifact_key2info_hash_[artifact_key].global_pose = global_pose;
+  if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) != artifact_key2info_hash_.end()) {
+    artifact_key2info_hash_[gtsam::Key(artifact_key)].global_pose = global_pose;
     return true;
   } else {
     std::cout << "Key not found in the Artifact id to key map.";
@@ -246,14 +246,13 @@ void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 
   // Get the artifact pose
   Eigen::Vector3d artifact_position = global_pose.translation().vector();
   std::string artifact_label;
-  gtsam::Symbol artifact_symbol_key = gtsam::Symbol(artifact_key);
 
-  if (!(artifact_symbol_key.chr() == 'l' || 
-        artifact_symbol_key.chr() == 'm' || 
-        artifact_symbol_key.chr() == 'n' || 
-        artifact_symbol_key.chr() == 'o' || 
-        artifact_symbol_key.chr() == 'p' || 
-        artifact_symbol_key.chr() == 'q')){
+  if (!(artifact_key.chr() == 'l' || 
+        artifact_key.chr() == 'm' || 
+        artifact_key.chr() == 'n' || 
+        artifact_key.chr() == 'o' || 
+        artifact_key.chr() == 'p' || 
+        artifact_key.chr() == 'q')){
     ROS_WARN("ERROR - have a non-landmark ID");
     ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
     return;
@@ -264,23 +263,23 @@ void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 
   ROS_INFO_STREAM("Artifact key to publish is " << gtsam::DefaultKeyFormatter(artifact_key));
 
   // Check that the key exists
-  if (artifact_key2info_hash_.count(artifact_key) == 0) {
+  if (artifact_key2info_hash_.count(gtsam::Key(artifact_key)) == 0) {
     ROS_WARN("Artifact key is not in hash, nothing to publish");
     return;
   }
 
   // Get label 
-  artifact_label = artifact_key2info_hash_[artifact_key].msg.label;
+  artifact_label = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg.label;
   
   // Increment update count
-  artifact_key2info_hash_[artifact_key].num_updates++;
+  artifact_key2info_hash_[gtsam::Key(artifact_key)].num_updates++;
 
   std::cout << "Number of updates of artifact is: "
-            << artifact_key2info_hash_[artifact_key].num_updates
+            << artifact_key2info_hash_[gtsam::Key(artifact_key)].num_updates
             << std::endl;
 
   // Fill artifact message
-  core_msgs::Artifact new_msg = artifact_key2info_hash_[artifact_key].msg;
+  core_msgs::Artifact new_msg = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg;
   
   // Update the time
   new_msg.header.stamp = ros::Time::now();
@@ -373,11 +372,11 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key, const 
   artifactinfo.msg = msg;
 
   // keep track of artifact info: add to hash if not added
-  if (artifact_key2info_hash_.find(artifact_key) == artifact_key2info_hash_.end()) {
+  if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) == artifact_key2info_hash_.end()) {
     ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
-    artifact_key2info_hash_[artifact_key] = artifactinfo;
+    artifact_key2info_hash_[gtsam::Key(artifact_key)] = artifactinfo;
   } else {
     ROS_INFO("Existing artifact detected");
-    artifact_key2info_hash_[artifact_key] = artifactinfo;
+    artifact_key2info_hash_[gtsam::Key(artifact_key)] = artifactinfo;
   }
 }
