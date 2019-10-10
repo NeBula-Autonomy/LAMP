@@ -70,6 +70,8 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
     ROS_ERROR("LaserLoopClosure: Failed to initialize point cloud filter.");
     return false;
   }
+
+  return true;
 }
 
 bool LaserLoopClosure::FindLoopClosures(
