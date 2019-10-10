@@ -84,6 +84,11 @@
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>      
     </node>
 
+    <!-- Loop Closure  -->
+    <!-- <include file="$(find loop_closure)/launch/laser_loop_closure.launch"> -->
+      <!-- <arg name="robot_namespace" value="$(arg robot_namespace)"/> -->
+    <!-- </include> -->
+
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"
           name="pose_graph_visualizer"
