@@ -16,14 +16,13 @@
 // Includes
 #include <factor_handlers/LampDataHandlerBase.h>
 
-
+// Change all OdomPoseBufferMap istances to OdomPoseBuffer
 
 // Typedefs
 typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 typedef nav_msgs::Odometry Odometry;
 typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
-typedef std::vector<PoseCovStamped> OdomPoseBuffer;
-typedef std::map<double, PoseCovStamped> OdomPoseBufferMap; 
+typedef std::map<double, PoseCovStamped> OdomPoseBuffer; 
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
@@ -79,14 +78,14 @@ class OdometryHandler : public LampDataHandlerBase{
         void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
 
         // Odometry Storages 
-        OdomPoseBuffer lidar_odometry_buffer_; 
-        OdomPoseBuffer visual_odometry_buffer_;
-        OdomPoseBuffer wheel_odometry_buffer_;
+        // OdomPoseBuffer lidar_odometry_buffer_; 
+        // OdomPoseBuffer visual_odometry_buffer_;
+        // OdomPoseBuffer wheel_odometry_buffer_;
 
         // Maps for Odometry Storage
-        OdomPoseBufferMap lidar_odometry_buffer_map_;
-        OdomPoseBufferMap visual_odometry_buffer_map_;
-        OdomPoseBufferMap wheel_odometry_buffer_map_; 
+        OdomPoseBuffer lidar_odometry_buffer_map_;
+        OdomPoseBuffer visual_odometry_buffer_map_;
+        OdomPoseBuffer wheel_odometry_buffer_map_; 
         
         
         // Point Cloud Storage (Time stamp and point cloud)
@@ -115,7 +114,7 @@ class OdometryHandler : public LampDataHandlerBase{
         }
         
         // This method receives an Odometry message, it transforms it into a PosCovStamped message and stores that in a map
-        bool InsertMsgInBufferMap(const Odometry& odom_msg, OdomPoseBufferMap& buffer_map) {
+        bool InsertMsgInBufferMap(const Odometry& odom_msg, OdomPoseBuffer& buffer_map) {
             // TODO: Check intial map size, and ensure next map size has increased values, if so return true 
             int initial_map_size = buffer_map.size();
             PoseCovStamped current_msg;
@@ -133,7 +132,7 @@ class OdometryHandler : public LampDataHandlerBase{
             }               
         }
 
-        void FillGtsamPosCovOdom(const OdomPoseBufferMap& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
+        void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
         double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
         void ClearOdometryBuffers();
         void ResetFactorData();        
@@ -162,8 +161,8 @@ class OdometryHandler : public LampDataHandlerBase{
         GtsamPosCov fused_odom_;
 
         // New methods to deal with maps 
-        bool GetPoseAtTime(const ros::Time stamp, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) const;
-        bool GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) const;
+        bool GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer& odom_buffer_map, PoseCovStamped& output) const;
+        bool GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer_map, PoseCovStampedPair& output_poses) const;
 
       private:
 };

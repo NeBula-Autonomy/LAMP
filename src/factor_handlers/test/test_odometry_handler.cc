@@ -60,9 +60,6 @@ protected:
       return oh.PointCloudCallback(msg);
     }
 
-
-    std::vector<geometry_msgs::PoseWithCovarianceStamped> lidar_odometry_buffer_ = oh.lidar_odometry_buffer_;
-
   private:    
 
 };

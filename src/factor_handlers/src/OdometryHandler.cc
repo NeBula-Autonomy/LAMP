@@ -275,7 +275,7 @@ double OdometryHandler::CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) cons
   return pose.translation().norm();
 }
 
-void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBufferMap& odom_buffer, 
+void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, 
                                           GtsamPosCov& measurement,
                                           const ros::Time t1,
                                           const ros::Time t2) const {
@@ -306,16 +306,16 @@ void OdometryHandler::ResetFactorData() {
 
 void OdometryHandler::ClearOdometryBuffers() {
   // TODO: The last few elements should be kept in buffer just in case
-  lidar_odometry_buffer_.clear();
-  visual_odometry_buffer_.clear();
-  wheel_odometry_buffer_.clear();
+  lidar_odometry_buffer_map_.clear();
+  visual_odometry_buffer_map_.clear();
+  wheel_odometry_buffer_map_.clear();
 }
 
 // Getters -----------------------------------------------------------------------------------------------
 
 // We are not passing the odom_buffer_map as a const reference anymore as after finding the correct element, we want to clear the buffer
 // Removing const definition of the method as well, as we need to reset a private class memeber 
-bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) const {
+bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer& odom_buffer_map, PoseCovStamped& output) const {
   
   // If map is empty, return false to the caller 
   if (odom_buffer_map.size() == 0){
@@ -368,7 +368,7 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBufferM
   return true; 
 }
 
-bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) const {
+bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer_map, PoseCovStampedPair& output_poses) const {
   PoseCovStamped first_pose, second_pose; 
   if (GetPoseAtTime(t1, odom_buffer_map, first_pose)){
     if (GetPoseAtTime(t2, odom_buffer_map, second_pose)) {
@@ -381,27 +381,31 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, co
   }
 }
 
-// TODO: Change this as well
-bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const {
-  ros::Time output_time;
-  auto query_timestamp = time.toSec();
-  double min_ts_diff = 1000;
-  // Iterate through the vector to find the element of interest 
-  for (size_t i=lidar_odometry_buffer_.size(); i>0; --i){
-        double cur_ts_diff = lidar_odometry_buffer_[i].header.stamp.toSec() - query_timestamp;
-    if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
-      output_time = lidar_odometry_buffer_[i].header.stamp;
-      min_ts_diff = cur_ts_diff; 
-    } 
-  }
-  if (fabs(min_ts_diff)<ts_threshold_){
-    closest_time = output_time;
-    return true;
-  }
-  else {
-    return false;
-  }
+bool OdometryHandler::GetClosestLidarTime(const ros::Time stamp, ros::Time& closest_stamp) const {
+  ROS_INFO("To be implemented - Should be same as GetPoseAtTime");
 }
+
+// // TODO: Change this as well
+// bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const {
+//   ros::Time output_time;
+//   auto query_timestamp = time.toSec();
+//   double min_ts_diff = 1000;
+//   // Iterate through the vector to find the element of interest 
+//   for (size_t i=lidar_odometry_buffer_.size(); i>0; --i){
+//         double cur_ts_diff = lidar_odometry_buffer_[i].header.stamp.toSec() - query_timestamp;
+//     if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
+//       output_time = lidar_odometry_buffer_[i].header.stamp;
+//       min_ts_diff = cur_ts_diff; 
+//     } 
+//   }
+//   if (fabs(min_ts_diff)<ts_threshold_){
+//     closest_time = output_time;
+//     return true;
+//   }
+//   else {
+//     return false;
+//   }
+// }
 
 
 gtsam::Pose3 OdometryHandler::GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const {
