@@ -314,6 +314,14 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
 
 // RegisterCallbacks
 
+// GetData: 
+
+// GetOdomDelta:
+
+// GetKeyedScanAtTime: 
+
+// GetFusedOdomDeltaBetweenTimes
+
 // LidarOdometryCallback
 
 // VisualOdometryCallback
@@ -322,11 +330,17 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
 
 // PointCloudCallback
 
-// CheckOdometryBuffer
+// CheckBufferSize: Done (Kamak)
 
-// CalculatePoseDelta: Done (Nobuhiro)
+// InsertMsgInBuffer: Done
 
-// CalculatePoseDelta(gtsam version): (Nobuhiro) 
+// FillGtsamPosCovOdom
+
+// CalculatePoseDelta(gtsam version): (Nobuhiro)
+
+// ClearOdometryBuffers
+
+// ResetFactorData
 
 // GetTransform: Done (Nobuhiro)
 
@@ -334,21 +348,11 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
 
 // GetTimeStamps: Done (Nobuhiro)
 
-// GetKeyedScanAtTime:
-
 // ToGtsam: (Kamak)
-
-// GetDeltaBetweenTimes: (Kamak)
-
-// GetDeltaBetweenPoses: (Kamak)
 
 // GetPoseAtTime: (Kamak)
 
 // GetPosesAtTimes: (Kamak)
-
-// InsertMsgInBuffer: Done
-
-// CheckBufferSize: Done (Kamak)
 
 
 int main(int argc, char** argv) {
@@ -358,7 +362,12 @@ int main(int argc, char** argv) {
 }
 
 /*
-UNUSED 
+UNUSED
+
+unit tests
+// CalculatePoseDelta: Done (Nobuhiro)
+// GetDeltaBetweenPoses: (Kamak)
+// GetDeltaBetweenTimes: (Kamak)
     
 
 double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
