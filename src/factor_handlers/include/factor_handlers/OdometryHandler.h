@@ -16,7 +16,7 @@
 // Includes
 #include <factor_handlers/LampDataHandlerBase.h>
 
-// Change all OdomPoseBufferMap istances to OdomPoseBuffer
+
 
 // Typedefs
 typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
@@ -77,15 +77,10 @@ class OdometryHandler : public LampDataHandlerBase{
         // Pointcloud Callback 
         void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
 
-        // Odometry Storages 
-        // OdomPoseBuffer lidar_odometry_buffer_; 
-        // OdomPoseBuffer visual_odometry_buffer_;
-        // OdomPoseBuffer wheel_odometry_buffer_;
-
-        // Maps for Odometry Storage
-        OdomPoseBuffer lidar_odometry_buffer_map_;
-        OdomPoseBuffer visual_odometry_buffer_map_;
-        OdomPoseBuffer wheel_odometry_buffer_map_; 
+        // Map Odometry Storages 
+        OdomPoseBuffer lidar_odometry_buffer_;
+        OdomPoseBuffer visual_odometry_buffer_;
+        OdomPoseBuffer wheel_odometry_buffer_; 
         
         
         // Point Cloud Storage (Time stamp and point cloud)
@@ -97,6 +92,11 @@ class OdometryHandler : public LampDataHandlerBase{
         int CheckBufferSize(const std::vector<T>& x) {
             // std::cout << x.size() << std::endl;
             return x.size();
+        }
+
+        template <typename T1, typename T2> 
+        int CheckBufferSizeMap(const std::map<T1, T2>& x) {
+          return x.size();
         }
 
         template <typename T1, typename T2>

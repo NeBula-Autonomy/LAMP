@@ -39,6 +39,11 @@ protected:
       return oh.CheckBufferSize<T>(x);
     }
 
+    template <typename T1, typename T2> 
+    int CheckBufferSizeMap(const std::map<T1, T2>& x) {
+      return oh.CheckBufferSizeMap<T1, T2>(x);
+    }
+
     template <typename T1, typename T2>
     bool InsertMsgInBuffer(typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
       return oh.InsertMsgInBuffer<T1, T2>(msg, buffer);

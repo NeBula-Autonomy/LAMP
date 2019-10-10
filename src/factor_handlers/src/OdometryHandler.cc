@@ -90,21 +90,21 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");      
-    if (InsertMsgInBufferMap(*msg, lidar_odometry_buffer_map_)){
+    if (InsertMsgInBufferMap(*msg, lidar_odometry_buffer_)){
         ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store message in buffer");
     } 
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
-    if (InsertMsgInBufferMap(*msg, visual_odometry_buffer_map_)){
+    if (InsertMsgInBufferMap(*msg, visual_odometry_buffer_)){
         ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store message in buffer");
     } 
 }
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    if (InsertMsgInBufferMap(*msg, wheel_odometry_buffer_map_)){
+    if (InsertMsgInBufferMap(*msg, wheel_odometry_buffer_)){
         ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store message in buffer");
     } 
 }
@@ -253,9 +253,9 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr
 GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const {
   // Returns the fused GtsamPosCov delta between t1 and t2
   GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
-  FillGtsamPosCovOdom(lidar_odometry_buffer_map_, lidar_odom, t1, t2);
-  FillGtsamPosCovOdom(visual_odometry_buffer_map_, visual_odom, t1, t2);
-  FillGtsamPosCovOdom(wheel_odometry_buffer_map_, wheel_odom, t1, t2);
+  FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2);
+  FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2);
+  FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2);
   if (lidar_odom.b_has_value == true) {
     // 
   }
@@ -306,9 +306,9 @@ void OdometryHandler::ResetFactorData() {
 
 void OdometryHandler::ClearOdometryBuffers() {
   // TODO: The last few elements should be kept in buffer just in case
-  lidar_odometry_buffer_map_.clear();
-  visual_odometry_buffer_map_.clear();
-  wheel_odometry_buffer_map_.clear();
+  lidar_odometry_buffer_.clear();
+  visual_odometry_buffer_.clear();
+  wheel_odometry_buffer_.clear();
 }
 
 // Getters -----------------------------------------------------------------------------------------------
