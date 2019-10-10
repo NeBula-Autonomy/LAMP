@@ -291,9 +291,25 @@ void OdometryHandler::ClearOdometryBuffers() {
   wheel_odometry_buffer_.clear();
 }
 
-bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const{
-  // TODO: Implement
-  return true;
+bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const {
+  ros::Time output_time;
+  auto query_timestamp = time.toSec();
+  double min_ts_diff = 1000; //TODO:: make it a parameter
+  // Iterate through the vector to find the element of interest 
+  for (size_t i=lidar_odometry_buffer_.size(); i>0; --i){
+        double cur_ts_diff = lidar_odometry_buffer_[i].header.stamp.toSec() - query_timestamp;
+    if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
+      output_time = lidar_odometry_buffer_[i].header.stamp;
+      min_ts_diff = cur_ts_diff; 
+    } 
+  }
+  if (fabs(min_ts_diff)<ts_threshold_){
+    closest_time = output_time;
+    return true;
+  }
+  else {
+    return false;
+  }
 }
 
 // Getters -----------------------------------------------------------------------------------------------
