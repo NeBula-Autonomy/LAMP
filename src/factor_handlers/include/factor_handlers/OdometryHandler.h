@@ -88,7 +88,7 @@ class OdometryHandler : public LampDataHandlerBase{
         // Utilities 
 
         template <typename T>
-        int CheckBufferSize(const std::vector<T>& x) {
+        int CheckBufferSize(const std::vector<T>& x) const {
             std::cout << x.size() << std::endl;
             return x.size();
         }
@@ -108,7 +108,6 @@ class OdometryHandler : public LampDataHandlerBase{
         }
 
         void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2);
-        double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
         double CalculatePoseDelta(GtsamPosCov gtsam_pos_cov);
         void ClearOdometryBuffers();
         void ResetFactorData();        
@@ -151,4 +150,5 @@ std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stampe
 void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
 void PrepareFactor(OdomPoseBuffer& odom_buffer);        
 void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
+double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
 */
