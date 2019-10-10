@@ -114,8 +114,9 @@ class OdometryHandler : public LampDataHandlerBase{
             return true;
         }
 
+        // This method receives an Odometry message, it transforms it into a PosCovStamped message and stores that in a map
         bool InsertMsgInBufferMap(const Odometry& odom_msg, OdomPoseBufferMap& buffer_map) {
-            // Check intial map size, and ensure next map size has increased values, if so return true 
+            // TODO: Check intial map size, and ensure next map size has increased values, if so return true 
             PoseCovStamped current_msg;
             current_msg.header = odom_msg.header; 
             current_msg.pose = odom_msg.pose; 
@@ -153,6 +154,11 @@ class OdometryHandler : public LampDataHandlerBase{
         bool GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const; 
         bool GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const;
         GtsamPosCov fused_odom_;
+
+        // New methods to deal with maps 
+        bool GetPoseAtTimeFromMap(const ros::Time t, const OdomPoseBufferMap& odom_buffer_map, PoseCovStamped& output) const; 
+        bool GetPosesAtTimesFromMap(const ros::Time t1, const ros::Time t2, const OdomPoseBufferMap& odom_buffer_map, PoseCovStampedPair& output_poses) const; 
+
 
       private:
 };
