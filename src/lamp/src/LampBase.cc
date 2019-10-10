@@ -76,6 +76,23 @@ bool LampBase::SetFactorPrecisions() {
   if (!pu::Get("fiducial_rot_precision", fiducial_rot_precision_))
     return false;
 
+  // Set as noise models
+  gtsam::Vector6 sigmas;
+  sigmas.head<3>().setConstant(attitude_sigma_);
+  sigmas.tail<3>().setConstant(position_sigma_);
+  odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
+
+  // Set as noise models
+  sigmas.head<3>().setConstant(laser_lc_rot_sigma_);
+  sigmas.tail<3>().setConstant(laser_lc_trans_sigma_);
+  laser_lc_noise_ = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
+
+  // Artifact
+  gtsam::Vector6 precisions;
+  sigmas.head<3>().setConstant(artifact_rot_precision_);
+  sigmas.tail<3>().setConstant(artifact_trans_precision_);
+  artifact_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
+
   return true;
 }
 
@@ -175,8 +192,20 @@ void LampBase::LaserLoopClosureCallback(
 
   // Do things particular to loop closures from the laser
 
-  // Add to the graph
-  AddLoopClosureToGraph(msg);
+  if (b_use_fixed_covariances_) {
+    // Change the covariances in the message first
+    pose_graph_msgs::PoseGraph graph_msg = *msg;
+
+    ChangeCovarianceInMessage(graph_msg, laser_lc_noise_);
+
+    pose_graph_msgs::PoseGraphConstPtr msg_ptr(
+        new pose_graph_msgs::PoseGraph(graph_msg));
+
+    AddLoopClosureToGraph(msg_ptr);
+  } else {
+    // Add to the graph
+    AddLoopClosureToGraph(msg);
+  }
 }
 
 // Generic addition of loop closure information to the graph
@@ -205,6 +234,18 @@ void LampBase::AddLoopClosureToGraph(
 
   // Set flag to optimize
   b_run_optimization_ = true;
+}
+
+pose_graph_msgs::PoseGraph
+LampBase::ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
+                                    gtsam::SharedNoiseModel noise) {
+  // Loop through each edge
+  for (pose_graph_msgs::PoseGraphEdge& edge : msg.edges) {
+    // Replace covariance with the noise model
+    utils::UpdateEdgeCovariance(edge, noise);
+  }
+
+  return msg;
 }
 
 //------------------------------------------------------------------------------------------
@@ -285,7 +326,6 @@ bool LampBase::ConvertValuesToNodeMsgs(
 
 
 bool LampBase::PublishPoseGraph() {
-  // TODO -
 
   // Incremental publishing
   if (pose_graph_incremental_pub_.getNumSubscribers() > 0) {
@@ -359,7 +399,8 @@ void LampBase::TrackEdges(gtsam::Symbol key_from,
   // edge.header.stamp = keyed_stamps_[key_to];
   edge.pose = gr::ToRosPose(utils::ToGu(pose));
 
-  // TODO - add covariance 
+  // Update the covariance
+  utils::UpdateEdgeCovariance(edge, covariance);
 
   edges_info_.push_back(edge);
   edges_info_new_.push_back(edge);
@@ -389,25 +430,28 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
 
   // Switch based on type
   if (type == "odom") {
-    gtsam::Vector6 noise_vec;
-    noise_vec.head<3>().setConstant(attitude_sigma_);
-    noise_vec.tail<3>().setConstant(position_sigma_);
-    noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
+    // gtsam::Vector6 noise_vec;
+    // noise_vec.head<3>().setConstant(attitude_sigma_);
+    // noise_vec.tail<3>().setConstant(position_sigma_);
+    // noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
+    noise = odom_noise_;
   } else if (type == "laser_loop_closure") {
-    gtsam::Vector6 noise_vec;
-    noise_vec.head<3>().setConstant(laser_lc_rot_sigma_);
-    noise_vec.tail<3>().setConstant(laser_lc_trans_sigma_);
-    noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
+    // gtsam::Vector6 noise_vec;
+    // noise_vec.head<3>().setConstant(laser_lc_rot_sigma_);
+    // noise_vec.tail<3>().setConstant(laser_lc_trans_sigma_);
+    // noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
+    noise = laser_lc_noise_;
   } else if (type == "manual_loop_closure") {
     gtsam::Vector6 noise_vec;
     noise_vec.head<3>().setConstant(manual_lc_rot_precision_);
     noise_vec.tail<3>().setConstant(manual_lc_trans_precision_);
     noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
   } else if (type == "artifact") {
-    gtsam::Vector6 precisions;
-    precisions.head<3>().setConstant(artifact_rot_precision_);
-    precisions.tail<3>().setConstant(artifact_trans_precision_);
-    noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
+    // gtsam::Vector6 precisions;
+    // precisions.head<3>().setConstant(artifact_rot_precision_);
+    // precisions.tail<3>().setConstant(artifact_trans_precision_);
+    // noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
+    noise = artifact_noise_;
   } else if (type == "april") {
     gtsam::Vector6 precisions;
     precisions.head<3>().setConstant(fiducial_rot_precision_);

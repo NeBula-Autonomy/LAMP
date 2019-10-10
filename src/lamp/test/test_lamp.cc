@@ -55,6 +55,11 @@ public:
       lr.TrackPriors(stamp, key, pose, covariance);
     }
 
+    void
+    LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
+      lr.LaserLoopClosureCallback(msg);
+    }
+
     // Access functions
     void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
       lr.stamp_to_odom_key_[stamp.toSec()] = key;
@@ -66,8 +71,15 @@ public:
     void SetPrefix(char c) {lr.prefix_ = c;}
     void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) { lr.values_.insert(key, pose); }
 
+    bool GetOptFlag() {
+      return lr.b_run_optimization_;
+    }
+
     gtsam::Values GetValues() {
       return lr.values_;
+    }
+    gtsam::NonlinearFactorGraph GetNfg() {
+      return lr.nfg_;
     }
     EdgeMessages GetEdges() {
       return lr.edges_info_;
@@ -417,8 +429,57 @@ TEST_F(TestLampRobot, TestSetFixedCovariancesLoopClosure) {
 TEST_F(TestLampRobot, TestSetFixedCovariancesError) {
   // Set the paramters
   EXPECT_ANY_THROW(SetFixedNoiseModels("something_wrong"));
+}
 
-  // TODO - look at throwing error
+TEST_F(TestLampRobot, TestLaserLoopClosure) {
+  ros::NodeHandle nh, pnh("~");
+
+  // bool result = lr.Initialize(nh);
+
+  // Create pose graph edge
+  pose_graph_msgs::PoseGraph pg_msg;
+  pose_graph_msgs::PoseGraphEdge edge;
+
+  edge.key_from = 0;
+  edge.key_to = 1;
+  edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+  edge.pose.position.x = 1.0;
+  edge.pose.position.y = 2.0;
+  edge.pose.position.z = 3.0;
+
+  pg_msg.edges.push_back(edge);
+
+  pose_graph_msgs::PoseGraphConstPtr pg_ptr(
+      new pose_graph_msgs::PoseGraph(pg_msg));
+
+  LaserLoopClosureCallback(pg_ptr);
+
+  EdgeMessages edges_info = GetEdges();
+
+  gtsam::NonlinearFactorGraph nfg = GetNfg();
+
+  // Check opt flag
+  EXPECT_TRUE(GetOptFlag());
+
+  // Check nfg
+  EXPECT_EQ(nfg.size(), 1); // only loop closure
+
+  // TODO - more checks
+
+  // Check edges track
+  EXPECT_NEAR(edges_info[0].pose.position.x, edge.pose.position.x, tolerance_);
+  EXPECT_NEAR(edges_info[0].pose.position.y, edge.pose.position.y, tolerance_);
+  EXPECT_NEAR(edges_info[0].pose.position.z, edge.pose.position.z, tolerance_);
+
+  // // Convert pose-graph to message to check
+  // pose_graph_msgs::PoseGraphConstPtr g =
+  //     ConvertPoseGraphToMsg(GetValues(), GetEdges(), GetPriors());
+
+  // geometry_msgs::Point pos_out = g->edges[0].pose;
+
+  // EXPECT_NEAR(pos_out.x, edge.pose.position.x, tolerance_);
+  // EXPECT_NEAR(pos_out.y, edge.pose.position.y, tolerance_);
+  // EXPECT_NEAR(pos_out.z, edge.pose.position.z, tolerance_);
 }
 
 int main(int argc, char** argv) {

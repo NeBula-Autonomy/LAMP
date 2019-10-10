@@ -45,11 +45,17 @@ gtsam::Pose3 EdgeMessageToPose(pose_graph_msgs::PoseGraphEdge msg_edge);
 Gaussian::shared_ptr
 EdgeMessageToCovariance(pose_graph_msgs::PoseGraphEdge msg_edge);
 
-geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose);
+// Update covariances in an edge message
+void UpdateEdgeCovariance(pose_graph_msgs::PoseGraphEdge& msg_edge,
+                          gtsam::Matrix66 covariance);
+void UpdateEdgeCovariance(pose_graph_msgs::PoseGraphEdge& msg_edge,
+                          gtsam::SharedNoiseModel noise);
 
 // Convert gtsam data types to a ros message
 geometry_msgs::PoseWithCovariance GtsamToRosMsg(const gtsam::Pose3& pose,
                                                 gtsam::Matrix66& covariance);
+
+geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose);
 
 inline gu::Transform3 ToGu(const gtsam::Pose3& pose) {
   gu::Transform3 out;
