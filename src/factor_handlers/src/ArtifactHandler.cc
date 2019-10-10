@@ -8,16 +8,16 @@
  * RegisterCallbacks       - Not sure here
  * ComputeTransform        - Done
  * GetData                 - Done
- * PublishArtifacts        - Not Done
+ * PublishArtifacts        - Done
  * RegisterOnlineCallbacks - b_is_basestation_ and b_use_lo_frontend_ and b_is_front_end_ in lamp. else Nearly Done
- * GetArtifactKey          - NA
+ * GetArtifactID           - Done
  * ArtifactCallback        - Check if this needs more
  * ArtifactBaseCallback    - Need to check this
  * RegisterLogCallbacks    - Done
- * CreatePublishers        - Not Done
- * UpdateGlobalPose        - Final check
+ * CreatePublishers        - Done
+ * UpdateGlobalPose        - Done
  * Tests                   - Test needed.
- * covariances             - Make Covariance SharedNoiseModel 
+ * covariances             - Done
  */
 
 // Constructor
@@ -176,32 +176,6 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   AddArtifactData(cur_artifact_key, std::make_pair(msg.header.stamp, ros::Time(0.0)), relative_pose, noise);
 }
 
-/*! \brief  Callback for ArtifactBase.
- * Returns  Void
- */
-void ArtifactHandler::ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg) {
-  ROS_INFO_STREAM("Artifact message recieved");
-  core_msgs::Artifact artifact;
-  artifact.header = msg->header;
-  artifact.name = msg->name;
-  artifact.parent_id = msg->parent_id;
-  artifact.seq = msg->seq;
-  artifact.hotspot_name = msg->hotspot_name;
-  artifact.point = msg->point;
-  artifact.covariance = msg->covariance;
-  artifact.confidence = msg->confidence;
-  artifact.label = msg->label;
-  artifact.thumbnail = msg->thumbnail;
-
-  ArtifactInfo artifactinfo(msg->parent_id);
-  artifactinfo.msg = artifact;           // TODO check this
-
-  PrintArtifactInputMessage(artifact);
-
-  // Publish artifacts - should be updated from the pose-graph
-  // loop_closure_.PublishArtifacts();      // TODO Need publish function
-}
-
 /*! \brief  Gives the factors to be added and clears to start afresh.
  * Returns  Factors 
  */
@@ -247,46 +221,19 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   artifact_sub_ = nl.subscribe(
     "artifact_relative", 10, &ArtifactHandler::ArtifactCallback, this);
 
-  // TODO: Is the code for the basestation and lo_front_end needed.
-  // if (!b_is_basestation_ && !b_use_lo_frontend_ && !b_is_front_end_){
-  //   artifact_sub_ = nl.subscribe(
-  //       "artifact_relative", 10, &ArtifactCallback, this);
-  // }
-
-  // // Create pose-graph callbacks for base station
-  // if(b_is_basestation_){
-  //   int num_robots = robot_names_.size();
-  //   // init size of subscribers
-  //   // loop through each robot to set up subscriber
-  //   for (size_t i = 0; i < num_robots; i++) {
-  //     ros::Subscriber artifact_base_sub =
-  //         nl.subscribe("/" + robot_names_[i] + "/blam_slam/artifact_global",
-  //                      10,
-  //                      &ArtifactBaseCallback,
-  //                      this);
-  //     Subscriber_artifactList_.push_back(artifact_base_sub);
-  //   }    
-  // }
-
-  // if (!b_is_front_end_){
-  //   ros::Subscriber artifact_base_sub =
-  //       nl.subscribe("artifact_global_sub",
-  //                     10,
-  //                     &ArtifactBaseCallback,
-  //                     this);
-  //   Subscriber_artifactList_.push_back(artifact_base_sub);
-  // }
   return CreatePublishers(n);  
 }
 
 /*! \brief  Updates the global pose of an artifact 
  * Returns  Void
  */
-void ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
+bool ArtifactHandler::UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose) {
   if (artifact_key2info_hash_.find(artifact_key) != artifact_key2info_hash_.end()) {
     artifact_key2info_hash_[artifact_key].global_pose = global_pose;
+    return true;
   } else {
     std::cout << "Key not found in the Artifact id to key map.";
+    return false;
   }
 }
 

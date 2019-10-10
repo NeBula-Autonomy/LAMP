@@ -58,6 +58,16 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     std::unordered_map<long unsigned int, ArtifactInfo>& GetArtifactKey2InfoHash() {return artifact_key2info_hash_;};
 
+    /*! \brief  Updates the global pose of an artifact 
+     * Returns  bool
+     */
+    bool UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
+
+    /*! \brief  Publish Artifact
+     * Returns  Void
+     */
+    void PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
+
     protected:
     /*! \brief Load artifact parameters. 
      * n - Nodehandle
@@ -104,21 +114,6 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     bool CreatePublishers(const ros::NodeHandle& n);
 
-    /*! \brief  Updates the global pose of an artifact 
-     * Returns  Void
-     */
-    void UpdateGlobalPose(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
-    
-    /*! \brief  TODO Incomplete
-     * Returns  Void
-     */
-    void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
-
-    /*! \brief  Publish Artifact
-     * Returns  Void
-     */
-    void PublishArtifacts(gtsam::Key artifact_key ,gtsam::Pose3 global_pose);
-
     /*! \brief  Print Artifact input message for debugging
      * Returns  Void
      */
@@ -148,7 +143,9 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
     // from the pose graph
     std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
+
     // Mapping between a artifact id and the node where it is present in the pose graph
+    // TODO: Make keys as symbols gtsam.
     std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash;
 
     

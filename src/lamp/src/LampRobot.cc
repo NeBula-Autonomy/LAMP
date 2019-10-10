@@ -354,11 +354,19 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 */
 void LampRobot::UpdateArtifactPositions(){
   //Get new positions of artifacts from the pose-graph for artifact_key 
-  
-  // Update global pose just for what has changed
-  // artifact_handler_.UpdateGlobalPose(artifact_key, global_pose);
-
-  // artifact_handler_.PublishArtifacts(artifact_key, global_pose);
+  std::unordered_map<long unsigned int, ArtifactInfo>& artifact_info_hash = artifact_handler_.GetArtifactKey2InfoHash();
+  // Result of updating the global pose
+  bool result;
+  // Loop over to update global pose.
+  for (auto const& it : artifact_info_hash)
+  {
+    // Get the key
+    gtsam::Key artifact_key = it.first;
+    // Get the pose from the pose graph
+    Pose3 artifact_pose = values_.at<Pose3>(artifact_key);
+    // Update global pose just for what has changed. returns bool
+    result = result || artifact_handler_.UpdateGlobalPose(artifact_key, artifact_pose);    
+  }
 }
 
 //-------------------------------------------------------------------
@@ -594,10 +602,18 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
     // Compute the value
     Pose3 last_pose = values_.at<Pose3>(pose_key);
-    new_values.insert(cur_artifact_key, last_pose.compose(transform));
+    // Compute the pose of the artifact from the last pose and relative transform
+    Pose3 artifact_pose = last_pose.compose(transform);
+    // Insert into the values
+    new_values.insert(cur_artifact_key, artifact_pose);
 
     // TODO: Not inserting in keyed_stamps as both nodes are already present
     // as this is a loop closure.
+
+    // Check for new artifacts and publish artifacts if they are new
+    if (!values_.exists(cur_artifact_key)) {
+      artifact_handler_.PublishArtifacts(cur_artifact_key, artifact_pose);
+    }
 
     // Track the edges that have been added
     int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
