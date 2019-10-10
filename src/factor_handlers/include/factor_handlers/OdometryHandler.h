@@ -7,7 +7,7 @@
 */
 
 
-
+// Define
 #ifndef ODOMETRY_HANDLER_H
 #define ODOMETRY_HANDLER_H
 
@@ -18,15 +18,28 @@
 
 
 
+// Typedefs
+typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
+typedef nav_msgs::Odometry Odometry;
+typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
+typedef std::vector<PoseCovStamped> OdomPoseBuffer;
+typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+
+typedef struct {
+  bool b_has_value;
+  gtsam::Pose3 pose; 
+  gtsam::SharedNoiseModel covariance; 
+} GtsamPosCov;
+
+typedef std::pair<GtsamPosCov, GtsamPosCov> GtsamPosCovPair;
 
 // Class Definition 
 class OdometryHandler : public LampDataHandlerBase{
 
 
-
     friend class OdometryHandlerTest;
     
-
 
     public:
         
@@ -34,30 +47,17 @@ class OdometryHandler : public LampDataHandlerBase{
         OdometryHandler();
         ~OdometryHandler();  
 
-        // Typedefs
-        typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
-        typedef nav_msgs::Odometry Odometry;
-        typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
-        typedef std::vector<PoseCovStamped> OdomPoseBuffer;
-        typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
-        typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-        // TODO make this common across packages somehow?
-
         // Public methods
         bool Initialize (const ros::NodeHandle& n);
         bool LoadParameters(const ros::NodeHandle& n);
         bool RegisterCallbacks(const ros::NodeHandle& n);
 
-        // LAMP Interface
-        // FactorData GetData();
-
-        // TODO: This function should be impletented as a template function in the base class
-        // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time& stamp, TYPE& msg)
-        bool GetKeyedScanAtTime(ros::Time& stamp, PointCloud::Ptr& msg);
-
-        bool GetDeltaBetweenTimes(const ros::Time t1,
-                                  const ros::Time t2,
-                                  gtsam::Pose3& delta);
+        // LAMP Interface 
+        FactorData GetData();
+        void GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose);
+        bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg);
+        GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const;
+        
 
       protected:
 
@@ -85,25 +85,38 @@ class OdometryHandler : public LampDataHandlerBase{
         // Point Cloud Storage (Time stamp and point cloud)
         std::map<double, PointCloud> point_cloud_buffer_;
 
-        // Protected methods
-        // TODO: This function should be defined in the base class
-        template <typename T1, typename T2>
-        bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer);   
+        // Utilities 
+
         template <typename T>
         int CheckBufferSize(const std::vector<T>& x) {
             // std::cout << x.size() << std::endl;
             return x.size();
         }
-        void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
-        double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
-        void PrepareFactor(OdomPoseBuffer& odom_buffer);        
-        void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
-        
+
+        template <typename T1, typename T2>
+        bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+            // TODO: This function should be defined in the base class
+            auto prev_size = CheckBufferSize<T2>(buffer);
+            T2 stored_msg;
+            // TODO: The following two lines should be implemented in a function 
+            stored_msg.header = msg->header; 
+            stored_msg.pose = msg->pose;
+            buffer.push_back(stored_msg);
+            auto current_size = CheckBufferSize<T2>(buffer);
+            if (current_size != (prev_size + 1)) return false;
+            return true;
+        }
+
+        void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
+        double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
+        void ClearOdometryBuffers();
+        void ResetFactorData();        
 
         // Getters 
-        gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair);        
-        gtsam::SharedNoiseModel GetCovariance(PoseCovStampedPair pose_cov_stamped_pair); 
-        std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
+
+        gtsam::Pose3 GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const;        
+        gtsam::SharedNoiseModel GetCovariance(const PoseCovStampedPair pose_cov_stamped_pair) const; 
+        bool GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const;
 
         // Converters
         gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const; // TODO: This function should be defined in the base class
@@ -118,12 +131,23 @@ class OdometryHandler : public LampDataHandlerBase{
 
         // Fusion logic 
         double ts_threshold_; 
-        bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output); 
-        bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses);
-        PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
-        // TODO: Unify GetDeltaBetweenPoses and CalculatePoseDelta into only one method
+        ros::Time query_timestamp_first_; 
+        // ros::Time query_timestamp_second_; 
+        bool GetPoseAtTime(const ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const; 
+        bool GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const;
+        GtsamPosCov fused_odom_;
 
       private:
 };
 
 #endif
+
+/*
+UNUSED
+std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
+void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
+void PrepareFactor(OdomPoseBuffer& odom_buffer);        
+void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
+double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
+PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
+*/
