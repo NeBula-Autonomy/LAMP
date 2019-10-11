@@ -381,8 +381,59 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, co
 }
 
 bool OdometryHandler::GetClosestLidarTime(const ros::Time stamp, ros::Time& closest_stamp) const {
-  ROS_INFO("To be implemented");
-  closest_stamp = stamp; 
+  
+  ROS_INFO("GetClosestLidarTime Map Based Method ");
+  
+  // Map based logic 
+
+  // If map is empty, return false to the caller 
+  if (lidar_odometry_buffer_.size() == 0){
+    return false;
+  }
+
+  // Given the input timestamp, search for lower bound (first entry that is not less than the given timestamp)
+  auto itrTime = lidar_odometry_buffer_.lower_bound(stamp.toSec());
+  auto time2 = itrTime->first; 
+
+  // If this gives the start of the buffer, then take that PosCovStamped
+  if (itrTime == lidar_odometry_buffer_.begin()) {
+    closest_stamp.fromSec(itrTime->first);
+    return true;
+  }
+
+  // Check if it is past the end of the buffer - if so, then take the last PosCovStamped
+  if (itrTime == lidar_odometry_buffer_.end()) {
+    ROS_WARN("Timestamp past the end of the lidar odometry buffer");
+    itrTime--;
+    closest_stamp.fromSec(itrTime->first);
+    ROS_INFO_STREAM("input time is " << stamp.toSec()
+                                     << "s, and latest time is "
+                                     << itrTime->first << " s");
+    return true;
+  }
+
+  // Otherwise step back by 1 to get the time before the input time (time1, stamp, time2)
+  double time1 = std::prev(itrTime, 1)->first;
+  double time_diff;
+
+  // If closer to time2, then use that
+  if (time2 - stamp.toSec() < stamp.toSec() - time1) {
+    closest_stamp.fromSec(itrTime->first);
+    time_diff = time2 - stamp.toSec();
+  } 
+  else {
+    // Otherwise use time1
+    closest_stamp.fromSec(std::prev(itrTime, 1)->first);
+    time_diff = stamp.toSec() - time1;
+  }
+
+  // Check if the time difference is too large
+  if (time_diff > ts_threshold_) { 
+    ROS_WARN("Time difference between request and latest PosCovStamped is too large, returning no PosC");
+    ROS_INFO_STREAM("Time difference is " << time_diff << "s");
+    return false;
+  }     
+
   return true;
 }
 
