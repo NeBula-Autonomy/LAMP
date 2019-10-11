@@ -84,17 +84,10 @@
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>      
     </node>
 
-    <!-- Laser Loop Closure -->
-    <node pkg="loop_closure"
-          name="laser_loop_closure"
-          type="laser_loop_closure_node"
-          output="screen">
-      <remap from="~laser_loop_closures" to="lamp/laser_loop_closures" />
-      <remap from="~pose_graph_incremental" to="lamp/pose_graph_incremental" />
-      <remap from="~keyed_scans" to="lamp/keyed_scans" />
-      <!-- Config - TODO move the proximity_threshold param elsewhere -->
-      <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>      
-    </node>
+    <!-- Loop Closure  -->
+    <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include>
 
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"

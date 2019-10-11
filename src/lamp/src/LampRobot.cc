@@ -135,7 +135,7 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
     
   back_end_pose_graph_sub_ = nl.subscribe("optimizer_pg", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
 
-  laser_loop_closure_sub_ = nl.subscribe("laser_loop_closure",
+  laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
                                          1,
                                          &LampRobot::LaserLoopClosureCallback,
                                          dynamic_cast<LampBase*>(this));
@@ -145,12 +145,12 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
 
 bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
 
+  LampBase::CreatePublishers(n);
+
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
   // Pose Graph publishers
-  pose_graph_pub_ =
-    nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
   pose_graph_to_optimize_pub_ =
     nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
   keyed_scan_pub_ =
