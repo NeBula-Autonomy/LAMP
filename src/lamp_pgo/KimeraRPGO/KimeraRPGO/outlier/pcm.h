@@ -123,38 +123,36 @@ class Pcm : public OutlierRemoval {
     // that are not handled: the rangefactors for example (uwb)
 
     // ==============================================================================
-    // initialize trajectory for PCM if empty: requires either a single value or
-    // a prior factor
+    // initialize trajectory for PCM if empty
     if (trajectory_odom_.poses.size() == 0) {
-      if (new_values.size() == 1 &&
-          new_factors.size() == 0) {  // single value no prior case
-        if (debug_) log<INFO>("Initializing without prior");
-        initialize(new_values.keys()[0]);
-        output_values.insert(new_values);
-        return false;  // nothing to optimize yet
-      } else if (boost::dynamic_pointer_cast<gtsam::PriorFactor<poseT>>(
-                     new_factors[0])) {  // prior factor case
+      if (new_factors.size() > 0 &&
+          boost::dynamic_pointer_cast<gtsam::PriorFactor<poseT>>(
+              new_factors[0])) {
+        // first factor is a prior: initialize with prior factor
         if (debug_) log<INFO>("Initializing with prior");
         gtsam::PriorFactor<poseT> prior_factor =
             *boost::dynamic_pointer_cast<gtsam::PriorFactor<poseT>>(
                 new_factors[0]);
         initializeWithPrior(prior_factor);
-        output_values.insert(new_values);
-        output_nfg.add(new_factors);  // assumption is that there is only one
-                                      // factor in new_factors
-        return false;                 // noothing to optimize yet
-      } else {                        // unknow case, fail
-        log<WARNING>(
-            "Unhandled initialization: first time PCM is called, it "
-            "needs a particular input");
+
+      } else if (new_values.size() > 0) {
+        // first value is not a factor: initialize based on first value
+        if (debug_) log<INFO>("Initializing without prior");
+        initialize(new_values);
+
+      } else {  // unknow case, fail
+        log<WARNING>("PCM: Failed to initialize.");
         return false;
       }
-      if (debug_) log<INFO>("Initialized trajectory");
     }
 
+    // store new values:
+    output_values.insert(new_values);  // - store latest pose in values_ (note:
+                                       // values_ is the optimized estimate,
+                                       // while trajectory is the odom estimate)
     // ==============================================================================
-    // now if the value size is one, should be an odometry // (could also have a
-    // loop closure if factor size > 1)
+    // now if the value size is one, should be an odometry // (could also
+    // have a loop closure if factor size > 1)
     if (new_factors.size() == 1 && new_factors[0]->keys().size() == 2 &&
         new_values.size() == 1) {
       if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<poseT>>(
@@ -172,14 +170,12 @@ class Pcm : public OutlierRemoval {
       }
     } else if (new_factors.size() > 0 && new_values.size() == 0) {
       type = FactorType::LOOP_CLOSURES;  // both between poses and landmarks
+    } else if (new_factors.size() == 0) {
+      // Nothing else to do and no optimization
+      return false;
     } else {
       // remains UNCLASSIFIED
     }
-
-    // store new values:
-    output_values.insert(new_values);  // - store latest pose in values_ (note:
-                                       // values_ is the optimized estimate,
-                                       // while trajectory is the odom estimate)
 
     // ==============================================================================
     // handle differently depending on type
@@ -319,14 +315,14 @@ class Pcm : public OutlierRemoval {
     T<poseT> initial_pose(prior_factor);
     // populate trajectory_odom_
     trajectory_odom_.poses[initial_key] = initial_pose;
-    nfg_odom_.add(prior_factor);  // add to initial odometry
   }
 
   // initialize PCM without a prior factor
-  void initialize(gtsam::Key initial_key) {
+  void initialize(gtsam::Values values) {
     T<poseT> initial_pose;
+    initial_pose.pose = values.at<poseT>(values.keys()[0]);
     // populate trajectory_odom_
-    trajectory_odom_.poses[initial_key] = initial_pose;
+    trajectory_odom_.poses[values.keys()[0]] = initial_pose;
   }
 
   /* *******************************************************************************
