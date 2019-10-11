@@ -74,11 +74,11 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   // TODO - check what is a reasonable buffer size
   lidar_odom_sub_ = nl.subscribe(
-      "lio_odom", 1000, &OdometryHandler::LidarOdometryCallback, this);
+      "lio_odom", 10, &OdometryHandler::LidarOdometryCallback, this);
   visual_odom_sub_ = nl.subscribe(
-      "vio_odom", 1000, &OdometryHandler::VisualOdometryCallback, this);
+      "vio_odom", 10, &OdometryHandler::VisualOdometryCallback, this);
   wheel_odom_sub_ = nl.subscribe(
-      "wio_odom", 1000, &OdometryHandler::WheelOdometryCallback, this);
+      "wio_odom", 10, &OdometryHandler::WheelOdometryCallback, this);
 
   // Point Cloud callback
   point_cloud_sub_ = nl.subscribe(
