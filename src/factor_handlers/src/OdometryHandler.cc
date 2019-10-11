@@ -163,7 +163,6 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
     return false;
   }
 
-  ROS_INFO_STREAM("Fused odom in GetOdomDelta is " << fused_odom_.pose);
   // TODO - unit test to see what happens at the start when
   // query_timestamp_fist is very close to t_now
 

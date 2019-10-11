@@ -688,6 +688,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   if (!delta_pose_cov.b_has_value) {
     ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
               "WELL HANDLED YET-----------");
+    key_from = gtsam::Symbol();
     return;
   }
 
