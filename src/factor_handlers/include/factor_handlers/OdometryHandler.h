@@ -86,6 +86,7 @@ class OdometryHandler : public LampDataHandlerBase{
         std::map<double, PointCloud> point_cloud_buffer_;
 
         // Utilities        
+        
         // New map-based utilities  -------------------------------------------------------------------------------------------------------------------
         
         template <typename T1, typename T2> 
@@ -95,7 +96,6 @@ class OdometryHandler : public LampDataHandlerBase{
 
         bool InsertMsgInBufferMap(const Odometry::ConstPtr& odom_msg, OdomPoseBuffer& buffer_map) {
           // TODO: Make it template 
-          // TODO: Check intial map size, and ensure next map size has increased values, if so return true 
           auto initial_map_size = buffer_map.size();
           PoseCovStamped current_msg;
           current_msg.header = odom_msg->header; 
@@ -111,8 +111,7 @@ class OdometryHandler : public LampDataHandlerBase{
             return false;
           }               
         }
-
-
+        
         // End new map-based utilities ---------------------------------------------------------------------------------------------------------------
 
         void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
@@ -179,5 +178,4 @@ bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer
     if (current_size != (prev_size + 1)) return false;
     return true;
 }
-
 */
