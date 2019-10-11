@@ -361,7 +361,6 @@ void OdometryHandler::ClearOdometryBuffers() {
   wheel_odometry_buffer_.clear();
 }
 
-<<<<<<< src/factor_handlers/src/OdometryHandler.cc
 // Getters -----------------------------------------------------------------------------------------------
 
 bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const {
