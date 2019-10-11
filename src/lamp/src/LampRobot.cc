@@ -515,7 +515,15 @@ void LampRobot::UpdateAndPublishOdom() {
   // Get the delta from the last pose to now
   ros::Time stamp = ros::Time::now();  
   GtsamPosCov delta_pose_cov;
-  odometry_handler_.GetOdomDelta(stamp, delta_pose_cov);
+  if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
+    // Had a bad odom return - try latest time from odometry_handler
+    if (!odometry_handler_.GetOdomDeltaLatestTime(stamp, delta_pose_cov)) {
+      ROS_WARN("No good velocity output yet");
+      // TODO - work out what the best thing is to do in this scenario
+      return;
+    }
+  }
+
   // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp, delta_pose);
 
   // Compose the delta

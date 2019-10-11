@@ -136,37 +136,52 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
   // here It represents the timestamp of the last created node
 
   if (b_is_first_query_) {
-    // GetClosestLidarTime(ros::Time::now(), query_timestamp_first_);
-    if (lidar_odometry_buffer_.size() > 0) {
-      query_timestamp_first_ = lidar_odometry_buffer_[0].header.stamp;
-    } else {
-      query_timestamp_first_ = ros::Time::now();
-    }
+    // Get the first time from the lidar scan
+    query_timestamp_first_.fromSec(lidar_odometry_buffer_.begin()->first);
 
     ROS_INFO_STREAM("First query to Odometry Handler, Input timestamp is "
                     << t_now.toSec() << ". setting first timestamp to "
                     << query_timestamp_first_.toSec());
-
+    b_is_first_query_ = false;
     // Set Fused odom to zero pose - no movement yet
     fused_odom_.pose =
         gtsam::Pose3(); // TODO: Make sure this is needed at runtime
-
-    b_is_first_query_ = false;
-
-  } else {
-    ROS_INFO_STREAM("Delta between times is: "
-                    << (query_timestamp_first_.toSec() - t_now.toSec()));
-    fused_odom_ = GetFusedOdomDeltaBetweenTimes(query_timestamp_first_, t_now);
-
-    ROS_INFO_STREAM("Fused odom in GetOdomDelta is " << fused_odom_.pose);
-    // TODO - unit test to see what happens at the start when
-    // query_timestamp_fist is very close to t_now
   }
+
+  ROS_INFO_STREAM("Delta between times is: "
+                  << (query_timestamp_first_.toSec() - t_now.toSec()));
+  fused_odom_ = GetFusedOdomDeltaBetweenTimes(query_timestamp_first_, t_now);
+
+  if (!fused_odom_.b_has_value) {
+    ROS_ERROR("No valid return from GetFusedOdomDelta");
+    ROS_INFO_STREAM("Earliest timestamp in buffer is "
+                    << lidar_odometry_buffer_.begin()->first);
+    ROS_INFO_STREAM("Latest timestamp in buffer is "
+                    << lidar_odometry_buffer_.rbegin()->first);
+    ROS_INFO_STREAM("Input times are " << query_timestamp_first_.toSec()
+                                       << " and " << t_now.toSec());
+    return false;
+  }
+
+  ROS_INFO_STREAM("Fused odom in GetOdomDelta is " << fused_odom_.pose);
+  // TODO - unit test to see what happens at the start when
+  // query_timestamp_fist is very close to t_now
 
   // Fill in what is needed for the output
   delta_pose = fused_odom_;
 
   return true;
+}
+
+// For when the normal OdomDelta fails - call this to get the latest - from
+// lidar timestamps Return the timestamp for use in LAMP
+bool OdometryHandler::GetOdomDeltaLatestTime(ros::Time& t_latest,
+                                             GtsamPosCov& delta_pose) {
+  // Get the latest time (rbegin is the last entry in the map)
+  t_latest.fromSec(lidar_odometry_buffer_.rbegin()->first);
+
+  // Get the delta as normal
+  return GetOdomDelta(t_latest, delta_pose);
 }
 
 FactorData OdometryHandler::GetData() {
@@ -296,7 +311,11 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, c
   FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2);
   FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2);
   if (lidar_odom.b_has_value == true) {
-    // 
+    // TODO: For the first implementation, pure lidar-based odometry is used.
+    output_odom = lidar_odom;
+  } else {
+    ROS_ERROR("Failed to get odom from lidar");
+    output_odom = lidar_odom;
   }
   if (visual_odom.b_has_value == true) {
     // 
@@ -304,8 +323,6 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, c
   if (wheel_odom.b_has_value == true) {
     // 
   }
-  // TODO: For the first implementation, pure lidar-based odometry is used.
-  output_odom = lidar_odom;
   return output_odom;
 }
 
@@ -372,44 +389,47 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer&
 
   // Given the input timestamp, search for lower bound (first entry that is not less than the given timestamp)
   auto itrTime = odom_buffer_map.lower_bound(stamp.toSec());
-  auto time2 = itrTime->first; 
+  auto time2 = itrTime->first;
+  double time_diff;
 
   // If this gives the start of the buffer, then take that PosCovStamped
   if (itrTime == odom_buffer_map.begin()) {
     output = itrTime->second;
-    return true;
-  }
-
-  // Check if it is past the end of the buffer - if so, then take the last PosCovStamped
-  if (itrTime == odom_buffer_map.end()) {
+    time_diff = itrTime->first - stamp.toSec();
+    ROS_WARN("Timestamp before the start of the odometry buffer");
+    ROS_INFO_STREAM("time diff is: " << time_diff);
+  } else if (itrTime == odom_buffer_map.end()) {
+    // Check if it is past the end of the buffer - if so, then take the last
+    // PosCovStamped
     ROS_WARN("Timestamp past the end of the odometry buffer");
     itrTime--;
     output = itrTime->second;
+    time_diff = stamp.toSec() - itrTime->first;
     ROS_INFO_STREAM("input time is " << stamp.toSec()
                                      << "s, and latest time is "
-                                     << itrTime->first << " s");
-    return true;
-  }
+                                     << itrTime->first << " s"
+                                     << " diff is " << time_diff);
+  } else {
+    // Otherwise step back by 1 to get the time before the input time (time1,
+    // stamp, time2)
+    double time1 = std::prev(itrTime, 1)->first;
 
-  // Otherwise step back by 1 to get the time before the input time (time1, stamp, time2)
-  double time1 = std::prev(itrTime, 1)->first;
-  double time_diff;
-
-  // If closer to time2, then use that
-  if (time2 - stamp.toSec() < stamp.toSec() - time1) {
-    output = itrTime->second;
-    time_diff = time2 - stamp.toSec();
-  } 
-  else {
-    // Otherwise use time1
-    output = std::prev(itrTime, 1)->second;
-    time_diff = stamp.toSec() - time1;
+    // If closer to time2, then use that
+    if (time2 - stamp.toSec() < stamp.toSec() - time1) {
+      output = itrTime->second;
+      time_diff = time2 - stamp.toSec();
+    } else {
+      // Otherwise use time1
+      output = std::prev(itrTime, 1)->second;
+      time_diff = stamp.toSec() - time1;
+    }
   }
 
   // Check if the time difference is too large
   if (time_diff > ts_threshold_) { 
     ROS_WARN("Time difference between request and latest PosCovStamped is too large, returning no PosC");
-    ROS_INFO_STREAM("Time difference is " << time_diff << "s");
+    ROS_INFO_STREAM("Time difference is "
+                    << time_diff << "s, threshold is: " << ts_threshold_);
     return false;
   } 
   
