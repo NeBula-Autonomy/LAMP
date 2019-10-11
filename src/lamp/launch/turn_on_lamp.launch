@@ -32,7 +32,7 @@
       <remap from="~optimizer_pg" to="lamp_pgo/optimized_values"/>
 
       <remap from="~artifact" to="~artifact_global" />
-      <remap from="~artifact_relative" to="/reconciled_artifact" />
+      <remap from="~artifact_relative" to="reconciled_artifact" />
 
       <!-- LAMP settings -->
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>

@@ -128,7 +128,7 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
                                    GtsamPosCov& delta_pose) {
   // Check odometry buffer size - return false otherwise
   if (!CheckOdomSize()) {
-    ROS_WARN("Buffers are empty, returning no data");
+    ROS_WARN("Buffers are empty, returning no data (GetOdomDelta)");
     return false;
   }
 
@@ -177,6 +177,10 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
 // lidar timestamps Return the timestamp for use in LAMP
 bool OdometryHandler::GetOdomDeltaLatestTime(ros::Time& t_latest,
                                              GtsamPosCov& delta_pose) {
+  if (!CheckOdomSize()) {
+    ROS_WARN("Buffers are empty, returning no data (GetOdomDeltaLatestTime)");
+    return false;
+  }
   // Get the latest time (rbegin is the last entry in the map)
   t_latest.fromSec(lidar_odometry_buffer_.rbegin()->first);
 
@@ -305,13 +309,23 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr
 
 // Utilities ---------------------------------------------------------------------------------------------
 
-GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const {
+GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
+                                                           const ros::Time t2) {
   // TODO - Interpolate here rather than just getting the closest times
+  GtsamPosCov output_odom;
+  output_odom.b_has_value = false;
+
   // Returns the fused GtsamPosCov delta between t1 and t2
+  if (!CheckOdomSize()) {
+    ROS_WARN(
+        "Buffers are empty, returning no data (GetFusedOdomDeltaBetweenTimes)");
+    return output_odom;
+  }
+
   ROS_INFO_STREAM("Timestamps are: " << t1.toSec() << " and " << t2.toSec()
                                      << ". Difference is: "
                                      << t2.toSec() - t1.toSec());
-  GtsamPosCov output_odom, lidar_odom, visual_odom, wheel_odom;
+  GtsamPosCov lidar_odom, visual_odom, wheel_odom;
   ROS_INFO_STREAM("Lidar buffer size in GetFusedOdom is: "
                   << lidar_odometry_buffer_.size());
   FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2);

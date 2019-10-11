@@ -28,7 +28,7 @@ using gtsam::Vector3;
 LampBase::LampBase()
   : prefix_(""),
     update_rate_(10),
-    time_threshold_(0.001),
+    time_threshold_(1.0),
     b_use_fixed_covariances_(false),
     initial_key_(0) {
   // any other things on construction
@@ -114,36 +114,60 @@ bool LampBase::CheckHandlers(){
 }
 
 gtsam::Symbol LampBase::GetClosestKeyAtTime(const ros::Time& stamp) const {
-
   // If there are no keys, throw an error
   if (stamp_to_odom_key_.size() == 0){
     ROS_ERROR("Cannot get closest key - no keys are stored");
     return gtsam::Symbol();
   }
 
+  // Output key
+  gtsam::Symbol key_out;
+
   // Iterators pointing immediately before and after the target time
   auto iterAfter = stamp_to_odom_key_.lower_bound(stamp.toSec());
   auto iterBefore = std::prev(iterAfter);
   double t1 = iterBefore->first; 
   double t2 = iterAfter->first;
+  double t_closest;
+
+  bool b_is_end_case = false;
 
   // If time is before the start or after the end, return first/last key
   if (iterAfter == stamp_to_odom_key_.begin()) {
-    ROS_WARN("Only one stored key");
-    return iterAfter->second;
-  }
-  else if (iterBefore == std::prev(stamp_to_odom_key_.end())) {
-    ROS_WARN("Only one stored key");
-    return iterBefore->second;
+    ROS_ERROR("Time stamp before start of range (GetClosestKeyAtTime)");
+    key_out = iterAfter->second;
+    t_closest = t2;
+    b_is_end_case = true;
+  } else if (iterAfter == stamp_to_odom_key_.end()) {
+    ROS_ERROR("Time past end of the range (GetClosestKeyAtTime)");
+    key_out = iterBefore->second;
+    t_closest = t1;
+    b_is_end_case = true;
   }
 
-  // Otherwise return the closer key
-  else if (stamp.toSec() - t1 < t2 - stamp.toSec()) {
-    return iterBefore->second;
+  if (!b_is_end_case) {
+    // Otherwise return the closer key
+    if (stamp.toSec() - t1 < t2 - stamp.toSec()) {
+      key_out = iterBefore->second;
+      t_closest = t1;
+    } else {
+      key_out = iterAfter->second;
+      t_closest = t2;
+    }
   }
-  else {
-    return iterAfter->second;
+
+  // Check thresholds
+  if (fabs(t_closest - stamp.toSec()) > time_threshold_) {
+    ROS_ERROR("Delta between queried time and closest time in graph too large");
+    ROS_INFO_STREAM("Time queried is: " << stamp.toSec()
+                                        << ", closest time is: " << t_closest);
+    ROS_INFO_STREAM("Difference is "
+                    << fabs(stamp.toSec() - t_closest)
+                    << ", allowable max is: " << time_threshold_);
+    key_out = gtsam::Symbol();
   }
+
+  return key_out;
 }
 
 gtsam::Symbol LampBase::GetKeyAtTime(const ros::Time& stamp) const {

@@ -522,6 +522,7 @@ void LampRobot::UpdateAndPublishOdom() {
       // TODO - work out what the best thing is to do in this scenario
       return;
     }
+    ROS_INFO("Got good reault from getting delta at the latest time");
   }
 
   // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp, delta_pose);
@@ -602,6 +603,13 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     HandleRelativePoseMeasurement(
         timestamp, data.transforms[i], transform, global_pose, pose_key);
 
+    if (pose_key == gtsam::Symbol()) {
+      ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
+                "BE HANDLED OR LOSE ARTIFACTS!!");
+      b_has_new_factor_ = false;
+      return false;
+    }
+
     // Get the covariances (Should be in relative frame as well)
     // TODO - handle this better - need to add covariances from the odom - do in
     // the function above
@@ -663,7 +671,12 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
                                               gtsam::Pose3& global_pose,
                                               gtsam::Symbol& key_from) {
   // Get the key from:
-  key_from = GetKeyAtTime(stamp);
+  key_from = GetClosestKeyAtTime(stamp);
+
+  if (key_from == gtsam::Symbol()) {
+    ROS_ERROR("Measurement is from a time out of range. Rejecting");
+    return;
+  }
 
   // Time from this key - closest time that there is anode
   ros::Time stamp_from = keyed_stamps_[key_from];
