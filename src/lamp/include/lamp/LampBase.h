@@ -65,15 +65,17 @@
 // Class definition
 class LampBase {
  public:
-  // Constructor
-  LampBase();
+   typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
+   typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
+   // Constructor
+   LampBase();
 
-  // Destructor
-  ~LampBase();
+   // Destructor
+   ~LampBase();
 
-  // Define main interface functions
+   // Define main interface functions
 
-  virtual bool Initialize(const ros::NodeHandle& n);
+   virtual bool Initialize(const ros::NodeHandle& n);
 
  protected:
   // TODO: make most of these pure virtual
@@ -81,9 +83,10 @@ class LampBase {
   // Use this for any "private" things to be used in the derived class
   // Node initialization.
   virtual bool LoadParameters(const ros::NodeHandle& n);
-  // bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
-  // bool RegisterLogCallbacks(const ros::NodeHandle& n);
-  // virtual bool RegisterCallbacks(const ros::NodeHandle& n);
+
+  // Set precisions for fixed covariance settings
+  bool SetFactorPrecisions();
+
   virtual bool CreatePublishers(const ros::NodeHandle& n);
 
   // instantiate all handlers that are being used in the derived classes
@@ -95,7 +98,14 @@ class LampBase {
   ros::Timer update_timer_;
 
   // retrieve data from all handlers
-  virtual bool CheckHandlers(); 
+  virtual bool CheckHandlers();
+
+  // Callback for loop closures
+  void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg);
+  void AddLoopClosureToGraph(const pose_graph_msgs::PoseGraphConstPtr msg);
+  pose_graph_msgs::PoseGraph
+  ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
+                            gtsam::SharedNoiseModel noise);
 
   // Functions to publish
   bool PublishPoseGraph();
@@ -107,20 +117,26 @@ class LampBase {
   bool IsTimeWithinThreshold(double time, const ros::Time& target) const;
 
   // Convert values to PoseGraphNode Messages
-  bool ConvertValuesToNodeMsgs(
-      std::vector<pose_graph_msgs::PoseGraphNode>& nodes);
+  bool
+  ConvertValuesToNodeMsgs(gtsam::Values values,
+                          std::vector<pose_graph_msgs::PoseGraphNode>& nodes);
 
   // Convert internal pose graph to message
-  pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg();
+  pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg(
+      gtsam::Values values, EdgeMessages edges_info, PriorMessages priors_info);
 
   // Placeholder for setting fixed noise
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
+  gtsam::SharedNoiseModel laser_lc_noise_;
+  gtsam::SharedNoiseModel odom_noise_;
+  gtsam::SharedNoiseModel artifact_noise_;
 
   // New pose graph values from optimizer
   virtual void
   OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
   // Tracking info for publishing messages
+  void AddNewValues(gtsam::Values new_values);
   void TrackEdges(gtsam::Symbol key_from,
                   gtsam::Symbol key_to,
                   int type,
@@ -130,6 +146,9 @@ class LampBase {
                    gtsam::Symbol key,
                    gtsam::Pose3 pose,
                    gtsam::SharedNoiseModel covariance);
+
+  // Set artifact positions
+  virtual void UpdateArtifactPositions();
 
   // Typedef for stored point clouds.
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -144,21 +163,37 @@ class LampBase {
   std::map<double, gtsam::Symbol> stamp_to_odom_key_;
 
     // List of all factors with additional information
-  std::vector<pose_graph_msgs::PoseGraphEdge> edges_info_; // TODO - revisit - do we want this to be a map for any reason - to quickly access specific edges?
-  std::vector<pose_graph_msgs::PoseGraphNode> priors_info_;
+  EdgeMessages edges_info_;
+  PriorMessages priors_info_;
+
+  // Variables for tracking the new features only
+  gtsam::Values values_new_;
+  EdgeMessages edges_info_new_;
+  PriorMessages priors_info_new_;
 
   // Publishers
   ros::Publisher pose_graph_pub_;
+  ros::Publisher pose_graph_incremental_pub_;
   ros::Publisher pose_graph_to_optimize_pub_;
   ros::Publisher keyed_scan_pub_;
 
   // Subscribers
   ros::Subscriber back_end_pose_graph_sub_;
+  ros::Subscriber laser_loop_closure_sub_;
 
   // Services
 
   // Message filters (if any)
   std::string prefix_;
+
+  // Initial key
+  gtsam::Symbol initial_key_;
+
+  // Current key
+  gtsam::Symbol key_;
+
+  // Main process name
+  std::string name_;
 
   // Booleans
   bool b_has_new_factor_;
@@ -168,8 +203,6 @@ class LampBase {
   // Frames.
   std::string fixed_frame_id_;
   std::string base_frame_id_;
-
-  gtsam::Symbol key_;
 
   // Pose graph merger
   Merger merger_;

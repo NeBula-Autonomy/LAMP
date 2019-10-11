@@ -54,7 +54,6 @@ class LampRobot : public LampBase {
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
     // Initialization helper functions
-    bool SetFactorPrecisions();
     bool SetInitialPosition();
     bool SetInitialKey();
 
@@ -65,14 +64,6 @@ class LampRobot : public LampBase {
     bool GenerateMapPointCloud();
     bool AddTransformedPointCloudToMap(gtsam::Symbol key);
 
-    // Initial key
-    gtsam::Symbol initial_key_;
-
-    // Current key
-    gtsam::Symbol key_;
-
-    // Main process name
-    std::string name_;
 
     PointCloudFilter filter_;
     PointCloudMapper mapper_;
@@ -99,6 +90,10 @@ class LampRobot : public LampBase {
                                        gtsam::Pose3& global_pose,
                                        gtsam::Symbol& key_from);
 
+    void ConvertGlobalToRelative(const ros::Time stamp,
+                                 const gtsam::Pose3 pose_global,
+                                 gtsam::Pose3& pose_relative);
+
     // Data Handler classes
     OdometryHandler odometry_handler_; 
     ArtifactHandler artifact_handler_;
@@ -118,7 +113,7 @@ class LampRobot : public LampBase {
 
     // Parameters
     gtsam::Vector6 initial_noise_;
-
+    bool b_artifacts_in_global_;
 
     // Test class fixtures
     friend class TestLampRobot;

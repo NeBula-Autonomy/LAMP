@@ -8,22 +8,37 @@
 #include "lamp/LampRobot.h"
 
 class TestLampRobot : public ::testing::Test {
-  public: 
-    TestLampRobot(){
-      // Load params
-      system("rosparam load $(rospack find "
-             "lamp)/config/precision_parameters.yaml");
-      system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
-      system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
-      system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
-      system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
+public:
+  typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
+  typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
 
-      system("rosparam load $(rospack find "
-             "point_cloud_filter)/config/parameters.yaml");
-      system("rosparam load $(rospack find "
-             "point_cloud_mapper)/config/parameters.yaml");
-      system("rosparam load $(rospack find "
-             "factor_handlers)/config/odom_parameters.yaml");
+  pcl::PointCloud<pcl::PointXYZ>::Ptr data;
+
+  TestLampRobot() : data(new pcl::PointCloud<pcl::PointXYZ>(2, 2)) {
+    // Load params
+    system("rosparam load $(rospack find "
+           "lamp)/config/precision_parameters.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
+
+    system("rosparam load $(rospack find "
+           "point_cloud_filter)/config/parameters.yaml");
+    system("rosparam load $(rospack find "
+           "point_cloud_mapper)/config/parameters.yaml");
+    system("rosparam load $(rospack find "
+           "factor_handlers)/config/odom_parameters.yaml");
+
+    // Create data in the point cloud
+    int n_points = 2;
+    for (int i = 0; i < n_points; i++) {
+      for (int j = 0; j < n_points; j++) {
+        data->at(j, i).x = (float)j / (n_points - 1);
+        data->at(j, i).y = (float)i / (n_points - 1);
+        data->at(j, i).z = 0.0f;
+      }
+    }
     }
     ~TestLampRobot(){}
 
@@ -36,7 +51,12 @@ class TestLampRobot : public ::testing::Test {
     int GetValuesSize() {return lr.values_.size();}
     gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {return lr.GetKeyAtTime(stamp);}
     gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {return lr.GetClosestKeyAtTime(stamp);}
-    pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg() {return lr.ConvertPoseGraphToMsg();}
+    pose_graph_msgs::PoseGraphConstPtr
+    ConvertPoseGraphToMsg(gtsam::Values values,
+                          EdgeMessages edges_info,
+                          PriorMessages priors_info) {
+      return lr.ConvertPoseGraphToMsg(values, edges_info, priors_info);
+    }
     gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
       return lr.SetFixedNoiseModels(type);
     }
@@ -47,6 +67,13 @@ class TestLampRobot : public ::testing::Test {
       lr.TrackPriors(stamp, key, pose, covariance);
     }
 
+    void
+    LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
+      lr.LaserLoopClosureCallback(msg);
+    }
+    bool GenerateMapPointCloud() {
+      lr.GenerateMapPointCloud();
+    }
     // Access functions
     void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
       lr.stamp_to_odom_key_[stamp.toSec()] = key;
@@ -58,6 +85,32 @@ class TestLampRobot : public ::testing::Test {
     void SetPrefix(char c) {lr.prefix_ = c;}
     void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) { lr.values_.insert(key, pose); }
 
+    bool GetOptFlag() {
+      return lr.b_run_optimization_;
+    }
+
+    gtsam::Values GetValues() {
+      return lr.values_;
+    }
+
+    void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
+      lr.keyed_scans_.insert(
+          std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+    }
+
+    gtsam::NonlinearFactorGraph GetNfg() {
+      return lr.nfg_;
+    }
+    EdgeMessages GetEdges() {
+      return lr.edges_info_;
+    }
+    PriorMessages GetPriors() {
+      return lr.priors_info_;
+    }
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
+      return lr.mapper_.GetMapData();
+    }
     // Other utilities
 
   protected: 
@@ -196,7 +249,8 @@ TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
 TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   ros::Time::init();
 
-  SetTimeThreshold(0.001);
+  // Set large threshold
+  SetTimeThreshold(1000.0);
 
   // Check single key 
   AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
@@ -220,10 +274,32 @@ TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(54.0)));
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(63.43)));
   EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(75.0)));
-  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(99.99999)));
-  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(100000.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(99.9)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(1000.0)));
 }
 
+TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
+  ros::Time::init();
+
+  SetTimeThreshold(1.0);
+
+  // Check single key
+  AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(500.0)));
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(0.0)));
+
+  // Add more keys
+  AddStampToOdomKey(ros::Time(50.0), gtsam::Symbol('a', 1));
+  AddStampToOdomKey(ros::Time(60.0), gtsam::Symbol('a', 2));
+  AddStampToOdomKey(ros::Time(80.0), gtsam::Symbol('a', 3));
+  AddStampToOdomKey(ros::Time(100.0), gtsam::Symbol('a', 4));
+
+  // Exact matches
+  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); //
+  // TODO - fix this
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(55.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.5)));
+}
 
 TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   ros::Time::init();
@@ -263,7 +339,8 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 
 
   // Convert pose-graph to message
-  pose_graph_msgs::PoseGraphConstPtr g = ConvertPoseGraphToMsg();
+  pose_graph_msgs::PoseGraphConstPtr g =
+      ConvertPoseGraphToMsg(GetValues(), GetEdges(), GetPriors());
 
   float x,y,z;
   for (auto n : g->nodes) {
@@ -349,64 +426,136 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 }
 
 // TODO - work out how to pass around SharedNoiseModels
-// TEST_F(TestLampRobot, TestSetFixedCovariancesOdom){
+TEST_F(TestLampRobot, TestSetFixedCovariancesOdom) {
+  double attitude_sigma;
+  double position_sigma;
 
-//   double attitude_sigma = 0.1;
-//   double position_sigma = 0.2;
+  ros::NodeHandle nh, pnh("~");
 
-//   ros::param::get("attitude_sigma",attitude_sigma);
-//   ros::param::get("position_sigma",position_sigma);
-//   // lr.attitude_sigma_ = attitude_sigma;
-//   // lr.position_sigma_ = position_sigma;
+  lr.Initialize(nh);
 
-//   // Set the paramters
-//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("odom");
+  ros::param::get("attitude_sigma", attitude_sigma);
+  ros::param::get("position_sigma", position_sigma);
 
-//   EXPECT_NEAR(noise.sigmas()[0], attitude_sigma, tolerance_)
-//   EXPECT_NEAR(noise.sigmas()[3], position_sigma, tolerance_)
+  // Set the paramters
+  gtsam::Vector sigma_out =
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>(
+          SetFixedNoiseModels("odom"))
+          ->sigmas();
+  // Diagonal noise model does not have a covariance call - just Sigmas
+  // Casting to something that it is not and calling functions will work, but
+  // will point to garbage
 
-// }
+  EXPECT_NEAR(sigma_out[0], attitude_sigma, tolerance_);
+  EXPECT_NEAR(sigma_out[3], position_sigma, tolerance_);
+}
 
-// TEST_F(TestLampRobot, TestSetFixedCovariancesLaserLoopClosure){
+TEST_F(TestLampRobot, TestSetFixedCovariancesLoopClosure) {
+  double laser_lc_rot_sigma;
+  double laser_lc_trans_sigma;
 
-//   double laser_lc_rot_sigma_ = 0.1;
-//   double laser_lc_trans_sigma_ = 0.2;
+  ros::NodeHandle nh, pnh("~");
 
-//   lr.laser_lc_rot_sigma_ = laser_lc_rot_sigma_;
-//   lr.laser_lc_trans_sigma_ = laser_lc_trans_sigma_;
+  lr.Initialize(nh);
 
-//   // Set the paramters
-//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("laser_loop_closure");
+  ros::param::get("laser_lc_rot_sigma", laser_lc_rot_sigma);
+  ros::param::get("laser_lc_trans_sigma", laser_lc_trans_sigma);
 
-//   EXPECT_NEAR(noise.sigmas()[0], laser_lc_rot_sigma_, tolerance_)
-//   EXPECT_NEAR(noise.sigmas()[3], laser_lc_trans_sigma_, tolerance_)
+  // Set the paramters
+  gtsam::Vector sigma_out =
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>(
+          SetFixedNoiseModels("laser_loop_closure"))
+          ->sigmas();
+  // Diagonal noise model does not have a covariance call - just Sigmas
+  // Casting to something that it is not and calling functions will work, but
+  // will point to garbage
 
-// }
+  EXPECT_NEAR(sigma_out[0], laser_lc_rot_sigma, tolerance_);
+  EXPECT_NEAR(sigma_out[3], laser_lc_trans_sigma, tolerance_);
+}
 
-// TEST_F(TestLampRobot, TestSetFixedCovariancesManualLoopClosure){
+TEST_F(TestLampRobot, TestSetFixedCovariancesError) {
+  // Set the paramters
+  EXPECT_ANY_THROW(SetFixedNoiseModels("something_wrong"));
+}
 
-//   double manual_lc_rot_precision_ = 0.1;
-//   double manual_lc_trans_precision_ = 0.2;
+TEST_F(TestLampRobot, TestLaserLoopClosure) {
+  ros::NodeHandle nh, pnh("~");
 
-//   lr.laser_lc_rot_sigma_ = manual_lc_rot_precision_;
-//   lr.laser_lc_trans_sigma_ = manual_lc_trans_precision_;
+  // bool result = lr.Initialize(nh);
 
-//   // Set the paramters
-//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("manual_loop_closure");
+  // Create pose graph edge
+  pose_graph_msgs::PoseGraph pg_msg;
+  pose_graph_msgs::PoseGraphEdge edge;
 
-//   EXPECT_NEAR(noise.sigmas()[0], manual_lc_rot_precision_, tolerance_)
-//   EXPECT_NEAR(noise.sigmas()[3], manual_lc_trans_precision_, tolerance_)
+  edge.key_from = 0;
+  edge.key_to = 1;
+  edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+  edge.pose.position.x = 1.0;
+  edge.pose.position.y = 2.0;
+  edge.pose.position.z = 3.0;
 
-// }
+  pg_msg.edges.push_back(edge);
 
-// TEST_F(TestLampRobot, TestSetFixedCovariancesError){
+  pose_graph_msgs::PoseGraphConstPtr pg_ptr(
+      new pose_graph_msgs::PoseGraph(pg_msg));
 
-//   // Set the paramters
-//   gtsam::SharedNoiseModel noise = SetFixedNoiseModels("something_wrong");
+  LaserLoopClosureCallback(pg_ptr);
 
-//   // TODO - look at throwing error
+  EdgeMessages edges_info = GetEdges();
 
-// }
+  gtsam::NonlinearFactorGraph nfg = GetNfg();
+
+  // Check opt flag
+  EXPECT_TRUE(GetOptFlag());
+
+  // Check nfg
+  EXPECT_EQ(nfg.size(), 1); // only loop closure
+
+  // TODO - more checks
+
+  // Check edges track
+  EXPECT_NEAR(edges_info[0].pose.position.x, edge.pose.position.x, tolerance_);
+  EXPECT_NEAR(edges_info[0].pose.position.y, edge.pose.position.y, tolerance_);
+  EXPECT_NEAR(edges_info[0].pose.position.z, edge.pose.position.z, tolerance_);
+}
+
+TEST_F(TestLampRobot, TestPointCloudTransform) {
+  // Add the scan and values to the graph
+  ros::NodeHandle nh, pnh("~");
+  lr.Initialize(nh);
+
+  // Scan
+  gtsam::Symbol key = gtsam::Symbol('a', 1);
+  AddToKeyScans(key, data);
+
+  // Values
+  InsertValues(gtsam::Symbol('a', 1),
+               gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
+                            gtsam::Point3(0.0, 0.0, 0.0)));
+
+  // Test the function
+  GenerateMapPointCloud();
+
+  // Output
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();
+
+  // Transform the main point cloud
+  Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+  Eigen::Vector3f rotVec(0.0, 0.0, 1);
+  transform.rotate(Eigen::AngleAxisf(M_PI / 2.0f, rotVec));
+
+  pcl::transformPointCloud(*data, *data, transform);
+
+  // Compare
+  for (int i; i < 4; i++) {
+    std::cout << "Points are " << data->at(i) << " and " << pc_out->at(i)
+              << std::endl;
+    EXPECT_NEAR(data->at(i).x, pc_out->at(i).x, tolerance_);
+    EXPECT_NEAR(data->at(i).y, pc_out->at(i).y, tolerance_);
+    EXPECT_NEAR(data->at(i).z, pc_out->at(i).z, tolerance_);
+  }
+}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
