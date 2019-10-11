@@ -81,56 +81,39 @@ class OdometryHandler : public LampDataHandlerBase{
         OdomPoseBuffer lidar_odometry_buffer_;
         OdomPoseBuffer visual_odometry_buffer_;
         OdomPoseBuffer wheel_odometry_buffer_; 
-        
-        
+                
         // Point Cloud Storage (Time stamp and point cloud)
         std::map<double, PointCloud> point_cloud_buffer_;
 
-        // Utilities 
-
-        template <typename T>
-        int CheckBufferSize(const std::vector<T>& x) {
-            // std::cout << x.size() << std::endl;
-            return x.size();
-        }
-
+        // Utilities        
+        // New map-based utilities  -------------------------------------------------------------------------------------------------------------------
+        
         template <typename T1, typename T2> 
         int CheckBufferSizeMap(const std::map<T1, T2>& x) {
           return x.size();
         }
 
-        template <typename T1, typename T2>
-        bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
-            // TODO: This function should be defined in the base class
-            auto prev_size = CheckBufferSize<T2>(buffer);
-            T2 stored_msg;
-            // TODO: The following two lines should be implemented in a function 
-            stored_msg.header = msg->header; 
-            stored_msg.pose = msg->pose;
-            buffer.push_back(stored_msg);
-            auto current_size = CheckBufferSize<T2>(buffer);
-            if (current_size != (prev_size + 1)) return false;
+        bool InsertMsgInBufferMap(const Odometry::ConstPtr& odom_msg, OdomPoseBuffer& buffer_map) {
+          // TODO: Make it template 
+          // TODO: Check intial map size, and ensure next map size has increased values, if so return true 
+          auto initial_map_size = buffer_map.size();
+          PoseCovStamped current_msg;
+          current_msg.header = odom_msg->header; 
+          current_msg.pose = odom_msg->pose; 
+          auto current_time = odom_msg->header.stamp.toSec();
+          buffer_map.insert({current_time, current_msg});     
+          auto final_map_size = buffer_map.size();
+          if (final_map_size == (initial_map_size+1)){
+            // Msg insertion was successful, return true to the caller
             return true;
+          }
+          else {
+            return false;
+          }               
         }
-        
-        // This method receives an Odometry message, it transforms it into a PosCovStamped message and stores that in a map
-        bool InsertMsgInBufferMap(const Odometry& odom_msg, OdomPoseBuffer& buffer_map) {
-            // TODO: Check intial map size, and ensure next map size has increased values, if so return true 
-            int initial_map_size = buffer_map.size();
-            PoseCovStamped current_msg;
-            current_msg.header = odom_msg.header; 
-            current_msg.pose = odom_msg.pose; 
-            double current_time = odom_msg.header.stamp.toSec();
-            buffer_map.insert({current_time, current_msg});     
-            int final_map_size = buffer_map.size();
-            if (final_map_size == (initial_map_size+1)){
-              // Msg insertion was successful, return true to the caller
-              return true;
-            }
-            else {
-              return false;
-            }               
-        }
+
+
+        // End new map-based utilities ---------------------------------------------------------------------------------------------------------------
 
         void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
         double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
@@ -157,7 +140,6 @@ class OdometryHandler : public LampDataHandlerBase{
         // Fusion logic 
         double ts_threshold_; 
         ros::Time query_timestamp_first_; 
-        // ros::Time query_timestamp_second_; 
         GtsamPosCov fused_odom_;
 
         // New methods to deal with maps 
@@ -177,4 +159,25 @@ void PrepareFactor(OdomPoseBuffer& odom_buffer);
 void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
 double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
 PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
+
+
+template <typename T>
+int CheckBufferSize(const std::vector<T>& x) {
+     return x.size();
+}
+
+template <typename T1, typename T2>
+bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+    // TODO: This function should be defined in the base class
+    auto prev_size = CheckBufferSize<T2>(buffer);
+    T2 stored_msg;
+    // TODO: The following two lines should be implemented in a function 
+    stored_msg.header = msg->header; 
+    stored_msg.pose = msg->pose;
+    buffer.push_back(stored_msg);
+    auto current_size = CheckBufferSize<T2>(buffer);
+    if (current_size != (prev_size + 1)) return false;
+    return true;
+}
+
 */

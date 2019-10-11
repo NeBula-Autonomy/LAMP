@@ -34,19 +34,10 @@ protected:
     } 
 
     // Utilities 
-    template <typename T>
-    int CheckBufferSize(const std::vector<T>& x) {
-      return oh.CheckBufferSize<T>(x);
-    }
 
     template <typename T1, typename T2> 
     int CheckBufferSizeMap(const std::map<T1, T2>& x) {
       return oh.CheckBufferSizeMap<T1, T2>(x);
-    }
-
-    template <typename T1, typename T2>
-    bool InsertMsgInBuffer(typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
-      return oh.InsertMsgInBuffer<T1, T2>(msg, buffer);
     }
 
     gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
@@ -78,14 +69,7 @@ protected:
 //    ASSERT_TRUE(result);
 // }
 
-/* TEST CheckBufferSize */ 
-TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
-  std::vector<PoseCovStamped> myBuffer;
-  PoseCovStamped my_msg;
-  myBuffer.push_back(my_msg);
-  int size = CheckBufferSize(myBuffer);
-  EXPECT_EQ(size, 1);
-}
+
 
 
 // Getters ------------------------------------------------------------
@@ -243,6 +227,31 @@ int main(int argc, char** argv) {
 
 /*
 UNUSED
+
+// ----------------------------------------------------------------------------------------
+
+template <typename T>
+int CheckBufferSize(const std::vector<T>& x) {
+  return oh.CheckBufferSize<T>(x);
+}
+
+TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
+  std::vector<PoseCovStamped> myBuffer;
+  PoseCovStamped my_msg;
+  myBuffer.push_back(my_msg);
+  int size = CheckBufferSize(myBuffer);
+  EXPECT_EQ(size, 1);
+}
+
+// ----------------------------------------------------------------------------------------
+
+template <typename T1, typename T2>
+bool InsertMsgInBuffer(typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+  return oh.InsertMsgInBuffer<T1, T2>(msg, buffer);
+}
+
+
+// ----------------------------------------------------------------------------------------
 
 bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) {
   return oh.GetPoseAtTime(t, odom_buffer, output);
