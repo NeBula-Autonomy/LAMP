@@ -306,6 +306,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr
 // Utilities ---------------------------------------------------------------------------------------------
 
 GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const {
+  // TODO - Interpolate here rather than just getting the closest times
   // Returns the fused GtsamPosCov delta between t1 and t2
   ROS_INFO_STREAM("Timestamps are: " << t1.toSec() << " and " << t2.toSec()
                                      << ". Difference is: "
