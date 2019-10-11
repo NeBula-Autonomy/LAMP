@@ -89,41 +89,6 @@
       <arg name="robot_namespace" value="$(arg robot_namespace)"/>
     </include>
 
-    <!-- Pose graph visualization -->
-    <node pkg="pose_graph_visualizer"
-          name="pose_graph_visualizer"
-          type="pose_graph_visualizer_node"
-          output="screen">
-      <!-- Frames -->
-      <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>      
-      <!-- Config - TODO move the proximity_threshold param elsewhere -->
-      <rosparam file="$(find pose_graph_visualizer)/config/visualizer_parameters.yaml" subst_value="true"/>      
-    </node>
-
-    <!-- Throttling input cloud -->
-    <node name="point_cloud_throttler" type="throttle" pkg="topic_tools" args="messages velodyne_points $(arg vlp_throttle_freq)">
-    </node>
-
-    <!-- Convert output PoseStamped message to Odometry -->
-    <node pkg="topic_tools" type="transform" name="pose_to_odom"
-          respawn="true" output="screen"
-          args="/$(arg robot_namespace)/lo_frontend/localization_integrated_estimate
-                /$(arg robot_namespace)/lo_frontend/odometry
-                nav_msgs/Odometry
-                'nav_msgs.msg.Odometry(header=m.header, pose=geometry_msgs.msg.PoseWithCovariance(pose=m.pose))' --import nav_msgs geometry_msgs">
-    </node>
-
-
-    <node pkg="tf" 
-        type="static_transform_publisher"
-        name="map2world"
-        args="0 0 0 0 0 0 world $(arg robot_namespace)/map 100" />
-
-    <node pkg="tf" 
-        type="static_transform_publisher"
-        name="base2velo"
-        args="0 0 0 0 0 0 $(arg robot_namespace)/base_link $(arg robot_namespace)/velodyne 100" />
-
   </group>
 
   <!-- launch rviz  -->
