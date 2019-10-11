@@ -105,7 +105,7 @@ void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    if (InsertMsgInBufferMap(msg, wheel_odometry_buffer_)){
+    if (!InsertMsgInBufferMap(msg, wheel_odometry_buffer_)){
         ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store message in buffer");
     } 
 }
