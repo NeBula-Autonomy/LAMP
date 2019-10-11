@@ -37,9 +37,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // Subscriber
   input_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
-      "input_posegraph", 1, &LampPgo::InputCallback, this);
-  // TODO - make names uniform? - "input_posegraph"(here) =
-  // "pose_graph_to_optimize"(lamp)
+      "pose_graph_to_optimize", 1, &LampPgo::InputCallback, this);
 
   // Parse parameters
   // Optimizer backend
@@ -115,8 +113,7 @@ void LampPgo::InputCallback(
   ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
 
   // Run the optimizer
-  pgo_solver_->updateBatch(
-      new_factors, new_values, new_values.keys().front() - 1);
+  pgo_solver_->update(new_factors, new_values);
 
   // Extract the optimized values
   values_ = pgo_solver_->calculateEstimate();

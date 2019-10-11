@@ -459,8 +459,16 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
 
   // Switch based on type
   if (type == "odom") {
+    // gtsam::Vector6 sigmas;
+    // sigmas.head<3>().setConstant(attitude_sigma_);
+    // sigmas.tail<3>().setConstant(position_sigma_);
+    // noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
     noise = odom_noise_;
   } else if (type == "laser_loop_closure") {
+    // gtsam::Vector6 sigmas;
+    // sigmas.head<3>().setConstant(laser_lc_rot_sigma_);
+    // sigmas.tail<3>().setConstant(laser_lc_trans_sigma_);
+    // noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
     noise = laser_lc_noise_;
   } else if (type == "manual_loop_closure") {
     gtsam::Vector6 noise_vec;

@@ -51,7 +51,7 @@ bool ArtifactHandler::Initialize(const ros::NodeHandle& n){
  * Returns bool
  */
 bool ArtifactHandler::LoadParameters(const ros::NodeHandle& n) {
-  if (!pu::Get("frame_id/artifacts_in_global", artifacts_in_global_))
+  if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
     return false;
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
