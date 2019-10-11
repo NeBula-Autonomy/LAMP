@@ -672,6 +672,12 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   GtsamPosCov delta_pose_cov; 
   delta_pose_cov = odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
 
+  if (!delta_pose_cov.b_has_value) {
+    ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
+              "WELL HANDLED YET-----------");
+    return;
+  }
+
   // TODO - do covariances as well
 
   // Compose the transforms to get the between factor
