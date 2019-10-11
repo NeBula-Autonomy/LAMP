@@ -14,9 +14,71 @@ public:
   OdometryHandlerTest() {
     // Load Params
     system("rosparam load $(rospack find factor_handlers)/config/odom_parameters.yaml");
+
+    tolerance_ = 1e-5;
+
+    double t1 = 1.00;
+    double t2 = 1.05;
+    double t3 = 1.10;
+    double t4 = 1.15;
+    double t5 = 1.20;
+
+    t1_ros.fromSec(t1);
+    t2_ros.fromSec(t2);
+    t3_ros.fromSec(t3);
+    t4_ros.fromSec(t4);
+    t5_ros.fromSec(t5);
+
+    // Fill the three messages
+    msg_first.header.stamp = t1_ros;
+    msg_first.pose.pose.position.x = 1;
+    msg_first.pose.pose.position.y = 0;
+    msg_first.pose.pose.position.z = 0;
+    msg_first.pose.pose.orientation.x = 0;
+    msg_first.pose.pose.orientation.y = 0;
+    msg_first.pose.pose.orientation.z = 0;
+    msg_first.pose.pose.orientation.w = 1;
+
+    msg_second.header.stamp = t2_ros;
+    msg_second.pose.pose.position.x = 2;
+    msg_second.pose.pose.position.y = 0;
+    msg_second.pose.pose.position.z = 0;
+    msg_second.pose.pose.orientation.x = 0;
+    msg_second.pose.pose.orientation.y = 0;
+    msg_second.pose.pose.orientation.z = 0;
+    msg_second.pose.pose.orientation.w = 1;
+
+    msg_third.header.stamp = t3_ros;
+    msg_third.pose.pose.position.x = 3;
+    msg_third.pose.pose.position.y = 0;
+    msg_third.pose.pose.position.z = 0;
+    msg_third.pose.pose.orientation.x = 0;
+    msg_third.pose.pose.orientation.y = 0;
+    msg_third.pose.pose.orientation.z = 0;
+    msg_third.pose.pose.orientation.w = 1;
+
+    msg_fourth.header.stamp = t4_ros;
+    msg_fourth.pose.pose.position.x = 3;
+    msg_fourth.pose.pose.position.y = 1;
+    msg_fourth.pose.pose.position.z = 0;
+    msg_fourth.pose.pose.orientation.x = 0;
+    msg_fourth.pose.pose.orientation.y = 0;
+    msg_fourth.pose.pose.orientation.z = sqrt(2);
+    msg_fourth.pose.pose.orientation.w = sqrt(2);
+
+    msg_fifth.header.stamp = t5_ros;
+    msg_fifth.pose.pose.position.x = 2;
+    msg_fifth.pose.pose.position.y = 1;
+    msg_fifth.pose.pose.position.z = 0;
+    msg_fifth.pose.pose.orientation.x = 0;
+    msg_fifth.pose.pose.orientation.y = 0;
+    msg_fifth.pose.pose.orientation.z = 1;
+    msg_fifth.pose.pose.orientation.w = 0;
   }
 
   OdometryHandler oh;
+
+  double tolerance_;
 
 protected:
 
@@ -31,9 +93,39 @@ protected:
 
     void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
       oh.LidarOdometryCallback(msg);
-    } 
+    }
 
-    // Utilities 
+    // Utilities
+
+    bool GetPoseAtTime(const ros::Time stamp,
+                       const OdomPoseBuffer& odom_buffer_map,
+                       PoseCovStamped& output) {
+      return oh.GetPoseAtTime(stamp, odom_buffer_map, output);
+    }
+
+    bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
+      return oh.GetOdomDelta(t_now, delta_pose);
+    }
+
+    bool GetOdomDeltaLatestTime(ros::Time& t_latest, GtsamPosCov& delta_pose) {
+      return oh.GetOdomDeltaLatestTime(t_latest, delta_pose);
+    }
+
+    FactorData GetData() {
+      return oh.GetData();
+    }
+
+    void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
+                             GtsamPosCov& measurement,
+                             const ros::Time t1,
+                             const ros::Time t2) {
+      oh.FillGtsamPosCovOdom(odom_buffer, measurement, t1, t2);
+    }
+
+    GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
+                                              const ros::Time t2) {
+      return oh.GetFusedOdomDeltaBetweenTimes(t1, t2);
+    }
 
     template <typename T1, typename T2> 
     int CheckBufferSizeMap(const std::map<T1, T2>& x) {
@@ -56,21 +148,31 @@ protected:
       return oh.PointCloudCallback(msg);
     }
 
+    // Create three messages
+    PoseCovStamped msg_first;
+    PoseCovStamped msg_second;
+    PoseCovStamped msg_third;
+    PoseCovStamped msg_fourth;
+    PoseCovStamped msg_fifth;
+
+    ros::Time t1_ros;
+    ros::Time t2_ros;
+    ros::Time t3_ros;
+    ros::Time t4_ros;
+    ros::Time t5_ros;
+
   private:    
 
 };
 
 // Test we pass ----------------------------------------------------------------------
 
-/* TEST Initialize */ 
-// TEST_F(OdometryHandlerTest, Initialization) {
-//    ros::NodeHandle nh;
-//    bool result = oh.Initialize(nh);
-//    ASSERT_TRUE(result);
-// }
-
-
-
+/* TEST Initialize */
+TEST_F(OdometryHandlerTest, Initialization) {
+  ros::NodeHandle nh;
+  bool result = oh.Initialize(nh);
+  ASSERT_TRUE(result);
+}
 
 // Getters ------------------------------------------------------------
 
@@ -102,6 +204,60 @@ TEST_F (OdometryHandlerTest, TestGetTransform) {
   ASSERT_TRUE(transform_actual.equals(transform_expected));
 }
 
+TEST_F(OdometryHandlerTest, TestGetTransformRotation) {
+  PoseCovStampedPair pose_cov_stamped_pair;
+  geometry_msgs::Pose pose1;
+  pose1.position.x = 0;
+  pose1.position.y = 0;
+  pose1.position.z = 0;
+  pose1.orientation.x = 0;
+  pose1.orientation.y = 0;
+  pose1.orientation.z = 0;
+  pose1.orientation.w = 1;
+  geometry_msgs::Pose pose2;
+  pose2.position.x = 1;
+  pose2.position.y = 0;
+  pose2.position.z = 0;
+  pose2.orientation.x = 0;
+  pose2.orientation.y = 0;
+  pose2.orientation.z = sqrt(0.5);
+  pose2.orientation.w = sqrt(0.5);
+  pose_cov_stamped_pair.first.pose.pose = pose1;
+  pose_cov_stamped_pair.second.pose.pose = pose2;
+  gtsam::Pose3 transform_actual = GetTransform(pose_cov_stamped_pair);
+  gtsam::Point3 position = gtsam::Point3(1, 0, 0);
+  gtsam::Rot3 rotation = gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5));
+  gtsam::Pose3 transform_expected = gtsam::Pose3(rotation, position);
+  ASSERT_TRUE(transform_actual.equals(transform_expected));
+}
+
+TEST_F(OdometryHandlerTest, TestGetTransformRotation2) {
+  PoseCovStampedPair pose_cov_stamped_pair;
+  geometry_msgs::Pose pose1;
+  pose1.position.x = 0;
+  pose1.position.y = 0;
+  pose1.position.z = 0;
+  pose1.orientation.x = 0;
+  pose1.orientation.y = 0;
+  pose1.orientation.z = sqrt(0.5);
+  pose1.orientation.w = -sqrt(0.5);
+  geometry_msgs::Pose pose2;
+  pose2.position.x = 0;
+  pose2.position.y = 0;
+  pose2.position.z = 0;
+  pose2.orientation.x = 0;
+  pose2.orientation.y = 0;
+  pose2.orientation.z = sqrt(0.5);
+  pose2.orientation.w = sqrt(0.5);
+  pose_cov_stamped_pair.first.pose.pose = pose1;
+  pose_cov_stamped_pair.second.pose.pose = pose2;
+  gtsam::Pose3 transform_actual = GetTransform(pose_cov_stamped_pair);
+  gtsam::Point3 position = gtsam::Point3(0, 0, 0);
+  gtsam::Rot3 rotation = gtsam::Rot3(0, 0, 0, 1);
+  gtsam::Pose3 transform_expected = gtsam::Pose3(rotation, position);
+  ASSERT_TRUE(transform_actual.equals(transform_expected));
+}
+
 /* TEST ToGtsam */
 TEST_F(OdometryHandlerTest, TestToGtsam) {
   gu::Transform3 pose;
@@ -126,9 +282,598 @@ TEST_F(OdometryHandlerTest, TestToGtsam) {
   ASSERT_TRUE(transform_actual.equals(transform_expected));
 }
 
-    // PointCloud current_pointcloud;
-    // pcl::fromROSMsg(*msg, current_pointcloud);
+TEST_F(OdometryHandlerTest, TestGetPoseAtTime) {
+  // Create an output
+  PoseCovStamped myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
 
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+
+  bool result = GetPoseAtTime(t3_ros, myBuffer, myOutput);
+  EXPECT_NEAR(
+      msg_third.pose.pose.position.x, myOutput.pose.pose.position.x, 1e-5);
+  ASSERT_TRUE(result);
+}
+
+TEST_F(OdometryHandlerTest, TestGetPoseAtTimeFuture) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.5");
+  oh.Initialize(nh);
+
+  // Create an output
+  PoseCovStamped myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+
+  ros::Time query;
+  query.fromSec(1.5);
+
+  bool result = GetPoseAtTime(query, myBuffer, myOutput);
+  EXPECT_NEAR(
+      msg_third.pose.pose.position.x, myOutput.pose.pose.position.x, 1e-5);
+  ASSERT_TRUE(result);
+}
+
+TEST_F(OdometryHandlerTest, TestGetPoseAtTimePast) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.5");
+  oh.Initialize(nh);
+
+  // Create an output
+  PoseCovStamped myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+
+  ros::Time query;
+  query.fromSec(0.6);
+
+  bool result = GetPoseAtTime(query, myBuffer, myOutput);
+  EXPECT_NEAR(
+      msg_first.pose.pose.position.x, myOutput.pose.pose.position.x, 1e-5);
+  ASSERT_TRUE(result);
+}
+
+TEST_F(OdometryHandlerTest, TestGetPoseAtTimeOutOfRange) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.5");
+  oh.Initialize(nh);
+
+  // Create an output
+  PoseCovStamped myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+
+  ros::Time query;
+  query.fromSec(5000);
+
+  bool result = GetPoseAtTime(query, myBuffer, myOutput);
+  EXPECT_NEAR(
+      msg_third.pose.pose.position.x, myOutput.pose.pose.position.x, 1e-5);
+  EXPECT_FALSE(result);
+}
+
+TEST_F(OdometryHandlerTest, TestGetPoseBetweenTimesExact) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, t1_ros, t2_ros);
+  EXPECT_NEAR(1, myOutput.pose.x(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, t1_ros, t3_ros);
+  EXPECT_NEAR(2, myOutput.pose.x(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, t2_ros, t3_ros);
+  EXPECT_NEAR(1, myOutput.pose.x(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+}
+
+TEST_F(OdometryHandlerTest, TestGetPoseBetweenTimesOff) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+
+  ros::Time query1, query2, query3;
+  query1.fromSec(1.01);
+  query2.fromSec(1.04);
+  query3.fromSec(1.08);
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, query1, query2);
+  EXPECT_NEAR(1, myOutput.pose.x(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, query1, query3);
+  EXPECT_NEAR(2, myOutput.pose.x(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, query2, query3);
+  EXPECT_NEAR(1, myOutput.pose.x(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+}
+
+TEST_F(OdometryHandlerTest, TestGetPoseBetweenTimesOutOfRange) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+
+  ros::Time query1, query2, query3;
+  query1.fromSec(0.7);
+  query2.fromSec(1.3);
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, query1, query2);
+  EXPECT_NEAR(2, myOutput.pose.x(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+}
+
+TEST_F(OdometryHandlerTest, TestGetPoseBetweenOutsideThreshold) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+
+  ros::Time query1, query2, query3;
+  query1.fromSec(0.0);
+  query2.fromSec(10.3);
+
+  // This should fail as they are beyond the threshold
+  FillGtsamPosCovOdom(myBuffer, myOutput, query1, query2);
+  EXPECT_FALSE(myOutput.b_has_value);
+}
+
+// Test 1m to +y amd 90 deg rotation to the left
+TEST_F(OdometryHandlerTest, TestGetPoseBetweenTimesRotationOneStep90) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+  myBuffer[t4_ros.toSec()] = msg_fourth;
+  myBuffer[t5_ros.toSec()] = msg_fifth;
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, t3_ros, t4_ros);
+  EXPECT_NEAR(1, myOutput.pose.y(), 1e-5);
+  EXPECT_NEAR(M_PI / 2.0f, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+}
+
+// Same test as above, but this would be in -x in the global frame
+TEST_F(OdometryHandlerTest, TestGetPoseBetweenTimesRotationCheckLocal) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+
+  myBuffer[t1_ros.toSec()] = msg_first;
+  myBuffer[t2_ros.toSec()] = msg_second;
+  myBuffer[t3_ros.toSec()] = msg_third;
+  myBuffer[t4_ros.toSec()] = msg_fourth;
+  myBuffer[t5_ros.toSec()] = msg_fifth;
+
+  FillGtsamPosCovOdom(myBuffer, myOutput, t4_ros, t5_ros);
+  EXPECT_NEAR(1, myOutput.pose.y(), 1e-5);
+  EXPECT_NEAR(M_PI / 2.0f, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+}
+
+// GET ODOM TESTING
+// Use messages and test-
+TEST_F(OdometryHandlerTest, TestGetOdomDeltaEmptyBuffer) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  // Expect a normal result
+  bool result = GetOdomDelta(t2_ros, myOutput);
+  EXPECT_FALSE(result);
+}
+
+TEST_F(OdometryHandlerTest, TestGetFusedOdomDelta) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  // First result - should get delta to self
+  bool result = GetOdomDelta(t1_ros, myOutput);
+  EXPECT_NEAR(0, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+  EXPECT_TRUE(result);
+
+  // Expect a normal result
+  result = GetOdomDelta(t2_ros, myOutput);
+  EXPECT_NEAR(1, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+  EXPECT_TRUE(result);
+
+  // Expect a normal result
+  result = GetOdomDelta(t3_ros, myOutput);
+  EXPECT_NEAR(2, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+  EXPECT_TRUE(result);
+}
+
+TEST_F(OdometryHandlerTest, TestGetFusedOdomDeltaOffExact) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  ros::Time query1, query2, query3;
+  query1.fromSec(0.7);
+  query2.fromSec(1.04);
+  query3.fromSec(1.15);
+
+  // First result - should get delta to self
+  bool result = GetOdomDelta(query1, myOutput);
+  EXPECT_NEAR(0, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+  EXPECT_TRUE(result);
+
+  // Expect a normal result
+  result = GetOdomDelta(query2, myOutput);
+  EXPECT_NEAR(1, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+  EXPECT_TRUE(result);
+
+  // Expect a normal result
+  result = GetOdomDelta(query3, myOutput);
+  EXPECT_NEAR(2, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+  EXPECT_TRUE(result);
+}
+
+// Expect this to throw false from the function call
+TEST_F(OdometryHandlerTest, TestGetFusedOdomDeltaOutOfRange) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  ros::Time query1, query2;
+  query1.fromSec(0.0);
+  query2.fromSec(2.0);
+
+  // First result - should get delta to self
+  bool result = GetOdomDelta(query1, myOutput);
+  EXPECT_NEAR(0, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_FALSE(myOutput.b_has_value);
+  EXPECT_FALSE(result);
+
+  // Expect a normal result
+  result = GetOdomDelta(query2, myOutput);
+  EXPECT_NEAR(0, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_FALSE(myOutput.b_has_value);
+  EXPECT_FALSE(result);
+}
+
+// TEST the function to get the delta to the latest time
+TEST_F(OdometryHandlerTest, TestGetFusedOdomDeltaLatestTime) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  ros::Time query1;
+
+  bool result = GetOdomDeltaLatestTime(query1, myOutput);
+  EXPECT_NEAR(2, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+  EXPECT_TRUE(myOutput.b_has_value);
+  EXPECT_TRUE(result);
+
+  // Need to return the correct time
+  EXPECT_NEAR(t3_ros.toSec(), query1.toSec(), 1e-5);
+}
+
+TEST_F(OdometryHandlerTest, TestGetData) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  ros::Time query1;
+
+  bool result = GetOdomDeltaLatestTime(query1, myOutput);
+  EXPECT_TRUE(result);
+
+  FactorData factor = GetData();
+  EXPECT_NEAR(2, factor.transforms[0].x(), 1e-5);
+  EXPECT_NEAR(0.0, factor.transforms[0].rotation().yaw(), 1e-5);
+  EXPECT_TRUE(factor.b_has_data);
+
+  // Need to return the correct time
+  EXPECT_NEAR(t1_ros.toSec(), factor.time_stamps[0].first.toSec(), 1e-5);
+  EXPECT_NEAR(t3_ros.toSec(), factor.time_stamps[0].second.toSec(), 1e-5);
+}
+
+TEST_F(OdometryHandlerTest, TestGetRelativeData) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  myOutput = GetFusedOdomDeltaBetweenTimes(t2_ros, t3_ros);
+
+  EXPECT_TRUE(myOutput.b_has_value);
+
+  EXPECT_NEAR(1, myOutput.pose.x(), 1e-5);
+  EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
+}
+
+TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  ros::Time query1, query2;
+  query1.fromSec(0.0);
+  query2.fromSec(0.7);
+
+  myOutput = GetFusedOdomDeltaBetweenTimes(query1, query2);
+
+  EXPECT_FALSE(myOutput.b_has_value);
+}
+//   ros::Time query1, query2, query3;
+//   query1.fromSec(0.0);
+//   query2.fromSec(10.3);
+
+//   // This should fail as they are beyond the threshold
+//   FillGtsamPosCovOdom(myBuffer, myOutput, query1, query2);
+//   EXPECT_FALSE(myOutput.b_has_value);
+// }
+
+// PointCloud current_pointcloud;
+// pcl::fromROSMsg(*msg, current_pointcloud);
 
 // Test we pass but need more testing/implementation ---------------------------------
 
@@ -261,71 +1006,7 @@ bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buff
   return oh.GetPosesAtTimes(t1, t2, odom_buffer, output_poses);
 }
 
-TEST_F(OdometryHandlerTest, TestGetPoseAtTime) {
-  double t1 = 1.00;
-  double t2 = 1.05;
-  double t3 = 1.10;
-  ros::Time t1_ros;
-  ros::Time t2_ros;
-  ros::Time t3_ros;
-  t1_ros.fromSec(t1);
-  t2_ros.fromSec(t2);
-  t3_ros.fromSec(t3);
 
-  // Create an output
-  PoseCovStamped myOutput;
-  // Create a buffer
-  OdomPoseBuffer myBuffer; 
-  // Create two messages
-  geometry_msgs::PoseWithCovarianceStamped msg_first; 
-  geometry_msgs::PoseWithCovarianceStamped msg_second;
-  geometry_msgs::PoseWithCovarianceStamped msg_third;
-
-  // Fill the three messages
-  msg_first.header.stamp = t1_ros; 
-  msg_first.pose.pose.position.x = 1; 
-  msg_first.pose.pose.position.y = 0; 
-  msg_first.pose.pose.position.z = 0; 
-  msg_first.pose.pose.orientation.x = 0;
-  msg_first.pose.pose.orientation.y = 0;
-  msg_first.pose.pose.orientation.z = 0;
-  msg_first.pose.pose.orientation.w = 1;
-
-  msg_second.header.stamp = t2_ros; 
-  msg_second.pose.pose.position.x = 2; 
-  msg_second.pose.pose.position.y = 0; 
-  msg_second.pose.pose.position.z = 0;
-  msg_second.pose.pose.orientation.x = 0;
-  msg_second.pose.pose.orientation.y = 0;
-  msg_second.pose.pose.orientation.z = 0;
-  msg_second.pose.pose.orientation.w = 1;
-
-  msg_third.header.stamp = t3_ros; 
-  msg_third.pose.pose.position.x = 3; 
-  msg_third.pose.pose.position.y = 0; 
-  msg_third.pose.pose.position.z = 0;
-  msg_third.pose.pose.orientation.x = 0;
-  msg_third.pose.pose.orientation.y = 0;
-  msg_third.pose.pose.orientation.z = 0;
-  msg_third.pose.pose.orientation.w = 1;
-
-  // Push messages to buffer
-  myBuffer.push_back(msg_first); 
-  myBuffer.push_back(msg_second); 
-  myBuffer.push_back(msg_third);
-  // std::cout<<myBuffer.size()<<std::endl;
-  // for (size_t i=0; i<2; ++i){
-  //   std::cout<< myBuffer[i].header.stamp.toSec() << std::endl;
-  // }
-  // std::cout<< myBuffer[0].header.stamp.toSec() << std::endl;
-  // std::cout<< myBuffer[1].header.stamp.toSec() << std::endl;
-  // std::cout<< myBuffer[2].header.stamp.toSec() << std::endl;
-  // std::cout<< myBuffer[4].header.stamp.toSec() << std::endl;
-  bool result = GetPoseAtTime(t3_ros, myBuffer, myOutput);
-  EXPECT_NEAR(msg_third.pose.pose.position.x, myOutput.pose.pose.position.x, 1e-5);
-  ASSERT_TRUE(result);
-  // EXPECT_EQ(myBuffer[1].header.stamp.toSec(),2);
-}
 
 TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
   double t1 = 1.0;

@@ -26,7 +26,8 @@
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
       <!-- Topics -->
-      <remap from="~pcld" to="velodyne_points"/>
+      <remap from="~pcld" to="velodyne_points/transformed"/>
+      <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
       <remap from="~lio_odom" to="lo_frontend/odometry"/>
       <remap from="~optimizer_pg" to="lamp_pgo/optimized_values"/>
 
