@@ -150,10 +150,10 @@ FactorData OdometryHandler::GetData() {
   GtsamPosCov fused_odom_for_factor;
 
   if (CalculatePoseDelta(fused_odom_) > translation_threshold_) {
-    
-    // Get the time closest to a lidar timestamp 
+
+    // TODO: Make sure we're able to retrieve the timestamp of interest
     ros::Time t2;
-    GetClosestLidarTime(ros::Time::now(), t2);
+    GetClosestLidarTime(ros::Time::now(), t2);  
 
     // Get the updated fused odom between the two lidar-linked timestamps
     fused_odom_for_factor =
