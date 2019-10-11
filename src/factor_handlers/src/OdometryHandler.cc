@@ -363,29 +363,6 @@ void OdometryHandler::ClearOdometryBuffers() {
 
 // Getters -----------------------------------------------------------------------------------------------
 
-bool OdometryHandler::GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const {
-  ros::Time output_time;
-  auto query_timestamp = time.toSec();
-  double min_ts_diff = 1e12;
-  // Iterate through the vector to find the element of interest 
-  for (size_t i=lidar_odometry_buffer_.size(); i>0; --i){
-        double cur_ts_diff = lidar_odometry_buffer_[i].header.stamp.toSec() - query_timestamp;
-    if (fabs(cur_ts_diff)<fabs(min_ts_diff)){
-      output_time = lidar_odometry_buffer_[i].header.stamp;
-      min_ts_diff = fabs(cur_ts_diff);
-    } 
-  }
-  ROS_INFO_STREAM("Minimum time is " << min_ts_diff
-                                     << " in GetClosestLidarTime");
-  if (fabs(min_ts_diff)<ts_threshold_){
-    closest_time = output_time;
-    return true;
-  }
-  else {
-    return false;
-  }
-}
-
 bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer& odom_buffer_map, PoseCovStamped& output) const {
   
   // If map is empty, return false to the caller 
