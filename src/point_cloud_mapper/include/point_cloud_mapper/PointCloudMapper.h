@@ -76,7 +76,12 @@ class PointCloudMapper {
   // from inside, as opposed to PublishMapUpdate().
   void PublishMap();
 
- private:
+  // Getter for the point cloud
+  PointCloud::Ptr GetMapData() {
+    return map_data_;
+  }
+
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);

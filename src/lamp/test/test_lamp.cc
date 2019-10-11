@@ -12,7 +12,9 @@ public:
   typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
   typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
 
-  TestLampRobot() {
+  pcl::PointCloud<pcl::PointXYZ>::Ptr data;
+
+  TestLampRobot() : data(new pcl::PointCloud<pcl::PointXYZ>(2, 2)) {
     // Load params
     system("rosparam load $(rospack find "
            "lamp)/config/precision_parameters.yaml");
@@ -27,6 +29,16 @@ public:
            "point_cloud_mapper)/config/parameters.yaml");
     system("rosparam load $(rospack find "
            "factor_handlers)/config/odom_parameters.yaml");
+
+    // Create data in the point cloud
+    int n_points = 2;
+    for (int i = 0; i < n_points; i++) {
+      for (int j = 0; j < n_points; j++) {
+        data->at(j, i).x = (float)j / (n_points - 1);
+        data->at(j, i).y = (float)i / (n_points - 1);
+        data->at(j, i).z = 0.0f;
+      }
+    }
     }
     ~TestLampRobot(){}
 
@@ -59,7 +71,9 @@ public:
     LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
       lr.LaserLoopClosureCallback(msg);
     }
-
+    bool GenerateMapPointCloud() {
+      lr.GenerateMapPointCloud();
+    }
     // Access functions
     void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
       lr.stamp_to_odom_key_[stamp.toSec()] = key;
@@ -78,6 +92,12 @@ public:
     gtsam::Values GetValues() {
       return lr.values_;
     }
+
+    void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
+      lr.keyed_scans_.insert(
+          std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+    }
+
     gtsam::NonlinearFactorGraph GetNfg() {
       return lr.nfg_;
     }
@@ -86,6 +106,10 @@ public:
     }
     PriorMessages GetPriors() {
       return lr.priors_info_;
+    }
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
+      return lr.mapper_.GetMapData();
     }
     // Other utilities
 
@@ -225,7 +249,8 @@ TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
 TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   ros::Time::init();
 
-  SetTimeThreshold(0.001);
+  // Set large threshold
+  SetTimeThreshold(1000.0);
 
   // Check single key 
   AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
@@ -249,8 +274,31 @@ TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(54.0)));
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(63.43)));
   EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(75.0)));
-  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(99.99999)));
-  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(100000.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(99.9)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(1000.0)));
+}
+
+TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
+  ros::Time::init();
+
+  SetTimeThreshold(1.0);
+
+  // Check single key
+  AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(500.0)));
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(0.0)));
+
+  // Add more keys
+  AddStampToOdomKey(ros::Time(50.0), gtsam::Symbol('a', 1));
+  AddStampToOdomKey(ros::Time(60.0), gtsam::Symbol('a', 2));
+  AddStampToOdomKey(ros::Time(80.0), gtsam::Symbol('a', 3));
+  AddStampToOdomKey(ros::Time(100.0), gtsam::Symbol('a', 4));
+
+  // Exact matches
+  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); //
+  // TODO - fix this
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(55.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.5)));
 }
 
 TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
@@ -470,16 +518,41 @@ TEST_F(TestLampRobot, TestLaserLoopClosure) {
   EXPECT_NEAR(edges_info[0].pose.position.x, edge.pose.position.x, tolerance_);
   EXPECT_NEAR(edges_info[0].pose.position.y, edge.pose.position.y, tolerance_);
   EXPECT_NEAR(edges_info[0].pose.position.z, edge.pose.position.z, tolerance_);
+}
 
-  // // Convert pose-graph to message to check
-  // pose_graph_msgs::PoseGraphConstPtr g =
-  //     ConvertPoseGraphToMsg(GetValues(), GetEdges(), GetPriors());
+TEST_F(TestLampRobot, TestPointCloudTransform) {
+  // Add the scan and values to the graph
 
-  // geometry_msgs::Point pos_out = g->edges[0].pose;
+  // Scan
+  gtsam::Symbol key = gtsam::Symbol('a', 0);
+  AddToKeyScans(key, data);
 
-  // EXPECT_NEAR(pos_out.x, edge.pose.position.x, tolerance_);
-  // EXPECT_NEAR(pos_out.y, edge.pose.position.y, tolerance_);
-  // EXPECT_NEAR(pos_out.z, edge.pose.position.z, tolerance_);
+  // Values
+  InsertValues(gtsam::Symbol('a', 0),
+               gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
+                            gtsam::Point3(0.0, 0.0, 0.0)));
+
+  // Test the function
+  GenerateMapPointCloud();
+
+  // Output
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();
+
+  // Transform the main point cloud
+  Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+  Eigen::Vector3f rotVec(0.0, 0.0, 1);
+  transform.rotate(Eigen::AngleAxisf(M_PI / 2.0f, rotVec));
+
+  pcl::transformPointCloud(*data, *data, transform);
+
+  // Compare
+  for (int i; i < 4; i++) {
+    std::cout << "Points are " << data->at(i) << " and " << pc_out->at(i)
+              << std::endl;
+    EXPECT_NEAR(data->at(i).x, pc_out->at(i).x, tolerance_);
+    EXPECT_NEAR(data->at(i).y, pc_out->at(i).y, tolerance_);
+    EXPECT_NEAR(data->at(i).z, pc_out->at(i).z, tolerance_);
+  }
 }
 
 int main(int argc, char** argv) {
