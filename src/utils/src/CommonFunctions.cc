@@ -72,7 +72,7 @@ void UpdateEdgeCovariance(pose_graph_msgs::PoseGraphEdge& msg_edge,
 void UpdateEdgeCovariance(pose_graph_msgs::PoseGraphEdge& msg_edge,
                           gtsam::SharedNoiseModel noise) {
   gtsam::Matrix66 covariance =
-      boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>(noise)
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>(noise)
           ->covariance();
   UpdateEdgeCovariance(msg_edge, covariance);
 }
