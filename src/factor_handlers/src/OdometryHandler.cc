@@ -199,13 +199,19 @@ FactorData OdometryHandler::GetData() {
 
   if (CalculatePoseDelta(fused_odom_) > translation_threshold_) {
     ROS_INFO("Adding a new node");
-    // Get the time closest to a lidar timestamp
+    // Get the most recent lidar timestamp
     ros::Time t2;
-    GetClosestLidarTime(ros::Time::now(), t2);  
+    t2.fromSec(lidar_odometry_buffer_.rbegin()->first);
+    // GetClosestLidarTime(ros::Time::now(), t2);
 
     // Get the updated fused odom between the two lidar-linked timestamps
     fused_odom_for_factor =
         GetFusedOdomDeltaBetweenTimes(query_timestamp_first_, t2);
+
+    if (!fused_odom_for_factor.b_has_value) {
+      ROS_ERROR("Issues getting delta for factor. Returning no data");
+      return factors_output;
+    }
 
     // Fill factors data
     factors_output.b_has_data =

@@ -111,6 +111,10 @@ protected:
       return oh.GetOdomDeltaLatestTime(t_latest, delta_pose);
     }
 
+    FactorData GetData() {
+      return oh.GetData();
+    }
+
     void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
                              GtsamPosCov& measurement,
                              const ros::Time t1,
@@ -720,14 +724,60 @@ TEST_F(OdometryHandlerTest, TestGetFusedOdomDeltaLatestTime) {
 
   ros::Time query1;
 
-  // First result - should get delta to self
   bool result = GetOdomDeltaLatestTime(query1, myOutput);
   EXPECT_NEAR(2, myOutput.pose.x(), 1e-5);
   EXPECT_NEAR(0.0, myOutput.pose.rotation().yaw(), 1e-5);
   EXPECT_TRUE(myOutput.b_has_value);
   EXPECT_TRUE(result);
 
+  // Need to return the correct time
   EXPECT_NEAR(t3_ros.toSec(), query1.toSec(), 1e-5);
+}
+
+TEST_F(OdometryHandlerTest, TestGetData) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  ros::Time query1;
+
+  bool result = GetOdomDeltaLatestTime(query1, myOutput);
+  EXPECT_TRUE(result);
+
+  FactorData factor = GetData();
+  EXPECT_NEAR(2, factor.transforms[0].x(), 1e-5);
+  EXPECT_NEAR(0.0, factor.transforms[0].rotation().yaw(), 1e-5);
+  EXPECT_TRUE(factor.b_has_data);
+
+  // Need to return the correct time
+  EXPECT_NEAR(t1_ros.toSec(), factor.time_stamps[0].first.toSec(), 1e-5);
+  EXPECT_NEAR(t3_ros.toSec(), factor.time_stamps[0].second.toSec(), 1e-5);
 }
 
 //   ros::Time query1, query2, query3;
