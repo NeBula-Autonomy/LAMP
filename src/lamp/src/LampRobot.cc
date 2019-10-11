@@ -94,6 +94,9 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
   if (!pu::Get("frame_id/base", base_frame_id_)) return false;
 
+  if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
+    return false;
+
   // TODO - bring in other parameter
 
   // Set Precisions
@@ -525,7 +528,7 @@ void LampRobot::UpdateAndPublishOdom() {
       // TODO - work out what the best thing is to do in this scenario
       return;
     }
-    ROS_INFO("Got good reault from getting delta at the latest time");
+    ROS_INFO("Got good result from getting delta at the latest time");
   }
 
   // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp, delta_pose);
@@ -579,6 +582,7 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
   // Necessary variables
   Pose3 transform;
+  Pose3 temp_transform;
   Pose3 global_pose;
   gtsam::SharedNoiseModel covariance;
   ros::Time timestamp;
@@ -602,9 +606,18 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     // Get the artifact key
     cur_artifact_key = data.artifact_key[i];
 
+    // Get the pose measurement
+    if (b_artifacts_in_global_) {
+      // Convert pose to relative frame
+      ConvertGlobalToRelative(timestamp, data.transforms[i], temp_transform);
+    } else {
+      // Is in relative already
+      temp_transform = data.transforms[i];
+    }
+
     // Is a relative tranform, so need to handle linking to the pose-graph
     HandleRelativePoseMeasurement(
-        timestamp, data.transforms[i], transform, global_pose, pose_key);
+        timestamp, temp_transform, transform, global_pose, pose_key);
 
     if (pose_key == gtsam::Symbol()) {
       ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
@@ -705,6 +718,21 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   // Compose from the node in the graph to get the global position
   // TODO - maybe do this outside this function
   global_pose = values_.at<Pose3>(key_from).compose(transform);
+}
+
+// Placeholder function for handling global artifacts (will soon be relative)
+void LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
+                                        const gtsam::Pose3 pose_global,
+                                        gtsam::Pose3& pose_relative) {
+  // Get the closes node in the pose-graph
+  gtsam::Symbol key_from = GetClosestKeyAtTime(stamp);
+
+  // Pose of closest node
+  gtsam::Pose3 node_pose = values_.at<gtsam::Pose3>(key_from);
+
+  // Compose to get the relative position (relative pose between node and
+  // global)
+  pose_relative = node_pose.between(pose_global);
 }
 
 // TODO Function handler wrappers

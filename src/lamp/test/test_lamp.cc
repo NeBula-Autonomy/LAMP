@@ -522,13 +522,15 @@ TEST_F(TestLampRobot, TestLaserLoopClosure) {
 
 TEST_F(TestLampRobot, TestPointCloudTransform) {
   // Add the scan and values to the graph
+  ros::NodeHandle nh, pnh("~");
+  lr.Initialize(nh);
 
   // Scan
-  gtsam::Symbol key = gtsam::Symbol('a', 0);
+  gtsam::Symbol key = gtsam::Symbol('a', 1);
   AddToKeyScans(key, data);
 
   // Values
-  InsertValues(gtsam::Symbol('a', 0),
+  InsertValues(gtsam::Symbol('a', 1),
                gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
                             gtsam::Point3(0.0, 0.0, 0.0)));
 
