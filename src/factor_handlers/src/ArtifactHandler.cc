@@ -347,7 +347,7 @@ void ArtifactHandler::ClearArtifactData() {
   * Returns  Void
   */
 void ArtifactHandler::AddArtifactData(const gtsam::Symbol cur_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise) {
-   // Make new data true
+  // Make new data true
   artifact_data_.b_has_data = true;
   // Fill type
   artifact_data_.type = "artifact";
@@ -370,7 +370,7 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key, const 
 
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash_.find(artifact_key) == artifact_key2info_hash_.end()) {
-    ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
+    ROS_INFO_STREAM("New artifact detected with key " << gtsam::DefaultKeyFormatter(artifact_key));
     artifact_key2info_hash_[artifact_key] = artifactinfo;
   } else {
     ROS_INFO("Existing artifact detected");

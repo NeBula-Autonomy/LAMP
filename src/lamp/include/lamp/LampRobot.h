@@ -90,7 +90,7 @@ class LampRobot : public LampBase {
                                        gtsam::Pose3& global_pose,
                                        gtsam::Symbol& key_from);
 
-    void ConvertGlobalToRelative(const ros::Time stamp,
+    bool ConvertGlobalToRelative(const ros::Time stamp,
                                  const gtsam::Pose3 pose_global,
                                  gtsam::Pose3& pose_relative);
 
