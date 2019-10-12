@@ -110,6 +110,7 @@ std::string ArtifactHandler::GetArtifactID(gtsam::Symbol artifact_key) {
       return artifact_id;
     }
   } 
+  // TODO: What to do when artifact id not found
   std::cout << "Artifact ID not found for key" << gtsam::DefaultKeyFormatter(artifact_key) << std::endl;
   return "";
 }

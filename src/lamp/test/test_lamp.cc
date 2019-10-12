@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "lamp/LampRobot.h"
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 
 class TestLampRobot : public ::testing::Test {
 public:
@@ -16,19 +17,19 @@ public:
 
   TestLampRobot() : data(new pcl::PointCloud<pcl::PointXYZ>(2, 2)) {
     // Load params
-    system("rosparam load $(rospack find "
-           "lamp)/config/precision_parameters.yaml");
-    system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
-    system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
-    system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
-    system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
+    // system("rosparam load $(rospack find "
+    //        "lamp)/config/precision_parameters.yaml");
+    // system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
+    // system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
+    // system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
+    // system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
-    system("rosparam load $(rospack find "
-           "point_cloud_filter)/config/parameters.yaml");
-    system("rosparam load $(rospack find "
-           "point_cloud_mapper)/config/parameters.yaml");
-    system("rosparam load $(rospack find "
-           "factor_handlers)/config/odom_parameters.yaml");
+    // system("rosparam load $(rospack find "
+    //        "point_cloud_filter)/config/parameters.yaml");
+    // system("rosparam load $(rospack find "
+    //        "point_cloud_mapper)/config/parameters.yaml");
+    // system("rosparam load $(rospack find "
+    //        "factor_handlers)/config/odom_parameters.yaml");
 
     // Create data in the point cloud
     int n_points = 2;
@@ -84,7 +85,6 @@ public:
     void SetTimeThreshold(double threshold) {lr.time_threshold_ = threshold;}
     void SetPrefix(char c) {lr.prefix_ = c;}
     void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) { lr.values_.insert(key, pose); }
-
     bool GetOptFlag() {
       return lr.b_run_optimization_;
     }
@@ -93,6 +93,13 @@ public:
       return lr.values_;
     }
 
+    void setArtifactInGlobal(bool value){
+      lr.b_artifacts_in_global_ = value;
+    }
+
+    void setFixedCovariance(bool value){
+      lr.b_use_fixed_covariances_ = value;
+    }
     void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
       lr.keyed_scans_.insert(
           std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
@@ -125,77 +132,106 @@ public:
 
 };
 
-TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
-  // del params
-  ros::param::del("fiducial_calibration/position/y");
-  ros::param::del("fiducial_calibration/position/x");
-  ros::param::del("fiducial_calibration/position/z");
-  ros::param::del("fiducial_calibration/orientation/x");
-  ros::param::del("fiducial_calibration/orientation/y");
-  ros::param::del("fiducial_calibration/orientation/z");
-  ros::param::del("fiducial_calibration/orientation/w");
-  ros::param::del("init/position_sigma/x");
-  ros::param::del("init/position_sigma/y");
-  ros::param::del("init/position_sigma/z");
-  ros::param::del("init/orientation_sigma/roll");
-  ros::param::del("init/orientation_sigma/pitch");
-  ros::param::del("init/orientation_sigma/yaw");
+// TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
+//   // del params
+//   ros::param::del("fiducial_calibration/position/y");
+//   ros::param::del("fiducial_calibration/position/x");
+//   ros::param::del("fiducial_calibration/position/z");
+//   ros::param::del("fiducial_calibration/orientation/x");
+//   ros::param::del("fiducial_calibration/orientation/y");
+//   ros::param::del("fiducial_calibration/orientation/z");
+//   ros::param::del("fiducial_calibration/orientation/w");
+//   ros::param::del("init/position_sigma/x");
+//   ros::param::del("init/position_sigma/y");
+//   ros::param::del("init/position_sigma/z");
+//   ros::param::del("init/orientation_sigma/roll");
+//   ros::param::del("init/orientation_sigma/pitch");
+//   ros::param::del("init/orientation_sigma/yaw");
 
-  EXPECT_FALSE(SetInitialPosition());
+//   EXPECT_FALSE(SetInitialPosition());
 
-  EXPECT_EQ(GetValuesSize(), 0);
-}
+//   EXPECT_EQ(GetValuesSize(), 0);
+// }
 
-TEST_F(TestLampRobot, TestSetInitialPosition) {
-  ros::Time::init();
+// TEST_F(TestLampRobot, TestSetInitialPosition) {
+//   ros::Time::init();
 
-  // Set params
-  ros::param::set("fiducial_calibration/position/x", 1.0);
-  ros::param::set("fiducial_calibration/position/y", 1.0);
-  ros::param::set("fiducial_calibration/position/z", 1.0);
-  ros::param::set("fiducial_calibration/orientation/x", 0.0);
-  ros::param::set("fiducial_calibration/orientation/y", 0.0);
-  ros::param::set("fiducial_calibration/orientation/z", 0.0);
-  ros::param::set("fiducial_calibration/orientation/w", 1.0);
+//   // Set params
+//   ros::param::set("fiducial_calibration/position/x", 1.0);
+//   ros::param::set("fiducial_calibration/position/y", 1.0);
+//   ros::param::set("fiducial_calibration/position/z", 1.0);
+//   ros::param::set("fiducial_calibration/orientation/x", 0.0);
+//   ros::param::set("fiducial_calibration/orientation/y", 0.0);
+//   ros::param::set("fiducial_calibration/orientation/z", 0.0);
+//   ros::param::set("fiducial_calibration/orientation/w", 1.0);
 
-  ros::param::set("init/position_sigma/x", 1.0);
-  ros::param::set("init/position_sigma/y", 1.0);
-  ros::param::set("init/position_sigma/z", 1.0);
-  ros::param::set("init/orientation_sigma/roll", 1.0);
-  ros::param::set("init/orientation_sigma/pitch", 1.0);
-  ros::param::set("init/orientation_sigma/yaw", 1.0);
+//   ros::param::set("init/position_sigma/x", 1.0);
+//   ros::param::set("init/position_sigma/y", 1.0);
+//   ros::param::set("init/position_sigma/z", 1.0);
+//   ros::param::set("init/orientation_sigma/roll", 1.0);
+//   ros::param::set("init/orientation_sigma/pitch", 1.0);
+//   ros::param::set("init/orientation_sigma/yaw", 1.0);
 
-  EXPECT_TRUE(SetInitialPosition());
-  EXPECT_EQ(GetValuesSize(),1);
-}
+//   EXPECT_TRUE(SetInitialPosition());
+//   EXPECT_EQ(GetValuesSize(),1);
+// }
 
+/**
+ * Graph:
+ *       -----------------------------------
+ *       |                                 V
+ *      l1  ---------->  l2  ---------->  l3
+ * 
+ */ 
 TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Construct the new Artifact data
   FactorData new_data;
   new_data.b_has_data = true;
   new_data.type = "artifact";
 
-  gtsam::Symbol artifact_key = gtsam::Symbol('l',0);
+  gtsam::Symbol artifact_key = gtsam::Symbol('l',1);
   new_data.artifact_key.push_back(artifact_key);
 
   gtsam::Pose3 transform = gtsam::Pose3(gtsam::Rot3(), 
-                                          gtsam::Point3 (0.3,0.3,0.3));
+                                          gtsam::Point3 (9.7, 0, 0));
   new_data.transforms.push_back(transform);
 
   Eigen::VectorXd sig (6);
   sig << 0.3,0.3,0.3,0.3,0.3,0.3;
-  // gtsam::SharedNoiseModel noise = gtsam::noiseModel::Gaussian::sigmas(sig);
-  // new_data.covariances.push_back(noise);
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
+  new_data.covariances.push_back(noise);
 
   std::pair<ros::Time, ros::Time> time_stamp = std::make_pair(ros::Time(5.0), ros::Time(0.0));
   new_data.time_stamps.push_back(time_stamp);
 
-  // Construct the graph
-  gtsam::NonlinearFactorGraph nfg;
-  gtsam::SharedNoiseModel priorNoise = gtsam::noiseModel::Gaussian::sigmas(gtsam::Vector6(0.3,0.3,0.3,0.3,0.3,0.3));
-  // Call ProcessArtifactData on graph
+  // Set the global flag
+  setArtifactInGlobal(false);
+  setFixedCovariance(true);
 
-  // Check values
+  // Add to values
+  AddStampToOdomKey(ros::Time(4.0), gtsam::Symbol('a',0));
+  InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (9.7, 0, 0)));
+
+  // Call the ProcessArtifactData. Adding a new artifact
+  ProcessArtifacts(new_data);
+
+  // As this is a new artifact optimization should be false
+  EXPECT_FALSE(GetOptFlag());
+
+  // TODO: Need to run the optimization here once
+
+  // Change time and send the message again
+  new_data.time_stamps.clear();
+  new_data.time_stamps.push_back(std::make_pair<ros::Time, ros::Time>(ros::Time(6.0), ros::Time(0.0)));
+  new_data.transforms.clear();
+  new_data.transforms.push_back(gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (9.7, 0, 0)));
+
+  // Call the ProcessArtifactData. Adding an old artifact
+  ProcessArtifacts(new_data); 
+
+  // Call ProcessArtifactData on graph
 
 }
 
