@@ -324,7 +324,7 @@ gtsam::SharedNoiseModel ArtifactHandler::ExtractCovariance(const boost::array<fl
   gtsam::Matrix33 cov;
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
-      cov(i+3, j+3) = covariance[3*i+j];
+      cov(i, j) = covariance[3*i+j];
 
   gtsam::SharedNoiseModel noise =
       gtsam::noiseModel::Gaussian::Covariance(cov);

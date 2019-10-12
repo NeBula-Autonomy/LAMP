@@ -111,6 +111,7 @@ public:
     pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
       return lr.mapper_.GetMapData();
     }
+    void ProcessArtifacts(FactorData data) {lr.ProcessArtifactData(data);}
     // Other utilities
 
   protected: 
@@ -166,6 +167,36 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
 
   EXPECT_TRUE(SetInitialPosition());
   EXPECT_EQ(GetValuesSize(),1);
+}
+
+TEST_F(TestLampRobot, TestProcessArtifactData) {
+  // Construct the new Artifact data
+  FactorData new_data;
+  new_data.b_has_data = true;
+  new_data.type = "artifact";
+
+  gtsam::Symbol artifact_key = gtsam::Symbol('l',0);
+  new_data.artifact_key.push_back(artifact_key);
+
+  gtsam::Pose3 transform = gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (0.3,0.3,0.3));
+  new_data.transforms.push_back(transform);
+
+  Eigen::VectorXd sig (6);
+  sig << 0.3,0.3,0.3,0.3,0.3,0.3;
+  // gtsam::SharedNoiseModel noise = gtsam::noiseModel::Gaussian::sigmas(sig);
+  // new_data.covariances.push_back(noise);
+
+  std::pair<ros::Time, ros::Time> time_stamp = std::make_pair(ros::Time(5.0), ros::Time(0.0));
+  new_data.time_stamps.push_back(time_stamp);
+
+  // Construct the graph
+  gtsam::NonlinearFactorGraph nfg;
+  gtsam::SharedNoiseModel priorNoise = gtsam::noiseModel::Gaussian::sigmas(gtsam::Vector6(0.3,0.3,0.3,0.3,0.3,0.3));
+  // Call ProcessArtifactData on graph
+
+  // Check values
+
 }
 
 TEST_F(TestLampRobot, SetInitialKey) {
