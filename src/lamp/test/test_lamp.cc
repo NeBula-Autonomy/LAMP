@@ -6,7 +6,6 @@
 #include <gtest/gtest.h>
 
 #include "lamp/LampRobot.h"
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 
 class TestLampRobot : public ::testing::Test {
 public:
@@ -17,19 +16,19 @@ public:
 
   TestLampRobot() : data(new pcl::PointCloud<pcl::PointXYZ>(2, 2)) {
     // Load params
-    // system("rosparam load $(rospack find "
-    //        "lamp)/config/precision_parameters.yaml");
-    // system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
-    // system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
-    // system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
-    // system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
+    system("rosparam load $(rospack find "
+           "lamp)/config/precision_parameters.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_frames.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_rates.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
+    system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
-    // system("rosparam load $(rospack find "
-    //        "point_cloud_filter)/config/parameters.yaml");
-    // system("rosparam load $(rospack find "
-    //        "point_cloud_mapper)/config/parameters.yaml");
-    // system("rosparam load $(rospack find "
-    //        "factor_handlers)/config/odom_parameters.yaml");
+    system("rosparam load $(rospack find "
+           "point_cloud_filter)/config/parameters.yaml");
+    system("rosparam load $(rospack find "
+           "point_cloud_mapper)/config/parameters.yaml");
+    system("rosparam load $(rospack find "
+           "factor_handlers)/config/odom_parameters.yaml");
 
     // Create data in the point cloud
     int n_points = 2;
@@ -119,6 +118,13 @@ public:
       return lr.mapper_.GetMapData();
     }
     void ProcessArtifacts(FactorData data) {lr.ProcessArtifactData(data);}
+    
+    void ConvertGlobalToRelative(const ros::Time stamp,
+                                 const gtsam::Pose3 pose_global,
+                                 gtsam::Pose3& pose_relative) 
+    {
+      lr.ConvertGlobalToRelative(stamp, pose_global, pose_relative);
+    }
     // Other utilities
 
   protected: 
@@ -132,55 +138,51 @@ public:
 
 };
 
-// TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
-//   // del params
-//   ros::param::del("fiducial_calibration/position/y");
-//   ros::param::del("fiducial_calibration/position/x");
-//   ros::param::del("fiducial_calibration/position/z");
-//   ros::param::del("fiducial_calibration/orientation/x");
-//   ros::param::del("fiducial_calibration/orientation/y");
-//   ros::param::del("fiducial_calibration/orientation/z");
-//   ros::param::del("fiducial_calibration/orientation/w");
-//   ros::param::del("init/position_sigma/x");
-//   ros::param::del("init/position_sigma/y");
-//   ros::param::del("init/position_sigma/z");
-//   ros::param::del("init/orientation_sigma/roll");
-//   ros::param::del("init/orientation_sigma/pitch");
-//   ros::param::del("init/orientation_sigma/yaw");
+TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
+  // del params
+  ros::param::del("fiducial_calibration/position/y");
+  ros::param::del("fiducial_calibration/position/x");
+  ros::param::del("fiducial_calibration/position/z");
+  ros::param::del("fiducial_calibration/orientation/x");
+  ros::param::del("fiducial_calibration/orientation/y");
+  ros::param::del("fiducial_calibration/orientation/z");
+  ros::param::del("fiducial_calibration/orientation/w");
+  ros::param::del("init/position_sigma/x");
+  ros::param::del("init/position_sigma/y");
+  ros::param::del("init/position_sigma/z");
+  ros::param::del("init/orientation_sigma/roll");
+  ros::param::del("init/orientation_sigma/pitch");
+  ros::param::del("init/orientation_sigma/yaw");
 
-//   EXPECT_FALSE(SetInitialPosition());
+  EXPECT_FALSE(SetInitialPosition());
 
-//   EXPECT_EQ(GetValuesSize(), 0);
-// }
+  EXPECT_EQ(GetValuesSize(), 0);
+}
 
-// TEST_F(TestLampRobot, TestSetInitialPosition) {
-//   ros::Time::init();
+TEST_F(TestLampRobot, TestSetInitialPosition) {
+  ros::Time::init();
 
-//   // Set params
-//   ros::param::set("fiducial_calibration/position/x", 1.0);
-//   ros::param::set("fiducial_calibration/position/y", 1.0);
-//   ros::param::set("fiducial_calibration/position/z", 1.0);
-//   ros::param::set("fiducial_calibration/orientation/x", 0.0);
-//   ros::param::set("fiducial_calibration/orientation/y", 0.0);
-//   ros::param::set("fiducial_calibration/orientation/z", 0.0);
-//   ros::param::set("fiducial_calibration/orientation/w", 1.0);
+  // Set params
+  ros::param::set("fiducial_calibration/position/x", 1.0);
+  ros::param::set("fiducial_calibration/position/y", 1.0);
+  ros::param::set("fiducial_calibration/position/z", 1.0);
+  ros::param::set("fiducial_calibration/orientation/x", 0.0);
+  ros::param::set("fiducial_calibration/orientation/y", 0.0);
+  ros::param::set("fiducial_calibration/orientation/z", 0.0);
+  ros::param::set("fiducial_calibration/orientation/w", 1.0);
 
-//   ros::param::set("init/position_sigma/x", 1.0);
-//   ros::param::set("init/position_sigma/y", 1.0);
-//   ros::param::set("init/position_sigma/z", 1.0);
-//   ros::param::set("init/orientation_sigma/roll", 1.0);
-//   ros::param::set("init/orientation_sigma/pitch", 1.0);
-//   ros::param::set("init/orientation_sigma/yaw", 1.0);
+  ros::param::set("init/position_sigma/x", 1.0);
+  ros::param::set("init/position_sigma/y", 1.0);
+  ros::param::set("init/position_sigma/z", 1.0);
+  ros::param::set("init/orientation_sigma/roll", 1.0);
+  ros::param::set("init/orientation_sigma/pitch", 1.0);
+  ros::param::set("init/orientation_sigma/yaw", 1.0);
 
-//   EXPECT_TRUE(SetInitialPosition());
-//   EXPECT_EQ(GetValuesSize(),1);
-// }
+  EXPECT_TRUE(SetInitialPosition());
+  EXPECT_EQ(GetValuesSize(),1);
+}
 
 /**
- * Graph:
- *       -----------------------------------
- *       |                                 V
- *      l1  ---------->  l2  ---------->  l3
  * 
  */ 
 TEST_F(TestLampRobot, TestProcessArtifactData) {
@@ -218,7 +220,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 
   // As this is a new artifact optimization should be false
   EXPECT_FALSE(GetOptFlag());
-
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
   // TODO: Need to run the optimization here once
 
   // Change time and send the message again
@@ -230,9 +232,6 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 
   // Call the ProcessArtifactData. Adding an old artifact
   ProcessArtifacts(new_data); 
-
-  // Call ProcessArtifactData on graph
-
 }
 
 TEST_F(TestLampRobot, SetInitialKey) {
@@ -252,6 +251,30 @@ TEST_F(TestLampRobot, SetInitialKey) {
 
   EXPECT_EQ(std::string("a0"), key_string);
 }
+
+TEST_F(TestLampRobot, ConvertGlobalToRelative) {
+  // Ros time to search for current key
+  const ros::Time stamp = ros::Time(5.0);
+  // Global pose of the artifact
+  const gtsam::Pose3 pose_global = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(5.0,0.0,0.0));
+  // Final relative pose between artifact and the current key
+  gtsam::Pose3 pose_relative;
+  // Add current key to map
+  AddStampToOdomKey(ros::Time(4.0), gtsam::Symbol('a', 0));
+  // Add value/pose for the current key
+  InsertValues(gtsam::Symbol('a', 0), gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(420.0, 0.0, 0.0)));
+  // Convert global to relative pose
+  ConvertGlobalToRelative(stamp,
+                          pose_global,
+                          pose_relative);
+  // Check
+  EXPECT_EQ(pose_relative.translation().vector(),
+                         gtsam::Point3(-415.0, 0.0, 0.0));
+}
+
+// TEST_F() {
+
+// }
 
 TEST_F(TestLampRobot, SetFactorPrecisions) {
 
