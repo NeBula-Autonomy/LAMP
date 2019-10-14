@@ -134,22 +134,22 @@ void LampPgo::PublishValues() const {
 
   // Then store the values as nodes
   gtsam::KeyVector key_list = values_.keys();
-  for (size_t i = 0; i < key_list.size(); i++) {
+  for (const auto& key : key_list) {
     pose_graph_msgs::PoseGraphNode node;
-    node.key = key_list[i];
+    node.key = key;
     // pose - translation
-    node.pose.position.x = values_.at<gtsam::Pose3>(i).translation().x();
-    node.pose.position.y = values_.at<gtsam::Pose3>(i).translation().y();
-    node.pose.position.z = values_.at<gtsam::Pose3>(i).translation().z();
+    node.pose.position.x = values_.at<gtsam::Pose3>(key).translation().x();
+    node.pose.position.y = values_.at<gtsam::Pose3>(key).translation().y();
+    node.pose.position.z = values_.at<gtsam::Pose3>(key).translation().z();
     // pose - rotation (to quaternion)
     node.pose.orientation.x =
-        values_.at<gtsam::Pose3>(i).rotation().toQuaternion().x();
+        values_.at<gtsam::Pose3>(key).rotation().toQuaternion().x();
     node.pose.orientation.y =
-        values_.at<gtsam::Pose3>(i).rotation().toQuaternion().y();
+        values_.at<gtsam::Pose3>(key).rotation().toQuaternion().y();
     node.pose.orientation.z =
-        values_.at<gtsam::Pose3>(i).rotation().toQuaternion().z();
+        values_.at<gtsam::Pose3>(key).rotation().toQuaternion().z();
     node.pose.orientation.w =
-        values_.at<gtsam::Pose3>(i).rotation().toQuaternion().w();
+        values_.at<gtsam::Pose3>(key).rotation().toQuaternion().w();
 
     pose_graph_msg.nodes.push_back(node);
   }
