@@ -620,7 +620,6 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     }
 
     // Is a relative tranform, so need to handle linking to the pose-graph
-    
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
 
