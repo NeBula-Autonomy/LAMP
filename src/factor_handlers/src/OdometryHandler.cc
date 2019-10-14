@@ -91,21 +91,21 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("LidarOdometryCallback");      
-    if (!InsertMsgInBufferMap(msg, lidar_odometry_buffer_)){
+    if (!InsertMsgInBuffer(msg, lidar_odometry_buffer_)){
         ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store message in buffer");
     } 
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("VisualOdometryCallback");
-    if (!InsertMsgInBufferMap(msg, visual_odometry_buffer_)){
+    if (!InsertMsgInBuffer(msg, visual_odometry_buffer_)){
         ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store message in buffer");
     } 
 }
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {    
     ROS_INFO("WheelOdometryCallback");
-    if (!InsertMsgInBufferMap(msg, wheel_odometry_buffer_)){
+    if (!InsertMsgInBuffer(msg, wheel_odometry_buffer_)){
         ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store message in buffer");
     } 
 }
@@ -387,25 +387,25 @@ void OdometryHandler::ClearOdometryBuffers() {
 
 // Getters -----------------------------------------------------------------------------------------------
 
-bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer& odom_buffer_map, PoseCovStamped& output) const {
+bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const {
   
   // If map is empty, return false to the caller 
-  if (odom_buffer_map.size() == 0){
+  if (odom_buffer.size() == 0){
     return false;
   }
 
   // Given the input timestamp, search for lower bound (first entry that is not less than the given timestamp)
-  auto itrTime = odom_buffer_map.lower_bound(stamp.toSec());
+  auto itrTime = odom_buffer.lower_bound(stamp.toSec());
   auto time2 = itrTime->first;
   double time_diff;
 
   // If this gives the start of the buffer, then take that PosCovStamped
-  if (itrTime == odom_buffer_map.begin()) {
+  if (itrTime == odom_buffer.begin()) {
     output = itrTime->second;
     time_diff = itrTime->first - stamp.toSec();
     ROS_WARN("Timestamp before the start of the odometry buffer");
     ROS_INFO_STREAM("time diff is: " << time_diff);
-  } else if (itrTime == odom_buffer_map.end()) {
+  } else if (itrTime == odom_buffer.end()) {
     // Check if it is past the end of the buffer - if so, then take the last
     // PosCovStamped
     ROS_WARN("Timestamp past the end of the odometry buffer");
@@ -443,10 +443,10 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer&
   return true; 
 }
 
-bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer_map, PoseCovStampedPair& output_poses) const {
+bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const {
   PoseCovStamped first_pose, second_pose; 
-  if (GetPoseAtTime(t1, odom_buffer_map, first_pose)){
-    if (GetPoseAtTime(t2, odom_buffer_map, second_pose)) {
+  if (GetPoseAtTime(t1, odom_buffer, first_pose)){
+    if (GetPoseAtTime(t2, odom_buffer, second_pose)) {
       output_poses = std::make_pair(first_pose, second_pose);
       return true;
     }
@@ -458,9 +458,7 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1, const ros::Time t2, co
 
 bool OdometryHandler::GetClosestLidarTime(const ros::Time stamp, ros::Time& closest_stamp) const {
   
-  ROS_INFO("GetClosestLidarTime Map Based Method ");
-  
-  // Map based logic 
+  ROS_INFO("GetClosestLidarTime Method ");
 
   // If map is empty, return false to the caller 
   if (lidar_odometry_buffer_.size() == 0){
