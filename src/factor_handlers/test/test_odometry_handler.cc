@@ -98,9 +98,9 @@ protected:
     // Utilities
 
     bool GetPoseAtTime(const ros::Time stamp,
-                       const OdomPoseBuffer& odom_buffer_map,
+                       const OdomPoseBuffer& odom_buffer,
                        PoseCovStamped& output) {
-      return oh.GetPoseAtTime(stamp, odom_buffer_map, output);
+      return oh.GetPoseAtTime(stamp, odom_buffer, output);
     }
 
     bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
@@ -128,8 +128,8 @@ protected:
     }
 
     template <typename T1, typename T2> 
-    int CheckBufferSizeMap(const std::map<T1, T2>& x) {
-      return oh.CheckBufferSizeMap<T1, T2>(x);
+    int CheckBufferSize(const std::map<T1, T2>& x) {
+      return oh.CheckBufferSize<T1, T2>(x);
     }
 
     gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {

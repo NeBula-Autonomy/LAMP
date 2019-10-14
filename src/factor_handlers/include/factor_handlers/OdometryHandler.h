@@ -6,17 +6,12 @@
  *          Nobuhiro Funabiki   (nobuhiro.funabiki@jpl.nasa.gov)
 */
 
-
 // Define
 #ifndef ODOMETRY_HANDLER_H
 #define ODOMETRY_HANDLER_H
 
-
-
 // Includes
 #include <factor_handlers/LampDataHandlerBase.h>
-
-
 
 // Typedefs
 typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
@@ -37,10 +32,8 @@ typedef std::pair<GtsamPosCov, GtsamPosCov> GtsamPosCovPair;
 // Class Definition 
 class OdometryHandler : public LampDataHandlerBase{
 
-
     friend class OdometryHandlerTest;
     
-
     public:
         
         // Constructors and Destructors
@@ -59,7 +52,6 @@ class OdometryHandler : public LampDataHandlerBase{
         bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg);
         GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const;
         
-
       protected:
 
         // Odometry Subscribers 
@@ -86,8 +78,7 @@ class OdometryHandler : public LampDataHandlerBase{
         // Point Cloud Storage (Time stamp and point cloud)
         std::map<double, PointCloud> point_cloud_buffer_;
 
-        // Utilities        
-    
+        // Utilities    
         template <typename T1, typename T2> 
         int CheckBufferSize(const std::map<T1, T2>& x) {
           return x.size();
@@ -119,7 +110,6 @@ class OdometryHandler : public LampDataHandlerBase{
         void ResetFactorData();        
 
         // Getters
-
         bool GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) const;
         bool GetPosesAtTimes(const ros::Time t1, const ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) const;
         gtsam::Pose3 GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const;        
@@ -147,33 +137,3 @@ class OdometryHandler : public LampDataHandlerBase{
 };
 
 #endif
-
-/*
-UNUSED
-std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
-void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
-void PrepareFactor(OdomPoseBuffer& odom_buffer);        
-void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
-double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
-PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
-
-
-template <typename T>
-int CheckBufferSize(const std::vector<T>& x) {
-     return x.size();
-}
-
-template <typename T1, typename T2>
-bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
-    // TODO: This function should be defined in the base class
-    auto prev_size = CheckBufferSize<T2>(buffer);
-    T2 stored_msg;
-    // TODO: The following two lines should be implemented in a function 
-    stored_msg.header = msg->header; 
-    stored_msg.pose = msg->pose;
-    buffer.push_back(stored_msg);
-    auto current_size = CheckBufferSize<T2>(buffer);
-    if (current_size != (prev_size + 1)) return false;
-    return true;
-}
-*/
