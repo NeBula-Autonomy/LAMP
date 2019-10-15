@@ -227,7 +227,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
   new_data.covariances.push_back(noise);
 
-  std::pair<ros::Time, ros::Time> time_stamp = std::make_pair(ros::Time(1.1), ros::Time(0.0));
+  std::pair<ros::Time, ros::Time> time_stamp = std::make_pair(ros::Time(0.11), ros::Time(0.0));
   new_data.time_stamps.push_back(time_stamp);
 
   // Set the global flag

@@ -139,6 +139,10 @@ gtsam::Symbol LampBase::GetClosestKeyAtTime(const ros::Time& stamp) const {
     t_closest = t2;
     b_is_end_case = true;
   } else if (iterAfter == stamp_to_odom_key_.end()) {
+    ROS_ERROR("Time is %f", stamp.toSec());
+    ROS_ERROR("iterAfter is %f", iterAfter->first);
+    ROS_ERROR("iterBefore is %f", iterBefore->first);
+
     ROS_ERROR("Time past end of the range (GetClosestKeyAtTime)");
     key_out = iterBefore->second;
     t_closest = t1;
