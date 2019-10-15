@@ -150,7 +150,7 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     
     // Parameters
-    bool artifacts_in_global_;
+    bool b_artifacts_in_global_;
     int largest_artifact_id_; 
     bool use_artifact_loop_closure_;
 

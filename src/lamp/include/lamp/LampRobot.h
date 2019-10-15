@@ -90,6 +90,10 @@ class LampRobot : public LampBase {
                                        gtsam::Pose3& global_pose,
                                        gtsam::Symbol& key_from);
 
+    bool ConvertGlobalToRelative(const ros::Time stamp,
+                                 const gtsam::Pose3 pose_global,
+                                 gtsam::Pose3& pose_relative);
+
     // Data Handler classes
     OdometryHandler odometry_handler_; 
     ArtifactHandler artifact_handler_;
@@ -109,7 +113,7 @@ class LampRobot : public LampBase {
 
     // Parameters
     gtsam::Vector6 initial_noise_;
-
+    bool b_artifacts_in_global_;
 
     // Test class fixtures
     friend class TestLampRobot;

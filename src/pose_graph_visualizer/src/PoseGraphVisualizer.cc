@@ -65,7 +65,7 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle &n) {
     return false;
   if (!pu::Get("frame_id/base", base_frame_id_))
     return false;
-  if (!pu::Get("frame_id/artifacts_in_global", artifacts_in_global_))
+  if (!pu::Get("b_artifacts_in_global", artifacts_in_global_))
     return false;
 
   // Load proximity threshold from LaserLoopClosure node
