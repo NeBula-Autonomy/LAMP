@@ -78,32 +78,14 @@ class OdometryHandler : public LampDataHandlerBase{
         // Point Cloud Storage (Time stamp and point cloud)
         std::map<double, PointCloud> point_cloud_buffer_;
 
-        // Utilities    
-        template <typename T1, typename T2> 
-        int CheckBufferSize(const std::map<T1, T2>& x) {
-          return x.size();
-        }
+        //TODO: Check to see if we need this function? Not used anywhere in the code.
+        // template <typename T1, typename T2> 
+        // int CheckBufferSize(const std::map<T1, T2>& x) {
+        //   return x.size();
+        // }
         
         bool CheckOdomSize();
-
-        bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg, OdomPoseBuffer& buffer) {
-          // TODO: Make it template 
-          auto initial_size = buffer.size();
-          PoseCovStamped current_msg;
-          current_msg.header = odom_msg->header; 
-          current_msg.pose = odom_msg->pose; 
-          auto current_time = odom_msg->header.stamp.toSec();
-          buffer.insert({current_time, current_msg});     
-          auto final_size = buffer.size();
-          if (final_size == (initial_size+1)){
-            // Msg insertion was successful, return true to the caller
-            return true;
-          }
-          else {
-            return false;
-          }               
-        }
-        
+        bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg, OdomPoseBuffer& buffer);
         void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
         double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
         void ClearOdometryBuffers();

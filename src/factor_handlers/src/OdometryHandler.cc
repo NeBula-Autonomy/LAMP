@@ -121,6 +121,22 @@ void OdometryHandler::PointCloudCallback(const sensor_msgs::PointCloud2::ConstPt
 }
 
 // Utilities ---------------------------------------------------------------------------------------------
+bool OdometryHandler::InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg, OdomPoseBuffer& buffer) {
+  auto initial_size = buffer.size();
+  PoseCovStamped current_msg;
+  current_msg.header = odom_msg->header; 
+  current_msg.pose = odom_msg->pose; 
+  auto current_time = odom_msg->header.stamp.toSec();
+  buffer.insert({current_time, current_msg});     
+  auto final_size = buffer.size();
+  if (final_size == (initial_size+1)){
+    // Msg insertion was successful, return true to the caller
+    return true;
+  }
+  else {
+    return false;
+  }               
+}
 
 bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
                                    GtsamPosCov& delta_pose) {
