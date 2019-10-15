@@ -149,6 +149,10 @@ protected:
       return oh.PointCloudCallback(msg);
     }
 
+    bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg, OdomPoseBuffer& buffer){
+      return oh.InsertMsgInBuffer(odom_msg, buffer);
+    }
+
     // Create three messages
     PoseCovStamped msg_first;
     PoseCovStamped msg_second;
@@ -887,6 +891,22 @@ TEST_F(OdometryHandlerTest, TestEmptyBufferHandling) {
   EXPECT_FALSE(myOutput.b_has_value);
 }
 
+
+TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
+  // Create a buffer
+  // std::vector<PoseCovStamped> myBuffer;
+  OdomPoseBuffer myBuffer;
+  // Create a message
+  Odometry odom_msg;
+  odom_msg.pose = msg_first.pose;
+  odom_msg.header = msg_first.header;
+  Odometry::ConstPtr my_msg(new Odometry(odom_msg));
+  // // Call the method
+  bool result = InsertMsgInBuffer(my_msg, myBuffer);
+  // Check result is correct
+  ASSERT_TRUE(result);
+}
+
 //   ros::Time query1, query2, query3;
 //   query1.fromSec(0.0);
 //   query2.fromSec(10.3);
@@ -904,17 +924,7 @@ TEST_F(OdometryHandlerTest, TestEmptyBufferHandling) {
 
 // Test we don't pass ----------------------------------------------------------------
 
-/* TEST InsertMsgInBuffer */
-// TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
-//    // Create a buffer
-//     std::vector<PoseCovStamped> myBuffer;
-//     // Create a message
-//     Odometry::ConstPtr msg;
-//     // Call the method
-//     bool result = InsertMsgInBuffer<Odometry, PoseCovStamped>(msg, myBuffer);
-//    // Check result is correct
-//    ASSERT_TRUE(result);
-// }
+
 
 TEST_F(OdometryHandlerTest, TestGetCovariance) {
   PoseCovStampedPair pose_cov_stamped_pair;
