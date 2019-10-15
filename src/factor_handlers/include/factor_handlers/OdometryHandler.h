@@ -50,7 +50,7 @@ class OdometryHandler : public LampDataHandlerBase{
         bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose);
         bool GetOdomDeltaLatestTime(ros::Time& t_now, GtsamPosCov& delta_pose);
         bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg);
-        GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2) const;
+        GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1, const ros::Time t2);
         
       protected:
 
