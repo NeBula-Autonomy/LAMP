@@ -127,10 +127,11 @@ protected:
       return oh.GetFusedOdomDeltaBetweenTimes(t1, t2);
     }
 
-    template <typename T1, typename T2> 
-    int CheckBufferSize(const std::map<T1, T2>& x) {
-      return oh.CheckBufferSize<T1, T2>(x);
-    }
+    //TODO: If not used in the code, remove the function.
+    // template <typename T1, typename T2> 
+    // int CheckBufferSize(const std::map<T1, T2>& x) {
+    //   return oh.CheckBufferSize<T1, T2>(x);
+    // }
 
     gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
       return oh.GetTransform(pose_cov_stamped_pair);
@@ -938,8 +939,6 @@ TEST_F(OdometryHandlerTest, TestGetCovariance) {
 }
 
 
-
-
 // Initialize: Done
 
 // LoadParameters
@@ -997,12 +996,6 @@ int main(int argc, char** argv) {
 UNUSED
 
 // ----------------------------------------------------------------------------------------
-
-template <typename T>
-int CheckBufferSize(const std::vector<T>& x) {
-  return oh.CheckBufferSize<T>(x);
-}
-
 TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
   std::vector<PoseCovStamped> myBuffer;
   PoseCovStamped my_msg;
