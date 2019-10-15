@@ -96,6 +96,10 @@ public:
       lr.b_artifacts_in_global_ = value;
     }
 
+    void LidarCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+      lr.odometry_handler_.LidarOdometryCallback(msg);
+    }
+
     void setFixedCovariance(bool value){
       lr.b_use_fixed_covariances_ = value;
     }
@@ -183,7 +187,27 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
 }
 
 /**
+ *  Creating a FactorData with new artifact l1.
+ *  l1.pose = gtsam::Rot3(), gtsam::Point3 (9.7, 0, 0)
+ *  l1.time = ros::Time (5.0)
+ *  ArtifactInGlobal = false
+ *  FixedCovariance = true
  * 
+ * Nearest Odom key for GetClosestKey
+ *  Node = a0
+ *  Node.time = ros::Time(4.0)
+ *  value of node = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3 (0, 0, 0))
+ * 
+ * Call ProcessArtifacts with this new artifact. New artifact added
+ * 
+ * TODO: Maybe I sould give a new node as well for GetClosestKey
+ * Change the time of l1 to ros::Time = 6.0
+ * Change transform (TODO: Change value)
+ * Call ProcessArtifacts again on this new data. However
+ * this time this should be present in values.
+ * 
+ * ERROR: odombuffer needs to be filled in order for HandleRelativeMeasurements
+ * to work.
  */ 
 TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Construct the new Artifact data
@@ -203,7 +227,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
   new_data.covariances.push_back(noise);
 
-  std::pair<ros::Time, ros::Time> time_stamp = std::make_pair(ros::Time(5.0), ros::Time(0.0));
+  std::pair<ros::Time, ros::Time> time_stamp = std::make_pair(ros::Time(1.1), ros::Time(0.0));
   new_data.time_stamps.push_back(time_stamp);
 
   // Set the global flag
@@ -211,9 +235,65 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   setFixedCovariance(true);
 
   // Add to values
-  AddStampToOdomKey(ros::Time(4.0), gtsam::Symbol('a',0));
+  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a',0));
   InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(), 
-                                          gtsam::Point3 (9.7, 0, 0)));
+                                          gtsam::Point3 (0, 0, 0)));
+  // AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a',1));
+  // InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(), 
+  //                                         gtsam::Point3 (2.0, 0, 0)));
+
+  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a',2));
+  InsertValues(gtsam::Symbol('a',2), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (4.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a',3));
+  InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (6.0, 0, 0)));
+
+
+  // Construct the odometry message for a0 (the nearest key)
+  nav_msgs::Odometry a0_value;
+  a0_value.header.stamp = ros::Time(0.05);
+  geometry_msgs::PoseWithCovariance msg_pose;
+  a0_value.pose = msg_pose;
+  nav_msgs::Odometry::ConstPtr a0_odom(
+      new nav_msgs::Odometry(a0_value));
+
+  // Call Lidar callback
+  LidarCallback(a0_odom);
+
+  // New message at 0.1 (the nearest key)
+  nav_msgs::Odometry l1_value;
+  l1_value.header.stamp = ros::Time(0.1);
+  l1_value.pose.pose.position.x = 2.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a1_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a1_odom);
+
+  // New message at 0.15
+  l1_value.header.stamp = ros::Time(0.15);
+  l1_value.pose.pose.position.x = 4.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a2_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a2_odom);
+
+  // New message at 0.2
+  l1_value.header.stamp = ros::Time(0.2);
+  l1_value.pose.pose.position.x = 6.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a3_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a3_odom);
 
   // Call the ProcessArtifactData. Adding a new artifact
   ProcessArtifacts(new_data);
@@ -231,7 +311,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
                                           gtsam::Point3 (9.7, 0, 0)));
 
   // Call the ProcessArtifactData. Adding an old artifact
-  ProcessArtifacts(new_data); 
+  // ProcessArtifacts(new_data); 
 }
 
 TEST_F(TestLampRobot, SetInitialKey) {

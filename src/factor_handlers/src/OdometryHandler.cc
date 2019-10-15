@@ -332,6 +332,7 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
   FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2);
   if (lidar_odom.b_has_value == true) {
     // TODO: For the first implementation, pure lidar-based odometry is used.
+    ROS_ERROR("Lidar successful");
     output_odom = lidar_odom;
   } else {
     ROS_ERROR("Failed to get odom from lidar");
@@ -416,12 +417,12 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer&
   if (itrTime == odom_buffer_map.begin()) {
     output = itrTime->second;
     time_diff = itrTime->first - stamp.toSec();
-    ROS_WARN("Timestamp before the start of the odometry buffer");
+    ROS_ERROR("Timestamp before the start of the odometry buffer");
     ROS_INFO_STREAM("time diff is: " << time_diff);
   } else if (itrTime == odom_buffer_map.end()) {
     // Check if it is past the end of the buffer - if so, then take the last
     // PosCovStamped
-    ROS_WARN("Timestamp past the end of the odometry buffer");
+    ROS_ERROR("Timestamp past the end of the odometry buffer");
     itrTime--;
     output = itrTime->second;
     time_diff = stamp.toSec() - itrTime->first;
@@ -447,7 +448,7 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp, const OdomPoseBuffer&
 
   // Check if the time difference is too large
   if (time_diff > ts_threshold_) { 
-    ROS_WARN("Time difference between request and latest PosCovStamped is too large, returning no PosC");
+    ROS_ERROR("Time difference between request and latest PosCovStamped is too large, returning no PosC %f", ts_threshold_);
     ROS_INFO_STREAM("Time difference is "
                     << time_diff << "s, threshold is: " << ts_threshold_);
     return false;
