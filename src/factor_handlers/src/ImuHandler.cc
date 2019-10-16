@@ -20,7 +20,7 @@ ImuHandler::~ImuHandler() {
     ROS_INFO("ImuHandler Class Destructor");
 }
 
-// Initialization ----------------------------------------------------------------------------------------
+// Initialization ---------------------------------------------------------------------------------------
 
 bool ImuHandler::Initialize(const ros::NodeHandle& n){
 
@@ -63,6 +63,8 @@ bool ImuHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     return true;
 }
 
+// Callbacks --------------------------------------------------------------------------------------------
+
 void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
     
     ROS_INFO("ImuHandler - ImuCallback");
@@ -73,33 +75,33 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
 
 }
 
-bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {    
-    
-    auto initial_size = imu_buffer_.size();
-    
-    auto current_time = msg->header.stamp.toSec();    
-    ImuOrientation current_orientation = msg->orientation;  
-
-    // TODO: We maybe should be storing also linear_acceleration and linear_acceleration_covariance  
-    
-    imu_buffer_.insert({current_time, current_orientation});     
-    
-    auto final_size = imu_buffer_.size();    
-    if (final_size == (initial_size+1)) {
-        // Msg insertion was successfull, return true to the caller
-        return true;
-    }
-    else {
-        return false; 
-    } 
-
-}
+// Utilities --------------------------------------------------------------------------------------------
 
 int ImuHandler::CheckBufferSize() const {
     
     ROS_INFO("ImuCallback - ChechImuBufferSize");
     
     return imu_buffer_.size();
+
+}
+
+bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {    
+    
+    auto initial_size = imu_buffer_.size();
+    
+    auto current_time = msg->header.stamp.toSec();    
+    ImuOrientation current_orientation = msg->orientation;  
+    
+    imu_buffer_.insert({current_time, current_orientation});     
+    
+    auto final_size = imu_buffer_.size();    
+    if (final_size == (initial_size+1)) {
+        // Msg insertion successful, return true to the caller
+        return true;
+    }
+    else {
+        return false; 
+    } 
 
 }
 
@@ -118,6 +120,92 @@ bool ImuHandler::ClearBuffer() {
         return false; 
     }
 
+}
+
+void ImuHandler::ResetFactorData() {
+    factors_.b_has_data = false;
+    factors_.type = "imu";
+    factors_.transforms.clear();
+    factors_.covariances.clear();
+    factors_.time_stamps.clear();
+    factors_.artifact_key.clear();
+}
+
+// Setters -----------------------------------------------------------------------------------------------
+
+bool ImuHandler::SetTimeForImuAttitude(const ros::Time& stamp) {
+        
+    ROS_INFO("ImuHandler - SetTimeForImuAttitude");
+    
+    query_stamp_ = stamp.toSec();
+    
+    if (query_stamp_ == stamp.toSec()) {
+        return true;
+    }
+    else {
+        ROS_WARN("Could not store received stamp into private class member");
+        return false;
+    }
+
+}
+
+bool ImuHandler::SetKeyForImuAttitude(const Symbol& key) {
+        
+    ROS_INFO("ImuHandler - SetKeyForImuAttitude");
+    
+    query_key_ = key;
+    
+    if (query_key_ == key) {
+        return true;
+    }
+    else {
+        ROS_WARN("Could not store received symbol into private class member");
+        return false;
+    }
+
+}
+
+// Getters -----------------------------------------------------------------------------------------------
+
+FactorData ImuHandler::GetData(){
+
+    ROS_INFO("ImuHandler - GetData");
+
+    FactorData factors_output = factors_;   
+
+    factors_output.b_has_data = false; 
+
+    if (CheckBufferSize()==0) {
+        ROS_WARN("Buffers are empty, returning no data");
+        return factors_output;
+    }
+
+    ImuOrientation currentImuData;
+    ros::Time query_stamp_ros; 
+    query_stamp_ros.fromSec(query_stamp_);
+
+    if (GetOrientationAtTime(query_stamp_ros, currentImuData)==true){
+        
+        ROS_INFO("Successfully extracted data from buffer");
+        // TODO: Process the extracted currentImuData and create factor for LAMP 
+        // TODO: We want to create AttitudeFactor, but LAMP wants Pose3
+        
+        Unit3 nZ(0, 0, -1);
+        AttitudeFactor myAttitudeFactor = AttitudeFactor(nZ);
+        GtsamPose3 current_gtsam_pose3;
+
+        factors_output.b_has_data = true; 
+        factors_output.type = "imu";
+        factors_output.transforms.push_back(current_gtsam_pose3);
+        
+        ResetFactorData();
+    }
+
+    else {
+        factors_output.b_has_data = false; 
+    }
+
+    return factors_output; 
 }
 
 bool ImuHandler::GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& imu_orientation) const {
@@ -182,73 +270,6 @@ bool ImuHandler::GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& im
 
 }
 
-bool ImuHandler::SetTimeForImuAttitude(const ros::Time& stamp) {
-    
-    // TODO: Could return void and throw an exception if insertion is unsuccessful
-    
-    ROS_INFO("ImuHandler - SetTimeForImuAttitude");
-    
-    query_stamp_ = stamp.toSec();
-    
-    if (query_stamp_ == stamp.toSec()) {
-        return true;
-    }
-    else {
-        ROS_WARN("Could not store received stamp into private class member");
-        return false;
-    }
-
-}
-
-FactorData ImuHandler::GetData(){
-
-    ROS_INFO("ImuHandler - GetData");
-
-    FactorData factors_output = factors_;   
-
-    factors_output.b_has_data = false; 
-
-    if (CheckBufferSize()==0) {
-        ROS_WARN("Buffers are empty, returning no data");
-        return factors_output;
-    }
-
-    ImuOrientation currentImuData;
-    ros::Time query_stamp_ros; 
-    query_stamp_ros.fromSec(query_stamp_);
-
-    if (GetOrientationAtTime(query_stamp_ros, currentImuData)==true){
-        
-        ROS_INFO("Successfully extracted data from buffer");
-        // TODO: Process the extracted currentImuData and create factor for LAMP 
-        // TODO: We want to create AttitudeFactor, but LAMP wants Pose3
-        
-        Unit3 nZ(0, 0, -1);
-        AttitudeFactor myAttitudeFactor = AttitudeFactor(nZ);
-        GtsamPose3 current_gtsam_pose3;
-
-        factors_output.b_has_data = true; 
-        factors_output.type = "imu";
-        factors_output.transforms.push_back(current_gtsam_pose3);
-        
-        ResetFactorData();
-    }
-
-    else {
-        factors_output.b_has_data = false; 
-    }
-
-    return factors_output; 
-}
-
-void ImuHandler::ResetFactorData() {
-  factors_.b_has_data = false;
-  factors_.type = "imu";
-  factors_.transforms.clear();
-  factors_.covariances.clear();
-  factors_.time_stamps.clear();
-  factors_.artifact_key.clear();
-}
 
 
 /*
