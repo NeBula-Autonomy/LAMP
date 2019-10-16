@@ -12,7 +12,7 @@ namespace pu = parameter_utils;
 // Constructor and Destructor ---------------------------------------------------------------------------
 
 ImuHandler::ImuHandler() 
-  : ts_threshold_(0.0) {
+  : ts_threshold_(0.1) {
     ROS_INFO("ImuHandler Class Constructor");
 }
 
@@ -200,42 +200,74 @@ bool ImuHandler::SetTimeForImuAttitude(const ros::Time& stamp) {
 
 }
 
+FactorData ImuHandler::GetData(){
 
+    ROS_INFO("ImuHandler - GetData");
+
+    FactorData factors_output = factors_;   
+
+    factors_output.b_has_data = false; 
+
+    if (CheckImuBufferSize()==0) {
+        ROS_WARN("Buffers are empty, returning no data");
+        return factors_output;
+    }
+
+    ImuOrientation currentImuData;
+    ros::Time query_stamp_ros; 
+    query_stamp_ros.fromSec(query_stamp_);
+
+    if (GetOrientationAtTime(query_stamp_ros, currentImuData)==true){
+        
+        ROS_INFO("Successfully extracted data from buffer");
+        // TODO: Process the extracted currentImuData and create factor for LAMP 
+        // TODO: We want to create AttitudeFactor, but LAMP wants Pose3
+        
+        Unit3 nZ(0, 0, -1);
+        AttitudeFactor myAttitudeFactor = AttitudeFactor(nZ);
+        GtsamPose3 current_gtsam_pose3;
+
+        factors_output.b_has_data = true; 
+        factors_output.type = "imu";
+        factors_output.transforms.push_back(current_gtsam_pose3);
+        
+        ResetFactorData();
+    }
+
+    else {
+        factors_output.b_has_data = false; 
+    }
+
+    return factors_output; 
+}
+
+void ImuHandler::ResetFactorData() {
+  factors_.b_has_data = false;
+  factors_.type = "imu";
+  factors_.transforms.clear();
+  factors_.covariances.clear();
+  factors_.time_stamps.clear();
+  factors_.artifact_key.clear();
+}
 
 
 /*
 Datatype documentation 
 
-sensor_msgs::Imu
-    std_msgs/Header header
-    geometry_msgs/Quaternion orientation
-    float64[9] orientation_covariance
-    geometry_msgs/Vector3 angular_velocity
-    float64[9] angular_velocity_covariance
-    geometry_msgs/Vector3 linear_acceleration
-    float64[9] linear_acceleration_covariance
+    sensor_msgs::Imu
+        std_msgs/Header header
+        geometry_msgs/Quaternion orientation
+        float64[9] orientation_covariance
+        geometry_msgs/Vector3 angular_velocity
+        float64[9] angular_velocity_covariance
+        geometry_msgs/Vector3 linear_acceleration
+        float64[9] linear_acceleration_covariance
 
-NOTE: With ImuOrientation we refer to ImuQuaternion 
+    NOTE: With ImuOrientation we refer to ImuQuaternion 
 
-geometry_msgs::Quaternion
-    float64 x
-    float64 y
-    float64 z
-    float64 w
-
-At the current point, I: 
-    - Subscribe to imu_topic 
-    - Store all imu_messages into a map buffer 
-    - Get the value of interest by timestamp based search 
-    - Once the value of interest has been retrieved, fill factor data for LAMP and return 
-    - lamp
-
-Benjamin 
-
-    For IMU the idea is that the struct would contain the attitude information in the transform field (only using the orientation part) 
-    Then the ProcessIMUData() in lamp would convert that to a factor
-    But we would need to call something before this to set the time:
-        imu_handler_.SetTimeForIMUAttitude(stamp)
-        Imu_handler_.GetData()
-
+    geometry_msgs::Quaternion
+        float64 x
+        float64 y
+        float64 z
+        float64 w
 */

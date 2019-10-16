@@ -9,11 +9,15 @@
 // Includes 
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <sensor_msgs/Imu.h>
+#include <gtsam/navigation/AttitudeFactor.h>
 
 // Typedefs 
 typedef sensor_msgs::Imu ImuMessage;
 typedef geometry_msgs::Quaternion ImuOrientation; 
 typedef std::map<double, ImuOrientation> ImuBuffer;
+typedef gtsam::Unit3 Unit3;
+typedef gtsam::AttitudeFactor AttitudeFactor;
+typedef gtsam::Pose3 GtsamPose3;
 
 class ImuHandler : public LampDataHandlerBase {
     
@@ -30,7 +34,7 @@ class ImuHandler : public LampDataHandlerBase {
         bool RegisterCallbacks(const ros::NodeHandle& n);
 
         // LAMP Interface 
-        // FactorData GetData(); // TODO: Give LAMP gtsam::AttitudeFactor
+        FactorData GetData(); 
 
     protected: 
 
@@ -44,11 +48,13 @@ class ImuHandler : public LampDataHandlerBase {
         bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
         bool ClearImuBuffer();
         bool SetTimeForImuAttitude(const ros::Time& stamp);
+        void ResetFactorData();
         
         // Getters 
         bool GetOrientationAtTime(const ros::Time stamp, ImuOrientation& imu_orientation) const;
  
         // Converters 
+        // TODO: We should create AttitudeFactor, but LAMP expects Pose3
 
         // Parameters 
         std::string name_;     
