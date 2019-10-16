@@ -160,6 +160,10 @@ protected:
       return oh.InsertMsgInBuffer(odom_msg, buffer);
     }
 
+    double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov){
+      return oh.CalculatePoseDelta(gtsam_pos_cov);
+}
+
     // Create three messages
     PoseCovStamped msg_first;
     PoseCovStamped msg_second;
@@ -1011,6 +1015,14 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
   ASSERT_TRUE(result);
 }
 
+TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
+  OdomPoseBuffer myBuffer; 
+  GtsamPosCov my_fused_odom;
+  my_fused_odom.pose = gtsam::Pose3();
+  double delta = CalculatePoseDelta(my_fused_odom);   
+  EXPECT_EQ(delta, 0);
+}
+
 // Initialize: Done
 
 // LoadParameters
@@ -1153,44 +1165,6 @@ unit tests
 // GetDeltaBetweenPoses: (Kamak)
 // GetDeltaBetweenTimes: (Kamak)
     
-
-double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
-  return oh.CalculatePoseDelta(odom_buffer);
-}
-
-
-
-TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
-  // Create a buffer
-  OdomPoseBuffer myBuffer; 
-  // Create two messages
-  geometry_msgs::PoseWithCovarianceStamped msg_first; 
-  geometry_msgs::PoseWithCovarianceStamped msg_second;
-  // Fill the two messages
-  msg_first.pose.pose.position.x = 1; 
-  msg_first.pose.pose.position.y = 0; 
-  msg_first.pose.pose.position.z = 0; 
-  msg_first.pose.pose.orientation.x = 0;
-  msg_first.pose.pose.orientation.y = 0;
-  msg_first.pose.pose.orientation.z = 0;
-  msg_first.pose.pose.orientation.w = 1;
-  msg_second.pose.pose.position.x = 0; 
-  msg_second.pose.pose.position.y = 0; 
-  msg_second.pose.pose.position.z = 0;
-  msg_second.pose.pose.orientation.x = 0;
-  msg_second.pose.pose.orientation.y = 0;
-  msg_second.pose.pose.orientation.z = 0;
-  msg_second.pose.pose.orientation.w = 1;
-  // Push messages to buffer
-  myBuffer.push_back(msg_first); 
-  myBuffer.push_back(msg_second);   
-  // Call the method to test 
-  int size = CheckBufferSize(myBuffer);
-  EXPECT_EQ(size, 2);
-  double delta = CalculatePoseDelta(myBuffer);   
-  EXPECT_EQ(delta, 1);
-}
-
 
 std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
   return oh.GetTimeStamps(pose_cov_stamped_pair);
