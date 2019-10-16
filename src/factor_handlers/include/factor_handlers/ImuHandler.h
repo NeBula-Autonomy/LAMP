@@ -15,11 +15,9 @@
 typedef sensor_msgs::Imu ImuMessage;
 typedef geometry_msgs::Quaternion ImuOrientation; 
 typedef std::map<double, ImuOrientation> ImuBuffer;
-// TODO: Remove these typedefs
 typedef gtsam::Symbol Symbol;
 typedef gtsam::Unit3 Unit3;
-typedef gtsam::AttitudeFactor AttitudeFactor;
-typedef gtsam::Pose3 GtsamPose3;
+typedef gtsam::Pose3AttitudeFactor Pose3AttitudeFactor; 
 
 class ImuHandler : public LampDataHandlerBase {
     
@@ -51,6 +49,9 @@ class ImuHandler : public LampDataHandlerBase {
         bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
         bool ClearBuffer();
         void ResetFactorData();
+        Pose3AttitudeFactor CreateAttitudeFactor(const ImuOrientation& imu_orientation) const;
+
+        
 
         // Setters
         bool SetTimeForImuAttitude(const ros::Time& stamp);

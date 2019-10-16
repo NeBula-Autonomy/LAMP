@@ -77,6 +77,16 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
 
 // Utilities --------------------------------------------------------------------------------------------
 
+Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const ImuOrientation& imu_orientation) const {
+    // NOTE: meas will be computed from input ImuOrientation (only needed a Quaternion2RPY conversion)
+    Unit3 ref(0, 0, -1);
+    Unit3 meas(0, 0, 1);
+    gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigma(2, 0.25);
+    Pose3AttitudeFactor factor(query_key_, meas, model, ref);
+    return factor;
+}
+
+
 int ImuHandler::CheckBufferSize() const {
     
     ROS_INFO("ImuCallback - ChechImuBufferSize");
@@ -180,20 +190,19 @@ FactorData ImuHandler::GetData(){
         return factors_output;
     }
 
-    ImuOrientation currentImuData;
+    ImuOrientation imu_orientation;
     ros::Time query_stamp_ros; 
     query_stamp_ros.fromSec(query_stamp_);
 
-    if (GetOrientationAtTime(query_stamp_ros, currentImuData)==true){
+    if (GetOrientationAtTime(query_stamp_ros, imu_orientation)==true){
         
         ROS_INFO("Successfully extracted data from buffer");
-        // TODO: Process the extracted currentImuData and create factor for LAMP 
-        // TODO: We want to create AttitudeFactor, but LAMP wants Pose3
-        
-        Unit3 nZ(0, 0, -1);
-        AttitudeFactor myAttitudeFactor = AttitudeFactor(nZ);
-        GtsamPose3 current_gtsam_pose3;
 
+        // TODO: Send imu_orientation to ProcessImuOrientation to obtain factor and respond to LAMP
+        Pose3AttitudeFactor imu_factor = CreateAttitudeFactor(imu_orientation);
+        
+        // TODO: We have a Pose3AttitudeFactor, but LAMP wants Pose3
+        gtsam::Pose3 current_gtsam_pose3;
         factors_output.b_has_data = true; 
         factors_output.type = "imu";
         factors_output.transforms.push_back(current_gtsam_pose3);
