@@ -20,7 +20,7 @@ ImuHandler::~ImuHandler() {
     ROS_INFO("ImuHandler Class Destructor");
 }
 
-// Initialize -------------------------------------------------------------------------------------------
+// Initialization ----------------------------------------------------------------------------------------
 
 bool ImuHandler::Initialize(const ros::NodeHandle& n){
 
@@ -95,7 +95,7 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
 
 }
 
-int ImuHandler::CheckImuBufferSize() const {
+int ImuHandler::CheckBufferSize() const {
     
     ROS_INFO("ImuCallback - ChechImuBufferSize");
     
@@ -103,13 +103,13 @@ int ImuHandler::CheckImuBufferSize() const {
 
 }
 
-bool ImuHandler::ClearImuBuffer() {
+bool ImuHandler::ClearBuffer() {
 
     ROS_INFO("ImuHandler - ClearImuBuffer");
     
     imu_buffer_.clear();
     
-    if (CheckImuBufferSize()==0) {
+    if (CheckBufferSize()==0) {
         ROS_INFO("Successfully cleared Imu Buffer");
         return true;
     }
@@ -120,7 +120,7 @@ bool ImuHandler::ClearImuBuffer() {
 
 }
 
-bool ImuHandler::GetOrientationAtTime(const ros::Time stamp, ImuOrientation& imu_orientation) const {
+bool ImuHandler::GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& imu_orientation) const {
 
     // TODO: Implement generic GetValueAtTime in base class as it is a common need by all handlers
 
@@ -208,7 +208,7 @@ FactorData ImuHandler::GetData(){
 
     factors_output.b_has_data = false; 
 
-    if (CheckImuBufferSize()==0) {
+    if (CheckBufferSize()==0) {
         ROS_WARN("Buffers are empty, returning no data");
         return factors_output;
     }

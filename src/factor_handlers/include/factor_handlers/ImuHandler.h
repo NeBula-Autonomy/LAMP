@@ -8,13 +8,15 @@
 
 // Includes 
 #include <factor_handlers/LampDataHandlerBase.h>
-#include <sensor_msgs/Imu.h>
 #include <gtsam/navigation/AttitudeFactor.h>
+#include <sensor_msgs/Imu.h>
 
 // Typedefs 
 typedef sensor_msgs::Imu ImuMessage;
 typedef geometry_msgs::Quaternion ImuOrientation; 
 typedef std::map<double, ImuOrientation> ImuBuffer;
+// TODO: Remove these typedefs
+typedef gtsam::Symbol Symbol;
 typedef gtsam::Unit3 Unit3;
 typedef gtsam::AttitudeFactor AttitudeFactor;
 typedef gtsam::Pose3 GtsamPose3;
@@ -25,10 +27,11 @@ class ImuHandler : public LampDataHandlerBase {
 
     public:
 
+        // Constructor & Destructor
         ImuHandler();
         ~ImuHandler();
 
-        // Public methods
+        // Initialization 
         bool Initialize (const ros::NodeHandle& n);
         bool LoadParameters(const ros::NodeHandle& n);
         bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -44,23 +47,23 @@ class ImuHandler : public LampDataHandlerBase {
         ImuBuffer imu_buffer_;
 
         // Utilites 
-        int CheckImuBufferSize() const; 
+        int CheckBufferSize() const; 
         bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
-        bool ClearImuBuffer();
-        bool SetTimeForImuAttitude(const ros::Time& stamp);
+        bool ClearBuffer();
         void ResetFactorData();
-        
+
+        // Setters
+        bool SetTimeForImuAttitude(const ros::Time& stamp);
+        bool SetKeyForImuAttitude(const Symbol& key);
+
         // Getters 
-        bool GetOrientationAtTime(const ros::Time stamp, ImuOrientation& imu_orientation) const;
- 
-        // Converters 
-        // TODO: We should create AttitudeFactor, but LAMP expects Pose3
+        bool GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& imu_orientation) const;
 
         // Parameters 
         std::string name_;     
         double ts_threshold_;  
         double query_stamp_;
-
+        Symbol query_key_;
     
     private:
         
