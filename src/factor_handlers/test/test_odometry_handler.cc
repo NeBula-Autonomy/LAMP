@@ -907,25 +907,6 @@ TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
   ASSERT_TRUE(result);
 }
 
-//   ros::Time query1, query2, query3;
-//   query1.fromSec(0.0);
-//   query2.fromSec(10.3);
-
-//   // This should fail as they are beyond the threshold
-//   FillGtsamPosCovOdom(myBuffer, myOutput, query1, query2);
-//   EXPECT_FALSE(myOutput.b_has_value);
-// }
-
-// PointCloud current_pointcloud;
-// pcl::fromROSMsg(*msg, current_pointcloud);
-
-// Test we pass but need more testing/implementation ---------------------------------
-
-
-// Test we don't pass ----------------------------------------------------------------
-
-
-
 TEST_F(OdometryHandlerTest, TestGetCovariance) {
   PoseCovStampedPair pose_cov_stamped_pair;
   PoseCovStamped pose_cov_stamped_1;
@@ -948,6 +929,58 @@ TEST_F(OdometryHandlerTest, TestGetCovariance) {
   // ASSERT_TRUE((*noise_actual).equals(*noise_expected));
 }
 
+TEST_F(OdometryHandlerTest, TestFillGtsamPosCovOdom) {
+  // double t1 = 1.0;
+  // double t2 = 2.0;
+  // ros::Time t1_ros;
+  // ros::Time t2_ros;
+  // t1_ros.fromSec(t1);
+  // t2_ros.fromSec(t2);
+  OdomPoseBuffer odom_buffer;
+  
+  // Odometry-1
+  Odometry odom_msg1;
+  odom_msg1.pose = msg_first.pose;
+  odom_msg1.header = msg_first.header;
+  for (size_t i = 0; i < 36; i++) {
+    msg_first.pose.covariance[i] = 1;
+  }
+  odom_msg1.pose.covariance = msg_first.pose.covariance;
+  Odometry::ConstPtr odom1(new Odometry(odom_msg1));
+  InsertMsgInBuffer(odom1, odom_buffer);
+
+  // Odometry-2
+  Odometry odom_msg2;
+  odom_msg2.pose = msg_second.pose;
+  odom_msg2.header = msg_second.header;
+  for (size_t i = 0; i < 36; i++) {
+    msg_second.pose.covariance[i] = 3;
+  }
+  odom_msg2.pose.covariance = msg_second.pose.covariance;
+  Odometry::ConstPtr odom2(new Odometry(odom_msg2));
+  InsertMsgInBuffer(odom2, odom_buffer);
+
+  // FillGtsamPosCovOdom
+  GtsamPosCov odom_delta_actual;
+  FillGtsamPosCovOdom(odom_buffer, odom_delta_actual, t1_ros, t2_ros);
+
+  // Verification
+  GtsamPosCov odom_delta_expected;
+  gtsam::Point3 position = gtsam::Point3(1,0,0);
+  gtsam::Rot3 rotation = gtsam::Rot3(1,0,0,0,1,0,0,0,1);
+  odom_delta_expected.pose = gtsam::Pose3(rotation, position);
+  gtsam::Matrix66 covariance_expected;
+  for (size_t i = 0; i < 6; i++) {
+    for (size_t j = 0; j < 6; j++) {
+      covariance_expected(i,j) = 3;
+    }
+  }
+  gtsam::SharedNoiseModel noise_expected =
+      gtsam::noiseModel::Gaussian::Covariance(covariance_expected);
+  ASSERT_TRUE(odom_delta_actual.b_has_value);
+  ASSERT_TRUE((odom_delta_actual.pose).equals(odom_delta_expected.pose));
+  ASSERT_TRUE((*(odom_delta_actual.covariance)).equals(*noise_expected));
+}
 
 // Initialize: Done
 
@@ -1093,75 +1126,6 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
 
 
 // -----------------------------------------------------------------------------
-
-
-    void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, 
-                              GtsamPosCov& measurement,
-                              const ros::Time t1,
-                              const ros::Time t2) const {
-      return oh.FillGtsamPosCovOdom(odom_buffer, measurement, t1, t2);
-    }
-
-
-TEST_F(OdometryHandlerTest, TestFillGtsamPosCovOdom) {
-  double t1 = 1.0;
-  double t2 = 2.0;
-  ros::Time t1_ros;
-  ros::Time t2_ros;
-  t1_ros.fromSec(t1);
-  t2_ros.fromSec(t2);
-  OdomPoseBuffer odom_buffer;
-  // Odometry-1
-  PoseCovStamped odom1;
-  odom1.header.stamp = t1_ros;
-  odom1.pose.pose.position.x = 0;
-  odom1.pose.pose.position.y = 0;
-  odom1.pose.pose.position.z = 0;
-  odom1.pose.pose.orientation.x = 0;
-  odom1.pose.pose.orientation.y = 0;
-  odom1.pose.pose.orientation.z = 0;
-  odom1.pose.pose.orientation.w = 1;
-  for (size_t i = 0; i < 36; i++) {
-    odom1.pose.covariance[i] = 1;
-  }
-  odom_buffer.push_back(odom1);
-  // Odometry-2
-  PoseCovStamped odom2;
-  odom2.header.stamp = t2_ros;
-  odom2.pose.pose.position.x = 1;
-  odom2.pose.pose.position.y = 0;
-  odom2.pose.pose.position.z = 0;
-  odom2.pose.pose.orientation.x = 0;
-  odom2.pose.pose.orientation.y = 0;
-  odom2.pose.pose.orientation.z = 0;
-  odom2.pose.pose.orientation.w = 1;
-  for (size_t i = 0; i < 36; i++) {
-    odom2.pose.covariance[i] = 3;
-  }
-  odom_buffer.push_back(odom2);
-  // FillGtsamPosCovOdom
-  GtsamPosCov odom_delta_actual;
-  FillGtsamPosCovOdom(odom_buffer, odom_delta_actual, t1_ros, t2_ros);
-  // Verification
-  GtsamPosCov odom_delta_expected;
-  gtsam::Point3 position = gtsam::Point3(1,0,0);
-  gtsam::Rot3 rotation = gtsam::Rot3(1,0,0,0,1,0,0,0,1);
-  odom_delta_expected.pose = gtsam::Pose3(rotation, position);
-  gtsam::Matrix66 covariance_expected;
-  for (size_t i = 0; i < 6; i++) {
-    for (size_t j = 0; j < 6; j++) {
-      covariance_expected(i,j) = 3;
-    }
-  }
-  gtsam::SharedNoiseModel noise_expected =
-      gtsam::noiseModel::Gaussian::Covariance(covariance_expected);
-  // ASSERT_TRUE(odom_delta_actual.b_has_value);
-  // ASSERT_TRUE((odom_delta_actual.pose).equals(odom_delta_expected.pose));
-  // ASSERT_TRUE((*(odom_delta_actual.covariance)).equals(*noise_expected));
-}
-
-// ------------------------------------------------------------------------------
-
 bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
   return oh.GetKeyedScanAtTime(stamp, msg);
 }
