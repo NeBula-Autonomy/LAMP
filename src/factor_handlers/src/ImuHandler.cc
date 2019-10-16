@@ -77,23 +77,25 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
 
 // Utilities --------------------------------------------------------------------------------------------
 
-Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const ImuOrientation& imu_orientation) const {
-    // NOTE: meas will be computed from input ImuOrientation (only needed a Quaternion2RPY conversion)
-    Unit3 ref(0, 0, -1);
-    Unit3 meas(0, 0, 1);
-    SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, 0.25);
+Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const {
+    ROS_INFO("ImuHandler - CreateAttitudeFactor");
+    Unit3 ref(0, 0, -1); 
+    SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, 0.25);    
+    Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2])); 
+    Unit3 meas = Unit3(Rot3(R_imu.transpose()).operator*(ref));
     Pose3AttitudeFactor factor(query_key_, meas, model, ref);
     return factor;
 }
 
-// Given an input quaternion, print all 4 components 
-// Construct from the individual quaternion components RPY
-
-void ImuHandler::GetQuaternionComponents(const ImuOrientation& imu_orientation){
+Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuOrientation& imu_orientation) const {
+    ROS_INFO("ImuHandler - QuaternionToYpr");
     auto x = imu_orientation.x;
     auto y = imu_orientation.y;
     auto z = imu_orientation.z;
     auto w = imu_orientation.w;
+    Eigen::Quaterniond q = Eigen::Quaterniond(double(w), double(x), double(y), double(z));
+    auto ypr = q.toRotationMatrix().eulerAngles(2, 1, 0);
+    return ypr;
 }
 
 int ImuHandler::CheckBufferSize() const {
@@ -207,14 +209,15 @@ FactorData ImuHandler::GetData(){
         
         ROS_INFO("Successfully extracted data from buffer");
 
-        // TODO: Send imu_orientation to ProcessImuOrientation to obtain factor and respond to LAMP
-        Pose3AttitudeFactor imu_factor = CreateAttitudeFactor(imu_orientation);
+        // Convert extracted quaternion to ypr and construct factor
+        Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_orientation);
+        Pose3AttitudeFactor imu_factor = CreateAttitudeFactor(imu_ypr);
         
-        // TODO: We have a Pose3AttitudeFactor, but LAMP wants Pose3
-        Pose3 current_gtsam_pose3;
+        // TODO: ImuHandler provides Pose3AttitudeFactor, but LAMP wants Pose3
+        Pose3 foo;
         factors_output.b_has_data = true; 
         factors_output.type = "imu";
-        factors_output.transforms.push_back(current_gtsam_pose3);
+        factors_output.transforms.push_back(foo);
         
         ResetFactorData();
     }

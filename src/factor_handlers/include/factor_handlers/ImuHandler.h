@@ -49,9 +49,7 @@ class ImuHandler : public LampDataHandlerBase {
         bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
         bool ClearBuffer();
         void ResetFactorData();
-        Pose3AttitudeFactor CreateAttitudeFactor(const ImuOrientation& imu_orientation) const;
-
-        
+        Pose3AttitudeFactor CreateAttitudeFactor(const Eigen::Vector3d& imu_rpy) const;
 
         // Setters
         bool SetTimeForImuAttitude(const ros::Time& stamp);
@@ -67,7 +65,7 @@ class ImuHandler : public LampDataHandlerBase {
         Symbol query_key_;
 
         // Finish 
-        void GetQuaternionComponents(const ImuOrientation& imu_orientation);
+        Eigen::Vector3d QuaternionToYpr(const ImuOrientation& imu_orientation) const;
     
     private:
         
