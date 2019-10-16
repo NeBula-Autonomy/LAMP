@@ -46,7 +46,7 @@ class ArtifactHandler : public LampDataHandlerBase {
      * n - Nodehandle
      * Returns bool
      */
-    bool Initialize(const ros::NodeHandle& n);
+    virtual bool Initialize(const ros::NodeHandle& n);
     
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
@@ -73,7 +73,7 @@ class ArtifactHandler : public LampDataHandlerBase {
      * n - Nodehandle
      * Returns bool
      */
-    bool LoadParameters(const ros::NodeHandle& n);
+    virtual bool LoadParameters(const ros::NodeHandle& n);
 
     /*! \brief Register callbacks. 
      * n - Nodehandle, from_log - ????
@@ -91,7 +91,7 @@ class ArtifactHandler : public LampDataHandlerBase {
      * n - Nodehandle
      * Returns bool
      */
-    bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
+    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
 
     /*! \brief Compute transform from Artifact message.
      * Not sure how necessary this is ????
@@ -112,7 +112,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Create publisher for the artifacts.
      * Returns  Void
      */
-    bool CreatePublishers(const ros::NodeHandle& n);
+    virtual bool CreatePublishers(const ros::NodeHandle& n);
 
     /*! \brief  Print Artifact input message for debugging
      * Returns  Void
@@ -139,7 +139,6 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     void StoreArtifactInfo(const gtsam::Symbol artifact_key, const core_msgs::Artifact& msg);
 
-    private:
     // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
     // from the pose graph
     std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
@@ -173,6 +172,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     ros::Subscriber artifact_sub_;
     std::vector<ros::Subscriber> Subscriber_artifactList_;
 
+    private:
     // Test class
     friend class TestArtifactHandler;
 };
