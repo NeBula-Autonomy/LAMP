@@ -8,6 +8,7 @@
 
 // Includes 
 #include <factor_handlers/LampDataHandlerBase.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <gtsam/navigation/AttitudeFactor.h>
 #include <sensor_msgs/Imu.h>
 
@@ -15,9 +16,8 @@
 typedef sensor_msgs::Imu ImuMessage;
 typedef geometry_msgs::Quaternion ImuOrientation; 
 typedef std::map<double, ImuOrientation> ImuBuffer;
-typedef gtsam::Symbol Symbol;
-typedef gtsam::Unit3 Unit3;
-typedef gtsam::Pose3AttitudeFactor Pose3AttitudeFactor; 
+
+using namespace gtsam;
 
 class ImuHandler : public LampDataHandlerBase {
     
@@ -65,6 +65,9 @@ class ImuHandler : public LampDataHandlerBase {
         double ts_threshold_;  
         double query_stamp_;
         Symbol query_key_;
+
+        // Finish 
+        void GetQuaternionComponents(const ImuOrientation& imu_orientation);
     
     private:
         

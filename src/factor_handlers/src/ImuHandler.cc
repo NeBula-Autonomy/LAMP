@@ -81,11 +81,20 @@ Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const ImuOrientation& imu_o
     // NOTE: meas will be computed from input ImuOrientation (only needed a Quaternion2RPY conversion)
     Unit3 ref(0, 0, -1);
     Unit3 meas(0, 0, 1);
-    gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigma(2, 0.25);
+    SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, 0.25);
     Pose3AttitudeFactor factor(query_key_, meas, model, ref);
     return factor;
 }
 
+// Given an input quaternion, print all 4 components 
+// Construct from the individual quaternion components RPY
+
+void ImuHandler::GetQuaternionComponents(const ImuOrientation& imu_orientation){
+    auto x = imu_orientation.x;
+    auto y = imu_orientation.y;
+    auto z = imu_orientation.z;
+    auto w = imu_orientation.w;
+}
 
 int ImuHandler::CheckBufferSize() const {
     
@@ -202,7 +211,7 @@ FactorData ImuHandler::GetData(){
         Pose3AttitudeFactor imu_factor = CreateAttitudeFactor(imu_orientation);
         
         // TODO: We have a Pose3AttitudeFactor, but LAMP wants Pose3
-        gtsam::Pose3 current_gtsam_pose3;
+        Pose3 current_gtsam_pose3;
         factors_output.b_has_data = true; 
         factors_output.type = "imu";
         factors_output.transforms.push_back(current_gtsam_pose3);
