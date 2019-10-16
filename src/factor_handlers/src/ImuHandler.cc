@@ -182,6 +182,26 @@ bool ImuHandler::GetOrientationAtTime(const ros::Time stamp, ImuOrientation& imu
 
 }
 
+bool ImuHandler::SetTimeForImuAttitude(const ros::Time& stamp) {
+    
+    // TODO: Could return void and throw an exception if insertion is unsuccessful
+    
+    ROS_INFO("ImuHandler - SetTimeForImuAttitude");
+    
+    query_stamp_ = stamp.toSec();
+    
+    if (query_stamp_ == stamp.toSec()) {
+        return true;
+    }
+    else {
+        ROS_WARN("Could not store received stamp into private class member");
+        return false;
+    }
+
+}
+
+
+
 
 /*
 Datatype documentation 
@@ -210,5 +230,12 @@ At the current point, I:
     - Once the value of interest has been retrieved, fill factor data for LAMP and return 
     - lamp
 
+Benjamin 
+
+    For IMU the idea is that the struct would contain the attitude information in the transform field (only using the orientation part) 
+    Then the ProcessIMUData() in lamp would convert that to a factor
+    But we would need to call something before this to set the time:
+        imu_handler_.SetTimeForIMUAttitude(stamp)
+        Imu_handler_.GetData()
 
 */

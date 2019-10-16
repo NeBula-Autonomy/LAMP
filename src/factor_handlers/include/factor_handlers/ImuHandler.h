@@ -43,6 +43,7 @@ class ImuHandler : public LampDataHandlerBase {
         int CheckImuBufferSize() const; 
         bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
         bool ClearImuBuffer();
+        bool SetTimeForImuAttitude(const ros::Time& stamp);
         
         // Getters 
         bool GetOrientationAtTime(const ros::Time stamp, ImuOrientation& imu_orientation) const;
@@ -51,7 +52,9 @@ class ImuHandler : public LampDataHandlerBase {
 
         // Parameters 
         std::string name_;     
-        double ts_threshold_;   
+        double ts_threshold_;  
+        double query_stamp_;
+
     
     private:
         
