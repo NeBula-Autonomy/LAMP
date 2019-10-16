@@ -103,6 +103,13 @@ protected:
       return oh.GetPoseAtTime(stamp, odom_buffer, output);
     }
 
+    bool GetPosesAtTimes(const ros::Time t1,
+                         const ros::Time t2,
+                         const OdomPoseBuffer& odom_buffer,
+                         PoseCovStampedPair& output_poses) {
+      return oh.GetPosesAtTimes(t1, t2, odom_buffer, output_poses);
+    }
+
     bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
       return oh.GetOdomDelta(t_now, delta_pose);
     }
@@ -894,7 +901,6 @@ TEST_F(OdometryHandlerTest, TestEmptyBufferHandling) {
 
 TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
   // Create a buffer
-  // std::vector<PoseCovStamped> myBuffer;
   OdomPoseBuffer myBuffer;
   // Create a message
   Odometry odom_msg;
@@ -982,6 +988,29 @@ TEST_F(OdometryHandlerTest, TestFillGtsamPosCovOdom) {
   ASSERT_TRUE((*(odom_delta_actual.covariance)).equals(*noise_expected));
 }
 
+
+TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
+  // Create a buffer
+  OdomPoseBuffer myBuffer;
+  // Create an output
+  PoseCovStampedPair myOutput;
+  // Odometry-1
+  Odometry odom_msg1;
+  odom_msg1.pose = msg_first.pose;
+  odom_msg1.header = msg_first.header;
+  Odometry::ConstPtr my_msg1(new Odometry(odom_msg1));
+  InsertMsgInBuffer(my_msg1, myBuffer);
+  // Odometry-2
+  Odometry odom_msg2;
+  odom_msg2.pose = msg_second.pose;
+  odom_msg2.header = msg_second.header;
+  Odometry::ConstPtr my_msg2(new Odometry(odom_msg2));
+  InsertMsgInBuffer(my_msg1, myBuffer);
+  // Call the method
+  bool result = GetPosesAtTimes(t1_ros, t2_ros, myBuffer, myOutput);
+  ASSERT_TRUE(result);
+}
+
 // Initialize: Done
 
 // LoadParameters
@@ -1053,77 +1082,6 @@ template <typename T1, typename T2>
 bool InsertMsgInBuffer(typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
   return oh.InsertMsgInBuffer<T1, T2>(msg, buffer);
 }
-
-
-// ----------------------------------------------------------------------------------------
-
-bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) {
-  return oh.GetPoseAtTime(t, odom_buffer, output);
-}
-
-bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) {
-  return oh.GetPosesAtTimes(t1, t2, odom_buffer, output_poses);
-}
-
-
-
-TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
-  double t1 = 1.0;
-  double t2 = 2.0;
-  double t3 = 3.0;
-  ros::Time t1_ros;
-  ros::Time t2_ros;
-  ros::Time t3_ros;
-  t1_ros.fromSec(t1);
-  t2_ros.fromSec(t2);
-  t3_ros.fromSec(t3);
-
-  // Create an output
-  PoseCovStampedPair myOutput;
-  // Create a buffer
-  OdomPoseBuffer myBuffer; 
-  // Create two messages
-  geometry_msgs::PoseWithCovarianceStamped msg_first; 
-  geometry_msgs::PoseWithCovarianceStamped msg_second;
-  geometry_msgs::PoseWithCovarianceStamped msg_third;
-
-  // Fill the two messages
-  msg_first.header.stamp = t1_ros; 
-  msg_first.pose.pose.position.x = 1; 
-  msg_first.pose.pose.position.y = 0; 
-  msg_first.pose.pose.position.z = 0; 
-  msg_first.pose.pose.orientation.x = 0;
-  msg_first.pose.pose.orientation.y = 0;
-  msg_first.pose.pose.orientation.z = 0;
-  msg_first.pose.pose.orientation.w = 1;
-
-  msg_second.header.stamp = t2_ros; 
-  msg_second.pose.pose.position.x = 2; 
-  msg_second.pose.pose.position.y = 0; 
-  msg_second.pose.pose.position.z = 0;
-  msg_second.pose.pose.orientation.x = 0;
-  msg_second.pose.pose.orientation.y = 0;
-  msg_second.pose.pose.orientation.z = 0;
-  msg_second.pose.pose.orientation.w = 1;
-
-  msg_third.header.stamp = t3_ros; 
-  msg_third.pose.pose.position.x = 3; 
-  msg_third.pose.pose.position.y = 0; 
-  msg_third.pose.pose.position.z = 0;
-  msg_third.pose.pose.orientation.x = 0;
-  msg_third.pose.pose.orientation.y = 0;
-  msg_third.pose.pose.orientation.z = 0;
-  msg_third.pose.pose.orientation.w = 1;
-
-  // Push messages to buffer
-  myBuffer.push_back(msg_first); 
-  myBuffer.push_back(msg_second); 
-  myBuffer.push_back(msg_third);
-
-  bool result = GetPosesAtTimes(t1_ros, t2_ros, myBuffer, myOutput);
-  ASSERT_TRUE(result);
-}
-
 
 // -----------------------------------------------------------------------------
 bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
