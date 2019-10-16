@@ -206,8 +206,6 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
  * Call ProcessArtifacts again on this new data. However
  * this time this should be present in values.
  * 
- * ERROR: odombuffer needs to be filled in order for HandleRelativeMeasurements
- * to work.
  */ 
 TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Construct the new Artifact data
@@ -222,7 +220,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
                                           gtsam::Point3 (9.7, 0, 0));
   new_data.transforms.push_back(transform);
 
-  Eigen::VectorXd sig (6);
+  gtsam::Vector6 sig;
   sig << 0.3,0.3,0.3,0.3,0.3,0.3;
   gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
   new_data.covariances.push_back(noise);
@@ -232,7 +230,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 
   // Set the global flag
   setArtifactInGlobal(false);
-  setFixedCovariance(true);
+  setFixedCovariance(false);
 
   // Add to values
   AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a',0));
@@ -249,6 +247,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(), 
                                           gtsam::Point3 (6.0, 0, 0)));
 
+  AddKeyedStamp(gtsam::Symbol('a',2), ros::Time(0.15));
 
   // Construct the odometry message for a0 (the nearest key)
   nav_msgs::Odometry a0_value;
@@ -298,19 +297,23 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Call the ProcessArtifactData. Adding a new artifact
   ProcessArtifacts(new_data);
 
+  // key_from = GetClosestKeyAtTime(stamp); gives 0.15 node
+  // GetFusedOdomDeltaBetweenTimes(stamp_from, stamp) goes with 0.15 and 0.11
+
   // As this is a new artifact optimization should be false
+  // TODO: Need to check the transforms
   EXPECT_FALSE(GetOptFlag());
   EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
-  // TODO: Need to run the optimization here once
 
+  // Should enable this after completely resolve the first one.
   // Change time and send the message again
-  new_data.time_stamps.clear();
-  new_data.time_stamps.push_back(std::make_pair<ros::Time, ros::Time>(ros::Time(6.0), ros::Time(0.0)));
-  new_data.transforms.clear();
-  new_data.transforms.push_back(gtsam::Pose3(gtsam::Rot3(), 
-                                          gtsam::Point3 (9.7, 0, 0)));
+  // new_data.time_stamps.clear();
+  // new_data.time_stamps.push_back(std::make_pair<ros::Time, ros::Time>(ros::Time(0.13), ros::Time(0.0)));
+  // new_data.transforms.clear();
+  // new_data.transforms.push_back(gtsam::Pose3(gtsam::Rot3(), 
+  //                                         gtsam::Point3 (9.7, 0, 0)));
 
-  // Call the ProcessArtifactData. Adding an old artifact
+  // // Call the ProcessArtifactData. Adding an old artifact
   // ProcessArtifacts(new_data); 
 }
 
@@ -351,10 +354,6 @@ TEST_F(TestLampRobot, ConvertGlobalToRelative) {
   EXPECT_EQ(pose_relative.translation().vector(),
                          gtsam::Point3(-415.0, 0.0, 0.0));
 }
-
-// TEST_F() {
-
-// }
 
 TEST_F(TestLampRobot, SetFactorPrecisions) {
 
