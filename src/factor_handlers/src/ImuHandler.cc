@@ -93,14 +93,9 @@ Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_
     return factor;
 }
 
-Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion) const {
+Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternionEigen& imu_quaternion) const {
     ROS_INFO("ImuHandler - QuaternionToYpr");
-    auto x = imu_quaternion.x;
-    auto y = imu_quaternion.y;
-    auto z = imu_quaternion.z;
-    auto w = imu_quaternion.w;
-    Eigen::Quaterniond q = Eigen::Quaterniond(double(w), double(x), double(y), double(z));
-    auto ypr = q.toRotationMatrix().eulerAngles(2, 1, 0);
+    auto ypr = imu_quaternion.toRotationMatrix().eulerAngles(2, 1, 0);
     return ypr;
 }
 
@@ -116,10 +111,12 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
     
     auto initial_size = imu_buffer_.size();
     
-    auto current_time = msg->header.stamp.toSec();    
-    ImuQuaternion current_quaternion = msg->orientation;  
+    auto current_time = msg->header.stamp.toSec();  
     
-    imu_buffer_.insert({current_time, current_quaternion});     
+    ImuQuaternionEigen imu_quaternion_eigen;
+    tf::quaternionMsgToEigen(msg->orientation, imu_quaternion_eigen); 
+
+    imu_buffer_.insert({current_time, imu_quaternion_eigen});     
     
     auto final_size = imu_buffer_.size();    
     if (final_size == (initial_size+1)) {
@@ -207,7 +204,7 @@ FactorData ImuHandler::GetData(){
         return factors_output;
     }
 
-    ImuQuaternion imu_quaternion;
+    ImuQuaternionEigen imu_quaternion;
     ros::Time query_stamp_ros; 
     query_stamp_ros.fromSec(query_stamp_);
 
@@ -235,7 +232,7 @@ FactorData ImuHandler::GetData(){
     return factors_output; 
 }
 
-bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
+bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternionEigen& imu_quaternion) const {
 
     // TODO: Implement generic GetValueAtTime in base class as it is a common need by all handlers
 

@@ -14,12 +14,13 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <eigen_conversions/eigen_msg.h>
-#include <eigen_conversions/eigen_msg.h>
+#include <tf2/convert.h>
 
 // Typedefs 
 typedef sensor_msgs::Imu ImuMessage;
 typedef geometry_msgs::Quaternion ImuQuaternion; 
-typedef std::map<double, ImuQuaternion> ImuBuffer;
+typedef Eigen::Quaterniond ImuQuaternionEigen;
+typedef std::map<double, ImuQuaternionEigen> ImuBuffer;
 
 using namespace gtsam;
 
@@ -60,7 +61,7 @@ class ImuHandler : public LampDataHandlerBase {
         bool SetKeyForImuAttitude(const Symbol& key);
 
         // Getters 
-        bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const;
+        bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternionEigen& imu_quaternion) const;
 
         // Parameters 
         std::string name_;     
@@ -69,7 +70,7 @@ class ImuHandler : public LampDataHandlerBase {
         Symbol query_key_;
 
         // Converters          
-        Eigen::Vector3d QuaternionToYpr(const ImuQuaternion& imu_quaternion) const;
+        Eigen::Vector3d QuaternionToYpr(const ImuQuaternionEigen& imu_quaternion) const;
         // imu_frame to base_frame conversion 
         std::string base_frame_id_; 
         std::string imu_frame_id_;          
