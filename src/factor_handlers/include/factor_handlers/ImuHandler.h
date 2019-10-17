@@ -25,7 +25,7 @@ using namespace gtsam;
 
 class ImuHandler : public LampDataHandlerBase {
     
-    // friend class ImuHandlerTest;
+    friend class ImuHandlerTest;
 
     public:
 
