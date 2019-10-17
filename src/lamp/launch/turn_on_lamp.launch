@@ -1,0 +1,98 @@
+<launch>
+  <arg name="robot_namespace" default="husky"/>
+
+  <!-- Velodyne topic throttle params -->
+  <arg name="vlp_throttle_freq" default="5.0"/><!-- Hz -->
+
+  <!-- Map processing params -->
+  <arg name="process_map" default="true"/>
+  <arg name="map_update_freq" default="1.0"/><!-- Hz -->
+  <arg name="map_topic_input" default="lamp/octree_map"/>
+  <arg name="map_topic_output" default="lamp/octree_map_downsampled"/>
+
+  <!-- optional filename of the zip archive of a pose graph to be loaded -->
+  <arg name="load_pose_graph_file" default="" /> 
+
+  <group ns="$(arg robot_namespace)">
+
+
+    <!-- SLAM -->
+    <node pkg="lamp"
+          name="lamp"
+          type="lamp_node"
+          output="screen">
+
+      <!-- Load graph -->
+      <param name="load_graph" value="$(arg load_pose_graph_file)"/>
+
+      <!-- Topics -->
+      <remap from="~pcld" to="velodyne_points/transformed"/>
+      <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
+      <remap from="~lio_odom" to="lo_frontend/odometry"/>
+      <remap from="~optimized_values" to="lamp_pgo/optimized_values"/>
+
+      <remap from="~artifact" to="~artifact_global" />
+      <remap from="~artifact_relative" to="reconciled_artifact" />
+
+      <!-- LAMP settings -->
+      <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
+      <rosparam file="$(find lamp)/config/lamp_init_noise.yaml" subst_value="true"/>
+      <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/>
+
+      <!-- Factor handlers settings -->
+      <rosparam file="$(find factor_handlers)/config/odom_parameters.yaml" subst_value="true"/>
+
+      <!-- Rates -->
+      <rosparam file="$(find lamp)/config/lamp_rates.yaml"/>
+
+      <!-- Frames -->
+      <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>
+
+      <!-- Point cloud filter -->
+      <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
+
+      <!-- Point cloud mapper -->
+      <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
+
+      <!-- Point cloud visualization -->
+      <!-- TODO - check if we use this -->
+      <rosparam file="$(find point_cloud_visualizer)/config/parameters.yaml"/>
+
+      <!-- The robot prefix dependent of robot_namespace -->
+      <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
+      <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
+      <param name="robot_prefix" value="c" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="robot_prefix" value="f" if="$(eval robot_namespace == 'husky4')"/>
+      <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax1')"/>
+      <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
+
+      <!-- The artifact prefix dependent of robot_namespace -->
+      <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
+      <param name="artifact_prefix" value="m" if="$(eval robot_namespace == 'husky2')"/>
+      <param name="artifact_prefix" value="n" if="$(eval robot_namespace == 'husky3')"/>
+      <param name="artifact_prefix" value="q" if="$(eval robot_namespace == 'husky4')"/>
+      <param name="artifact_prefix" value="o" if="$(eval robot_namespace == 'telemax1')"/>
+      <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
+    </node>
+
+    <!-- Pose graph optimizer -->
+    <node pkg="lamp_pgo"
+          name="lamp_pgo"
+          type="lamp_pgo_node"
+          output="screen">
+      <remap from="~pose_graph_to_optimize" to="lamp/pose_graph_to_optimize" />
+      <!-- Config - TODO move the proximity_threshold param elsewhere -->
+      <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>      
+    </node>
+
+    <!-- Loop Closure  -->
+    <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include>
+
+  </group>
+
+  <!-- launch rviz  -->
+  <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find blam_example)/rviz/lidar_slam.rviz" /> -->
+
+</launch>

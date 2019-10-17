@@ -1,0 +1,9 @@
+# Thresholds to set a new node
+translation_threshold: 1.0
+
+# Point cloud storing parameters
+keyed_scan_time_diff_limit: 0.5
+pc_buffer_size_limit: 10
+
+# Timestamp threshold 
+ts_threshold: 5.0
