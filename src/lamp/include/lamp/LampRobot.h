@@ -12,6 +12,7 @@
 
 #include <factor_handlers/OdometryHandler.h>
 #include <factor_handlers/ArtifactHandler.h>
+#include <factor_handlers/AprilTagHandler.h>
 #include <pcl/common/transforms.h>
 
 // Services
@@ -78,7 +79,7 @@ class LampRobot : public LampBase {
     // Factor Hanlder Wrappers
     bool ProcessOdomData(FactorData data);
     bool ProcessArtifactData(FactorData data);
-    void ProcessAprilData(FactorData data);
+    bool ProcessAprilTagData(FactorData data);
     bool InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // void ProcessUWBData(FactorData data);
     // Example use:
@@ -97,7 +98,7 @@ class LampRobot : public LampBase {
     // Data Handler classes
     OdometryHandler odometry_handler_; 
     ArtifactHandler artifact_handler_;
-    // AprilHandler april_handler_;
+    AprilTagHandler april_tag_handler_;
     // Manual LC
     // IMU
     // TS

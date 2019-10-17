@@ -277,6 +277,11 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n){
     return false;
   }
 
+  if (!april_tag_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the april tag handler.", name_.c_str());
+    return false;
+  }
+
   return true; 
 }
 
@@ -291,13 +296,16 @@ bool LampRobot::CheckHandlers() {
   bool b_have_odom_factors;
   // bool b_have_loop_closure;
   bool b_have_new_artifacts;
+  bool b_have_new_april_tags;
 
   // Check the odom for adding new poses
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
+  // Check for artifacts
   b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
-
+  // Check for april tags
+  b_have_new_april_tags = ProcessAprilTagData(april_tag_handler_.GetData());
   // TODO - determine what a true and false return means here
   return true;
 }
@@ -660,6 +668,111 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     // Track the edges that have been added
     int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
     TrackEdges(pose_key, cur_artifact_key, type, transform, covariance);
+  }
+  // add factor to buffer to send to pgo
+  nfg_.add(new_factors);
+  AddNewValues(new_values);
+
+  return true;
+
+}
+
+/*!
+  \brief  Wrapper for the april tag class interactions
+  Creates factors from the april tag output
+  \param   data - the output data struct from the AprilTagHandler class
+  \warning ...
+  \author Abhishek Thakur
+  \date Oct 2019
+*/
+bool LampRobot::ProcessAprilTagData(FactorData data){
+
+  // Check if there are new factors 
+  if (!data.b_has_data) {
+    return false;
+  }
+
+  b_has_new_factor_ = true;
+
+  // Necessary variables
+  Pose3 transform;
+  Pose3 temp_transform;
+  Pose3 global_pose;
+  gtsam::SharedNoiseModel covariance;
+  ros::Time timestamp;
+  gtsam::Symbol pose_key;
+  gtsam::Symbol cur_april_tag_key;
+
+  // New Factors to be added
+  NonlinearFactorGraph new_factors;
+
+  // New Values to be added
+  Values new_values;
+
+  // Get number of new measurements
+  int num_factors = data.transforms.size();
+
+  // process data for each new factor
+  for (int i = 0; i < num_factors; i++) {
+    // Get the time
+    timestamp = data.time_stamps[i].first;
+
+    // Get the april tag key
+    cur_april_tag_key = data.artifact_key[i];
+
+    // Get the pose measurement
+    if (b_artifacts_in_global_) {
+      // Convert pose to relative frame
+      ConvertGlobalToRelative(timestamp, data.transforms[i], temp_transform);
+    } else {
+      // Is in relative already
+      temp_transform = data.transforms[i];
+    }
+
+    // Is a relative tranform, so need to handle linking to the pose-graph
+    HandleRelativePoseMeasurement(
+        timestamp, temp_transform, transform, global_pose, pose_key);
+
+    if (pose_key == gtsam::Symbol()) {
+      ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
+                "BE HANDLED OR LOSE APRIL TAG!!");
+      b_has_new_factor_ = false;
+      return false;
+    }
+
+    // Get the covariances (Should be in relative frame as well)
+    // TODO - handle this better - need to add covariances from the odom - do in
+    // the function above
+    covariance = data.covariances[i];
+
+    if (b_use_fixed_covariances_) {
+      covariance = SetFixedNoiseModels("april");
+    }
+
+    // create and add the factor
+    new_factors.add(BetweenFactor<Pose3>(pose_key, cur_april_tag_key, transform, covariance));
+
+    // Check if it is a new april tag or not
+    if (!values_.exists(cur_april_tag_key)) {
+      // Insert into the values
+      new_values.insert(cur_april_tag_key, global_pose);
+
+      // Add keyed stamps
+      keyed_stamps_.insert(
+          std::pair<gtsam::Symbol, ros::Time>(cur_april_tag_key, timestamp));
+
+      // Add prior factor if its a new april tag.
+
+    } else {
+      // Second sighting of an april tag - we have a loop closure
+      ROS_INFO_STREAM("April tag re-sighted with key: "
+                      << gtsam::DefaultKeyFormatter(cur_april_tag_key));
+      b_run_optimization_ = true;
+    }
+
+    // Track the edges that have been added
+    int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+    TrackEdges(pose_key, cur_april_tag_key, type, transform, covariance);
   }
   // add factor to buffer to send to pgo
   nfg_.add(new_factors);

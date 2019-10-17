@@ -52,18 +52,10 @@ bool AprilTagHandler::LoadParameters(const ros::NodeHandle& n) {
     std::copy( artifact_prefix.begin(), artifact_prefix.end(), artifact_prefix_converter);
     artifact_prefix_ = artifact_prefix_converter[0];
   }
+
+  // TODO: Load april tag related parameters here.
+
   return true; 
-}
-
-bool AprilTagHandler::CreatePublishers(const ros::NodeHandle& n) {
-  // Create a local nodehandle to manage callback subscriptions.
-  ros::NodeHandle nl(n);
-
-  // Create publisher for artifact
-  // TODO: Change the message to new April tag message
-  artifact_pub_ = nl.advertise<core_msgs::Artifact>("april_tag", 10);
-
-  return true;
 }
 
 /*! \brief Register Online callbacks. 
@@ -79,15 +71,60 @@ bool AprilTagHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   artifact_sub_ = nl.subscribe(
     "april_tag_relative", 10, &AprilTagHandler::AprilTagCallback, this);
 
-  return CreatePublishers(n);  
+  return true;
 }
 
 /*! \brief  Callback for Artifacts.
   * Returns  Void
   */
-void AprilTagHandler::AprilTagCallback(const core_msgs::Artifact& msg) {
-  // TODO: Convert April tag message into Artifact message
+void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
+  // Convert April tag message into Artifact message
+  core_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
+
+  // TODO: If new artifact seen then update its ground truth to 
+  // the global_pose in ArtifactInfo. 
 
   // Call Artifact Callback
-  ArtifactCallback(msg);
+  ArtifactCallback(artifact_msg);
+}
+
+/*! \brief  Convert April tag message to Artifact message.
+  * Returns  Artifacts message
+  */
+core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg) {
+  core_msgs::Artifact artifact_msg;
+
+  // Fill april tags name
+  artifact_msg.name = msg.name;
+  // Put empty label
+  artifact_msg.label = "";
+  // Fill empty sequence
+  artifact_msg.seq = 0;
+  // Put empty id 
+  artifact_msg.id = "";
+  // Fill parent id
+  artifact_msg.parent_id = msg.id;
+  // Fill empty hostspot name
+  artifact_msg.hotspot_name = "";
+  // Fill pose value
+  artifact_msg.point = msg.point;
+  // Fill confidence with 1
+  artifact_msg.confidence = 1.0;
+  // Fill the covariance
+  artifact_msg.covariance = msg.covariance;
+
+  // Return message
+  return artifact_msg;
+}
+
+/*! \brief  Get ground truth data from April tag node key.  
+  * Returns  Ground truth information
+  */
+gtsam::Pose3 AprilTagHandler::GetGroundTruthData(const gtsam::Symbol artifact_key) {
+  if (artifact_key2info_hash_.find(artifact_key) != artifact_key2info_hash_.end()) {
+    return artifact_key2info_hash_[artifact_key].global_pose;
+  } else {
+    std::cout << "Key not found in the Artifact id to key map.";
+    return gtsam::Pose3();
+  }
 }
