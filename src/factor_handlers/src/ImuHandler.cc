@@ -93,12 +93,12 @@ Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_
     return factor;
 }
 
-Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuOrientation& imu_orientation) const {
+Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion) const {
     ROS_INFO("ImuHandler - QuaternionToYpr");
-    auto x = imu_orientation.x;
-    auto y = imu_orientation.y;
-    auto z = imu_orientation.z;
-    auto w = imu_orientation.w;
+    auto x = imu_quaternion.x;
+    auto y = imu_quaternion.y;
+    auto z = imu_quaternion.z;
+    auto w = imu_quaternion.w;
     Eigen::Quaterniond q = Eigen::Quaterniond(double(w), double(x), double(y), double(z));
     auto ypr = q.toRotationMatrix().eulerAngles(2, 1, 0);
     return ypr;
@@ -117,9 +117,9 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
     auto initial_size = imu_buffer_.size();
     
     auto current_time = msg->header.stamp.toSec();    
-    ImuOrientation current_orientation = msg->orientation;  
+    ImuQuaternion current_quaternion = msg->orientation;  
     
-    imu_buffer_.insert({current_time, current_orientation});     
+    imu_buffer_.insert({current_time, current_quaternion});     
     
     auto final_size = imu_buffer_.size();    
     if (final_size == (initial_size+1)) {
@@ -207,16 +207,16 @@ FactorData ImuHandler::GetData(){
         return factors_output;
     }
 
-    ImuOrientation imu_orientation;
+    ImuQuaternion imu_quaternion;
     ros::Time query_stamp_ros; 
     query_stamp_ros.fromSec(query_stamp_);
 
-    if (GetOrientationAtTime(query_stamp_ros, imu_orientation)==true){
+    if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){
         
         ROS_INFO("Successfully extracted data from buffer");
 
         // Convert extracted quaternion to ypr and construct factor
-        Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_orientation);
+        Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
         Pose3AttitudeFactor imu_factor = CreateAttitudeFactor(imu_ypr);
         
         // TODO: ImuHandler provides Pose3AttitudeFactor, but LAMP wants Pose3
@@ -235,11 +235,11 @@ FactorData ImuHandler::GetData(){
     return factors_output; 
 }
 
-bool ImuHandler::GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& imu_orientation) const {
+bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
 
     // TODO: Implement generic GetValueAtTime in base class as it is a common need by all handlers
 
-    ROS_INFO("ImuHandler - GetOrientationAtTime"); 
+    ROS_INFO("ImuHandler - GetQuaternionAtTime"); 
 
     // If map is empty, return false to the caller 
     if (imu_buffer_.size() == 0){
@@ -251,18 +251,18 @@ bool ImuHandler::GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& im
     auto time2 = itrTime->first;
     double time_diff;
 
-    // If this gives the start of the buffer, then take that ImuOrientation 
+    // If this gives the start of the buffer, then take that ImuQuaternion 
     if (itrTime == imu_buffer_.begin()) {
-        imu_orientation = itrTime->second;
+        imu_quaternion = itrTime->second;
         time_diff = itrTime->first - stamp.toSec();
         ROS_WARN("Timestamp before the start of the imu buffer");
         ROS_INFO_STREAM("time diff is: " << time_diff);
     } 
     else if (itrTime == imu_buffer_.end()) {
-        // Check if it is past the end of the buffer - if so, then take the last ImuOrientation 
+        // Check if it is past the end of the buffer - if so, then take the last ImuQuaternion
         ROS_WARN("Timestamp past the end of the imu buffer");
         itrTime--;
-        imu_orientation = itrTime->second;
+        imu_quaternion = itrTime->second;
         time_diff = stamp.toSec() - itrTime->first;
         ROS_INFO_STREAM("input time is " << stamp.toSec()
                                         << "s, and latest time is "
@@ -275,19 +275,19 @@ bool ImuHandler::GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& im
 
         // If closer to time2, then use that
         if (time2 - stamp.toSec() < stamp.toSec() - time1) {
-            imu_orientation = itrTime->second;
+            imu_quaternion = itrTime->second;
             time_diff = time2 - stamp.toSec();
         } 
         else {
             // Otherwise use time1
-            imu_orientation = std::prev(itrTime, 1)->second;
+            imu_quaternion = std::prev(itrTime, 1)->second;
             time_diff = stamp.toSec() - time1;
         }
     }
 
     // Check if the time difference is too large
     if (time_diff > ts_threshold_) { 
-        ROS_WARN("Time difference between request and latest ImuOrientation is too large, returning no ImuOrientation");
+        ROS_WARN("Time difference between request and latest ImuQuaternion is too large, returning no ImuQuaternion");
         ROS_INFO_STREAM("Time difference is "
                         << time_diff << "s, threshold is: " << ts_threshold_);
         return false;

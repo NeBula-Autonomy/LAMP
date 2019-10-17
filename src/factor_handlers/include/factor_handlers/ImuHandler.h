@@ -15,13 +15,10 @@
 #include <tf/transform_listener.h>
 #include <eigen_conversions/eigen_msg.h>
 
-
-// ImuOrientation ---> ImuQuaternion 
-
 // Typedefs 
 typedef sensor_msgs::Imu ImuMessage;
-typedef geometry_msgs::Quaternion ImuOrientation; 
-typedef std::map<double, ImuOrientation> ImuBuffer;
+typedef geometry_msgs::Quaternion ImuQuaternion; 
+typedef std::map<double, ImuQuaternion> ImuBuffer;
 
 using namespace gtsam;
 
@@ -62,7 +59,7 @@ class ImuHandler : public LampDataHandlerBase {
         bool SetKeyForImuAttitude(const Symbol& key);
 
         // Getters 
-        bool GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& imu_orientation) const;
+        bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const;
 
         // Parameters 
         std::string name_;     
@@ -70,21 +67,15 @@ class ImuHandler : public LampDataHandlerBase {
         double query_stamp_;
         Symbol query_key_;
 
-        // Finish 
-        Eigen::Vector3d QuaternionToYpr(const ImuOrientation& imu_orientation) const;
-
-        // Converters 
-        /*
-        --------- Adding support for IMU Lidar calibration ------- 
-        */
+        // Converters          
+        Eigen::Vector3d QuaternionToYpr(const ImuQuaternion& imu_quaternion) const;
+        // imu_frame to base_frame conversion 
         std::string base_frame_id_; 
-        std::string imu_frame_id_;  
-
+        std::string imu_frame_id_;          
         tf::TransformListener imu_T_laser_listener_;
         Eigen::Affine3d I_T_B_;    
         Eigen::Affine3d B_T_I_; 
-        Eigen::Quaterniond I_T_B_q_;     
-
+        Eigen::Quaterniond I_T_B_q_;   
         bool LoadCalibrationFromTfTree();
     
     private:
