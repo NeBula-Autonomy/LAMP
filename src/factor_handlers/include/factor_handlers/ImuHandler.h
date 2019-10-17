@@ -11,6 +11,12 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <gtsam/navigation/AttitudeFactor.h>
 #include <sensor_msgs/Imu.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <eigen_conversions/eigen_msg.h>
+
+
+// ImuOrientation ---> ImuQuaternion 
 
 // Typedefs 
 typedef sensor_msgs::Imu ImuMessage;
@@ -66,6 +72,20 @@ class ImuHandler : public LampDataHandlerBase {
 
         // Finish 
         Eigen::Vector3d QuaternionToYpr(const ImuOrientation& imu_orientation) const;
+
+        // Converters 
+        /*
+        --------- Adding support for IMU Lidar calibration ------- 
+        */
+        std::string base_frame_id_; 
+        std::string imu_frame_id_;  
+
+        tf::TransformListener imu_T_laser_listener_;
+        Eigen::Affine3d I_T_B_;    
+        Eigen::Affine3d B_T_I_; 
+        Eigen::Quaterniond I_T_B_q_;     
+
+        bool LoadCalibrationFromTfTree();
     
     private:
         

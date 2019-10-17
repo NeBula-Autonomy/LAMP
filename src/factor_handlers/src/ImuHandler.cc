@@ -1,6 +1,5 @@
 /*
  * Copyright Notes
- *
  * Authors: Matteo Palieri      (matteo.palieri@jpl.nasa.gov)
 */
 
@@ -45,9 +44,16 @@ bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {
 
     ROS_INFO("ImuHandler - LoadParameters");
 
-    // Parameter used in GetOrientationAtTime method
     if (!pu::Get("ts_threshold_", ts_threshold_))
         return false;
+
+    if (!pu::Get("frame_id/base", base_frame_id_))
+        return false;
+  
+    if (!pu::Get("frame_id/imu", imu_frame_id_)) 
+        return false;
+
+    LoadCalibrationFromTfTree();
 
     return true;
 }
@@ -289,6 +295,62 @@ bool ImuHandler::GetOrientationAtTime(const ros::Time& stamp, ImuOrientation& im
     
   return true; 
 
+}
+
+// Converters -------------------------------------------------------------------------------------------
+
+bool ImuHandler::LoadCalibrationFromTfTree(){
+
+  ROS_WARN_DELAYED_THROTTLE(2.0, 
+                            "Waiting for \'%s\' and \'%s\' to appear in tf_tree...",
+                            imu_frame_id_,
+                            base_frame_id_);
+
+  tf::StampedTransform imu_T_laser_transform;
+
+  try {
+    
+    imu_T_laser_listener_.waitForTransform(
+      imu_frame_id_,
+      base_frame_id_,
+      ros::Time(0),
+      ros::Duration(2.0));
+      
+    imu_T_laser_listener_.lookupTransform(
+      imu_frame_id_,
+      base_frame_id_,
+      ros::Time(0),
+      imu_T_laser_transform);
+
+    geometry_msgs::TransformStamped imu_T_laser_tmp_msg;
+
+    tf::transformStampedTFToMsg(imu_T_laser_transform, imu_T_laser_tmp_msg);
+    
+    tf::transformMsgToEigen(imu_T_laser_tmp_msg.transform, I_T_B_);
+
+    B_T_I_ = I_T_B_.inverse();
+
+    ROS_INFO_STREAM("Loaded pose_sensor to imu calibration B_T_L:");
+
+    std::cout << I_T_B_.translation() << std::endl;
+    std::cout << I_T_B_.rotation() << std::endl;
+    
+    I_T_B_q_ = Eigen::Quaterniond(I_T_B_.rotation());
+    ROS_INFO("q: x: %.3f, y: %.3f, z: %.3f, w: %.3f", I_T_B_q_.x(), I_T_B_q_.y(), I_T_B_q_.z(), I_T_B_q_.w());
+
+    return true; 
+
+  } 
+  
+  catch (tf::TransformException ex) {
+
+    ROS_ERROR("%s", ex.what());
+    I_T_B_ = Eigen::Affine3d::Identity();
+    B_T_I_ = Eigen::Affine3d::Identity();
+    return false; 
+
+  }
+  
 }
 
 
