@@ -114,8 +114,12 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
     auto current_time = msg->header.stamp.toSec();  
     
     ImuQuaternionEigen imu_quaternion_eigen;
-    tf::quaternionMsgToEigen(msg->orientation, imu_quaternion_eigen); 
+    tf::quaternionMsgToEigen(msg->orientation, imu_quaternion_eigen);
 
+    // Before inserting imu_quaternion_eigen into buffer, transform incoming quaternion from imu to base_link frame 
+    imu_quaternion_eigen = I_T_B_q_*imu_quaternion_eigen*I_T_B_q_.inverse(); 
+
+    // Insert in buffer the Eigen imu_quaternion transformed in base_link frame 
     imu_buffer_.insert({current_time, imu_quaternion_eigen});     
     
     auto final_size = imu_buffer_.size();    
