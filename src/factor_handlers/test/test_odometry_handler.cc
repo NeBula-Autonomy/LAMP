@@ -4,16 +4,15 @@
  *  This file shows an example usage of gtest.
  */
 
-#include <gtest/gtest.h>
 #include <factor_handlers/OdometryHandler.h>
+#include <gtest/gtest.h>
 
 class OdometryHandlerTest : public ::testing::Test {
-
 public:
-
   OdometryHandlerTest() {
     // Load Params
-    system("rosparam load $(rospack find factor_handlers)/config/odom_parameters.yaml");
+    system("rosparam load $(rospack find "
+           "factor_handlers)/config/odom_parameters.yaml");
 
     tolerance_ = 1e-5;
 
@@ -81,91 +80,91 @@ public:
   double tolerance_;
 
 protected:
+  // Odometry Callbacks ------------------------------------------------
+  void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    oh.LidarOdometryCallback(msg);
+  }
 
-    // Odometry Callbacks ------------------------------------------------
-    void LidarOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-      oh.LidarOdometryCallback(msg);
-    } 
+  void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    oh.LidarOdometryCallback(msg);
+  }
 
-    void VisualOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-      oh.LidarOdometryCallback(msg);
-    }  
+  void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    oh.LidarOdometryCallback(msg);
+  }
 
-    void WheelOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-      oh.LidarOdometryCallback(msg);
-    }
+  // Utilities
 
-    // Utilities
+  bool GetPoseAtTime(const ros::Time stamp,
+                     const OdomPoseBuffer& odom_buffer_map,
+                     PoseCovStamped& output) {
+    return oh.GetPoseAtTime(stamp, odom_buffer_map, output);
+  }
 
-    bool GetPoseAtTime(const ros::Time stamp,
-                       const OdomPoseBuffer& odom_buffer_map,
-                       PoseCovStamped& output) {
-      return oh.GetPoseAtTime(stamp, odom_buffer_map, output);
-    }
+  bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
+    return oh.GetOdomDelta(t_now, delta_pose);
+  }
 
-    bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
-      return oh.GetOdomDelta(t_now, delta_pose);
-    }
+  bool GetOdomDeltaLatestTime(ros::Time& t_latest, GtsamPosCov& delta_pose) {
+    return oh.GetOdomDeltaLatestTime(t_latest, delta_pose);
+  }
 
-    bool GetOdomDeltaLatestTime(ros::Time& t_latest, GtsamPosCov& delta_pose) {
-      return oh.GetOdomDeltaLatestTime(t_latest, delta_pose);
-    }
+  FactorData GetData() {
+    return oh.GetData();
+  }
 
-    FactorData GetData() {
-      return oh.GetData();
-    }
+  void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
+                           GtsamPosCov& measurement,
+                           const ros::Time t1,
+                           const ros::Time t2) {
+    oh.FillGtsamPosCovOdom(odom_buffer, measurement, t1, t2);
+  }
 
-    void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
-                             GtsamPosCov& measurement,
-                             const ros::Time t1,
-                             const ros::Time t2) {
-      oh.FillGtsamPosCovOdom(odom_buffer, measurement, t1, t2);
-    }
+  GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
+                                            const ros::Time t2) {
+    return oh.GetFusedOdomDeltaBetweenTimes(t1, t2);
+  }
 
-    GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
-                                              const ros::Time t2) {
-      return oh.GetFusedOdomDeltaBetweenTimes(t1, t2);
-    }
+  template <typename T1, typename T2>
+  int CheckBufferSizeMap(const std::map<T1, T2>& x) {
+    return oh.CheckBufferSizeMap<T1, T2>(x);
+  }
 
-    template <typename T1, typename T2> 
-    int CheckBufferSizeMap(const std::map<T1, T2>& x) {
-      return oh.CheckBufferSizeMap<T1, T2>(x);
-    }
+  gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
+    return oh.GetTransform(pose_cov_stamped_pair);
+  }
 
-    gtsam::Pose3 GetTransform(PoseCovStampedPair pose_cov_stamped_pair) {
-      return oh.GetTransform(pose_cov_stamped_pair);
-    }
+  gtsam::SharedNoiseModel
+  GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
+    return oh.GetCovariance(pose_cov_stamped_pair);
+  }
 
-    gtsam::SharedNoiseModel GetCovariance(PoseCovStampedPair pose_cov_stamped_pair) {
-      return oh.GetCovariance(pose_cov_stamped_pair);
-    }
+  gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const {
+    return oh.ToGtsam(pose);
+  }
 
-    gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const{
-      return oh.ToGtsam(pose);
-    }
+  void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+    return oh.PointCloudCallback(msg);
+  }
 
-    void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg){
-      return oh.PointCloudCallback(msg);
-    }
+  // Create three messages
+  PoseCovStamped msg_first;
+  PoseCovStamped msg_second;
+  PoseCovStamped msg_third;
+  PoseCovStamped msg_fourth;
+  PoseCovStamped msg_fifth;
 
-    // Create three messages
-    PoseCovStamped msg_first;
-    PoseCovStamped msg_second;
-    PoseCovStamped msg_third;
-    PoseCovStamped msg_fourth;
-    PoseCovStamped msg_fifth;
+  ros::Time t1_ros;
+  ros::Time t2_ros;
+  ros::Time t3_ros;
+  ros::Time t4_ros;
+  ros::Time t5_ros;
 
-    ros::Time t1_ros;
-    ros::Time t2_ros;
-    ros::Time t3_ros;
-    ros::Time t4_ros;
-    ros::Time t5_ros;
-
-  private:    
-
+private:
 };
 
-// Test we pass ----------------------------------------------------------------------
+// Test we pass
+// ----------------------------------------------------------------------
 
 /* TEST Initialize */
 TEST_F(OdometryHandlerTest, Initialization) {
@@ -177,7 +176,7 @@ TEST_F(OdometryHandlerTest, Initialization) {
 // Getters ------------------------------------------------------------
 
 /* TEST GetTransform */
-TEST_F (OdometryHandlerTest, TestGetTransform) {
+TEST_F(OdometryHandlerTest, TestGetTransform) {
   PoseCovStampedPair pose_cov_stamped_pair;
   geometry_msgs::Pose pose1;
   pose1.position.x = 0;
@@ -198,8 +197,8 @@ TEST_F (OdometryHandlerTest, TestGetTransform) {
   pose_cov_stamped_pair.first.pose.pose = pose1;
   pose_cov_stamped_pair.second.pose.pose = pose2;
   gtsam::Pose3 transform_actual = GetTransform(pose_cov_stamped_pair);
-  gtsam::Point3 position = gtsam::Point3(1,0,0);
-  gtsam::Rot3 rotation = gtsam::Rot3(1,0,0,0,1,0,0,0,1);
+  gtsam::Point3 position = gtsam::Point3(1, 0, 0);
+  gtsam::Rot3 rotation = gtsam::Rot3(1, 0, 0, 0, 1, 0, 0, 0, 1);
   gtsam::Pose3 transform_expected = gtsam::Pose3(rotation, position);
   ASSERT_TRUE(transform_actual.equals(transform_expected));
 }
@@ -264,19 +263,19 @@ TEST_F(OdometryHandlerTest, TestToGtsam) {
   pose.translation(0) = 1;
   pose.translation(1) = 0;
   pose.translation(2) = 0;
-  pose.rotation(0,0) = 1;
-  pose.rotation(0,1) = 0;
-  pose.rotation(0,2) = 0;
-  pose.rotation(1,0) = 0;
-  pose.rotation(1,1) = 1;
-  pose.rotation(1,2) = 0;
-  pose.rotation(2,0) = 0;
-  pose.rotation(2,1) = 0;
-  pose.rotation(2,2) = 1;
+  pose.rotation(0, 0) = 1;
+  pose.rotation(0, 1) = 0;
+  pose.rotation(0, 2) = 0;
+  pose.rotation(1, 0) = 0;
+  pose.rotation(1, 1) = 1;
+  pose.rotation(1, 2) = 0;
+  pose.rotation(2, 0) = 0;
+  pose.rotation(2, 1) = 0;
+  pose.rotation(2, 2) = 1;
   gtsam::Pose3 transform_actual = ToGtsam(pose);
 
-  gtsam::Point3 position = gtsam::Point3(1,0,0);
-  gtsam::Rot3 rotation = gtsam::Rot3(1,0,0,0,1,0,0,0,1);
+  gtsam::Point3 position = gtsam::Point3(1, 0, 0);
+  gtsam::Rot3 rotation = gtsam::Rot3(1, 0, 0, 0, 1, 0, 0, 0, 1);
   gtsam::Pose3 transform_expected = gtsam::Pose3(rotation, position);
 
   ASSERT_TRUE(transform_actual.equals(transform_expected));
@@ -898,10 +897,11 @@ TEST_F(OdometryHandlerTest, TestEmptyBufferHandling) {
 // PointCloud current_pointcloud;
 // pcl::fromROSMsg(*msg, current_pointcloud);
 
-// Test we pass but need more testing/implementation ---------------------------------
+// Test we pass but need more testing/implementation
+// ---------------------------------
 
-
-// Test we don't pass ----------------------------------------------------------------
+// Test we don't pass
+// ----------------------------------------------------------------
 
 /* TEST InsertMsgInBuffer */
 // TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
@@ -929,7 +929,7 @@ TEST_F(OdometryHandlerTest, TestGetCovariance) {
   gtsam::Matrix66 covariance_expected;
   for (size_t i = 0; i < 6; i++) {
     for (size_t j = 0; j < 6; j++) {
-      covariance_expected(i,j) = 2;
+      covariance_expected(i, j) = 2;
     }
   }
   gtsam::SharedNoiseModel noise_expected =
@@ -937,20 +937,17 @@ TEST_F(OdometryHandlerTest, TestGetCovariance) {
   // ASSERT_TRUE((*noise_actual).equals(*noise_expected));
 }
 
-
-
-
 // Initialize: Done
 
 // LoadParameters
 
 // RegisterCallbacks
 
-// GetData: 
+// GetData:
 
 // GetOdomDelta:
 
-// GetKeyedScanAtTime: 
+// GetKeyedScanAtTime:
 
 // GetFusedOdomDeltaBetweenTimes
 
@@ -986,7 +983,6 @@ TEST_F(OdometryHandlerTest, TestGetCovariance) {
 
 // GetPosesAtTimes: (Kamak)
 
-
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_odometry_handler");
@@ -996,7 +992,8 @@ int main(int argc, char** argv) {
 /*
 UNUSED
 
-// ----------------------------------------------------------------------------------------
+//
+----------------------------------------------------------------------------------------
 
 template <typename T>
 int CheckBufferSize(const std::vector<T>& x) {
@@ -1011,7 +1008,8 @@ TEST_F(OdometryHandlerTest, TestCheckBufferSize) {
   EXPECT_EQ(size, 1);
 }
 
-// ----------------------------------------------------------------------------------------
+//
+----------------------------------------------------------------------------------------
 
 template <typename T1, typename T2>
 bool InsertMsgInBuffer(typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
@@ -1019,14 +1017,16 @@ bool InsertMsgInBuffer(typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
 }
 
 
-// ----------------------------------------------------------------------------------------
+//
+----------------------------------------------------------------------------------------
 
-bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer, PoseCovStamped& output) {
-  return oh.GetPoseAtTime(t, odom_buffer, output);
+bool GetPoseAtTime(ros::Time t, const OdomPoseBuffer& odom_buffer,
+PoseCovStamped& output) { return oh.GetPoseAtTime(t, odom_buffer, output);
 }
 
-bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer& odom_buffer, PoseCovStampedPair& output_poses) {
-  return oh.GetPosesAtTimes(t1, t2, odom_buffer, output_poses);
+bool GetPosesAtTimes(ros::Time t1, ros::Time t2, const OdomPoseBuffer&
+odom_buffer, PoseCovStampedPair& output_poses) { return oh.GetPosesAtTimes(t1,
+t2, odom_buffer, output_poses);
 }
 
 
@@ -1045,34 +1045,34 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
   // Create an output
   PoseCovStampedPair myOutput;
   // Create a buffer
-  OdomPoseBuffer myBuffer; 
+  OdomPoseBuffer myBuffer;
   // Create two messages
-  geometry_msgs::PoseWithCovarianceStamped msg_first; 
+  geometry_msgs::PoseWithCovarianceStamped msg_first;
   geometry_msgs::PoseWithCovarianceStamped msg_second;
   geometry_msgs::PoseWithCovarianceStamped msg_third;
 
   // Fill the two messages
-  msg_first.header.stamp = t1_ros; 
-  msg_first.pose.pose.position.x = 1; 
-  msg_first.pose.pose.position.y = 0; 
-  msg_first.pose.pose.position.z = 0; 
+  msg_first.header.stamp = t1_ros;
+  msg_first.pose.pose.position.x = 1;
+  msg_first.pose.pose.position.y = 0;
+  msg_first.pose.pose.position.z = 0;
   msg_first.pose.pose.orientation.x = 0;
   msg_first.pose.pose.orientation.y = 0;
   msg_first.pose.pose.orientation.z = 0;
   msg_first.pose.pose.orientation.w = 1;
 
-  msg_second.header.stamp = t2_ros; 
-  msg_second.pose.pose.position.x = 2; 
-  msg_second.pose.pose.position.y = 0; 
+  msg_second.header.stamp = t2_ros;
+  msg_second.pose.pose.position.x = 2;
+  msg_second.pose.pose.position.y = 0;
   msg_second.pose.pose.position.z = 0;
   msg_second.pose.pose.orientation.x = 0;
   msg_second.pose.pose.orientation.y = 0;
   msg_second.pose.pose.orientation.z = 0;
   msg_second.pose.pose.orientation.w = 1;
 
-  msg_third.header.stamp = t3_ros; 
-  msg_third.pose.pose.position.x = 3; 
-  msg_third.pose.pose.position.y = 0; 
+  msg_third.header.stamp = t3_ros;
+  msg_third.pose.pose.position.x = 3;
+  msg_third.pose.pose.position.y = 0;
   msg_third.pose.pose.position.z = 0;
   msg_third.pose.pose.orientation.x = 0;
   msg_third.pose.pose.orientation.y = 0;
@@ -1080,8 +1080,8 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
   msg_third.pose.pose.orientation.w = 1;
 
   // Push messages to buffer
-  myBuffer.push_back(msg_first); 
-  myBuffer.push_back(msg_second); 
+  myBuffer.push_back(msg_first);
+  myBuffer.push_back(msg_second);
   myBuffer.push_back(msg_third);
 
   bool result = GetPosesAtTimes(t1_ros, t2_ros, myBuffer, myOutput);
@@ -1092,7 +1092,7 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
 // -----------------------------------------------------------------------------
 
 
-    void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, 
+    void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
                               GtsamPosCov& measurement,
                               const ros::Time t1,
                               const ros::Time t2) const {
@@ -1157,7 +1157,8 @@ TEST_F(OdometryHandlerTest, TestFillGtsamPosCovOdom) {
   // ASSERT_TRUE((*(odom_delta_actual.covariance)).equals(*noise_expected));
 }
 
-// ------------------------------------------------------------------------------
+//
+------------------------------------------------------------------------------
 
 bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
   return oh.GetKeyedScanAtTime(stamp, msg);
@@ -1200,14 +1201,15 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   msg5.header.stamp = t5_ros;
   msg6.header.stamp = t6_ros;
 
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(new sensor_msgs::PointCloud2(msg1));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(new sensor_msgs::PointCloud2(msg2));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(new sensor_msgs::PointCloud2(msg3));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(new sensor_msgs::PointCloud2(msg4));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr5(new sensor_msgs::PointCloud2(msg5));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr6(new sensor_msgs::PointCloud2(msg6));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(new
+sensor_msgs::PointCloud2(msg1)); sensor_msgs::PointCloud2::ConstPtr pc_ptr2(new
+sensor_msgs::PointCloud2(msg2)); sensor_msgs::PointCloud2::ConstPtr pc_ptr3(new
+sensor_msgs::PointCloud2(msg3)); sensor_msgs::PointCloud2::ConstPtr pc_ptr4(new
+sensor_msgs::PointCloud2(msg4)); sensor_msgs::PointCloud2::ConstPtr pc_ptr5(new
+sensor_msgs::PointCloud2(msg5)); sensor_msgs::PointCloud2::ConstPtr pc_ptr6(new
+sensor_msgs::PointCloud2(msg6));
 
-  
+
   PointCloudCallback(pc_ptr1);
   PointCloudCallback(pc_ptr2);
   PointCloudCallback(pc_ptr3);
@@ -1221,13 +1223,14 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   ASSERT_TRUE(result);
 }
 
-// ------------------------------------------------------------------------------
+//
+------------------------------------------------------------------------------
 
 unit tests
 // CalculatePoseDelta: Done (Nobuhiro)
 // GetDeltaBetweenPoses: (Kamak)
 // GetDeltaBetweenTimes: (Kamak)
-    
+
 
 double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
   return oh.CalculatePoseDelta(odom_buffer);
@@ -1237,38 +1240,38 @@ double CalculatePoseDelta(OdomPoseBuffer& odom_buffer){
 
 TEST_F (OdometryHandlerTest, TestCalculatePoseDelta){
   // Create a buffer
-  OdomPoseBuffer myBuffer; 
+  OdomPoseBuffer myBuffer;
   // Create two messages
-  geometry_msgs::PoseWithCovarianceStamped msg_first; 
+  geometry_msgs::PoseWithCovarianceStamped msg_first;
   geometry_msgs::PoseWithCovarianceStamped msg_second;
   // Fill the two messages
-  msg_first.pose.pose.position.x = 1; 
-  msg_first.pose.pose.position.y = 0; 
-  msg_first.pose.pose.position.z = 0; 
+  msg_first.pose.pose.position.x = 1;
+  msg_first.pose.pose.position.y = 0;
+  msg_first.pose.pose.position.z = 0;
   msg_first.pose.pose.orientation.x = 0;
   msg_first.pose.pose.orientation.y = 0;
   msg_first.pose.pose.orientation.z = 0;
   msg_first.pose.pose.orientation.w = 1;
-  msg_second.pose.pose.position.x = 0; 
-  msg_second.pose.pose.position.y = 0; 
+  msg_second.pose.pose.position.x = 0;
+  msg_second.pose.pose.position.y = 0;
   msg_second.pose.pose.position.z = 0;
   msg_second.pose.pose.orientation.x = 0;
   msg_second.pose.pose.orientation.y = 0;
   msg_second.pose.pose.orientation.z = 0;
   msg_second.pose.pose.orientation.w = 1;
   // Push messages to buffer
-  myBuffer.push_back(msg_first); 
-  myBuffer.push_back(msg_second);   
-  // Call the method to test 
+  myBuffer.push_back(msg_first);
+  myBuffer.push_back(msg_second);
+  // Call the method to test
   int size = CheckBufferSize(myBuffer);
   EXPECT_EQ(size, 2);
-  double delta = CalculatePoseDelta(myBuffer);   
+  double delta = CalculatePoseDelta(myBuffer);
   EXPECT_EQ(delta, 1);
 }
 
 
-std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair) {
-  return oh.GetTimeStamps(pose_cov_stamped_pair);
+std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair
+pose_cov_stamped_pair) { return oh.GetTimeStamps(pose_cov_stamped_pair);
 }
 
 TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
@@ -1281,7 +1284,7 @@ TEST_F(OdometryHandlerTest, TestGetTimeStamps) {
   PoseCovStampedPair pose_cov_stamped_pair;
   pose_cov_stamped_pair.first.header.stamp = t1_ros;
   pose_cov_stamped_pair.second.header.stamp = t2_ros;
-  std::pair<ros::Time, ros::Time> time_stamp_pair_actual = 
+  std::pair<ros::Time, ros::Time> time_stamp_pair_actual =
     GetTimeStamps(pose_cov_stamped_pair);
   EXPECT_EQ(time_stamp_pair_actual.first, t1_ros);
   EXPECT_EQ(time_stamp_pair_actual.second, t2_ros);

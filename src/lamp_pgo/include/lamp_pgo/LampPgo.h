@@ -19,14 +19,14 @@ Interface for ROS and KimeraRPGO
 #include "KimeraRPGO/RobustSolver.h"
 
 class LampPgo {
- public:
+public:
   // constructor destructor
   LampPgo();
   ~LampPgo();
 
   bool Initialize(const ros::NodeHandle& n);
 
- private:
+private:
   // define publishers and subscribers
   ros::Publisher optimized_pub_;
 
@@ -36,13 +36,13 @@ class LampPgo {
 
   void InputCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
 
- private:
+private:
   // Optimizer parameters
   KimeraRPGO::RobustSolverParams rpgo_params_;
-  std::unique_ptr<KimeraRPGO::RobustSolver> pgo_solver_;  // actual solver
+  std::unique_ptr<KimeraRPGO::RobustSolver> pgo_solver_; // actual solver
 
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
 };
 
-#endif  // LAMP_PGO_H_
+#endif // LAMP_PGO_H_

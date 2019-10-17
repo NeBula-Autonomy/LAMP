@@ -27,7 +27,7 @@ LampPgo::~LampPgo() {}
 
 bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Create subscriber and publisher
-  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
 
   // Publisher
   optimized_pub_ =
@@ -47,23 +47,26 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   if (b_use_outlier_rejection) {
     // outlier rejection on: set up PCM params
     double trans_threshold, rot_threshold;
-    if (!pu::Get("translation_check_threshold", trans_threshold)) return false;
-    if (!pu::Get("rotation_check_threshold", rot_threshold)) return false;
+    if (!pu::Get("translation_check_threshold", trans_threshold))
+      return false;
+    if (!pu::Get("rotation_check_threshold", rot_threshold))
+      return false;
     rpgo_params_.setPcmSimple3DParams(
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
   } else {
     rpgo_params_.setNoRejection(
-        KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection
+        KimeraRPGO::Verbosity::VERBOSE); // set no outlier rejection
   }
 
   // TODO - have a better way of handling special symbols...
   std::vector<char> special_symbs{
-      'l', 'm', 'n', 'o', 'p', 'q', 'u'};  // for artifacts
+      'l', 'm', 'n', 'o', 'p', 'q', 'u'}; // for artifacts
   rpgo_params_.specialSymbols = special_symbs;
 
   // set solver
   int solver_num;
-  if (!pu::Get("solver", solver_num)) return false;
+  if (!pu::Get("solver", solver_num))
+    return false;
 
   if (solver_num == 1) {
     // Levenberg-Marquardt

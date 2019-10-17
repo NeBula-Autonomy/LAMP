@@ -1,9 +1,9 @@
 #ifndef GEOMETRY_UTILS_TRANSFORM3_H
 #define GEOMETRY_UTILS_TRANSFORM3_H
 
-#include "Vector3.h"
 #include "Rotation3.h"
 #include "Transform2.h"
+#include "Vector3.h"
 
 namespace geometry_utils {
 
@@ -22,10 +22,10 @@ struct Transform3Base {
 
   Transform3Base(const Vector3Base<T>& translation_,
                  const Rotation3Base<T>& rotation_)
-      : translation(translation_), rotation(rotation_) {}
+    : translation(translation_), rotation(rotation_) {}
 
   Transform3Base(const Transform3Base<T>& in)
-      : translation(in.translation), rotation(in.rotation) {}
+    : translation(in.translation), rotation(in.rotation) {}
 
   Transform3Base(const Transform2Base<T>& in) {
     translation(0) = in.translation(0);
@@ -33,7 +33,8 @@ struct Transform3Base {
     translation(2) = 0;
     rotation.Eye();
     for (unsigned int i = 0; i < 2; i++)
-      for (unsigned int j = 0; j < 2; j++) rotation(i, j) = in.Rotation(i, j);
+      for (unsigned int j = 0; j < 2; j++)
+        rotation(i, j) = in.Rotation(i, j);
   }
 
   Transform3Base& operator=(const Transform3Base& rhs) {
@@ -61,7 +62,8 @@ struct Transform3Base {
     return !this->Equals(that);
   }
 
-  bool Equals(const Transform3Base& that, const T ptol = 1e-5,
+  bool Equals(const Transform3Base& that,
+              const T ptol = 1e-5,
               const T rtol = 1e-5) const {
     return (translation.Equals(that.translation, ptol) &&
             rotation.Equals(that.rotation, rtol));
@@ -101,9 +103,9 @@ Transform3Base<T> PoseInverse(const Transform3Base<T>& t) {
 template <typename T>
 Transform3Base<T> PoseDelta(const Transform3Base<T>& t1,
                             const Transform3Base<T>& t2) {
-  return Transform3Base<T>(
-      t1.rotation.Trans() * (t2.translation - t1.translation),
-      t1.rotation.Trans() * t2.rotation);
+  return Transform3Base<T>(t1.rotation.Trans() *
+                               (t2.translation - t1.translation),
+                           t1.rotation.Trans() * t2.rotation);
 }
 
 typedef Transform3Base<float> Transform3f;
@@ -111,6 +113,6 @@ typedef Transform3Base<double> Transform3d;
 typedef Transform3d Transform3;
 typedef Transform3 Tr3;
 
-}
+} // namespace geometry_utils
 
 #endif

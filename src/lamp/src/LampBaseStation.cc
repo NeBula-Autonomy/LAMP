@@ -4,7 +4,6 @@
  * Authors: Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
  */
 
-
 // Includes
 #include <lamp/LampBaseStation.h>
 
@@ -17,7 +16,7 @@ namespace gu = geometry_utils;
 // Constructor (if there is override)
 LampBaseStation::LampBaseStation() {}
 
-//Destructor
+// Destructor
 LampBaseStation::~LampBaseStation() {}
 
 // Initialization - override for Base Station Setup

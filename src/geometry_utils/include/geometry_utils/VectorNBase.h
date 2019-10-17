@@ -1,27 +1,31 @@
 #ifndef GEOMETRY_UTILS_VECTORN_H
 #define GEOMETRY_UTILS_VECTORN_H
 
+#include "GeometryUtilsMath.h"
+#include <Eigen/Core>
+#include <boost/array.hpp>
+#include <boost/shared_ptr.hpp>
 #include <iostream>
 #include <string>
-#include <boost/shared_ptr.hpp>
-#include <boost/array.hpp>
-#include <Eigen/Core>
-#include "GeometryUtilsMath.h"
 
 namespace geometry_utils {
 
 template <typename T, size_t N>
 struct VectorNBase {
-  typedef typename boost::shared_ptr<VectorNBase<T, N> > Ptr;
-  typedef typename boost::shared_ptr<const VectorNBase<T, N> > ConstPtr;
+  typedef typename boost::shared_ptr<VectorNBase<T, N>> Ptr;
+  typedef typename boost::shared_ptr<const VectorNBase<T, N>> ConstPtr;
 
   static const size_t length = N;
 
   boost::array<T, N> data;
 
-  VectorNBase() { data.fill(0); }
+  VectorNBase() {
+    data.fill(0);
+  }
 
-  VectorNBase(T val) { data.fill(val); }
+  VectorNBase(T val) {
+    data.fill(val);
+  }
 
   VectorNBase(const VectorNBase& in) : data(in.data) {}
 
@@ -157,9 +161,13 @@ struct VectorNBase {
     return (*this - that).Norm() < ptol;
   }
 
-  inline T Norm() const { return math::sqrt((*this) ^ (*this)); }
+  inline T Norm() const {
+    return math::sqrt((*this) ^ (*this));
+  }
 
-  inline VectorNBase Normalize() const { return (*this) / Norm(); }
+  inline VectorNBase Normalize() const {
+    return (*this) / Norm();
+  }
 
   inline VectorNBase Abs() const {
     T d[N];
@@ -223,6 +231,6 @@ inline T Dot(const VectorNBase<T, N>& v1, const VectorNBase<T, N>& v2) {
   return v1.Dot(v2);
 }
 
-}
+} // namespace geometry_utils
 
 #endif

@@ -2,8 +2,8 @@
 #define BOOST_TEST_MODULE test_base
 #include <boost/test/unit_test.hpp>
 
-#include <ros/ros.h>
 #include <geometry_utils/GeometryUtils.h>
+#include <ros/ros.h>
 
 namespace gu = geometry_utils;
 
@@ -22,16 +22,16 @@ BOOST_AUTO_TEST_CASE(vector2_base) {
   BOOST_CHECK_EQUAL(gu::Vec2(p1 - p2), (v1 - v2));
   BOOST_CHECK_EQUAL(gu::Vec2(p1.cwiseProduct(p2)), (v1 % v2));
   BOOST_CHECK_EQUAL(gu::Vec2(p1.cwiseQuotient(p2)), (v1 / v2));
-  double s = Eigen::MatrixXd::Random(1,1)(0);
-  BOOST_CHECK_EQUAL(gu::Vec2(s*p1), (s*v1));
-  BOOST_CHECK_EQUAL(gu::Vec2(p1*s), (v1*s));
+  double s = Eigen::MatrixXd::Random(1, 1)(0);
+  BOOST_CHECK_EQUAL(gu::Vec2(s * p1), (s * v1));
+  BOOST_CHECK_EQUAL(gu::Vec2(p1 * s), (v1 * s));
 
   gu::Vec2 v3(0.1, 0.2);
   Eigen::Vector2d p3 = v3.Eigen();
   Eigen::Vector2d p4 = gu::Eigen(v3);
   BOOST_CHECK_EQUAL(gu::Vec2(p3), gu::Vec2(p4));
-  BOOST_CHECK_EQUAL(gu::Vec2(s*p3), (s*v3));
-  BOOST_CHECK_EQUAL(gu::Vec2(p1/p1.norm()), v1.Normalize());
+  BOOST_CHECK_EQUAL(gu::Vec2(s * p3), (s * v3));
+  BOOST_CHECK_EQUAL(gu::Vec2(p1 / p1.norm()), v1.Normalize());
 
   v3 /= s;
   p3 /= s;
@@ -70,9 +70,9 @@ BOOST_AUTO_TEST_CASE(vector3_base) {
   BOOST_CHECK_EQUAL(gu::Vec3(p1.cwiseProduct(p2)), (v1 % v2));
   BOOST_CHECK_EQUAL(gu::Vec3(p1.cwiseQuotient(p2)), (v1 / v2));
   BOOST_CHECK_CLOSE(p1.dot(p2), (v1 ^ v2), 1e-10);
-  double s = Eigen::MatrixXd::Random(1,1)(0);
-  BOOST_CHECK_EQUAL(gu::Vec3(s*p1), (s*v1));
-  BOOST_CHECK_EQUAL(gu::Vec3(p1*s), (v1*s));
+  double s = Eigen::MatrixXd::Random(1, 1)(0);
+  BOOST_CHECK_EQUAL(gu::Vec3(s * p1), (s * v1));
+  BOOST_CHECK_EQUAL(gu::Vec3(p1 * s), (v1 * s));
   BOOST_CHECK_CLOSE(p1.norm(), v1.Norm(), 1e-10);
 
   BOOST_CHECK_EQUAL(gu::Vec3(p1.cross(p2)), v1.Cross(v2));
@@ -82,9 +82,9 @@ BOOST_AUTO_TEST_CASE(vector3_base) {
   Eigen::Vector3d p3 = v3.Eigen();
   Eigen::Vector3d p4 = gu::Eigen(v3);
   BOOST_CHECK_EQUAL(gu::Vec3(p3), gu::Vec3(p4));
-  BOOST_CHECK_EQUAL(gu::Vec3(s*p3), (s*v3));
+  BOOST_CHECK_EQUAL(gu::Vec3(s * p3), (s * v3));
 
-  BOOST_CHECK_EQUAL(gu::Vec3(p1/p1.norm()), v1.Normalize());
+  BOOST_CHECK_EQUAL(gu::Vec3(p1 / p1.norm()), v1.Normalize());
 
   v3 /= s;
   p3 /= s;
@@ -123,18 +123,18 @@ BOOST_AUTO_TEST_CASE(vector4_base) {
   BOOST_CHECK_EQUAL(gu::Vec4(p1.cwiseProduct(p2)), (v1 % v2));
   BOOST_CHECK_EQUAL(gu::Vec4(p1.cwiseQuotient(p2)), (v1 / v2));
   BOOST_CHECK_CLOSE(p1.dot(p2), (v1 ^ v2), 1e-10);
-  double s = Eigen::MatrixXd::Random(1,1)(0);
-  BOOST_CHECK_EQUAL(gu::Vec4(s*p1), (s*v1));
-  BOOST_CHECK_EQUAL(gu::Vec4(p1*s), (v1*s));
+  double s = Eigen::MatrixXd::Random(1, 1)(0);
+  BOOST_CHECK_EQUAL(gu::Vec4(s * p1), (s * v1));
+  BOOST_CHECK_EQUAL(gu::Vec4(p1 * s), (v1 * s));
   BOOST_CHECK_CLOSE(p1.norm(), v1.Norm(), 1e-10);
 
   gu::Vector4 v3(0.1, 0.2, 0.3, 0.4);
   Eigen::Vector4d p3 = v3.Eigen();
   Eigen::Vector4d p4 = gu::Eigen(v3);
   BOOST_CHECK_EQUAL(gu::Vec4(p3), gu::Vec4(p4));
-  BOOST_CHECK_EQUAL(gu::Vec4(s*p3), (s*v3));
+  BOOST_CHECK_EQUAL(gu::Vec4(s * p3), (s * v3));
 
-  BOOST_CHECK_EQUAL(gu::Vec4(p1/p1.norm()), v1.Normalize());
+  BOOST_CHECK_EQUAL(gu::Vec4(p1 / p1.norm()), v1.Normalize());
 
   v3 /= s;
   p3 /= s;
@@ -188,17 +188,17 @@ BOOST_AUTO_TEST_CASE(matrix2x2_base) {
   BOOST_CHECK_EQUAL(gu::Mat22(p1.cwiseProduct(p2)), (m1 % m2));
   BOOST_CHECK_EQUAL(gu::Mat22(p1.cwiseQuotient(p2)), (m1 / m2));
   BOOST_CHECK_EQUAL(gu::Mat22(p1 * p2), (m1 * m2));
-  double s = Eigen::MatrixXd::Random(1,1)(0);
-  BOOST_CHECK_EQUAL(gu::Mat22(s*p1), (s*m1));
-  BOOST_CHECK_EQUAL(gu::Mat22(p1*s), (m1*s));
+  double s = Eigen::MatrixXd::Random(1, 1)(0);
+  BOOST_CHECK_EQUAL(gu::Mat22(s * p1), (s * m1));
+  BOOST_CHECK_EQUAL(gu::Mat22(p1 * s), (m1 * s));
   BOOST_CHECK_CLOSE(p1.norm(), m1.Norm(), 1e-10);
-  BOOST_CHECK_EQUAL(gu::Vec2(p1*pv), (m1*v));
+  BOOST_CHECK_EQUAL(gu::Vec2(p1 * pv), (m1 * v));
 
   gu::Mat22 v3(0.1, 0.2, 0.3, 0.4);
   Eigen::Matrix2d p3 = v3.Eigen();
   Eigen::Matrix2d p4 = gu::Eigen(v3);
   BOOST_CHECK_EQUAL(gu::Mat22(p3), gu::Mat22(p4));
-  BOOST_CHECK_EQUAL(gu::Mat22(s*p3), (s*v3));
+  BOOST_CHECK_EQUAL(gu::Mat22(s * p3), (s * v3));
 
   m1 += m2;
   p1 += p2;
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE(matrix2x2_base) {
   Eigen::Vector2d ov1 = Eigen::Vector2d::Random();
   Eigen::Vector2d ov2 = Eigen::Vector2d::Random();
   gu::Vec2 gov1(ov1), gov2(ov2);
-  BOOST_CHECK_EQUAL(gu::Mat22(ov1*ov2.transpose()), gu::Outer(gov1, gov2));
+  BOOST_CHECK_EQUAL(gu::Mat22(ov1 * ov2.transpose()), gu::Outer(gov1, gov2));
 }
 
 BOOST_AUTO_TEST_CASE(matrix3x3_base) {
@@ -272,11 +272,11 @@ BOOST_AUTO_TEST_CASE(matrix3x3_base) {
   BOOST_CHECK_EQUAL(gu::Mat33(p1.cwiseProduct(p2)), (m1 % m2));
   BOOST_CHECK_EQUAL(gu::Mat33(p1.cwiseQuotient(p2)), (m1 / m2));
   BOOST_CHECK_EQUAL(gu::Mat33(p1 * p2), (m1 * m2));
-  double s = Eigen::MatrixXd::Random(1,1)(0);
-  BOOST_CHECK_EQUAL(gu::Mat33(s*p1), (s*m1));
-  BOOST_CHECK_EQUAL(gu::Mat33(p1*s), (m1*s));
+  double s = Eigen::MatrixXd::Random(1, 1)(0);
+  BOOST_CHECK_EQUAL(gu::Mat33(s * p1), (s * m1));
+  BOOST_CHECK_EQUAL(gu::Mat33(p1 * s), (m1 * s));
   BOOST_CHECK_CLOSE(p1.norm(), m1.Norm(), 1e-10);
-  BOOST_CHECK_EQUAL(gu::Vec3(p1*pv), (m1*v));
+  BOOST_CHECK_EQUAL(gu::Vec3(p1 * pv), (m1 * v));
 
   gu::Mat33 v3(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9);
 
@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE(matrix3x3_base) {
   Eigen::Vector3d ov1 = Eigen::Vector3d::Random();
   Eigen::Vector3d ov2 = Eigen::Vector3d::Random();
   gu::Vec3 gov1(ov1), gov2(ov2);
-  BOOST_CHECK_EQUAL(gu::Mat33(ov1*ov2.transpose()), gu::Outer(gov1, gov2));
+  BOOST_CHECK_EQUAL(gu::Mat33(ov1 * ov2.transpose()), gu::Outer(gov1, gov2));
 }
 
 BOOST_AUTO_TEST_CASE(matrix4x4_base) {
@@ -318,20 +318,32 @@ BOOST_AUTO_TEST_CASE(matrix4x4_base) {
   BOOST_CHECK_EQUAL(gu::Mat44(p1.cwiseProduct(p2)), (m1 % m2));
   BOOST_CHECK_EQUAL(gu::Mat44(p1.cwiseQuotient(p2)), (m1 / m2));
   BOOST_CHECK_EQUAL(gu::Mat44(p1 * p2), (m1 * m2));
-  double s = Eigen::MatrixXd::Random(1,1)(0);
-  BOOST_CHECK_EQUAL(gu::Mat44(s*p1), (s*m1));
-  BOOST_CHECK_EQUAL(gu::Mat44(p1*s), (m1*s));
+  double s = Eigen::MatrixXd::Random(1, 1)(0);
+  BOOST_CHECK_EQUAL(gu::Mat44(s * p1), (s * m1));
+  BOOST_CHECK_EQUAL(gu::Mat44(p1 * s), (m1 * s));
   BOOST_CHECK_CLOSE(p1.norm(), m1.Norm(), 1e-10);
-  BOOST_CHECK_EQUAL(gu::Vec4(p1*pv), (m1*v));
+  BOOST_CHECK_EQUAL(gu::Vec4(p1 * pv), (m1 * v));
 
-  gu::Mat44 v3(0.1, 0.2, 0.3, 0.4,
-               0.5, 0.6, 0.7, 0.8,
-               0.9, 1.0, 1.1, 1.2,
-               1.3, 1.4, 1.5, 1.6);
+  gu::Mat44 v3(0.1,
+               0.2,
+               0.3,
+               0.4,
+               0.5,
+               0.6,
+               0.7,
+               0.8,
+               0.9,
+               1.0,
+               1.1,
+               1.2,
+               1.3,
+               1.4,
+               1.5,
+               1.6);
   Eigen::Matrix4d p3 = v3.Eigen();
   Eigen::Matrix4d p4 = gu::Eigen(v3);
   BOOST_CHECK_EQUAL(gu::Mat44(p3), gu::Mat44(p4));
-  BOOST_CHECK_EQUAL(gu::Mat44(s*p3), (s*v3));
+  BOOST_CHECK_EQUAL(gu::Mat44(s * p3), (s * v3));
 
   m1 += m2;
   p1 += p2;
@@ -347,20 +359,24 @@ BOOST_AUTO_TEST_CASE(matrix4x4_base) {
   Eigen::Vector4d ov1 = Eigen::Vector4d::Random();
   Eigen::Vector4d ov2 = Eigen::Vector4d::Random();
   gu::Vec4 gov1(ov1), gov2(ov2);
-  BOOST_CHECK_EQUAL(gu::Mat44(ov1*ov2.transpose()), gu::Outer(gov1, gov2));
+  BOOST_CHECK_EQUAL(gu::Mat44(ov1 * ov2.transpose()), gu::Outer(gov1, gov2));
 }
 
 BOOST_AUTO_TEST_CASE(rot2_base) {
-  double th1 = Eigen::MatrixXd::Random(1,1)(0);
-  double th2 = Eigen::MatrixXd::Random(1,1)(0);
+  double th1 = Eigen::MatrixXd::Random(1, 1)(0);
+  double th2 = Eigen::MatrixXd::Random(1, 1)(0);
 
   Eigen::Matrix2d p1;
-  p1(0, 0) = cos(th1); p1(0, 1) = -sin(th1);
-  p1(1, 0) = sin(th1); p1(1, 1) = cos(th1);
+  p1(0, 0) = cos(th1);
+  p1(0, 1) = -sin(th1);
+  p1(1, 0) = sin(th1);
+  p1(1, 1) = cos(th1);
 
   Eigen::Matrix2d p2;
-  p2(0, 0) = cos(th2); p2(0, 1) = -sin(th2);
-  p2(1, 0) = sin(th2); p2(1, 1) = cos(th2);
+  p2(0, 0) = cos(th2);
+  p2(0, 1) = -sin(th2);
+  p2(1, 0) = sin(th2);
+  p2(1, 1) = cos(th2);
 
   gu::Rot2 m1(p1);
   gu::Rot2 m2(p2);
@@ -368,8 +384,8 @@ BOOST_AUTO_TEST_CASE(rot2_base) {
   BOOST_CHECK_EQUAL(m1, gu::Rot2(th1));
   BOOST_CHECK_EQUAL(m2, gu::Rot2(th2));
 
-  BOOST_CHECK_EQUAL(gu::Rot2(p1*p2), (m1*m2));
-  BOOST_CHECK_EQUAL(gu::Rot2(p2*p1), (m2*m1));
+  BOOST_CHECK_EQUAL(gu::Rot2(p1 * p2), (m1 * m2));
+  BOOST_CHECK_EQUAL(gu::Rot2(p2 * p1), (m2 * m1));
 
   gu::Rot2 r1(th1);
   gu::Rot2 r2(th2);
@@ -378,8 +394,8 @@ BOOST_AUTO_TEST_CASE(rot2_base) {
 
   Eigen::Rotation2D<double> e1(m1.Eigen());
   Eigen::Rotation2D<double> e2(m2.Eigen());
-  BOOST_CHECK_EQUAL(gu::Rot2(e1*e2), (m1*m2));
-  BOOST_CHECK_EQUAL(gu::Rot2(e2*e1), (m2*m1));
+  BOOST_CHECK_EQUAL(gu::Rot2(e1 * e2), (m1 * m2));
+  BOOST_CHECK_EQUAL(gu::Rot2(e2 * e1), (m2 * m1));
   BOOST_CHECK_EQUAL(gu::Rot2(Eigen::Rotation2D<double>(th1)), gu::Rot2(th1));
 }
 
@@ -404,8 +420,8 @@ BOOST_AUTO_TEST_CASE(rot3_base) {
   Eigen::Matrix3d p1 = gu::Eigen(m1);
   Eigen::Matrix3d p2 = gu::Eigen(m2);
 
-  BOOST_CHECK_EQUAL(gu::Rot3(p1*p2), (m1*m2));
-  BOOST_CHECK_EQUAL(gu::Rot3(p2*p1), (m2*m1));
+  BOOST_CHECK_EQUAL(gu::Rot3(p1 * p2), (m1 * m2));
+  BOOST_CHECK_EQUAL(gu::Rot3(p2 * p1), (m2 * m1));
 
   BOOST_CHECK_EQUAL(m1.GetEulerZYX()(0), m1.Roll());
   BOOST_CHECK_EQUAL(m1.GetEulerZYX()(1), m1.Pitch());
@@ -415,8 +431,8 @@ BOOST_AUTO_TEST_CASE(rot3_base) {
 
   Eigen::AngleAxis<double> e1(m1.Eigen());
   Eigen::AngleAxis<double> e2(m2.Eigen());
-  BOOST_CHECK_EQUAL(gu::Rot3(e1*e2), (m1*m2));
-  BOOST_CHECK_EQUAL(gu::Rot3(e2*e1), (m2*m1));
+  BOOST_CHECK_EQUAL(gu::Rot3(e1 * e2), (m1 * m2));
+  BOOST_CHECK_EQUAL(gu::Rot3(e2 * e1), (m2 * m1));
 }
 
 BOOST_AUTO_TEST_CASE(transform_base) {
@@ -460,10 +476,10 @@ BOOST_AUTO_TEST_CASE(matrixnxm_base) {
   gv2 v1(pv1);
   gv4 v2(pv2);
 
-  BOOST_CHECK_EQUAL(gu::Vec4(p1*pv1), (m1*v1));
-  BOOST_CHECK_EQUAL(gu::Vec2(p2*pv2), (m2*v2));
-  BOOST_CHECK_EQUAL(gu::Mat44(p1*p2), (m1*m2));
-  BOOST_CHECK_EQUAL(gu::Mat22(p2*p1), (m2*m1));
+  BOOST_CHECK_EQUAL(gu::Vec4(p1 * pv1), (m1 * v1));
+  BOOST_CHECK_EQUAL(gu::Vec2(p2 * pv2), (m2 * v2));
+  BOOST_CHECK_EQUAL(gu::Mat44(p1 * p2), (m1 * m2));
+  BOOST_CHECK_EQUAL(gu::Mat22(p2 * p1), (m2 * m1));
 
   BOOST_CHECK_EQUAL(m1, m1);
   BOOST_CHECK_EQUAL(m2, m2);
@@ -475,20 +491,26 @@ BOOST_AUTO_TEST_CASE(matrixnxm_base) {
   BOOST_CHECK_EQUAL(gm42(p1.cwiseProduct(p1)), (m1 % m1));
   BOOST_CHECK_EQUAL(gm24(p4.cwiseQuotient(p2)), (m4 / m2));
   BOOST_CHECK_EQUAL(gm44(p1 * p2), (m1 * m2));
-  double s = Eigen::MatrixXd::Random(1,1)(0);
-  BOOST_CHECK_EQUAL(gm24(s*p2), (s*m2));
-  BOOST_CHECK_EQUAL(gm42(p1*s), (m1*s));
+  double s = Eigen::MatrixXd::Random(1, 1)(0);
+  BOOST_CHECK_EQUAL(gm24(s * p2), (s * m2));
+  BOOST_CHECK_EQUAL(gm42(p1 * s), (m1 * s));
   BOOST_CHECK_CLOSE(p3.norm(), m3.Norm(), 1e-10);
-  BOOST_CHECK_CLOSE((p1*p2).norm(), (m1*m2).Norm(), 1e-10);
+  BOOST_CHECK_CLOSE((p1 * p2).norm(), (m1 * m2).Norm(), 1e-10);
 
   gm24 m5;
-  m5(0, 0) = 0.1; m5(0, 1) = 0.2; m5(0, 2) = 0.2; m5(0, 3) = 0.3;
-  m5(1, 0) = 1.1; m5(1, 1) = 1.2; m5(1, 2) = 1.2; m5(1, 3) = 1.3;
+  m5(0, 0) = 0.1;
+  m5(0, 1) = 0.2;
+  m5(0, 2) = 0.2;
+  m5(0, 3) = 0.3;
+  m5(1, 0) = 1.1;
+  m5(1, 1) = 1.2;
+  m5(1, 2) = 1.2;
+  m5(1, 3) = 1.3;
 
   am24 p5 = m5.Eigen();
   am24 p6 = gu::Eigen(m5);
   BOOST_CHECK_EQUAL(gm24(p5), gm24(p6));
-  BOOST_CHECK_EQUAL(gm24(s*p5), (s*m5));
+  BOOST_CHECK_EQUAL(gm24(s * p5), (s * m5));
 
   m1 += m1;
   p1 += p1;
@@ -502,5 +524,5 @@ BOOST_AUTO_TEST_CASE(matrixnxm_base) {
   av2 ov2 = av2::Random();
   gv4 gov1(ov1);
   gv2 gov2(ov2);
-  BOOST_CHECK_EQUAL(gm42(ov1*ov2.transpose()), gu::Outer(gov1, gov2));
+  BOOST_CHECK_EQUAL(gm42(ov1 * ov2.transpose()), gu::Outer(gov1, gov2));
 }

@@ -64,20 +64,20 @@
 
 // Class definition
 class LampBase {
- public:
-   typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
-   typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
-   // Constructor
-   LampBase();
+public:
+  typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
+  typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
+  // Constructor
+  LampBase();
 
-   // Destructor
-   ~LampBase();
+  // Destructor
+  ~LampBase();
 
-   // Define main interface functions
+  // Define main interface functions
 
-   virtual bool Initialize(const ros::NodeHandle& n);
+  virtual bool Initialize(const ros::NodeHandle& n);
 
- protected:
+protected:
   // TODO: make most of these pure virtual
 
   // Use this for any "private" things to be used in the derived class
@@ -111,7 +111,7 @@ class LampBase {
   bool PublishPoseGraph();
   bool PublishPoseGraphForOptimizer();
 
-  // Convert timestamps to gtsam keys 
+  // Convert timestamps to gtsam keys
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
   gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) const;
   bool IsTimeWithinThreshold(double time, const ros::Time& target) const;
@@ -159,10 +159,10 @@ class LampBase {
 
   // Keep a list of keyed laser scans and keyed timestamps.
   std::map<gtsam::Symbol, PointCloud::ConstPtr> keyed_scans_;
-  std::map<gtsam::Symbol, ros::Time> keyed_stamps_;  // All nodes
+  std::map<gtsam::Symbol, ros::Time> keyed_stamps_; // All nodes
   std::map<double, gtsam::Symbol> stamp_to_odom_key_;
 
-    // List of all factors with additional information
+  // List of all factors with additional information
   EdgeMessages edges_info_;
   PriorMessages priors_info_;
 
@@ -221,13 +221,10 @@ class LampBase {
   double laser_lc_trans_sigma_;
 
   // Time threshold for GetKeyAtTime
-  double time_threshold_; 
+  double time_threshold_;
 
- private:
+private:
   // Anything just in the base class
-
-
-
 };
 
 #endif

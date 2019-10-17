@@ -5,51 +5,47 @@
 
 #include <gtest/gtest.h>
 
-#include <ros/ros.h>
 #include <math.h>
+#include <ros/ros.h>
 
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 
-#include <gtsam/inference/Symbol.h>
 #include <gtsam/inference/Key.h>
+#include <gtsam/inference/Symbol.h>
 
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
 
 class TestUtils : public ::testing::Test {
+public:
+  TestUtils() {
+    // Set params
+  }
+  ~TestUtils() {}
 
-  public: 
-    TestUtils(){
-      // Set params
-
-    }
-    ~TestUtils(){}
-
-  protected:
-
-  private:
-
+protected:
+private:
 };
 
 TEST_F(TestUtils, PoseGraphMsgToGtsam) {
   ros::NodeHandle nh, pnh("~");
-  
+
   gtsam::NonlinearFactorGraph nfg;
   gtsam::Values values;
   pose_graph_msgs::PoseGraph g;
 
-    // Make the graph
-  pose_graph_msgs::PoseGraphNode n0, n1, n2, a0; 
+  // Make the graph
+  pose_graph_msgs::PoseGraphNode n0, n1, n2, a0;
   pose_graph_msgs::PoseGraphEdge e0, e1, e2;
 
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 1.0;
   n1.pose.position.y = 0.0;
@@ -91,7 +87,8 @@ TEST_F(TestUtils, PoseGraphMsgToGtsam) {
   g.edges.push_back(e1);
   g.edges.push_back(e2);
 
-  pose_graph_msgs::PoseGraph::ConstPtr graph_msg(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraph::ConstPtr graph_msg(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &nfg, &values);
@@ -101,8 +98,7 @@ TEST_F(TestUtils, PoseGraphMsgToGtsam) {
   EXPECT_EQ(4, values.size());
 
   // TODO test the nfg & values explicitly
- }
-
+}
 
 TEST(TestCommonFunctions, TestGtsamToRosPose) {
   // Create gtsam pose3

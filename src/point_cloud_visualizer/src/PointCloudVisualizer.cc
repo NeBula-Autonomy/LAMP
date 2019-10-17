@@ -34,9 +34,9 @@
  * Authors: Erik Nelson            ( eanelson@eecs.berkeley.edu )
  */
 
-#include <point_cloud_visualizer/PointCloudVisualizer.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <point_cloud_visualizer/PointCloudVisualizer.h>
 
 namespace pu = parameter_utils;
 
@@ -69,7 +69,8 @@ bool PointCloudVisualizer::LoadParameters(const ros::NodeHandle& n) {
     return false;
 
   // Load coordinate frames.
-  if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
+  if (!pu::Get("frame_id/fixed", fixed_frame_id_))
+    return false;
 
   return true;
 }
@@ -91,7 +92,7 @@ bool PointCloudVisualizer::InsertPointCloud(const PointCloud& points) {
     return false;
 
   // Store the timestamp for the next time the point cloud is published.
-  stamp_.fromNSec(points.header.stamp*1e3);
+  stamp_.fromNSec(points.header.stamp * 1e3);
 
   // Merge with the existing point cloud .
   *incremental_points_ += points;

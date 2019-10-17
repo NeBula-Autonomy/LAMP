@@ -4,32 +4,27 @@
  * Authors: Matteo Palieri      (matteo.palieri@jpl.nasa.gov)
  *          Kamak Ebadi         (kamak.ebadi@jpl.nasa.gov)
  *          Nobuhiro Funabiki   (nobuhiro.funabiki@jpl.nasa.gov)
-*/
-
+ */
 
 // Define
 #ifndef ODOMETRY_HANDLER_H
 #define ODOMETRY_HANDLER_H
 
-
-
 // Includes
 #include <factor_handlers/LampDataHandlerBase.h>
-
-
 
 // Typedefs
 typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 typedef nav_msgs::Odometry Odometry;
 typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
-typedef std::map<double, PoseCovStamped> OdomPoseBuffer; 
+typedef std::map<double, PoseCovStamped> OdomPoseBuffer;
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 typedef struct {
   bool b_has_value;
-  gtsam::Pose3 pose; 
-  gtsam::SharedNoiseModel covariance; 
+  gtsam::Pose3 pose;
+  gtsam::SharedNoiseModel covariance;
 } GtsamPosCov;
 
 typedef std::pair<GtsamPosCov, GtsamPosCov> GtsamPosCovPair;
@@ -157,9 +152,9 @@ class OdometryHandler : public LampDataHandlerBase{
 
 /*
 UNUSED
-std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair pose_cov_stamped_pair);
-void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
-void PrepareFactor(OdomPoseBuffer& odom_buffer);        
+std::pair<ros::Time, ros::Time> GetTimeStamps(PoseCovStampedPair
+pose_cov_stamped_pair); void CheckOdometryBuffer(OdomPoseBuffer& odom_buffer);
+void PrepareFactor(OdomPoseBuffer& odom_buffer);
 void MakeFactor(PoseCovStampedPair pose_cov_stamped_pair);
 double CalculatePoseDelta(OdomPoseBuffer& odom_buffer);
 PoseCovStamped GetDeltaBetweenPoses(const PoseCovStampedPair& input_poses);
@@ -171,12 +166,13 @@ int CheckBufferSize(const std::vector<T>& x) {
 }
 
 template <typename T1, typename T2>
-bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>& buffer) {
+bool InsertMsgInBuffer(const typename T1::ConstPtr& msg, std::vector<T2>&
+buffer) {
     // TODO: This function should be defined in the base class
     auto prev_size = CheckBufferSize<T2>(buffer);
     T2 stored_msg;
-    // TODO: The following two lines should be implemented in a function 
-    stored_msg.header = msg->header; 
+    // TODO: The following two lines should be implemented in a function
+    stored_msg.header = msg->header;
     stored_msg.pose = msg->pose;
     buffer.push_back(stored_msg);
     auto current_size = CheckBufferSize<T2>(buffer);

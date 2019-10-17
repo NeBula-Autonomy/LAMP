@@ -37,11 +37,11 @@
 #ifndef POINT_CLOUD_VISUALIZER_H
 #define POINT_CLOUD_VISUALIZER_H
 
-#include <ros/ros.h>
 #include <pcl_ros/point_cloud.h>
+#include <ros/ros.h>
 
 class PointCloudVisualizer {
- public:
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   PointCloudVisualizer();
@@ -56,7 +56,7 @@ class PointCloudVisualizer {
   // Publish incrementally accumulated point clouds.
   void PublishIncrementalPointCloud();
 
- private:
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);

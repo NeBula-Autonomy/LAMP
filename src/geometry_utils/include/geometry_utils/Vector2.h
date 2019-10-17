@@ -20,8 +20,12 @@ struct Vector2Base : VectorNBase<T, 2> {
     this->data[1] = v2;
   }
 
-  T X() const { return this->data[0]; }
-  T Y() const { return this->data[1]; }
+  T X() const {
+    return this->data[0];
+  }
+  T Y() const {
+    return this->data[1];
+  }
 };
 
 inline Vector2Base<float> operator*(const float& lhs,
@@ -43,6 +47,6 @@ typedef Vector2Base<double> Vec2d;
 typedef Vector2Base<double> Vector2;
 typedef Vector2Base<double> Vec2;
 
-}
+} // namespace geometry_utils
 
 #endif
