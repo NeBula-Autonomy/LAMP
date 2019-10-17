@@ -249,7 +249,8 @@ TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
 TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   ros::Time::init();
 
-  SetTimeThreshold(0.001);
+  // Set large threshold
+  SetTimeThreshold(1000.0);
 
   // Check single key 
   AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
@@ -273,8 +274,31 @@ TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(54.0)));
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(63.43)));
   EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(75.0)));
-  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(99.99999)));
-  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(100000.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(99.9)));
+  EXPECT_EQ(gtsam::Symbol('a', 4), GetClosestKeyAtTime(ros::Time(1000.0)));
+}
+
+TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
+  ros::Time::init();
+
+  SetTimeThreshold(1.0);
+
+  // Check single key
+  AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(500.0)));
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(0.0)));
+
+  // Add more keys
+  AddStampToOdomKey(ros::Time(50.0), gtsam::Symbol('a', 1));
+  AddStampToOdomKey(ros::Time(60.0), gtsam::Symbol('a', 2));
+  AddStampToOdomKey(ros::Time(80.0), gtsam::Symbol('a', 3));
+  AddStampToOdomKey(ros::Time(100.0), gtsam::Symbol('a', 4));
+
+  // Exact matches
+  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); //
+  // TODO - fix this
+  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(55.0)));
+  EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.5)));
 }
 
 TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
@@ -498,13 +522,15 @@ TEST_F(TestLampRobot, TestLaserLoopClosure) {
 
 TEST_F(TestLampRobot, TestPointCloudTransform) {
   // Add the scan and values to the graph
+  ros::NodeHandle nh, pnh("~");
+  lr.Initialize(nh);
 
   // Scan
-  gtsam::Symbol key = gtsam::Symbol('a', 0);
+  gtsam::Symbol key = gtsam::Symbol('a', 1);
   AddToKeyScans(key, data);
 
   // Values
-  InsertValues(gtsam::Symbol('a', 0),
+  InsertValues(gtsam::Symbol('a', 1),
                gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
                             gtsam::Point3(0.0, 0.0, 0.0)));
 

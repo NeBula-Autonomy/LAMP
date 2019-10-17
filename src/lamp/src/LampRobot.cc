@@ -94,6 +94,11 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
   if (!pu::Get("frame_id/base", base_frame_id_)) return false;
 
+  if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
+    return false;
+
+  if (!pu::Get("time_threshold", time_threshold_)) return false;
+
   // TODO - bring in other parameter
 
   // Set Precisions
@@ -132,8 +137,11 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   update_timer_ = nl.createTimer(update_rate_, &LampRobot::ProcessTimerCallback, this);
-    
-  back_end_pose_graph_sub_ = nl.subscribe("optimizer_pg", 1, &LampRobot::OptimizerUpdateCallback, dynamic_cast<LampBase*>(this));
+
+  back_end_pose_graph_sub_ = nl.subscribe("optimized_values",
+                                          1,
+                                          &LampRobot::OptimizerUpdateCallback,
+                                          dynamic_cast<LampBase*>(this));
 
   laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
                                          1,
@@ -522,6 +530,7 @@ void LampRobot::UpdateAndPublishOdom() {
       // TODO - work out what the best thing is to do in this scenario
       return;
     }
+    ROS_INFO("Got good result from getting delta at the latest time");
   }
 
   // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp, delta_pose);
@@ -575,6 +584,7 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
   // Necessary variables
   Pose3 transform;
+  Pose3 temp_transform;
   Pose3 global_pose;
   gtsam::SharedNoiseModel covariance;
   ros::Time timestamp;
@@ -598,9 +608,30 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     // Get the artifact key
     cur_artifact_key = data.artifact_key[i];
 
+    // Get the pose measurement
+    if (b_artifacts_in_global_) {
+      // Convert pose to relative frame
+      if (!ConvertGlobalToRelative(timestamp, data.transforms[i], temp_transform)){
+        ROS_ERROR("Can't convert artifact from global to relative");
+        b_has_new_factor_ = false;
+        return false;
+      }
+    } else {
+      // Is in relative already
+      ROS_INFO("Have artifact in relative frame");
+      temp_transform = data.transforms[i];
+    }
+
     // Is a relative tranform, so need to handle linking to the pose-graph
     HandleRelativePoseMeasurement(
-        timestamp, data.transforms[i], transform, global_pose, pose_key);
+        timestamp, temp_transform, transform, global_pose, pose_key);
+
+    if (pose_key == gtsam::Symbol()) {
+      ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
+                "BE HANDLED OR LOSE ARTIFACTS!!");
+      b_has_new_factor_ = false;
+      return false;
+    }
 
     // Get the covariances (Should be in relative frame as well)
     // TODO - handle this better - need to add covariances from the odom - do in
@@ -613,9 +644,12 @@ bool LampRobot::ProcessArtifactData(FactorData data){
 
     // create and add the factor
     new_factors.add(BetweenFactor<Pose3>(pose_key, cur_artifact_key, transform, covariance));
+    ROS_INFO("Added artifact to pose graph factors in lamp");
 
     // Check if it is a new artifact or not
     if (!values_.exists(cur_artifact_key)) {
+      ROS_INFO("Have a new artifact in LAMP");
+
       // Insert into the values
       new_values.insert(cur_artifact_key, global_pose);
 
@@ -624,6 +658,7 @@ bool LampRobot::ProcessArtifactData(FactorData data){
           std::pair<gtsam::Symbol, ros::Time>(cur_artifact_key, timestamp));
 
       // Publish the new artifact, with the global pose
+      ROS_INFO("Calling Publish Artifacts");
       artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
 
     } else {
@@ -640,6 +675,8 @@ bool LampRobot::ProcessArtifactData(FactorData data){
   // add factor to buffer to send to pgo
   nfg_.add(new_factors);
   AddNewValues(new_values);
+
+  ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
 
   return true;
 
@@ -663,7 +700,12 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
                                               gtsam::Pose3& global_pose,
                                               gtsam::Symbol& key_from) {
   // Get the key from:
-  key_from = GetKeyAtTime(stamp);
+  key_from = GetClosestKeyAtTime(stamp);
+
+  if (key_from == gtsam::Symbol()) {
+    ROS_ERROR("Measurement is from a time out of range. Rejecting");
+    return;
+  }
 
   // Time from this key - closest time that there is anode
   ros::Time stamp_from = keyed_stamps_[key_from];
@@ -675,6 +717,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   if (!delta_pose_cov.b_has_value) {
     ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
               "WELL HANDLED YET-----------");
+    key_from = gtsam::Symbol();
     return;
   }
 
@@ -688,6 +731,28 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   // Compose from the node in the graph to get the global position
   // TODO - maybe do this outside this function
   global_pose = values_.at<Pose3>(key_from).compose(transform);
+}
+
+// Placeholder function for handling global artifacts (will soon be relative)
+bool LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
+                                        const gtsam::Pose3 pose_global,
+                                        gtsam::Pose3& pose_relative) {
+  // Get the closes node in the pose-graph
+  gtsam::Symbol key_from = GetClosestKeyAtTime(stamp);
+
+  if (key_from == gtsam::Symbol()){
+    ROS_ERROR("Key from artifact key_from is outside of range - can't link artifact");
+    return false;
+  }
+
+  // Pose of closest node
+  gtsam::Pose3 node_pose = values_.at<gtsam::Pose3>(key_from);
+
+  // Compose to get the relative position (relative pose between node and
+  // global)
+  pose_relative = node_pose.between(pose_global);
+
+  return true;
 }
 
 // TODO Function handler wrappers

@@ -38,7 +38,7 @@ TEST_F(TestArtifactHandler, ArtifactInfoInitialize)
 
 TEST_F(TestArtifactHandler, LoadParameters)
 {
-  ros::param::set("frame_id/artifacts_in_global", false);
+  ros::param::set("b_artifacts_in_global", false);
   ros::param::set("use_artifact_loop_closure", true);
   ros::param::set("artifact_prefix", "Artifact");
   ASSERT_TRUE(LoadParameters());

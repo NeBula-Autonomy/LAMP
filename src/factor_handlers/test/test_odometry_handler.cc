@@ -863,6 +863,29 @@ TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
 
   EXPECT_FALSE(myOutput.b_has_value);
 }
+
+TEST_F(OdometryHandlerTest, TestEmptyBufferHandling) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+
+  // Create an output
+  GtsamPosCov myOutput;
+
+  bool result = GetOdomDelta(t1_ros, myOutput);
+
+  EXPECT_FALSE(result);
+  EXPECT_FALSE(myOutput.b_has_value);
+
+  result = GetOdomDeltaLatestTime(t1_ros, myOutput);
+
+  EXPECT_FALSE(result);
+  EXPECT_FALSE(myOutput.b_has_value);
+
+  myOutput = GetFusedOdomDeltaBetweenTimes(t1_ros, t2_ros);
+  EXPECT_FALSE(myOutput.b_has_value);
+}
+
 //   ros::Time query1, query2, query3;
 //   query1.fromSec(0.0);
 //   query2.fromSec(10.3);
