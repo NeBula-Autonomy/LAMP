@@ -277,23 +277,24 @@ void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key,
                   << gtsam::DefaultKeyFormatter(artifact_key));
 
   // Check that the key exists
-  if (artifact_key2info_hash_.count(artifact_key) == 0) {
+  if (artifact_key2info_hash_.count(gtsam::Key(artifact_key)) == 0) {
     ROS_WARN("Artifact key is not in hash, nothing to publish");
     return;
   }
 
-  // Get label
-  artifact_label = artifact_key2info_hash_[artifact_key].msg.label;
-
+  // Get label 
+  artifact_label = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg.label;
+  
   // Increment update count
-  artifact_key2info_hash_[artifact_key].num_updates++;
+  artifact_key2info_hash_[gtsam::Key(artifact_key)].num_updates++;
 
   std::cout << "Number of updates of artifact is: "
-            << artifact_key2info_hash_[artifact_key].num_updates << std::endl;
+            << artifact_key2info_hash_[gtsam::Key(artifact_key)].num_updates
+            << std::endl;
 
   // Fill artifact message
-  core_msgs::Artifact new_msg = artifact_key2info_hash_[artifact_key].msg;
-
+  core_msgs::Artifact new_msg = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg;
+  
   // Update the time
   new_msg.header.stamp = ros::Time::now();
 
@@ -391,13 +392,11 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
   artifactinfo.msg = msg;
 
   // keep track of artifact info: add to hash if not added
-  if (artifact_key2info_hash_.find(artifact_key) ==
-      artifact_key2info_hash_.end()) {
-    ROS_INFO_STREAM("New artifact detected with key "
-                    << gtsam::DefaultKeyFormatter(artifact_key));
-    artifact_key2info_hash_[artifact_key] = artifactinfo;
+  if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) == artifact_key2info_hash_.end()) {
+    ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
+    artifact_key2info_hash_[gtsam::Key(artifact_key)] = artifactinfo;
   } else {
     ROS_INFO("Existing artifact detected");
-    artifact_key2info_hash_[artifact_key] = artifactinfo;
+    artifact_key2info_hash_[gtsam::Key(artifact_key)] = artifactinfo;
   }
 }

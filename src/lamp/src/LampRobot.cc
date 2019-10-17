@@ -611,6 +611,10 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
     // Get the artifact key
     cur_artifact_key = data.artifact_key[i];
 
+    // TODO:
+    // QUESTION: ConvertGlobalToRelative: Gives relative measurement between artifact key and nearest odom key.
+    // QUESTION: HandleRelativePoseMeasurement: Accounts for small transforms between current nearest added key and the instantaneous pose (which might not have been added as node).
+
     // Get the pose measurement
     if (b_artifacts_in_global_) {
       // Convert pose to relative frame
