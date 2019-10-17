@@ -115,8 +115,8 @@ bool LaserLoopClosure::FindLoopClosures(
     if (difference.translation().norm() < proximity_threshold_) {
       const PointCloud::ConstPtr scan2 = keyed_scans_[other_key];
 
-      gu::Transform3 delta; // (Using BetweenFactor)
-      gtsam::Matrix66 covariance;
+      gu::Transform3 delta;  // (Using BetweenFactor)
+      gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
 
       double fitness_score; // retrieve ICP fitness score if matched
       ROS_INFO_STREAM("Performing alignment between "
