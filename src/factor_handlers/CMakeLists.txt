@@ -37,6 +37,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   tf_conversions
+  eigen_conversions
 )
 
 

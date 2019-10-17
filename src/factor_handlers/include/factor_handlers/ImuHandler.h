@@ -14,6 +14,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <eigen_conversions/eigen_msg.h>
 
 // Typedefs 
 typedef sensor_msgs::Imu ImuMessage;
@@ -24,7 +25,7 @@ using namespace gtsam;
 
 class ImuHandler : public LampDataHandlerBase {
     
-    friend class ImuHandlerTest;
+    // friend class ImuHandlerTest;
 
     public:
 

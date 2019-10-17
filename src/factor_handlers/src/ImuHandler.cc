@@ -41,16 +41,16 @@ bool ImuHandler::Initialize(const ros::NodeHandle& n){
 }
 
 bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {
-
+    
     ROS_INFO("ImuHandler - LoadParameters");
 
-    if (!pu::Get("ts_threshold_", ts_threshold_))
+    if (!pu::Get("ts_threshold", ts_threshold_))
         return false;
 
-    if (!pu::Get("frame_id/base", base_frame_id_))
+    if (!pu::Get("base", base_frame_id_))
         return false;
-  
-    if (!pu::Get("frame_id/imu", imu_frame_id_)) 
+
+    if (!pu::Get("imu", imu_frame_id_)) 
         return false;
 
     LoadCalibrationFromTfTree();
