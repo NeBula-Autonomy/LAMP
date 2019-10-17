@@ -25,32 +25,40 @@ class ImuHandler : public LampDataHandlerBase {
 
     public:
 
+        // Constructor & Destructor
         ImuHandler();
         ~ImuHandler();
 
+        // Initialization
         bool Initialize (const ros::NodeHandle& n);
         bool LoadParameters(const ros::NodeHandle& n);
         bool RegisterCallbacks(const ros::NodeHandle& n);
 
+        // LAMP Interface
         FactorData GetData(); 
 
     protected: 
 
         std::string name_;  
 
+        // Subscriber & Callback
         ros::Subscriber imu_sub_;
         void ImuCallback(const ImuMessage::ConstPtr& msg);
 
+        // Buffer
         ImuBuffer imu_buffer_;
         bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
         int CheckBufferSize() const; 
         bool ClearBuffer();          
 
+        // GetQuaternionAtTime
         bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const; 
         double ts_threshold_;
 
+        // Convert Quaternion to Yaw Pitch Roll
         Vector3d QuaternionToYpr(const ImuQuaternion& imu_quaternion) const;
 
+        // Create gtsam Pose3AttitudeFactor
         Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const;              
         void ResetFactorData();                     
 
@@ -60,6 +68,7 @@ class ImuHandler : public LampDataHandlerBase {
         bool SetKeyForImuAttitude(const Symbol& key);
         Symbol query_key_;
 
+        // Load imu_frame to base_frame transformation from tf tree
         bool LoadCalibrationFromTfTree();
         tf::TransformListener imu_T_base_listener_;
         std::string base_frame_id_; 
