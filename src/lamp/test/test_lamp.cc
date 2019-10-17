@@ -114,31 +114,28 @@ public:
     return lr.b_run_optimization_;
   }
 
-    void setArtifactInGlobal(bool value){
-      lr.b_artifacts_in_global_ = value;
-    }
+  void setArtifactInGlobal(bool value) {
+    lr.b_artifacts_in_global_ = value;
+  }
 
-    void LidarCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-      lr.odometry_handler_.LidarOdometryCallback(msg);
-    }
+  void LidarCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    lr.odometry_handler_.LidarOdometryCallback(msg);
+  }
 
-    void setFixedCovariance(bool value){
-      lr.b_use_fixed_covariances_ = value;
-    }
-    void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
-      lr.keyed_scans_.insert(
-          std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
-    }
+  void setFixedCovariance(bool value) {
+    lr.b_use_fixed_covariances_ = value;
+  }
 
-    void ProcessArtifacts(FactorData data) {lr.ProcessArtifactData(data);}
-    
-    void ConvertGlobalToRelative(const ros::Time stamp,
-                                 const gtsam::Pose3 pose_global,
-                                 gtsam::Pose3& pose_relative) 
-    {
-      lr.ConvertGlobalToRelative(stamp, pose_global, pose_relative);
-    }
-    // Other utilities
+  void ProcessArtifacts(FactorData data) {
+    lr.ProcessArtifactData(data);
+  }
+
+  void ConvertGlobalToRelative(const ros::Time stamp,
+                               const gtsam::Pose3 pose_global,
+                               gtsam::Pose3& pose_relative) {
+    lr.ConvertGlobalToRelative(stamp, pose_global, pose_relative);
+  }
+  // Other utilities
 
   gtsam::Values GetValues() {
     return lr.values_;
