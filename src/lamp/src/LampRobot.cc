@@ -388,17 +388,18 @@ void LampRobot::UpdateArtifactPositions() {
   \author Benjamin Morrell
   \date 01 Oct 2019
 */
-bool LampRobot::ProcessOdomData(FactorData data) {
-  // Check if there are new factors
-  if (!data.b_has_data) {
+bool LampRobot::ProcessOdomData(FactorData* data){
+
+  // Extract odom data
+  OdomData* odom_data = dynamic_cast<OdomData*>(data);
+
+  // Check if there are new factors 
+  if (!odom_data->b_has_data) {
     return false;
   }
 
   // Record new factor being added - need to publish pose graph
   b_has_new_factor_ = true;
-
-  // Number of factors from size of data vector
-  int num_factors = data.time_stamps.size();
 
   // factors to add
   NonlinearFactorGraph new_factors;
@@ -406,19 +407,19 @@ bool LampRobot::ProcessOdomData(FactorData data) {
   // Values to add
   Values new_values;
 
-  // process data for each new factor
-  for (int i = 0; i < num_factors; i++) {
+  // process data for each new factor 
+  for (auto odom_factor : odom_data->factors) {
     ROS_INFO("Adding new odom factor to pose graph");
     // Get the transforms - odom transforms
-    Pose3 transform = data.transforms[i];
+    Pose3 transform = odom_factor.transform;
     gtsam::SharedNoiseModel covariance =
-        data.covariances[i]; // TODO - check format
+        odom_factor.covariance; // TODO - check format
 
     if (b_use_fixed_covariances_) {
       covariance = SetFixedNoiseModels("odom");
     }
 
-    std::pair<ros::Time, ros::Time> times = data.time_stamps[i];
+    std::pair<ros::Time, ros::Time> times = odom_factor.stamps;;
 
     // Get the previous key - special case for odom that we use key)
     Symbol prev_key = key_ - 1;
@@ -577,9 +578,13 @@ void LampRobot::UpdateAndPublishOdom() {
   \author Abhishek Thakur
   \date 08 Oct 2019
 */
-bool LampRobot::ProcessArtifactData(FactorData data) {
-  // Check if there are new factors
-  if (!data.b_has_data) {
+bool LampRobot::ProcessArtifactData(FactorData* data){
+
+  // Extract artifact data
+  ArtifactData* artifact_data = dynamic_cast<ArtifactData*>(data);
+
+  // Check if there are new factors 
+  if (!artifact_data->b_has_data) {
     return false;
   }
 
@@ -600,16 +605,13 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
   // New Values to be added
   Values new_values;
 
-  // Get number of new measurements
-  int num_factors = data.transforms.size();
-
   // process data for each new factor
-  for (int i = 0; i < num_factors; i++) {
+  for (auto artifact : artifact_data->factors) {
     // Get the time
-    timestamp = data.time_stamps[i].first;
+    timestamp = artifact.stamp;
 
     // Get the artifact key
-    cur_artifact_key = data.artifact_key[i];
+    cur_artifact_key = artifact.key;
 
     // TODO:
     // QUESTION: ConvertGlobalToRelative: Gives relative measurement between artifact key and nearest odom key.
@@ -618,8 +620,7 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
     // Get the pose measurement
     if (b_artifacts_in_global_) {
       // Convert pose to relative frame
-      if (!ConvertGlobalToRelative(
-              timestamp, data.transforms[i], temp_transform)) {
+      if (!ConvertGlobalToRelative(timestamp, gtsam::Pose3(gtsam::Rot3(), artifact.position), temp_transform)){
         ROS_ERROR("Can't convert artifact from global to relative");
         b_has_new_factor_ = false;
         return false;
@@ -627,7 +628,7 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
     } else {
       // Is in relative already
       ROS_INFO("Have artifact in relative frame");
-      temp_transform = data.transforms[i];
+      temp_transform = gtsam::Pose3(gtsam::Rot3(), artifact.position);
     }
 
     // Is a relative tranform, so need to handle linking to the pose-graph
@@ -644,7 +645,7 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
     // Get the covariances (Should be in relative frame as well)
     // TODO - handle this better - need to add covariances from the odom - do in
     // the function above
-    covariance = data.covariances[i];
+    covariance = artifact.covariance;
 
     if (b_use_fixed_covariances_) {
       covariance = SetFixedNoiseModels("artifact");

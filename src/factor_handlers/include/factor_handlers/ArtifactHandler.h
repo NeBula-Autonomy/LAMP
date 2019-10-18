@@ -35,154 +35,146 @@ struct ArtifactInfo {
  relative transform to the pose graph
  */
 class ArtifactHandler : public LampDataHandlerBase {
-public:
-  // Constructor
-  ArtifactHandler();
+    public:
+    // Constructor
+    ArtifactHandler();
 
-  // Destructor
-  virtual ~ArtifactHandler() = default;
+    // Destructor
+    virtual ~ArtifactHandler() = default;
 
-  /*! \brief Initialize parameters and callbacks.
-   * n - Nodehandle
-   * Returns bool
-   */
-  bool Initialize(const ros::NodeHandle& n);
+    /*! \brief Initialize parameters and callbacks. 
+     * n - Nodehandle
+     * Returns bool
+     */
+    bool Initialize(const ros::NodeHandle& n);
+    
+    /*! \brief  Gives the artifact associated data to the caller.
+     * Returns  Artifact data
+     */
+    FactorData* GetData();
 
-  /*! \brief  Gives the artifact associated data to the caller.
-   * Returns  Artifact data
-   */
-  FactorData GetData();
+    /*! \brief  Get the artifact_key2info_hash_
+     * Returns  artifact_key2info_hash_
+     */
+    std::unordered_map<long unsigned int, ArtifactInfo>& GetArtifactKey2InfoHash() {return artifact_key2info_hash_;};
 
-  /*! \brief  Get the artifact_key2info_hash_
-   * Returns  artifact_key2info_hash_
-   */
-  std::unordered_map<long unsigned int, ArtifactInfo>&
-  GetArtifactKey2InfoHash() {
-    return artifact_key2info_hash_;
-  };
+    /*! \brief  Updates the global pose of an artifact 
+     * Returns  bool
+     */
+    bool UpdateGlobalPose(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose);
 
-  /*! \brief  Updates the global pose of an artifact
-   * Returns  bool
-   */
-  bool UpdateGlobalPose(gtsam::Symbol artifact_key, gtsam::Pose3 global_pose);
+    /*! \brief  Publish Artifact
+     * Returns  Void
+     */
+    void PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose);
 
-  /*! \brief  Publish Artifact
-   * Returns  Void
-   */
-  void PublishArtifacts(gtsam::Symbol artifact_key, gtsam::Pose3 global_pose);
+    protected:
+    /*! \brief Load artifact parameters. 
+     * n - Nodehandle
+     * Returns bool
+     */
+    bool LoadParameters(const ros::NodeHandle& n);
 
-protected:
-  /*! \brief Load artifact parameters.
-   * n - Nodehandle
-   * Returns bool
-   */
-  bool LoadParameters(const ros::NodeHandle& n);
+    /*! \brief Register callbacks. 
+     * n - Nodehandle, from_log - ????
+     * Returns bool
+     */
+    bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
 
-  /*! \brief Register callbacks.
-   * n - Nodehandle, from_log - ????
-   * Returns bool
-   */
-  bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
+    /*! \brief Register Log callbacks. 
+     * n - Nodehandle
+     * Returns bool
+     */
+    bool RegisterLogCallbacks(const ros::NodeHandle& n);
 
-  /*! \brief Register Log callbacks.
-   * n - Nodehandle
-   * Returns bool
-   */
-  bool RegisterLogCallbacks(const ros::NodeHandle& n);
+    /*! \brief Register Online callbacks. 
+     * n - Nodehandle
+     * Returns bool
+     */
+    bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
 
-  /*! \brief Register Online callbacks.
-   * n - Nodehandle
-   * Returns bool
-   */
-  bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
+    /*! \brief Compute transform from Artifact message.
+     * Not sure how necessary this is ????
+     * Returns Transform
+     */
+    Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg);
 
-  /*! \brief Compute transform from Artifact message.
-   * Not sure how necessary this is ????
-   * Returns Transform
-   */
-  Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg);
+    /*! \brief  Get artifacts ID from artifact key
+     * Returns Artifacts ID
+     */
+    std::string GetArtifactID(gtsam::Symbol artifact_key);
 
-  /*! \brief  Get artifacts ID from artifact key
-   * Returns Artifacts ID
-   */
-  std::string GetArtifactID(gtsam::Symbol artifact_key);
+    /*! \brief  Callback for Artifacts.
+     * Returns  Void
+     */
+    void ArtifactCallback(const core_msgs::Artifact& msg);
+    
+    /*! \brief  Create publisher for the artifacts.
+     * Returns  Void
+     */
+    bool CreatePublishers(const ros::NodeHandle& n);
 
-  /*! \brief  Callback for Artifacts.
-   * Returns  Void
-   */
-  void ArtifactCallback(const core_msgs::Artifact& msg);
+    /*! \brief  Print Artifact input message for debugging
+     * Returns  Void
+     */
+    void PrintArtifactInputMessage(const core_msgs::Artifact& msg);
 
-  /*! \brief  Create publisher for the artifacts.
-   * Returns  Void
-   */
-  bool CreatePublishers(const ros::NodeHandle& n);
+    /*! \brief  Extracts covariance from artifact message and converts to gtsam::SharedNoiseModel
+     * Returns  gtsam::SharedNoiseModel
+     */
+    gtsam::SharedNoiseModel ExtractCovariance(const boost::array<float, 9> covariance);
 
-  /*! \brief  Print Artifact input message for debugging
-   * Returns  Void
-   */
-  void PrintArtifactInputMessage(const core_msgs::Artifact& msg);
+    /*! \brief  Clear artifact data
+     * Returns  Void
+     */
+    void ClearArtifactData();
 
-  /*! \brief  Extracts covariance from artifact message and converts to
-   * gtsam::SharedNoiseModel Returns  gtsam::SharedNoiseModel
-   */
-  gtsam::SharedNoiseModel
-  ExtractCovariance(const boost::array<float, 9> covariance);
+    /*! \brief  Add artifact data
+     * Returns  Void
+     */
+    void AddArtifactData(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
 
-  /*! \brief  Clear artifact data
-   * Returns  Void
-   */
-  void ClearArtifactData();
+    /*! \brief  Stores/Updated artifactInfo Hash
+     * Returns  Void
+     */
+    void StoreArtifactInfo(const gtsam::Symbol artifact_key, const core_msgs::Artifact& msg);
 
-  /*! \brief  Add artifact data
-   * Returns  Void
-   */
-  void AddArtifactData(const gtsam::Symbol artifact_key,
-                       std::pair<ros::Time, ros::Time> time_stamp,
-                       const gtsam::Pose3 transform,
-                       const gtsam::SharedNoiseModel noise);
+    private:
+    // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
+    // from the pose graph
+    std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
 
-  /*! \brief  Stores/Updated artifactInfo Hash
-   * Returns  Void
-   */
-  void StoreArtifactInfo(const gtsam::Symbol artifact_key,
-                         const core_msgs::Artifact& msg);
+    // Mapping between a artifact id and the node where it is present in the pose graph
+    // TODO: Make keys as symbols gtsam.
+    std::unordered_map<std::string, gtsam::Symbol> artifact_id2key_hash;
 
-private:
-  // Stores the artifact id to info mapping which is used to update any artifact
-  // associated parameters from the pose graph
-  std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
+    
+    // Parameters
+    bool b_artifacts_in_global_;
+    int largest_artifact_id_; 
+    bool use_artifact_loop_closure_;
 
-  // Mapping between a artifact id and the node where it is present in the pose
-  // graph
-  // TODO: Make keys as symbols gtsam.
-  std::unordered_map<std::string, gtsam::Symbol> artifact_id2key_hash;
+    // Artifact prefix
+    unsigned char artifact_prefix_;
 
-  // Parameters
-  bool b_artifacts_in_global_;
-  int largest_artifact_id_;
-  bool use_artifact_loop_closure_;
+    // Namespace for publishing
+    std::string name_;
 
-  // Artifact prefix
-  unsigned char artifact_prefix_;
+    // Artifact output data
+    ArtifactData artifact_data_;
 
-  // Namespace for publishing
-  std::string name_;
+    // Transformer
+    tf2_ros::Buffer tf_buffer_;
 
-  // Artifact output data
-  FactorData artifact_data_;
+    // Publisher
+    ros::Publisher artifact_pub_;
 
-  // Transformer
-  tf2_ros::Buffer tf_buffer_;
+    // Subscribers
+    ros::Subscriber artifact_sub_;
+    std::vector<ros::Subscriber> Subscriber_artifactList_;
 
-  // Publisher
-  ros::Publisher artifact_pub_;
-
-  // Subscribers
-  ros::Subscriber artifact_sub_;
-  std::vector<ros::Subscriber> Subscriber_artifactList_;
-
-  // Test class
-  friend class TestArtifactHandler;
+    // Test class
+    friend class TestArtifactHandler;
 };
 
 #endif // !ARTIFACT_HANDLER_H

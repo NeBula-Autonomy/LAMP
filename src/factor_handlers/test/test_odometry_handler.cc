@@ -107,7 +107,8 @@ protected:
   bool GetOdomDeltaLatestTime(ros::Time& t_latest, GtsamPosCov& delta_pose) {
     return oh.GetOdomDeltaLatestTime(t_latest, delta_pose);
   }
-  FactorData GetData() {
+    
+  FactorData* GetData() {
     return oh.GetData();
   }
   void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
@@ -677,13 +678,17 @@ TEST_F(OdometryHandlerTest, TestGetData) {
   ros::Time query1;
   bool result = GetOdomDeltaLatestTime(query1, myOutput);
   EXPECT_TRUE(result);
-  FactorData factor = GetData();
-  EXPECT_NEAR(2, factor.transforms[0].x(), 1e-5);
-  EXPECT_NEAR(0.0, factor.transforms[0].rotation().yaw(), 1e-5);
-  EXPECT_TRUE(factor.b_has_data);
+
+  OdomData* factor = dynamic_cast<OdomData*>(GetData());
+  EXPECT_TRUE(factor->b_has_data);
+  
+  OdometryFactor odom_factor = factor->factors[0];
+  EXPECT_NEAR(2, odom_factor.transform.x(), 1e-5);
+  EXPECT_NEAR(0.0, odom_factor.transform.rotation().yaw(), 1e-5);
+
   // Need to return the correct time
-  EXPECT_NEAR(t1_ros.toSec(), factor.time_stamps[0].first.toSec(), 1e-5);
-  EXPECT_NEAR(t3_ros.toSec(), factor.time_stamps[0].second.toSec(), 1e-5);
+  EXPECT_NEAR(t1_ros.toSec(), odom_factor.stamps.first.toSec(), 1e-5);
+  EXPECT_NEAR(t3_ros.toSec(), odom_factor.stamps.second.toSec(), 1e-5);
 }
 
 TEST_F(OdometryHandlerTest, TestGetRelativeData) {

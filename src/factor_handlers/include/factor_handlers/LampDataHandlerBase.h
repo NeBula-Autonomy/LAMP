@@ -35,31 +35,28 @@ namespace gu = geometry_utils;
 namespace gr = geometry_utils::ros;
 
 class LampDataHandlerBase {
-public:
-  LampDataHandlerBase();
-  ~LampDataHandlerBase();
 
-  virtual bool Initialize(const ros::NodeHandle& n);
-  virtual FactorData GetData();
+  public:
 
-protected:
-  // Node initialization.
-  bool LoadParameters(const ros::NodeHandle& n);
-  bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
-  bool RegisterLogCallbacks(const ros::NodeHandle& n);
-  bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
-  bool CreatePublishers(const ros::NodeHandle& n);
+    LampDataHandlerBase();
+    ~LampDataHandlerBase();
 
-  // Reset Factor data
-  void ResetFactorData();
+    virtual bool Initialize(const ros::NodeHandle& n);
+    virtual FactorData* GetData() = 0;
 
-  // Callback functions
-  // void DataCallback();
 
-  // LAMP Interface
-  FactorData factors_;
+  protected:
+    // Node initialization.
+    bool LoadParameters(const ros::NodeHandle& n);
+    bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
+    bool RegisterLogCallbacks(const ros::NodeHandle& n);
+    bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
+    bool CreatePublishers(const ros::NodeHandle& n);
 
-private:
+    // Reset Factor data
+    void ResetFactorData();
+
+  private:
 };
 
 #endif

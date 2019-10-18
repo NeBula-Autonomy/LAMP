@@ -209,14 +209,14 @@ bool OdometryHandler::GetOdomDeltaLatestTime(ros::Time& t_latest,
   return GetOdomDelta(t_latest, delta_pose);
 }
 
-FactorData OdometryHandler::GetData() {
+FactorData* OdometryHandler::GetData() {
   // Main interface with lamp for getting factor information
-  FactorData factors_output = factors_;
-  factors_output.b_has_data = false;
+  OdomData* output_data = new OdomData(factors_);
+  output_data->b_has_data = false;
 
   if (!CheckOdomSize()) {
     ROS_WARN("Buffers are emptyin GetData Call, returning no data");
-    return factors_output;
+    return output_data;
   }
 
   ROS_INFO("Odometry Handler - Perform Fusion Logic");
@@ -235,31 +235,31 @@ FactorData OdometryHandler::GetData() {
 
     if (!fused_odom_for_factor.b_has_value) {
       ROS_ERROR("Issues getting delta for factor. Returning no data");
-      return factors_output;
+      return output_data;
     }
 
     // Fill factors data
-    factors_output.b_has_data =
+    output_data->b_has_data =
         true; // TODO: Do this only if Fusion Logic output exceeds threshold
-    factors_output.transforms.push_back(fused_odom_for_factor.pose);
-    factors_output.covariances.push_back(fused_odom_for_factor.covariance);
-    factors_output.time_stamps.push_back(
-        TimeStampedPair(query_timestamp_first_, t2));
+
+    // Make the new factor data
+    OdometryFactor new_odom;
+    new_odom.transform = fused_odom_for_factor.pose;
+    new_odom.covariance = fused_odom_for_factor.covariance;
+    new_odom.stamps = TimeStampedPair(query_timestamp_first_, t2);
+    output_data->factors.push_back(new_odom);
 
     // Update the query timestamp to the time of the new node
     // TODO - update name to link to node/factor creation
     query_timestamp_first_ = t2;
 
     // Clear the stored data, now that it has been processed
-    // This will clear factors_ - hence we have created factors_output in this
+    // This will clear factors_ - hence we have created output_data in this
     // function
     ResetFactorData();
-  } else {
-    // No data to output
-    factors_output.b_has_data = false;
   }
 
-  return factors_output;
+  return output_data;
 }
 
 bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
@@ -408,10 +408,7 @@ void OdometryHandler::ResetFactorData() {
   // TODO: ResetFactors() clear all fields of private class member
   factors_.b_has_data = false;
   factors_.type = "odom";
-  factors_.transforms.clear();
-  factors_.covariances.clear();
-  factors_.time_stamps.clear();
-  factors_.artifact_key.clear();
+  factors_.factors.clear();
 }
 
 void OdometryHandler::ClearOdometryBuffers() {
