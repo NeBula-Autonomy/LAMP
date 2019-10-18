@@ -59,6 +59,14 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
 
+    if (!pu::Get("robot_names", robot_names_)) {
+      return false;
+    }
+    ROS_INFO_STREAM("Robots registered at base station: ");
+    for (auto s : robot_names_) {
+      ROS_INFO_STREAM("\t\t\t" << s);
+    }
+
 
   return true;
 }

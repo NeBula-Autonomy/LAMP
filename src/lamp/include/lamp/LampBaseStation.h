@@ -46,6 +46,9 @@ class LampBaseStation : public LampBase {
 
     PointCloudMapper mapper_;
 
+    // Robots that the base station subscribes to
+    std::vector<std::string> robot_names_;
+
   private:
     // Overwrite base classs functions where needed
 
