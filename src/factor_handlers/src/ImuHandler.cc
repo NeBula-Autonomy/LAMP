@@ -69,10 +69,10 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
 // LAMP Interface
 // --------------------------------------------------------------------------------
 
-FactorData ImuHandler::GetData(){
+FactorData* ImuHandler::GetData(){
     ROS_INFO("ImuHandler - GetData");
-    FactorData factors_output = factors_;   
-    factors_output.b_has_data = false; 
+    ImuData* factors_output = new ImuData(factors_);   
+    factors_output->b_has_data = false; 
 
     if (CheckBufferSize()==0) {
         ROS_WARN("Buffers are empty, returning no data");
@@ -86,19 +86,22 @@ FactorData ImuHandler::GetData(){
     if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
         ROS_INFO("Successfully extracted data from buffer");
         Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
-        Pose3AttitudeFactor imu_factor = CreateAttitudeFactor(imu_ypr);
         
-        // TODO: ImuHandler provides Pose3AttitudeFactor, but LAMP wants Pose3
-        Pose3 foo;
-        factors_output.b_has_data = true; 
-        factors_output.type = "imu";
-        factors_output.transforms.push_back(foo);
+        factors_output->b_has_data = true; 
+        factors_output->type = "imu";
+
+        // Create the new factor and add it to the output
+        ImuFactor new_factor(
+          ros::Time(0.0), // TODO - add proper time stamp
+          CreateAttitudeFactor(imu_ypr)
+        );
+        factors_output->factors.push_back(new_factor);
 
         ResetFactorData();
     }
 
     else {
-        factors_output.b_has_data = false; 
+        factors_output->b_has_data = false; 
     }
 
     return factors_output; 
@@ -215,10 +218,7 @@ void ImuHandler::ResetFactorData() {
     ROS_INFO("ImuHandler - ResetFactorData");
     factors_.b_has_data = false;
     factors_.type = "imu";
-    factors_.transforms.clear();
-    factors_.covariances.clear();
-    factors_.time_stamps.clear();
-    factors_.artifact_key.clear();
+    factors_.factors.clear();
 }
 
 bool ImuHandler::SetTimeForImuAttitude(const ros::Time& stamp) {        

@@ -23,59 +23,61 @@ using namespace gtsam;
 
 class ImuHandler : public LampDataHandlerBase {
     
-    friend class ImuHandlerTest;
+  friend class ImuHandlerTest;
 
-    public:
+public:
 
-        // Constructor & Destructor
-        ImuHandler();
-        ~ImuHandler();
+  // Constructor & Destructor
+  ImuHandler();
+  ~ImuHandler();
 
-        // Initialization
-        bool Initialize (const ros::NodeHandle& n);
-        bool LoadParameters(const ros::NodeHandle& n);
-        bool RegisterCallbacks(const ros::NodeHandle& n);
+  // Initialization
+  bool Initialize (const ros::NodeHandle& n);
+  bool LoadParameters(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& n);
 
-        // LAMP Interface
-        FactorData GetData(); 
+  // LAMP Interface
+  FactorData* GetData(); 
 
-    protected: 
+protected: 
 
-        std::string name_;  
+  std::string name_;  
 
-        // Subscriber & Callback 
-        ros::Subscriber imu_sub_;
-        void ImuCallback(const ImuMessage::ConstPtr& msg);
+  // Subscriber & Callback 
+  ros::Subscriber imu_sub_;
+  void ImuCallback(const ImuMessage::ConstPtr& msg);
 
-        // Buffers
-        ImuBuffer imu_buffer_;
-        bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
-        int CheckBufferSize() const; 
-        bool ClearBuffer();          
+  // Buffers
+  ImuBuffer imu_buffer_;
+  bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
+  int CheckBufferSize() const; 
+  bool ClearBuffer();          
 
-        // Quaternions
-        double ts_threshold_;
-        bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const; 
-        Vector3d QuaternionToYpr(const ImuQuaternion& imu_quaternion) const;
+  // Quaternions
+  double ts_threshold_;
+  bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const; 
+  Vector3d QuaternionToYpr(const ImuQuaternion& imu_quaternion) const;
 
-        // Factors
-        Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const;              
-        void ResetFactorData();  
-        bool SetTimeForImuAttitude(const ros::Time& stamp);  
-        double query_stamp_;
-        bool SetKeyForImuAttitude(const Symbol& key);
-        Symbol query_key_;
+  // Factors
+  Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const;              
+  void ResetFactorData();  
+  bool SetTimeForImuAttitude(const ros::Time& stamp);  
+  double query_stamp_;
+  bool SetKeyForImuAttitude(const Symbol& key);
+  Symbol query_key_;
 
-        // Transformations
-        bool LoadCalibrationFromTfTree();
-        tf::TransformListener imu_T_base_listener_;
-        std::string base_frame_id_; 
-        std::string imu_frame_id_;          
-        Eigen::Affine3d I_T_B_;    
-        Eigen::Affine3d B_T_I_; 
-        Eigen::Quaterniond I_T_B_q_;  
-    
-    private:
+  // Transformations
+  bool LoadCalibrationFromTfTree();
+  tf::TransformListener imu_T_base_listener_;
+  std::string base_frame_id_; 
+  std::string imu_frame_id_;          
+  Eigen::Affine3d I_T_B_;    
+  Eigen::Affine3d B_T_I_; 
+  Eigen::Quaterniond I_T_B_q_;  
+
+  // IMU output data
+  ImuData factors_;
+
         
 };
 
