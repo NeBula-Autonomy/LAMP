@@ -369,11 +369,11 @@ void LampRobot::UpdateArtifactPositions() {
     gtsam::Symbol artifact_key = gtsam::Symbol(it.first);
 
     // Get the pose from the pose graph
-    Pose3 artifact_pose = values_.at<Pose3>(artifact_key);
+    gtsam::Point3 artifact_position = values_.at<Pose3>(artifact_key).translation();
 
     // Update global pose just for what has changed. returns bool
     result = result ||
-        artifact_handler_.UpdateGlobalPose(artifact_key, artifact_pose);
+        artifact_handler_.UpdateGlobalPosition(artifact_key, artifact_position);
   }
 }
 

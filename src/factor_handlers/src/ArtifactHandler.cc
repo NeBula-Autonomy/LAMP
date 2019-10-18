@@ -234,11 +234,11 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 /*! \brief  Updates the global pose of an artifact
  * Returns  Void
  */
-bool ArtifactHandler::UpdateGlobalPose(gtsam::Symbol artifact_key,
-                                       gtsam::Pose3 global_pose) {
+bool ArtifactHandler::UpdateGlobalPosition(gtsam::Symbol artifact_key,
+                                       gtsam::Point3 global_position) {
   if (artifact_key2info_hash_.find(artifact_key) !=
       artifact_key2info_hash_.end()) {
-    artifact_key2info_hash_[artifact_key].global_pose = global_pose;
+    artifact_key2info_hash_[artifact_key].global_position = global_position;
     return true;
   } else {
     std::cout << "Key not found in the Artifact id to key map.";
