@@ -12,7 +12,8 @@ namespace pu = parameter_utils;
 // --------------------------------------------------------------------------------
 
 ImuHandler::ImuHandler() 
-  : ts_threshold_(0.1) {
+  : buffer_size_limit_(1000),
+    ts_threshold_(0.1) {
     ROS_INFO("ImuHandler Class Constructor");
 }
 
@@ -39,11 +40,13 @@ bool ImuHandler::Initialize(const ros::NodeHandle& n){
 
 bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {    
     ROS_INFO("ImuHandler - LoadParameters");
+    if (!pu::Get("buffer_size_limit", buffer_size_limit_))
+        return false;
     if (!pu::Get("ts_threshold", ts_threshold_))
         return false;
-    if (!pu::Get("frame_id/base", base_frame_id_))
+    if (!pu::Get("base_frame_id", base_frame_id_))
         return false;
-    if (!pu::Get("frame_id/imu", imu_frame_id_)) 
+    if (!pu::Get("imu_frame_id", imu_frame_id_)) 
         return false;
     LoadCalibrationFromTfTree();
     return true;
@@ -60,7 +63,11 @@ bool ImuHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 // --------------------------------------------------------------------------------
 
 void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {    
-    ROS_INFO("ImuHandler - ImuCallback");    
+    ROS_INFO("ImuHandler - ImuCallback"); 
+    // TODO: FIFO behaviour could be optimized
+    if (CheckBufferSize() > buffer_size_limit_){
+            imu_buffer_.erase(imu_buffer_.begin());
+    }   
     if (!InsertMsgInBuffer(msg)){
         ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
     }
@@ -91,9 +98,7 @@ FactorData* ImuHandler::GetData(){
         factors_output->type = "imu";
 
         // Create the new factor and add it to the output
-        ImuFactor new_factor(
-          CreateAttitudeFactor(imu_ypr)
-        );
+        ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
         factors_output->factors.push_back(new_factor);
 
         ResetFactorData();

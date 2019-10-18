@@ -49,6 +49,7 @@ protected:
 
   // Buffers
   ImuBuffer imu_buffer_;
+  int buffer_size_limit_;
   bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
   int CheckBufferSize() const; 
   bool ClearBuffer();          
