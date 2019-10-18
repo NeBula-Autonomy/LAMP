@@ -20,6 +20,10 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 
+#include <pose_graph_msgs/PoseGraph.h>
+#include <pose_graph_msgs/PoseGraphEdge.h>
+#include <pose_graph_msgs/PoseGraphNode.h>
+
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
@@ -30,6 +34,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <utils/CommonStructs.h>
+#include <utils/CommonFunctions.h>
 
 namespace gu = geometry_utils;
 namespace gr = geometry_utils::ros;
