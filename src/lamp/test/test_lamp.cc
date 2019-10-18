@@ -126,7 +126,7 @@ public:
     lr.b_use_fixed_covariances_ = value;
   }
 
-  void ProcessArtifacts(FactorData data) {
+  void ProcessArtifacts(FactorData* data) {
     lr.ProcessArtifactData(data);
   }
 
@@ -235,24 +235,21 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
  */ 
 TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Construct the new Artifact data
-  FactorData new_data;
-  new_data.b_has_data = true;
-  new_data.type = "artifact";
+  ArtifactData* new_data = new ArtifactData();
+  new_data->b_has_data = true;
+  new_data->type = "artifact";
 
-  gtsam::Symbol artifact_key = gtsam::Symbol('l',1);
-  new_data.artifact_key.push_back(artifact_key);
-
-  gtsam::Pose3 transform = gtsam::Pose3(gtsam::Rot3(), 
-                                          gtsam::Point3 (9.7, 0, 0));
-  new_data.transforms.push_back(transform);
-
+  ArtifactFactor new_factor;
+  new_factor.key = gtsam::Symbol('l',1);
+  new_factor.position = gtsam::Point3 (9.7, 0, 0);
   gtsam::Vector6 sig;
   sig << 0.3,0.3,0.3,0.3,0.3,0.3;
   gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
-  new_data.covariances.push_back(noise);
+  new_factor.covariance = noise;
+  new_factor.stamp =  ros::Time(0.11);
 
-  std::pair<ros::Time, ros::Time> time_stamp = std::make_pair(ros::Time(0.11), ros::Time(0.0));
-  new_data.time_stamps.push_back(time_stamp);
+  // Add the new factor
+  new_data->factors.push_back(new_factor);
 
   // Set the global flag
   setArtifactInGlobal(false);
@@ -333,10 +330,10 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 
   // Should enable this after completely resolve the first one.
   // Change time and send the message again
-  // new_data.time_stamps.clear();
-  // new_data.time_stamps.push_back(std::make_pair<ros::Time, ros::Time>(ros::Time(0.13), ros::Time(0.0)));
-  // new_data.transforms.clear();
-  // new_data.transforms.push_back(gtsam::Pose3(gtsam::Rot3(), 
+  // new_data->time_stamps.clear();
+  // new_data->time_stamps.push_back(std::make_pair<ros::Time, ros::Time>(ros::Time(0.13), ros::Time(0.0)));
+  // new_data->transforms.clear();
+  // new_data->transforms.push_back(gtsam::Pose3(gtsam::Rot3(), 
   //                                         gtsam::Point3 (9.7, 0, 0)));
 
   // // Call the ProcessArtifactData. Adding an old artifact

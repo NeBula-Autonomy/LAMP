@@ -181,18 +181,15 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   gtsam::SharedNoiseModel noise = ExtractCovariance(msg.covariance);
 
   // Fill artifact_data_
-  AddArtifactData(cur_artifact_key,
-                  std::make_pair(msg.header.stamp, ros::Time(0.0)),
-                  relative_pose,
-                  noise);
+  AddArtifactData(cur_artifact_key, msg.header.stamp, relative_pose, noise);
 }
 
 /*! \brief  Gives the factors to be added and clears to start afresh.
  * Returns  Factors
  */
-FactorData ArtifactHandler::GetData() {
+FactorData* ArtifactHandler::GetData() {
   // Create a temporary copy to return
-  FactorData temp_artifact_data_ = artifact_data_;
+  ArtifactData* temp_artifact_data_ = new ArtifactData(artifact_data_);
 
   // Clear artifact data
   ClearArtifactData();
@@ -355,10 +352,7 @@ ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) {
 void ArtifactHandler::ClearArtifactData() {
   // Clear artifact data
   artifact_data_.b_has_data = false;
-  artifact_data_.artifact_key.clear();
-  artifact_data_.covariances.clear();
-  artifact_data_.time_stamps.clear();
-  artifact_data_.transforms.clear();
+  artifact_data_.factors.clear();
 }
 
 /*! \brief  Add artifact data
@@ -366,21 +360,22 @@ void ArtifactHandler::ClearArtifactData() {
  */
 void ArtifactHandler::AddArtifactData(
     const gtsam::Symbol cur_key,
-    std::pair<ros::Time, ros::Time> time_stamp,
+    ros::Time time_stamp,
     const gtsam::Pose3 transform,
     const gtsam::SharedNoiseModel noise) {
   // Make new data true
   artifact_data_.b_has_data = true;
   // Fill type
   artifact_data_.type = "artifact";
-  // Append transform
-  artifact_data_.transforms.push_back(transform);
-  // Append covariance
-  artifact_data_.covariances.push_back(noise);
-  // Append std::pair<ros::Time, ros::Time(0.0)> for artifact
-  artifact_data_.time_stamps.push_back(time_stamp);
-  // Append the artifact key
-  artifact_data_.artifact_key.push_back(cur_key);
+
+  // Create and add the new artifact
+  ArtifactFactor new_artifact;
+  new_artifact.position = transform.translation(); // TODO change transform to position only
+  new_artifact.covariance = noise;
+  new_artifact.stamp = time_stamp;
+  new_artifact.key = cur_key;
+
+  artifact_data_.factors.push_back(new_artifact);
 }
 
 /*! \brief  Stores/Updated artifactInfo Hash
