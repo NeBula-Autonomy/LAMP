@@ -86,11 +86,8 @@ struct ImuFactor {
 
   // This is required because gtsam::Pose3AttitudeFactor has a deleted 
   // operator= so the attitude can't be assigned a value
-  ImuFactor(ros::Time t, gtsam::Pose3AttitudeFactor factor) :
-    stamp(t),
+  ImuFactor(gtsam::Pose3AttitudeFactor factor) :
     attitude(factor) { }
-
-  ros::Time stamp;
 
   gtsam::Pose3AttitudeFactor attitude;
 };

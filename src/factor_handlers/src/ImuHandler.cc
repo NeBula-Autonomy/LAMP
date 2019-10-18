@@ -92,7 +92,6 @@ FactorData* ImuHandler::GetData(){
 
         // Create the new factor and add it to the output
         ImuFactor new_factor(
-          ros::Time(0.0), // TODO - add proper time stamp
           CreateAttitudeFactor(imu_ypr)
         );
         factors_output->factors.push_back(new_factor);
