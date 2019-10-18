@@ -17,6 +17,9 @@ find_package(catkin REQUIRED COMPONENTS
     eigen_conversions
     pose_graph_msgs
     geometry_utils
+    parameter_utils
+    pcl_ros
+    utils
 )
 
 find_package(Eigen3 REQUIRED)
@@ -38,6 +41,9 @@ catkin_package(
     roscpp
     pose_graph_msgs
     geometry_utils
+    parameter_utils
+    pcl_ros
+    utils
     eigen_conversions
 )
 
@@ -68,7 +74,7 @@ target_link_libraries(${PROJECT_NAME}
 #############
 ## Testing ##
 #############
-if (CATKIN_ENABLE_TESTING)
+if (ATKIN_ENABLE_TESTING)
   ## Add gtest based cpp test target and link libraries
   catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cc)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES} gtsam)

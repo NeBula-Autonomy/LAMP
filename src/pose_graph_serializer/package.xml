@@ -11,11 +11,14 @@
   <depend>roscpp</depend>
   <depend>pose_graph_msgs</depend>
   <depend>eigen_conversions</depend>
+  <depend>parameter_utils</depend>
+  <depend>geometry_utils</depend>
+  <depend>utils</depend>
+  <depend>pcl_ros</depend>
  
   <buildtool_depend>catkin</buildtool_depend>
 
 
-  <depend>geometry_utils</depend>
 
   <test_depend>rostest</test_depend>
   <test_depend>rosunit</test_depend>

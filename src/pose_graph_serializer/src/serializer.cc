@@ -1,32 +1,43 @@
 #include <pose_graph_serializer/serializer.h>
 
-namespace gu = geometry_utils;
+#include <parameter_utils/ParameterUtils.h>
+#include <utils/CommonFunctions.h>
 
-bool PoseGraphSerializer::ConvertValuesToNodeMsgs(
-    const gtsam::Values& values,
-    std::vector<pose_graph_msgs::PoseGraphNode>* nodes) {
+namespace pu = parameter_utils;
+namespace gu = geometry_utils;
+namespace gr = gu::ros;
+
+GraphPtr PoseGraphSerializer::ConvertToMsg(const PoseGraph& pose_graph) {
+  // Create the Pose Graph Message
+  auto* msg = new pose_graph_msgs::PoseGraph;
+  msg->header.frame_id = pose_graph.fixed_frame_id;
+  // TODO: get time stamp?
+  msg->header.stamp =
+      pose_graph.keyed_stamps.at(pose_graph.key - 1); // Get timestamp from latest keyed pose
+
+  // Get Values
   // Converts the internal values
-  for (const auto& keyed_pose : values) {
-    gu::Transform3 t = utils::ToGu(values.at<gtsam::Pose3>(keyed_pose.key));
+  for (const auto& keyed_pose : pose_graph.values) {
+    gu::Transform3 t = utils::ToGu(pose_graph.values.at<gtsam::Pose3>(keyed_pose.key));
 
     gtsam::Symbol sym_key = gtsam::Symbol(keyed_pose.key);
 
     // Populate the message with the pose's data.
-    pose_graph_msgs::PoseGraphNode node;
+    GraphNode node;
     node.key = keyed_pose.key;
-    node.header.frame_id = fixed_frame_id_;
+    node.header.frame_id = pose_graph.fixed_frame_id;
     node.pose = gr::ToRosPose(t);
 
     // Get timestamp
-    // Note keyed_stamps are for all nodes TODO - check this is followed
-    /// TODO check if time stamps are necessary
-    // node.header.stamp = keyed_stamps_[keyed_pose.key];
+    // Note keyed_stamps are for all nodes TODO: check this is followed
+    // TODO: check if time stamps are necessary
+    node.header.stamp = pose_graph.keyed_stamps.at(keyed_pose.key);
 
     // Get the IDs
-    if (keyed_scans_.count(keyed_pose.key)) {
+    if (pose_graph.keyed_scans.count(keyed_pose.key)) {
       // Key frame, note in the ID
       node.ID = "key_frame";
-    } else if (sym_key.chr() == prefix_[0]) {
+    } else if (sym_key.chr() == pose_graph.prefix[0]) {
       // Odom or key frame
       node.ID = "odom";
     } else if (sym_key.chr() == 'u') {
@@ -39,30 +50,21 @@ bool PoseGraphSerializer::ConvertValuesToNodeMsgs(
       node.ID = "Artifact"; // TEMPORARY
     }
 
-    // TODO - fill covariance
+    // TODO: fill covariance
 
     // Add to the vector of nodes
-    nodes->push_back(node);
+    msg->nodes.push_back(node);
   }
-  return true;
+
+  // Add the factors  // TODO: check integration of this tracking with all
+  // handlers
+  msg->edges = pose_graph.edges;
+  msg->priors = pose_graph.priors;
+
+  return GraphPtr(msg);
 }
 
-GraphPtr PoseGraphSerializer::ConvertToMsg(const gtsam::Values& values,
-                                           const EdgeMessages& edges_info,
-                                           const NodeMessages& priors_info) {
-  // Create the Pose Graph Message
-  auto* msg = new pose_graph_msgs::PoseGraph;
-  msg->header.frame_id = fixed_frame_id_;
-  msg->header.stamp =
-      keyed_stamps_[key_ - 1]; // Get timestamp from latest keyed pose
-
-  // Get Values
-  ConvertValuesToNodeMsgs(values, &msg->nodes);
-
-  // Add the factors  // TODO - check integration of this tracking with all
-  // handlers
-  msg->edges = edges_info;
-  msg->priors = priors_info;
-
-  return pose_graph_msgs::PoseGraphConstPtr(msg);
+bool ConvertFromMsg(const GraphPtr& msg,
+                    PoseGraph* pose_graph) {
+  return true;
 }
