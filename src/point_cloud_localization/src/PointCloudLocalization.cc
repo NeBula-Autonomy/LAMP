@@ -34,11 +34,11 @@
  * Authors: Erik Nelson            ( eanelson@eecs.berkeley.edu )
  */
 
-#include <point_cloud_localization/PointCloudLocalization.h>
-#include <geometry_utils/GeometryUtilsROS.h>
-#include <parameter_utils/ParameterUtils.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_utils/GeometryUtilsROS.h>
+#include <parameter_utils/ParameterUtils.h>
+#include <point_cloud_localization/PointCloudLocalization.h>
 
 #include <pcl/search/impl/search.hpp>
 
@@ -74,8 +74,10 @@ bool PointCloudLocalization::Initialize(const ros::NodeHandle& n) {
 
 bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   // Load frame ids.
-  if (!pu::Get("frame_id/fixed", fixed_frame_id_)) return false;
-  if (!pu::Get("frame_id/base", base_frame_id_)) return false;
+  if (!pu::Get("frame_id/fixed", fixed_frame_id_))
+    return false;
+  if (!pu::Get("frame_id/base", base_frame_id_))
+    return false;
 
   // Load initial position.
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
@@ -108,19 +110,24 @@ bool PointCloudLocalization::LoadParameters(const ros::NodeHandle& n) {
   init_roll = m1.Roll();
   init_pitch = m1.Pitch();
   init_yaw = m1.Yaw();
-  
+
   integrated_estimate_.translation = gu::Vec3(init_x, init_y, init_z);
   integrated_estimate_.rotation = gu::Rot3(init_roll, init_pitch, init_yaw);
 
   // Load algorithm parameters.
-  if (!pu::Get("localization/tf_epsilon", params_.tf_epsilon)) return false;
-  if (!pu::Get("localization/corr_dist", params_.corr_dist)) return false;
-  if (!pu::Get("localization/iterations", params_.iterations)) return false;
+  if (!pu::Get("localization/tf_epsilon", params_.tf_epsilon))
+    return false;
+  if (!pu::Get("localization/corr_dist", params_.corr_dist))
+    return false;
+  if (!pu::Get("localization/iterations", params_.iterations))
+    return false;
 
   if (!pu::Get("localization/transform_thresholding", transform_thresholding_))
     return false;
-  if (!pu::Get("localization/max_translation", max_translation_)) return false;
-  if (!pu::Get("localization/max_rotation", max_rotation_)) return false;
+  if (!pu::Get("localization/max_translation", max_translation_))
+    return false;
+  if (!pu::Get("localization/max_rotation", max_rotation_))
+    return false;
 
   pu::Get("b_publish_tfs", b_publish_tfs_);
 
@@ -229,7 +236,7 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   }
 
   // Store time stamp.
-  stamp_.fromNSec(query->header.stamp*1e3);
+  stamp_.fromNSec(query->header.stamp * 1e3);
 
   // ICP-based alignment. Generalized ICP does (roughly) plane-to-plane
   // matching, and is much more robust than standard ICP.
@@ -252,9 +259,15 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
 
   gu::Transform3 pose_update;
   pose_update.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
-  pose_update.rotation = gu::Rot3(T(0, 0), T(0, 1), T(0, 2),
-                                  T(1, 0), T(1, 1), T(1, 2),
-                                  T(2, 0), T(2, 1), T(2, 2));
+  pose_update.rotation = gu::Rot3(T(0, 0),
+                                  T(0, 1),
+                                  T(0, 2),
+                                  T(1, 0),
+                                  T(1, 1),
+                                  T(1, 2),
+                                  T(2, 0),
+                                  T(2, 1),
+                                  T(2, 2));
 
   // Only update if the transform is small enough.
   if (!transform_thresholding_ ||
@@ -264,7 +277,8 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   } else {
     ROS_WARN(
         " %s: Discarding incremental transformation with norm (t: %lf, r: %lf)",
-        name_.c_str(), pose_update.translation.Norm(),
+        name_.c_str(),
+        pose_update.translation.Norm(),
         pose_update.rotation.ToEulerZYX().Norm());
   }
 
@@ -281,7 +295,7 @@ bool PointCloudLocalization::MeasurementUpdate(const PointCloud::Ptr& query,
   PublishPoints(*aligned_query, aligned_pub_);
 
   // Publish transform between fixed frame and localization frame.
-  if (b_publish_tfs_){
+  if (b_publish_tfs_) {
     geometry_msgs::TransformStamped tf;
     tf.transform = gr::ToRosTransform(integrated_estimate_);
     tf.header.stamp = stamp_;
@@ -308,7 +322,7 @@ void PointCloudLocalization::PublishPose(const gu::Transform3& pose,
                                          const ros::Publisher& pub) const {
   // Check for subscribers before doing any work.
   if (pub.getNumSubscribers() == 0)
-   return;
+    return;
 
   // Convert from gu::Transform3 to ROS's PoseStamped type and publish.
   geometry_msgs::PoseStamped ros_pose;
@@ -327,4 +341,3 @@ void PointCloudLocalization::PublishPoseNoUpdate() {
 void PointCloudLocalization::UpdateTimestamp(ros::Time& stamp) {
   stamp_ = stamp;
 }
-

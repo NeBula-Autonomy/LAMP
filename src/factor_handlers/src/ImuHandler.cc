@@ -3,9 +3,13 @@
  * Authors: Matteo Palieri      (matteo.palieri@jpl.nasa.gov)
 */
 
+// Includes
 #include <factor_handlers/ImuHandler.h>
 
 namespace pu = parameter_utils;
+
+// Constructor & Destructor
+// --------------------------------------------------------------------------------
 
 ImuHandler::ImuHandler() 
   : ts_threshold_(0.1) {
@@ -15,6 +19,9 @@ ImuHandler::ImuHandler()
 ImuHandler::~ImuHandler() {
     ROS_INFO("ImuHandler Class Destructor");
 }
+
+// Initialization
+// --------------------------------------------------------------------------------
 
 bool ImuHandler::Initialize(const ros::NodeHandle& n){
     ROS_INFO("ImuHandler - Initialize");    
@@ -49,12 +56,18 @@ bool ImuHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     return true;
 }
 
+// Callback
+// --------------------------------------------------------------------------------
+
 void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {    
     ROS_INFO("ImuHandler - ImuCallback");    
     if (!InsertMsgInBuffer(msg)){
         ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
     }
 }
+
+// LAMP Interface
+// --------------------------------------------------------------------------------
 
 FactorData ImuHandler::GetData(){
     ROS_INFO("ImuHandler - GetData");
@@ -91,12 +104,16 @@ FactorData ImuHandler::GetData(){
     return factors_output; 
 }
 
+// Buffers
+// --------------------------------------------------------------------------------
+
 bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {  
     ROS_INFO("ImuHandler - InsertMsgInBuffer");  
     auto initial_size = imu_buffer_.size();    
     auto current_time = msg->header.stamp.toSec();    
     ImuQuaternion current_quaternion;
     tf::quaternionMsgToEigen(msg->orientation, current_quaternion);
+    // Convert quaternion from imu frame to base frame, then store it 
     current_quaternion = I_T_B_q_*current_quaternion*I_T_B_q_.inverse(); 
     imu_buffer_.insert({current_time, current_quaternion});
     auto final_size = imu_buffer_.size();    
@@ -125,6 +142,9 @@ bool ImuHandler::ClearBuffer() {
         return false; 
     }
 }
+
+// Quaternions
+// --------------------------------------------------------------------------------
 
 bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
     // TODO: Implement GetValueAtTime in base class as it is a common functionality needed by all handlers
@@ -177,10 +197,14 @@ Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion)
     return ypr;
 }
 
+// Factors
+// --------------------------------------------------------------------------------
+
 Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const {
     ROS_INFO("ImuHandler - CreateAttitudeFactor");
     Unit3 ref(0, 0, -1); 
     SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, 0.25);    
+    // Yaw can be set to 0
     Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2])); 
     Unit3 meas = Unit3(Rot3(R_imu.transpose()).operator*(ref));
     Pose3AttitudeFactor factor(query_key_, meas, model, ref);
@@ -220,6 +244,9 @@ bool ImuHandler::SetKeyForImuAttitude(const Symbol& key) {
         return false;
     }
 }
+
+// Transformations
+// --------------------------------------------------------------------------------
 
 bool ImuHandler::LoadCalibrationFromTfTree(){
     ROS_WARN_DELAYED_THROTTLE(2.0, 

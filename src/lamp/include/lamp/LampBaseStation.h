@@ -7,39 +7,31 @@
 #ifndef LAMP_BASE_STATION_H
 #define LAMP_BASE_STATION_H
 
-// Includes 
+// Includes
 #include <lamp/LampBase.h>
-
 
 // Services
 
 // Class Definition
 class LampBaseStation : public LampBase {
-  public:
-    // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+public:
+  // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-    // Constructor
-    LampBaseStation();
+  // Constructor
+  LampBaseStation();
 
-    // Destructor
-    ~LampBaseStation();    
+  // Destructor
+  ~LampBaseStation();
 
+  // Override base class functions where needed
+  bool Initialize();
 
-    // Override base class functions where needed 
-    bool Initialize();
+private:
+  // Overwrite base classs functions where needed
 
+  // Add new functions as needed
 
-  private:
-    // Overwrite base classs functions where needed
-
-
-    // Add new functions as needed
-
-
-    // Add new variables as needed
-
-
+  // Add new variables as needed
 };
-
 
 #endif

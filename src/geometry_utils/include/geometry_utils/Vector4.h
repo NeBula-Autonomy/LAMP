@@ -42,6 +42,6 @@ typedef Vector4Base<double> Vec4d;
 typedef Vector4Base<double> Vector4;
 typedef Vector4Base<double> Vec4;
 
-}
+} // namespace geometry_utils
 
 #endif

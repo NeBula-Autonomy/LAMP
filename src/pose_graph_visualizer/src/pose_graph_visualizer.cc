@@ -1,9 +1,9 @@
-#include <ros/ros.h>
 #include <pose_graph_visualizer/PoseGraphVisualizer.h>
+#include <ros/ros.h>
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "pose_graph_visualizer");
-  
+
   // Initialize public and private node handles
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");

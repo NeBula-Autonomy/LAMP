@@ -39,14 +39,14 @@
 
 #include <ros/ros.h>
 
-#include <pcl_ros/point_cloud.h>
 #include <pcl/octree/octree_search.h>
+#include <pcl_ros/point_cloud.h>
 
 #include <mutex>
 #include <thread>
 
 class PointCloudMapper {
- public:
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
   typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> Octree;
 

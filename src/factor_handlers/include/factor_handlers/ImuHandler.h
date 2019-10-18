@@ -6,12 +6,14 @@
 #ifndef IMU_HANDLER_H
 #define IMU_HANDLER_H
 
+// Includes
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <gtsam/navigation/AttitudeFactor.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <tf/transform_listener.h>
 #include <sensor_msgs/Imu.h>
 
+// Typedefs
 typedef sensor_msgs::Imu ImuMessage;
 typedef Eigen::Quaterniond ImuQuaternion;
 typedef std::map<double, ImuQuaternion> ImuBuffer;
@@ -41,34 +43,30 @@ class ImuHandler : public LampDataHandlerBase {
 
         std::string name_;  
 
-        // Subscriber & Callback
+        // Subscriber & Callback 
         ros::Subscriber imu_sub_;
         void ImuCallback(const ImuMessage::ConstPtr& msg);
 
-        // Buffer
+        // Buffers
         ImuBuffer imu_buffer_;
         bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
         int CheckBufferSize() const; 
         bool ClearBuffer();          
 
-        // GetQuaternionAtTime
-        bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const; 
+        // Quaternions
         double ts_threshold_;
-
-        // Convert Quaternion to Yaw Pitch Roll
+        bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const; 
         Vector3d QuaternionToYpr(const ImuQuaternion& imu_quaternion) const;
 
-        // Create gtsam Pose3AttitudeFactor
+        // Factors
         Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const;              
-        void ResetFactorData();                     
-
+        void ResetFactorData();  
         bool SetTimeForImuAttitude(const ros::Time& stamp);  
         double query_stamp_;
-
         bool SetKeyForImuAttitude(const Symbol& key);
         Symbol query_key_;
 
-        // Load imu_frame to base_frame transformation from tf tree
+        // Transformations
         bool LoadCalibrationFromTfTree();
         tf::TransformListener imu_T_base_listener_;
         std::string base_frame_id_; 

@@ -100,7 +100,8 @@ inline Mat66 ToGu(const Gaussian::shared_ptr& covariance) {
 
   Mat66 out;
   for (int i = 0; i < 6; ++i)
-    for (int j = 0; j < 6; ++j) out(i, j) = gtsam_covariance(i, j);
+    for (int j = 0; j < 6; ++j)
+      out(i, j) = gtsam_covariance(i, j);
 
   return out;
 }
@@ -109,7 +110,8 @@ inline Gaussian::shared_ptr ToGtsam(const Mat66& covariance) {
   gtsam::Matrix66 gtsam_covariance;
 
   for (int i = 0; i < 6; ++i)
-    for (int j = 0; j < 6; ++j) gtsam_covariance(i, j) = covariance(i, j);
+    for (int j = 0; j < 6; ++j)
+      gtsam_covariance(i, j) = covariance(i, j);
 
   return Gaussian::Covariance(gtsam_covariance);
 }
@@ -117,8 +119,9 @@ inline Gaussian::shared_ptr ToGtsam(const Mat66& covariance) {
 inline Gaussian::shared_ptr ToGtsam(const Mat1212& covariance) {
   gtsam::Vector12 gtsam_covariance;
   // TODO CHECK
-  for (int i = 0; i < 12; ++i) gtsam_covariance(i) = covariance(i, i);
+  for (int i = 0; i < 12; ++i)
+    gtsam_covariance(i) = covariance(i, i);
   return gtsam::noiseModel::Diagonal::Covariance(gtsam_covariance);
 }
-}  // namespace utils
-#endif  // COMMON_FUNCTIONS_H
+} // namespace utils
+#endif // COMMON_FUNCTIONS_H

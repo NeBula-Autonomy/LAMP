@@ -1,13 +1,13 @@
 #ifndef GEOMETRY_UTILS_ROTATION3_H
 #define GEOMETRY_UTILS_ROTATION3_H
 
-#include <Eigen/Geometry>
 #include "GeometryUtilsMath.h"
-#include "RotationNBase.h"
-#include "Vector3.h"
+#include "Matrix2x2.h"
 #include "Quaternion.h"
 #include "Rotation2.h"
-#include "Matrix2x2.h"
+#include "RotationNBase.h"
+#include "Vector3.h"
+#include <Eigen/Geometry>
 
 namespace geometry_utils {
 
@@ -19,7 +19,7 @@ struct Rotation3Base : RotationNBase<T, 3> {
   Rotation3Base(T (&in)[9]) : RotationNBase<T, 3>(in) {}
   Rotation3Base(const Eigen::Matrix<T, 3, 3>& in) : RotationNBase<T, 3>(in) {}
   Rotation3Base(const Eigen::AngleAxis<T>& in)
-      : RotationNBase<T, 3>(in.toRotationMatrix()) {}
+    : RotationNBase<T, 3>(in.toRotationMatrix()) {}
   Rotation3Base(const RotationNBase<T, 3>& in) : RotationNBase<T, 3>(in) {}
   Rotation3Base(const Matrix2x2Base<T>& in) : RotationNBase<T, 3>(in) {}
   Rotation3Base(const MatrixNxMBase<T, 3, 3>& in) : RotationNBase<T, 3>(in) {}
@@ -144,9 +144,9 @@ struct Rotation3Base : RotationNBase<T, 3> {
 
   inline T Roll() const {
     T theta = -math::asin((*this)(2, 0));
-    return math::fabs(cos(theta)) > static_cast<T>(1e-6)
-               ? math::atan2((*this)(2, 1), (*this)(2, 2))
-               : 0;
+    return math::fabs(cos(theta)) > static_cast<T>(1e-6) ?
+        math::atan2((*this)(2, 1), (*this)(2, 2)) :
+        0;
   }
 
   inline T Pitch() const {
@@ -155,9 +155,9 @@ struct Rotation3Base : RotationNBase<T, 3> {
 
   inline T Yaw() const {
     T theta = -math::asin((*this)(2, 0));
-    return math::fabs(cos(theta)) > static_cast<T>(1e-6)
-               ? math::atan2((*this)(1, 0), (*this)(0, 0))
-               : 0;
+    return math::fabs(cos(theta)) > static_cast<T>(1e-6) ?
+        math::atan2((*this)(1, 0), (*this)(0, 0)) :
+        0;
   }
 };
 
@@ -190,6 +190,6 @@ typedef Rotation3Base<double> Rot3d;
 typedef Rotation3Base<double> Rotation3;
 typedef Rotation3Base<double> Rot3;
 
-}
+} // namespace geometry_utils
 
 #endif

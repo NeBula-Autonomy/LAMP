@@ -16,16 +16,16 @@ BOOST_AUTO_TEST_CASE(transform_equals_exact) {
   // equal after copy assignment
   gu::Transform3 t2 = t1;
 
-  BOOST_CHECK( t1.Equals(t2) );
-  BOOST_CHECK( t2.Equals(t1) );
+  BOOST_CHECK(t1.Equals(t2));
+  BOOST_CHECK(t2.Equals(t1));
 
   // Check for equivalence after
   // copy construction
   gu::Transform3 t3(t2);
-  BOOST_CHECK( t3.Equals(t2) );
-  BOOST_CHECK( t2.Equals(t3) );
-  BOOST_CHECK( t1.Equals(t3) );
-  BOOST_CHECK( t3.Equals(t1) );
+  BOOST_CHECK(t3.Equals(t2));
+  BOOST_CHECK(t2.Equals(t3));
+  BOOST_CHECK(t1.Equals(t3));
+  BOOST_CHECK(t3.Equals(t1));
 }
 
 BOOST_AUTO_TEST_CASE(transform_equals_pos_tol) {
@@ -44,12 +44,12 @@ BOOST_AUTO_TEST_CASE(transform_equals_pos_tol) {
   t2.translation(2) += ptol_element;
 
   // Check that they are not equal when slightly over the tolerance
-  BOOST_CHECK( ! t1.Equals(t2, ptol - 1e-10) );
-  BOOST_CHECK( ! t2.Equals(t1, ptol - 1e-10) );
+  BOOST_CHECK(!t1.Equals(t2, ptol - 1e-10));
+  BOOST_CHECK(!t2.Equals(t1, ptol - 1e-10));
 
   // Check that they are equal when slightly under the tolerance
-  BOOST_CHECK( t1.Equals(t2, ptol + 1e-10) );
-  BOOST_CHECK( t2.Equals(t1, ptol + 1e-10) );
+  BOOST_CHECK(t1.Equals(t2, ptol + 1e-10));
+  BOOST_CHECK(t2.Equals(t1, ptol + 1e-10));
 }
 
 BOOST_AUTO_TEST_CASE(transform_equals_rot_tol) {
@@ -66,21 +66,20 @@ BOOST_AUTO_TEST_CASE(transform_equals_rot_tol) {
 
   srand(10);
   Eigen::Vector3d p3 = Eigen::Vector3d::Random();
-  gu::Vector3 small_noise(1e-6*p3);
+  gu::Vector3 small_noise(1e-6 * p3);
 
   t2.rotation = gu::ZYXToR(gu::RToZYX(t1.rotation) + small_noise);
 
   // Check that they equal when under tolerance
-  BOOST_CHECK( t1.Equals(t2, ptol, rtol) );
-  BOOST_CHECK( t2.Equals(t1, ptol, rtol) );
+  BOOST_CHECK(t1.Equals(t2, ptol, rtol));
+  BOOST_CHECK(t2.Equals(t1, ptol, rtol));
 
   gu::Vector3 big_noise = small_noise * 1e4;
   t2.rotation = gu::ZYXToR(gu::RToZYX(t1.rotation) + big_noise);
 
   // Check that they are unequal when slightly over tolerance
-  BOOST_CHECK( ! t1.Equals(t2, ptol, rtol) );
-  BOOST_CHECK( ! t2.Equals(t1, ptol, rtol) );
-
+  BOOST_CHECK(!t1.Equals(t2, ptol, rtol));
+  BOOST_CHECK(!t2.Equals(t1, ptol, rtol));
 }
 
 BOOST_AUTO_TEST_CASE(transform_operator_bool_eq) {
@@ -93,16 +92,16 @@ BOOST_AUTO_TEST_CASE(transform_operator_bool_eq) {
   // Check that two random transforms are
   // equal after copy assignment
   gu::Transform3 t2 = t1;
-  BOOST_CHECK( t1 == t2 );
-  BOOST_CHECK( t2 == t1 );
+  BOOST_CHECK(t1 == t2);
+  BOOST_CHECK(t2 == t1);
 
   // Check for equivalence after
   // copy construction
   gu::Transform3 t3(t2);
-  BOOST_CHECK( t3 == t2 );
-  BOOST_CHECK( t2 == t3 );
-  BOOST_CHECK( t1 == t3 );
-  BOOST_CHECK( t3 == t1 );
+  BOOST_CHECK(t3 == t2);
+  BOOST_CHECK(t2 == t3);
+  BOOST_CHECK(t1 == t3);
+  BOOST_CHECK(t3 == t1);
 }
 
 BOOST_AUTO_TEST_CASE(transform_operator_bool_ineq) {
@@ -116,16 +115,16 @@ BOOST_AUTO_TEST_CASE(transform_operator_bool_ineq) {
   // Check that two random transforms are
   // equal after copy assignment
   gu::Transform3 t2 = t1;
-  BOOST_CHECK( ! (t1 != t2) );
-  BOOST_CHECK( ! (t2 != t1) );
+  BOOST_CHECK(!(t1 != t2));
+  BOOST_CHECK(!(t2 != t1));
 
   // Check for equivalence after
   // copy construction
   gu::Transform3 t3(t2);
-  BOOST_CHECK( ! (t3 != t2) );
-  BOOST_CHECK( ! (t2 != t3) );
-  BOOST_CHECK( ! (t1 != t3) );
-  BOOST_CHECK( ! (t3 != t1) );
+  BOOST_CHECK(!(t3 != t2));
+  BOOST_CHECK(!(t2 != t3));
+  BOOST_CHECK(!(t1 != t3));
+  BOOST_CHECK(!(t3 != t1));
 
   // Make a new transform with same pos,
   // but different rot from t1, t2, t3
@@ -145,8 +144,8 @@ BOOST_AUTO_TEST_CASE(transform_operator_bool_ineq) {
     t4.rotation = gu::ZYXToR(euler_noise);
   }
 
-  BOOST_CHECK( t4 != t1 );
-  BOOST_CHECK( t1 != t4 );
+  BOOST_CHECK(t4 != t1);
+  BOOST_CHECK(t1 != t4);
 
   // Make a new transform with same rot,
   // but different pos from t1, t2, t3
@@ -160,8 +159,8 @@ BOOST_AUTO_TEST_CASE(transform_operator_bool_ineq) {
   double pos_err = Norm(t5.translation - t1.translation);
   double ptol = 1e-5;
   if (pos_err < ptol)
-    t5.translation(0) += ptol*10;
+    t5.translation(0) += ptol * 10;
 
-  BOOST_CHECK( t5 != t1 );
-  BOOST_CHECK( t1 != t5 );
+  BOOST_CHECK(t5 != t1);
+  BOOST_CHECK(t1 != t5);
 }

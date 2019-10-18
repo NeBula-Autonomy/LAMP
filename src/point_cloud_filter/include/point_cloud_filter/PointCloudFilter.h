@@ -37,11 +37,11 @@
 #ifndef POINT_CLOUD_FILTER_H
 #define POINT_CLOUD_FILTER_H
 
-#include <ros/ros.h>
 #include <pcl_ros/point_cloud.h>
+#include <ros/ros.h>
 
 class PointCloudFilter {
- public:
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   PointCloudFilter();
@@ -54,7 +54,7 @@ class PointCloudFilter {
   bool Filter(const PointCloud::ConstPtr& points,
               PointCloud::Ptr points_filtered) const;
 
- private:
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);

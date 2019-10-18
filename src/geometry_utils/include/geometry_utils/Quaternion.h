@@ -1,10 +1,10 @@
 #ifndef GEOMETRY_UTILS_QUATERNION_H
 #define GEOMETRY_UTILS_QUATERNION_H
 
-#include <string>
-#include <boost/array.hpp>
-#include <Eigen/Geometry>
 #include "GeometryUtilsMath.h"
+#include <Eigen/Geometry>
+#include <boost/array.hpp>
+#include <string>
 
 namespace geometry_utils {
 
@@ -49,21 +49,37 @@ struct QuaternionBase : VectorNBase<T, 4> {
                           -(b2 * c1) + b1 * c2 + a2 * d1 + a1 * d2);
   }
 
-  inline T& W() { return this->data[0]; }
-  inline const T& W() const { return this->data[0]; }
+  inline T& W() {
+    return this->data[0];
+  }
+  inline const T& W() const {
+    return this->data[0];
+  }
 
-  inline T& X() { return this->data[1]; }
-  inline const T& X() const { return this->data[1]; }
+  inline T& X() {
+    return this->data[1];
+  }
+  inline const T& X() const {
+    return this->data[1];
+  }
 
-  inline T& Y() { return this->data[2]; }
-  inline const T& Y() const { return this->data[2]; }
+  inline T& Y() {
+    return this->data[2];
+  }
+  inline const T& Y() const {
+    return this->data[2];
+  }
 
-  inline T& Z() { return this->data[3]; }
-  inline const T& Z() const { return this->data[3]; }
+  inline T& Z() {
+    return this->data[3];
+  }
+  inline const T& Z() const {
+    return this->data[3];
+  }
 
   inline QuaternionBase Conj() const {
-    return QuaternionBase(this->data[0], -this->data[1], -this->data[2],
-                          -this->data[3]);
+    return QuaternionBase(
+        this->data[0], -this->data[1], -this->data[2], -this->data[3]);
   }
 
   inline QuaternionBase Error(const QuaternionBase& q) const {
@@ -77,8 +93,8 @@ struct QuaternionBase : VectorNBase<T, 4> {
     T den = math::sqrt(1 - q.W() * q.W());
     if (den < 1e-6)
       den = 1;
-    return QuaternionBase(2 * math::acos(q.W()), q.X() / den, q.Y() / den,
-                          q.Z() / den);
+    return QuaternionBase(
+        2 * math::acos(q.W()), q.X() / den, q.Y() / den, q.Z() / den);
   }
 };
 
@@ -91,6 +107,6 @@ typedef QuaternionBase<double> Quatd;
 typedef QuaternionBase<double> Quaternion;
 typedef QuaternionBase<double> Quat;
 
-}
+} // namespace geometry_utils
 
 #endif

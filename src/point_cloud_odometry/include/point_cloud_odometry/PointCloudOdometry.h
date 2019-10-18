@@ -37,14 +37,14 @@
 #ifndef POINT_CLOUD_ODOMETRY_H
 #define POINT_CLOUD_ODOMETRY_H
 
-#include <ros/ros.h>
 #include <geometry_utils/Transform3.h>
+#include <ros/ros.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <tf2_ros/transform_broadcaster.h>
 
 class PointCloudOdometry {
- public:
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   PointCloudOdometry();
@@ -67,8 +67,8 @@ class PointCloudOdometry {
   // Pose estimates.
   geometry_utils::Transform3 integrated_estimate_;
   geometry_utils::Transform3 incremental_estimate_;
-  
- private:
+
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -77,8 +77,7 @@ class PointCloudOdometry {
   bool UpdateICP();
 
   // Publish reference and query point clouds.
-  void PublishPoints(const PointCloud::Ptr& points,
-                     const ros::Publisher& pub);
+  void PublishPoints(const PointCloud::Ptr& points, const ros::Publisher& pub);
 
   // Publish incremental and integrated pose estimates.
   void PublishPose(const geometry_utils::Transform3& pose,

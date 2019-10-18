@@ -7,118 +7,113 @@
 #ifndef LAMP_ROBOT_H
 #define LAMP_ROBOT_H
 
-// Includes 
+// Includes
 #include <lamp/LampBase.h>
 
-#include <factor_handlers/OdometryHandler.h>
 #include <factor_handlers/ArtifactHandler.h>
+#include <factor_handlers/OdometryHandler.h>
 #include <pcl/common/transforms.h>
 
 // Services
 
 // Class Definition
 class LampRobot : public LampBase {
+public:
+  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-  public:
-    typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+  // Constructor
+  LampRobot();
 
-    // Constructor
-    LampRobot();
+  // Destructor
+  ~LampRobot();
 
-    // Destructor
-    ~LampRobot();    
+  // Override base class functions where needed
+  virtual bool Initialize(const ros::NodeHandle& n);
 
-    // Override base class functions where needed 
-    virtual bool Initialize(const ros::NodeHandle& n);
+  gtsam::Symbol GetInitialKey() {
+    return initial_key_;
+  };
+  gtsam::Symbol GetCurrentKey() {
+    return key_;
+  };
 
-    gtsam::Symbol GetInitialKey() {return initial_key_;};
-    gtsam::Symbol GetCurrentKey() {return key_;};
+protected:
+  // instantiate all handlers that are being used in the derived classes
+  virtual bool InitializeHandlers(const ros::NodeHandle& n);
 
-  protected:
+  // load parameters from yaml files
+  virtual bool LoadParameters(const ros::NodeHandle& n);
 
-    // instantiate all handlers that are being used in the derived classes
-    virtual bool InitializeHandlers(const ros::NodeHandle& n); 
+  // retrieve data from all handlers
+  virtual bool CheckHandlers(); // - inside timed callback
+  // TODO consider checking handlers at different frequencies
 
-    // load parameters from yaml files
-    virtual bool LoadParameters(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& n);
 
-    // retrieve data from all handlers
-    virtual bool CheckHandlers(); // - inside timed callback
-    // TODO consider checking handlers at different frequencies
+  virtual bool CreatePublishers(const ros::NodeHandle& n);
 
-    bool RegisterCallbacks(const ros::NodeHandle& n);
+  // Main update timer callback
+  virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
-    virtual bool CreatePublishers(const ros::NodeHandle& n);
+  // Initialization helper functions
+  bool SetInitialPosition();
+  bool SetInitialKey();
 
-    // Main update timer callback
-    virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
+  void UpdateArtifactPositions();
+  void UpdateAndPublishOdom();
 
-    // Initialization helper functions
-    bool SetInitialPosition();
-    bool SetInitialKey();
+  // Generate map from keyed scans
+  bool GenerateMapPointCloud();
+  bool AddTransformedPointCloudToMap(gtsam::Symbol key);
 
-    void UpdateArtifactPositions();
-    void UpdateAndPublishOdom();
+  PointCloudFilter filter_;
+  PointCloudMapper mapper_;
 
-    // Generate map from keyed scans
-    bool GenerateMapPointCloud();
-    bool AddTransformedPointCloudToMap(gtsam::Symbol key);
+  // Publishers
+  ros::Publisher pose_pub_;
 
+private:
+  // Overwrite base classs functions where needed
 
-    PointCloudFilter filter_;
-    PointCloudMapper mapper_;
+  // Factor Hanlder Wrappers
+  bool ProcessOdomData(FactorData data);
+  bool ProcessArtifactData(FactorData data);
+  void ProcessAprilData(FactorData data);
+  bool InitializeGraph(gtsam::Pose3& pose,
+                       gtsam::noiseModel::Diagonal::shared_ptr& covariance);
+  // void ProcessUWBData(FactorData data);
+  // Example use:
+  // ProcessArtifactData(artifact_handler_.GetData());
 
-    // Publishers
-    ros::Publisher pose_pub_;
+  void HandleRelativePoseMeasurement(const ros::Time& time,
+                                     const gtsam::Pose3& relative_pose,
+                                     gtsam::Pose3& transform,
+                                     gtsam::Pose3& global_pose,
+                                     gtsam::Symbol& key_from);
 
-  private:
-    // Overwrite base classs functions where needed
+  bool ConvertGlobalToRelative(const ros::Time stamp,
+                               const gtsam::Pose3 pose_global,
+                               gtsam::Pose3& pose_relative);
 
+  // Data Handler classes
+  OdometryHandler odometry_handler_;
+  ArtifactHandler artifact_handler_;
+  // AprilHandler april_handler_;
+  // Manual LC
+  // IMU
+  // TS
+  // LoopClosure
 
-    // Factor Hanlder Wrappers
-    bool ProcessOdomData(FactorData data);
-    bool ProcessArtifactData(FactorData data);
-    void ProcessAprilData(FactorData data);
-    bool InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-    // void ProcessUWBData(FactorData data);
-    // Example use:
-    // ProcessArtifactData(artifact_handler_.GetData());
+  // Add new functions as needed
 
-    void HandleRelativePoseMeasurement(const ros::Time& time,
-                                       const gtsam::Pose3& relative_pose,
-                                       gtsam::Pose3& transform,
-                                       gtsam::Pose3& global_pose,
-                                       gtsam::Symbol& key_from);
+  // Add new variables as needed
 
-    bool ConvertGlobalToRelative(const ros::Time stamp,
-                                 const gtsam::Pose3 pose_global,
-                                 gtsam::Pose3& pose_relative);
+  // Parameters
+  gtsam::Vector6 initial_noise_;
+  bool b_artifacts_in_global_;
 
-    // Data Handler classes
-    OdometryHandler odometry_handler_; 
-    ArtifactHandler artifact_handler_;
-    // AprilHandler april_handler_;
-    // Manual LC
-    // IMU
-    // TS
-    // LoopClosure
-
-
-
-    // Add new functions as needed
-
-
-    // Add new variables as needed
-
-
-    // Parameters
-    gtsam::Vector6 initial_noise_;
-    bool b_artifacts_in_global_;
-
-    // Test class fixtures
-    friend class TestLampRobot;
-
+  // Test class fixtures
+  friend class TestLampRobot;
 };
-
 
 #endif

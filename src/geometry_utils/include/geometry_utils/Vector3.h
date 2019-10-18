@@ -21,9 +21,15 @@ struct Vector3Base : VectorNBase<T, 3> {
     this->data[2] = v3;
   }
 
-  T X() const { return this->data[0]; }
-  T Y() const { return this->data[1]; }
-  T Z() const { return this->data[2]; }
+  T X() const {
+    return this->data[0];
+  }
+  T Y() const {
+    return this->data[1];
+  }
+  T Z() const {
+    return this->data[2];
+  }
 
   inline Vector3Base<T> Cross(const Vector3Base<T>& v) const {
     return Vector3Base<T>(-(*this)(2) * v(1) + (*this)(1) * v(2),
@@ -57,6 +63,6 @@ typedef Vector3Base<double> Vec3d;
 typedef Vector3Base<double> Vector3;
 typedef Vector3Base<double> Vec3;
 
-}
+} // namespace geometry_utils
 
 #endif
