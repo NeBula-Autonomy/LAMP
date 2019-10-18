@@ -168,10 +168,10 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
   }
   // Generate gtsam pose
-  const gtsam::Point3 relative_position =
+  const gtsam::Pose3 relative_pose = gtsam::Pose3(gtsam::Rot3(), 
                    gtsam::Point3(R_artifact_position[0],
                                  R_artifact_position[1],
-                                 R_artifact_position[2]);
+                                 R_artifact_position[2]));
 
   // Fill ArtifactInfo hash
   StoreArtifactInfo(cur_artifact_key, msg);
@@ -180,7 +180,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   gtsam::SharedNoiseModel noise = ExtractCovariance(msg.covariance);
 
   // Fill artifact_data_
-  AddArtifactData(cur_artifact_key, msg.header.stamp, relative_position, noise);
+  AddArtifactData(cur_artifact_key, msg.header.stamp, relative_pose.translation(), noise);
 }
 
 /*! \brief  Gives the factors to be added and clears to start afresh.

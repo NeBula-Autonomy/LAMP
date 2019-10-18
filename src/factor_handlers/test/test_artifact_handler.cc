@@ -180,13 +180,18 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Get the data
   ArtifactData stored_data = GetArtifactData();
   ArtifactFactor artifact_factor = stored_data.factors[0];
+
+  std::cout << "retrieved artifact, position " << artifact_factor.position.x() << ", " << artifact_factor.position.y() << std::endl;
+  std::cout << "vector: " << artifact_factor.position.vector();
   // Check if data is flowing correctly
   // TODO Check next line
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(artifact_factor.key.index(), 0);
   EXPECT_EQ(artifact_factor.stamp, ros::Time(0.0));
-  EXPECT_EQ(artifact_factor.position.vector(), Eigen::Vector3d (0.9,0.3,0.5));
+  EXPECT_EQ(artifact_factor.position.x(), 0.9);
+  EXPECT_EQ(artifact_factor.position.y(), 0.3);
+  EXPECT_EQ(artifact_factor.position.z(), 0.5);
   // Check if maps are filled
   gtsam::Point3 global_position = gtsam::Point3(0.9, 0.3, 0.5);
   // Update the global position
@@ -214,8 +219,9 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(artifact_factor.key.index(), 0);
   EXPECT_EQ(artifact_factor.stamp, ros::Time(0.0));
-  EXPECT_EQ(artifact_factor.position.vector(),
-            Eigen::Vector3d(0.3, 0.3, 0.3));
+  EXPECT_EQ(artifact_factor.position.x(), 0.3);
+  EXPECT_EQ(artifact_factor.position.y(), 0.3);
+  EXPECT_EQ(artifact_factor.position.z(), 0.3);
 
   // Update the global position
   UpdateGlobalPosition(artifact_factor.key, global_position);
