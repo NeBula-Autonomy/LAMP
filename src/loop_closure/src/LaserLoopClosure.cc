@@ -49,12 +49,9 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
     return false;
 
   // Load ICP parameters (from point_cloud localization)
-  if (!pu::Get("icp_lc/tf_epsilon", icp_tf_epsilon_))
-    return false;
-  if (!pu::Get("icp_lc/corr_dist", icp_corr_dist_))
-    return false;
-  if (!pu::Get("icp_lc/iterations", icp_iterations_))
-    return false;
+  if (!pu::Get("icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
+  if (!pu::Get("icp_lc/corr_dist", icp_corr_dist_)) return false;
+  if (!pu::Get("icp_lc/iterations", icp_iterations_)) return false;
 
   // Hard coded covariances
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
@@ -118,10 +115,13 @@ bool LaserLoopClosure::FindLoopClosures(
     if (difference.translation().norm() < proximity_threshold_) {
       const PointCloud::ConstPtr scan2 = keyed_scans_[other_key];
 
-      gu::Transform3 delta; // (Using BetweenFactor)
-      gtsam::Matrix66 covariance;
+      gu::Transform3 delta;  // (Using BetweenFactor)
+      gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
 
       double fitness_score; // retrieve ICP fitness score if matched
+      ROS_INFO_STREAM("Performing alignment between "
+                      << gtsam::DefaultKeyFormatter(new_key) << " and "
+                      << gtsam::DefaultKeyFormatter(other_key));
       if (PerformAlignment(
               scan1, scan2, pose1, pose2, &delta, &covariance, fitness_score)) {
         ROS_INFO_STREAM("Closed loop between "
@@ -162,6 +162,10 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
     return false;
   }
 
+  if (scan1 == NULL || scan2 == NULL) {
+    ROS_ERROR("PerformAlignment: Null point clouds.");
+    return false;
+  }
   // Set up ICP.
   pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
