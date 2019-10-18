@@ -17,6 +17,11 @@ class AprilTagHandler : public ArtifactHandler {
      */
     virtual bool Initialize(const ros::NodeHandle& n);
 
+    /*! \brief  Get ground truth data from April tag node key.  
+     * Returns  Ground truth information
+     */
+    gtsam::Pose3 GetGroundTruthData(const gtsam::Symbol april_tag_key);
+    
     protected:
 
     /*! \brief Load April Tag parameters. 
@@ -40,11 +45,6 @@ class AprilTagHandler : public ArtifactHandler {
      * Returns  Artifacts message
      */
     core_msgs::Artifact ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg);
-    
-    /*! \brief  Get ground truth data from April tag node key.  
-     * Returns  Ground truth information
-     */
-    gtsam::Pose3 GetGroundTruthData(const gtsam::Symbol april_tag_key);
     
     private:
     // April related parameters

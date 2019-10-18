@@ -721,7 +721,7 @@ bool LampRobot::ProcessAprilTagData(FactorData data){
     cur_april_tag_key = data.artifact_key[i];
 
     // Get the ground truth data using april tag key in info hashmap.
-    gtsam::Pose3 ground_truth = april_tag_handler_.GetArtifactKey2InfoHash()[cur_april_tag_key].global_pose;
+    gtsam::Pose3 ground_truth = april_tag_handler_.GetGroundTruthData(cur_april_tag_key);
 
     // Get the pose measurement
     if (b_artifacts_in_global_) {
