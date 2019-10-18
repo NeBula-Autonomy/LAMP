@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>pose_graph_serializer</name>
+  <version>0.0.0</version>
+  <description>The pose_graph_serializer package</description>
+
+  <maintainer email="costar@todo.todo">Eric Heiden</maintainer>
+
+  <license>TODO</license>
+
+  <depend>roscpp</depend>
+  <depend>pose_graph_msgs</depend>
+  <depend>eigen_conversions</depend>
+ 
+  <buildtool_depend>catkin</buildtool_depend>
+
+
+  <depend>geometry_utils</depend>
+
+  <test_depend>rostest</test_depend>
+  <test_depend>rosunit</test_depend>
+
+</package>
