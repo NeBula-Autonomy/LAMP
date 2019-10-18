@@ -644,7 +644,7 @@ bool LampRobot::ProcessArtifactData(FactorData data){
     }
 
     // create and add the factor
-    new_factors.add(BetweenFactor<Pose3>(pose_key, cur_artifact_key, transform, covariance));
+    new_factors.add(gtsam::BetweenFactor<Pose3>(pose_key, cur_artifact_key, transform, covariance));
 
     // Check if it is a new artifact or not
     if (!values_.exists(cur_artifact_key)) {
@@ -720,6 +720,9 @@ bool LampRobot::ProcessAprilTagData(FactorData data){
     // Get the april tag key
     cur_april_tag_key = data.artifact_key[i];
 
+    // Get the ground truth data using april tag key in info hashmap.
+    gtsam::Pose3 ground_truth = april_tag_handler_.GetArtifactKey2InfoHash()[cur_april_tag_key].global_pose;
+
     // Get the pose measurement
     if (b_artifacts_in_global_) {
       // Convert pose to relative frame
@@ -750,7 +753,7 @@ bool LampRobot::ProcessAprilTagData(FactorData data){
     }
 
     // create and add the factor
-    new_factors.add(BetweenFactor<Pose3>(pose_key, cur_april_tag_key, transform, covariance));
+    new_factors.add(gtsam::BetweenFactor<Pose3>(pose_key, cur_april_tag_key, transform, covariance));
 
     // Check if it is a new april tag or not
     if (!values_.exists(cur_april_tag_key)) {
@@ -761,14 +764,18 @@ bool LampRobot::ProcessAprilTagData(FactorData data){
       keyed_stamps_.insert(
           std::pair<gtsam::Symbol, ros::Time>(cur_april_tag_key, timestamp));
 
-      // Add prior factor if its a new april tag.
+      // Get the noise in ground truth data
+      gtsam::SharedNoiseModel noise = SetFixedNoiseModels("april");
 
+      // Add prior factor if its a new april tag.
+      new_factors.add(gtsam::PriorFactor<gtsam::Pose3>(cur_april_tag_key, ground_truth, noise));
     } else {
       // Second sighting of an april tag - we have a loop closure
       ROS_INFO_STREAM("April tag re-sighted with key: "
                       << gtsam::DefaultKeyFormatter(cur_april_tag_key));
-      b_run_optimization_ = true;
     }
+    // Since a factor is added in any case new or seen, run optimization
+    b_run_optimization_ = true;
 
     // Track the edges that have been added
     int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;

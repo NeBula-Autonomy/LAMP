@@ -31,7 +31,7 @@ class AprilTagHandler : public ArtifactHandler {
      */
     virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n); 
 
-    /*! \brief  Callback for Artifacts.
+    /*! \brief  Callback for April Tag.
      * Returns  Void
      */
     void AprilTagCallback(const core_msgs::AprilTag& msg);
@@ -44,9 +44,21 @@ class AprilTagHandler : public ArtifactHandler {
     /*! \brief  Get ground truth data from April tag node key.  
      * Returns  Ground truth information
      */
-    gtsam::Pose3 GetGroundTruthData(const gtsam::Symbol artifact_key);
+    gtsam::Pose3 GetGroundTruthData(const gtsam::Symbol april_tag_key);
     
     private:
+    // April related parameters
+    // GT AprilTag world coordinates
+    double calibration_left_x_;
+    double calibration_left_y_;
+    double calibration_left_z_;
+    double calibration_right_x_;
+    double calibration_right_y_;
+    double calibration_right_z_;
+    double distal_x_;
+    double distal_y_;
+    double distal_z_;
+  
     // Test class
     friend class TestAprilTagHandler;
 };

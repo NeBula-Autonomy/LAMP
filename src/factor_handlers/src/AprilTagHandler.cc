@@ -53,7 +53,19 @@ bool AprilTagHandler::LoadParameters(const ros::NodeHandle& n) {
     artifact_prefix_ = artifact_prefix_converter[0];
   }
 
-  // TODO: Load april tag related parameters here.
+  // Load april tag related parameters here.
+  // TODO: Change this section to reflect new april tags.
+  if (!pu::Get("calibration_left_x", calibration_left_x_)) return false;
+  if (!pu::Get("calibration_left_y", calibration_left_y_)) return false;
+  if (!pu::Get("calibration_left_z", calibration_left_z_)) return false;
+  
+  if (!pu::Get("calibration_right_x", calibration_right_x_)) return false;
+  if (!pu::Get("calibration_right_y", calibration_right_y_)) return false;
+  if (!pu::Get("calibration_right_z", calibration_right_z_)) return false;
+  
+  if (!pu::Get("distal_x", distal_x_)) return false;
+  if (!pu::Get("distal_y", distal_y_)) return false;
+  if (!pu::Get("distal_z", distal_z_)) return false;
 
   return true; 
 }
@@ -74,18 +86,46 @@ bool AprilTagHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
-/*! \brief  Callback for Artifacts.
+/*! \brief  Callback for April tags.
   * Returns  Void
   */
 void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
   // Convert April tag message into Artifact message
   core_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
 
-  // TODO: If new artifact seen then update its ground truth to 
-  // the global_pose in ArtifactInfo. 
+  // How many times have we processed this artifact
+  int num_updates;
+  // Find num_updates
+  if (artifact_id2key_hash.find(msg.id) == artifact_id2key_hash.end()){
+    num_updates = 0;
+  } else {
+    num_updates = artifact_key2info_hash_[artifact_id2key_hash[msg.id]].num_updates;
+  }
 
   // Call Artifact Callback
   ArtifactCallback(artifact_msg);
+
+  // If new april tag then update the global position in
+  // stored april tag info artifact_key2info_hash_
+  // Get the april tag key from artifact_id2key_hash map
+  gtsam::Symbol april_tag_key;
+
+  // If callback above succeeded
+  if (artifact_key2info_hash_[april_tag_key].num_updates - num_updates == 1){
+    // Update type of factor data to april from artifact in base class
+    artifact_data_.type = "april";
+    // If new measurement and successful callback, update the global position
+    if ((num_updates == 0) && (artifact_key2info_hash_[april_tag_key].num_updates == 1)) {
+      // Check what kind - curently distal, calibration left and right 
+      if (artifact_key2info_hash_[april_tag_key].id == "distal") {
+          artifact_key2info_hash_[april_tag_key].global_pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(distal_x_, distal_y_, distal_z_));
+      } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_left") {
+          artifact_key2info_hash_[april_tag_key].global_pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_));
+      } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_right") {
+          artifact_key2info_hash_[april_tag_key].global_pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_));
+      }
+    }
+  } 
 }
 
 /*! \brief  Convert April tag message to Artifact message.
@@ -120,11 +160,11 @@ core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_
 /*! \brief  Get ground truth data from April tag node key.  
   * Returns  Ground truth information
   */
-gtsam::Pose3 AprilTagHandler::GetGroundTruthData(const gtsam::Symbol artifact_key) {
-  if (artifact_key2info_hash_.find(artifact_key) != artifact_key2info_hash_.end()) {
-    return artifact_key2info_hash_[artifact_key].global_pose;
+gtsam::Pose3 AprilTagHandler::GetGroundTruthData(const gtsam::Symbol april_tag_key) {
+  if (artifact_key2info_hash_.find(april_tag_key) != artifact_key2info_hash_.end()) {
+    return artifact_key2info_hash_[april_tag_key].global_pose;
   } else {
-    std::cout << "Key not found in the Artifact id to key map.";
+    std::cout << "Key not found in the April Tag id to key map.";
     return gtsam::Pose3();
   }
 }

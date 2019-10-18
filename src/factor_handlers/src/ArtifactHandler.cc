@@ -269,11 +269,14 @@ void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 
   artifact_label = artifact_key2info_hash_[artifact_key].msg.label;
   
   // Increment update count
-  artifact_key2info_hash_[artifact_key].num_updates++;
+  // TODO: I am moving this in Artifact callback representing the
+  // number of measurements I receive of one particular 
+  // artifact. Need to understand the use of this.
+  // artifact_key2info_hash_[artifact_key].num_updates++;
 
-  std::cout << "Number of updates of artifact is: "
-            << artifact_key2info_hash_[artifact_key].num_updates
-            << std::endl;
+  // std::cout << "Number of updates of artifact is: "
+  //           << artifact_key2info_hash_[artifact_key].num_updates
+  //           << std::endl;
 
   // Fill artifact message
   core_msgs::Artifact new_msg = artifact_key2info_hash_[artifact_key].msg;
@@ -365,15 +368,17 @@ void ArtifactHandler::AddArtifactData(const gtsam::Symbol cur_key, std::pair<ros
   * Returns  Void
   */
 void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key, const core_msgs::Artifact& msg) {
-  ArtifactInfo artifactinfo(msg.parent_id);
-  artifactinfo.msg = msg;
-
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash_.find(artifact_key) == artifact_key2info_hash_.end()) {
     ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
+    ArtifactInfo artifactinfo(msg.parent_id);
+    artifactinfo.msg = msg;
+    artifactinfo.num_updates = artifactinfo.num_updates+1;
     artifact_key2info_hash_[artifact_key] = artifactinfo;
   } else {
     ROS_INFO("Existing artifact detected");
-    artifact_key2info_hash_[artifact_key] = artifactinfo;
+    // Existing artifact. Hence update the artifact info
+    artifact_key2info_hash_[artifact_key].num_updates += 1;
+    artifact_key2info_hash_[artifact_key].msg = msg;
   }
 }
