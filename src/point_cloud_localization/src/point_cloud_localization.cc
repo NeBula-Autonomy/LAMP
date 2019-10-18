@@ -34,9 +34,9 @@
  * Authors: Erik Nelson            ( eanelson@eecs.berkeley.edu )
  */
 
-#include <ros/ros.h>
 #include <pcl/search/impl/search.hpp>
 #include <point_cloud_localization/PointCloudLocalization.h>
+#include <ros/ros.h>
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "point_cloud_localization");

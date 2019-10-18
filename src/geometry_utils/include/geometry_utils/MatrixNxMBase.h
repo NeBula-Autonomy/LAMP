@@ -1,16 +1,16 @@
 #ifndef GEOMETRY_UTILS_MATRIXNXM_H
 #define GEOMETRY_UTILS_MATRIXNXM_H
 
-#include <ostream>
-#include "VectorNBase.h"
 #include "GeometryUtilsMath.h"
+#include "VectorNBase.h"
+#include <ostream>
 
 namespace geometry_utils {
 
 template <typename T, size_t N, size_t M>
 struct MatrixNxMBase {
-  typedef typename boost::shared_ptr<MatrixNxMBase<T, N, M> > Ptr;
-  typedef typename boost::shared_ptr<const MatrixNxMBase<T, N, M> > ConstPtr;
+  typedef typename boost::shared_ptr<MatrixNxMBase<T, N, M>> Ptr;
+  typedef typename boost::shared_ptr<const MatrixNxMBase<T, N, M>> ConstPtr;
 
   static const size_t size = N * M;
   static const size_t nrows = N;
@@ -18,9 +18,13 @@ struct MatrixNxMBase {
 
   boost::array<T, size> data;
 
-  MatrixNxMBase() { data.fill(0); }
+  MatrixNxMBase() {
+    data.fill(0);
+  }
 
-  MatrixNxMBase(T val) { data.fill(val); }
+  MatrixNxMBase(T val) {
+    data.fill(val);
+  }
 
   MatrixNxMBase(const MatrixNxMBase& in) : data(in.data) {}
 
@@ -75,7 +79,8 @@ struct MatrixNxMBase {
   }
 
   inline MatrixNxMBase& operator=(const MatrixNxMBase& rhs) {
-    if (this == &rhs) return *this;
+    if (this == &rhs)
+      return *this;
     data = rhs.data;
     return *this;
   }
@@ -108,8 +113,8 @@ struct MatrixNxMBase {
     return MatrixNxMBase<T, N, M>(d);
   }
 
-  inline MatrixNxMBase<T, N, N> operator*(const MatrixNxMBase<T, M, N>& rhs)
-      const {
+  inline MatrixNxMBase<T, N, N>
+  operator*(const MatrixNxMBase<T, M, N>& rhs) const {
     T d[N * N];
     for (size_t i = 0; i < N; i++)
       for (size_t j = 0; j < N; j++)
@@ -188,9 +193,13 @@ struct MatrixNxMBase {
     return VectorNBase<T, N>(d);
   }
 
-  inline void Ones() { data.fill(1); }
+  inline void Ones() {
+    data.fill(1);
+  }
 
-  inline void Zeros() { data.fill(0); }
+  inline void Zeros() {
+    data.fill(0);
+  }
 
   inline MatrixNxMBase<T, N, M> Scale(T s) const {
     return (*this) * s;
@@ -230,18 +239,17 @@ struct MatrixNxMBase {
       tr += data[ncols * i + i];
     return tr;
   }
-
 };
 
 template <size_t N, size_t M>
-inline MatrixNxMBase<float, N, M> operator*(
-    const float& lhs, const MatrixNxMBase<float, N, M>& rhs) {
+inline MatrixNxMBase<float, N, M>
+operator*(const float& lhs, const MatrixNxMBase<float, N, M>& rhs) {
   return rhs * lhs;
 }
 
 template <size_t N, size_t M>
-inline MatrixNxMBase<double, N, M> operator*(
-    const double& lhs, const MatrixNxMBase<double, N, M>& rhs) {
+inline MatrixNxMBase<double, N, M>
+operator*(const double& lhs, const MatrixNxMBase<double, N, M>& rhs) {
   return rhs * lhs;
 }
 
@@ -276,6 +284,6 @@ inline MatrixNxMBase<T, N, M> Outer(const VectorNBase<T, N>& v1,
   return MatrixNxMBase<T, N, M>(d);
 }
 
-}
+} // namespace geometry_utils
 
 #endif

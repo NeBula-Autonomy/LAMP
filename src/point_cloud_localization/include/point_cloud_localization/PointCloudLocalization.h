@@ -37,14 +37,14 @@
 #ifndef POINT_CLOUD_LOCALIZATION_H
 #define POINT_CLOUD_LOCALIZATION_H
 
-#include <ros/ros.h>
 #include <geometry_utils/Transform3.h>
+#include <ros/ros.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <tf2_ros/transform_broadcaster.h>
 
 class PointCloudLocalization {
- public:
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   PointCloudLocalization();
@@ -78,8 +78,8 @@ class PointCloudLocalization {
 
   // Set integrated estimate. Useful for graph SLAM whenever the pose graph is
   // updated and the map is regenerated.
-  void SetIntegratedEstimate(
-      const geometry_utils::Transform3& integrated_estimate);
+  void
+  SetIntegratedEstimate(const geometry_utils::Transform3& integrated_estimate);
 
   // Pose estimate.
   geometry_utils::Transform3 incremental_estimate_;
@@ -97,8 +97,7 @@ private:
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
   // Publish reference, query, and aligned query point clouds.
-  void PublishPoints(const PointCloud& points,
-                     const ros::Publisher& pub) const;
+  void PublishPoints(const PointCloud& points, const ros::Publisher& pub) const;
 
   // Publish incremental and integrated pose estimates.
   void PublishPose(const geometry_utils::Transform3& pose,

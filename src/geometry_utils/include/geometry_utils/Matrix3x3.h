@@ -55,24 +55,33 @@ struct Matrix3x3Base : MatrixNxNBase<T, 3> {
     T g = this->data[6];
     T h = this->data[7];
     T i = this->data[8];
-    T tmp[9] = {(f * h - e * i) / (c * e * g - b * f * g - c * d * h +
-                                   a * f * h + b * d * i - a * e * i),
-                (c * h - b * i) / (-(c * e * g) + b * f * g + c * d * h -
-                                   a * f * h - b * d * i + a * e * i),
-                (c * e - b * f) / (c * e * g - b * f * g - c * d * h +
-                                   a * f * h + b * d * i - a * e * i),
-                (f * g - d * i) / (-(c * e * g) + b * f * g + c * d * h -
-                                   a * f * h - b * d * i + a * e * i),
-                (c * g - a * i) / (c * e * g - b * f * g - c * d * h +
-                                   a * f * h + b * d * i - a * e * i),
-                (c * d - a * f) / (-(c * e * g) + b * f * g + c * d * h -
-                                   a * f * h - b * d * i + a * e * i),
-                (e * g - d * h) / (c * e * g - b * f * g - c * d * h +
-                                   a * f * h + b * d * i - a * e * i),
-                (b * g - a * h) / (-(c * e * g) + b * f * g + c * d * h -
-                                   a * f * h - b * d * i + a * e * i),
-                (b * d - a * e) / (c * e * g - b * f * g - c * d * h +
-                                   a * f * h + b * d * i - a * e * i)};
+    T tmp[9] = {(f * h - e * i) /
+                    (c * e * g - b * f * g - c * d * h + a * f * h + b * d * i -
+                     a * e * i),
+                (c * h - b * i) /
+                    (-(c * e * g) + b * f * g + c * d * h - a * f * h -
+                     b * d * i + a * e * i),
+                (c * e - b * f) /
+                    (c * e * g - b * f * g - c * d * h + a * f * h + b * d * i -
+                     a * e * i),
+                (f * g - d * i) /
+                    (-(c * e * g) + b * f * g + c * d * h - a * f * h -
+                     b * d * i + a * e * i),
+                (c * g - a * i) /
+                    (c * e * g - b * f * g - c * d * h + a * f * h + b * d * i -
+                     a * e * i),
+                (c * d - a * f) /
+                    (-(c * e * g) + b * f * g + c * d * h - a * f * h -
+                     b * d * i + a * e * i),
+                (e * g - d * h) /
+                    (c * e * g - b * f * g - c * d * h + a * f * h + b * d * i -
+                     a * e * i),
+                (b * g - a * h) /
+                    (-(c * e * g) + b * f * g + c * d * h - a * f * h -
+                     b * d * i + a * e * i),
+                (b * d - a * e) /
+                    (c * e * g - b * f * g - c * d * h + a * f * h + b * d * i -
+                     a * e * i)};
     return MatrixNxNBase<T, 3>(tmp);
   }
 };
@@ -96,6 +105,6 @@ typedef Matrix3x3Base<double> Mat33d;
 typedef Matrix3x3Base<double> Matrix3x3;
 typedef Matrix3x3Base<double> Mat33;
 
-}
+} // namespace geometry_utils
 
 #endif

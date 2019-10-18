@@ -9,6 +9,8 @@
           name="pose_graph_visualizer"
           type="pose_graph_visualizer_node"
           output="screen">
+      <!-- LAMP settings -->
+      <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
       <!-- Frames -->
       <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>      
       <!-- Config - TODO move the proximity_threshold param elsewhere -->

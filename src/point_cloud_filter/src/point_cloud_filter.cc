@@ -34,8 +34,8 @@
  * Authors: Erik Nelson            ( eanelson@eecs.berkeley.edu )
  */
 
-#include <ros/ros.h>
 #include <point_cloud_filter/PointCloudFilter.h>
+#include <ros/ros.h>
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "point_cloud_filter");

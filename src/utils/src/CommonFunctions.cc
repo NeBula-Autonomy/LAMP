@@ -239,4 +239,4 @@ geometry_msgs::PoseWithCovariance GtsamToRosMsg(const gtsam::Pose3& pose,
   return msg;
 }
 
-}  // namespace utils
+} // namespace utils

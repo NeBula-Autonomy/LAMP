@@ -2,16 +2,16 @@
 #define BOOST_TEST_MODULE test_math
 #include <boost/test/unit_test.hpp>
 
-#include <ros/ros.h>
 #include <geometry_utils/GeometryUtilsMath.h>
+#include <ros/ros.h>
 
 namespace gu = geometry_utils;
 namespace gm = gu::math;
 
 BOOST_AUTO_TEST_CASE(math) {
   srand(time(NULL));
-  float rf = static_cast<float>(rand())/static_cast<float>(RAND_MAX);
-  double rd = static_cast<double>(rand())/static_cast<double>(RAND_MAX);
+  float rf = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+  double rd = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
 
   BOOST_CHECK_EQUAL(gm::cos<float>(rf), cosf(rf));
   BOOST_CHECK_EQUAL(gm::cos<float>(rf), gm::cos(rf));
@@ -48,10 +48,10 @@ BOOST_AUTO_TEST_CASE(math) {
   BOOST_CHECK_EQUAL(gm::sqrt<double>(rd), sqrt(rd));
   BOOST_CHECK_EQUAL(gm::sqrt<double>(rd), gm::sqrt(rd));
 
-  float rf1 = static_cast<float>(rand())/static_cast<float>(RAND_MAX);
-  float rf2 = static_cast<float>(rand())/static_cast<float>(RAND_MAX);
-  double rd1 = static_cast<double>(rand())/static_cast<double>(RAND_MAX);
-  double rd2 = static_cast<double>(rand())/static_cast<double>(RAND_MAX);
+  float rf1 = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+  float rf2 = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+  double rd1 = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+  double rd2 = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
 
   BOOST_CHECK_EQUAL(gm::atan2<float>(rf1, rf2), atan2f(rf1, rf2));
   BOOST_CHECK_EQUAL(gm::atan2<float>(rf1, rf2), gm::atan2(rf1, rf2));

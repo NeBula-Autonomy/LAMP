@@ -1,7 +1,6 @@
 /*
-geometry_utils: Utility library to provide common geometry types and transformations
-Copyright (C) 2013  Nathan Michael
-              2016  Erik Nelson
+geometry_utils: Utility library to provide common geometry types and
+transformations Copyright (C) 2013  Nathan Michael 2016  Erik Nelson
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -25,8 +24,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #error "YAMLUtils must be included last"
 #endif
 
-#include <yaml-cpp/yaml.h>
 #include <geometry_utils/GeometryUtils.h>
+#include <yaml-cpp/yaml.h>
 
 namespace YAML {
 
@@ -93,6 +92,6 @@ struct convert<geometry_utils::Vector4> {
   }
 };
 
-}
+} // namespace YAML
 
 #endif

@@ -16,8 +16,22 @@ struct Matrix4x4Base : MatrixNxNBase<T, 4> {
   Matrix4x4Base(const MatrixNxNBase<T, 4>& in) : MatrixNxNBase<T, 4>(in) {}
   Matrix4x4Base(const MatrixNxMBase<T, 4, 4>& in) : MatrixNxNBase<T, 4>(in) {}
 
-  Matrix4x4Base(T R11, T R12, T R13, T R14, T R21, T R22, T R23, T R24, T R31,
-                T R32, T R33, T R34, T R41, T R42, T R43, T R44) {
+  Matrix4x4Base(T R11,
+                T R12,
+                T R13,
+                T R14,
+                T R21,
+                T R22,
+                T R23,
+                T R24,
+                T R31,
+                T R32,
+                T R33,
+                T R34,
+                T R41,
+                T R42,
+                T R43,
+                T R44) {
     this->data[0] = R11;
     this->data[1] = R12;
     this->data[2] = R13;
@@ -55,11 +69,11 @@ struct Matrix4x4Base : MatrixNxNBase<T, 4> {
     T p = this->data[15];
 
     return d * g * j * m - c * h * j * m - d * f * k * m + b * h * k * m +
-           c * f * l * m - b * g * l * m - d * g * i * n + c * h * i * n +
-           d * e * k * n - a * h * k * n - c * e * l * n + a * g * l * n +
-           d * f * i * o - b * h * i * o - d * e * j * o + a * h * j * o +
-           b * e * l * o - a * f * l * o - c * f * i * p + b * g * i * p +
-           c * e * j * p - a * g * j * p - b * e * k * p + a * f * k * p;
+        c * f * l * m - b * g * l * m - d * g * i * n + c * h * i * n +
+        d * e * k * n - a * h * k * n - c * e * l * n + a * g * l * n +
+        d * f * i * o - b * h * i * o - d * e * j * o + a * h * j * o +
+        b * e * l * o - a * f * l * o - c * f * i * p + b * g * i * p +
+        c * e * j * p - a * g * j * p - b * e * k * p + a * f * k * p;
   }
 
   virtual inline MatrixNxNBase<T, 4> Inv() const {
@@ -235,6 +249,6 @@ typedef Matrix4x4Base<double> Mat44d;
 typedef Matrix4x4Base<double> Matrix4x4;
 typedef Matrix4x4Base<double> Mat44;
 
-}
+} // namespace geometry_utils
 
 #endif

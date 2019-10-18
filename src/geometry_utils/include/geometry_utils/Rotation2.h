@@ -1,10 +1,10 @@
 #ifndef GEOMETRY_UTILS_ROTATION2_H
 #define GEOMETRY_UTILS_ROTATION2_H
 
-#include <Eigen/Geometry>
 #include "GeometryUtilsMath.h"
-#include "RotationNBase.h"
 #include "Matrix2x2.h"
+#include "RotationNBase.h"
+#include <Eigen/Geometry>
 
 namespace geometry_utils {
 
@@ -16,12 +16,14 @@ struct Rotation2Base : RotationNBase<T, 2> {
   Rotation2Base(T (&in)[2 * 2]) : RotationNBase<T, 2>(in) {}
   Rotation2Base(const Eigen::Matrix<T, 2, 2>& in) : RotationNBase<T, 2>(in) {}
   Rotation2Base(const Eigen::Rotation2D<T>& in)
-      : RotationNBase<T, 2>(in.toRotationMatrix()) {}
+    : RotationNBase<T, 2>(in.toRotationMatrix()) {}
   Rotation2Base(const RotationNBase<T, 2>& in) : RotationNBase<T, 2>(in) {}
   Rotation2Base(const Matrix2x2Base<T>& in) : RotationNBase<T, 2>(in) {}
   Rotation2Base(const MatrixNxMBase<T, 2, 2>& in) : RotationNBase<T, 2>(in) {}
 
-  Rotation2Base(T val) { FromAngle(val); }
+  Rotation2Base(T val) {
+    FromAngle(val);
+  }
 
   Rotation2Base(T R11, T R12, T R21, T R22) {
     this->data[0] = R11;
@@ -79,6 +81,6 @@ typedef Rotation2Base<double> Rot2d;
 typedef Rotation2Base<double> Rotation2;
 typedef Rotation2Base<double> Rot2;
 
-}
+} // namespace geometry_utils
 
 #endif

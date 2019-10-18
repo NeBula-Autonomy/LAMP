@@ -6,4 +6,9 @@ keyed_scan_time_diff_limit: 0.5
 pc_buffer_size_limit: 10
 
 # Timestamp threshold 
-ts_threshold: 1.0
+ts_threshold: 5.0
+
+# Transformation between imu_frame and base_frame 
+frame_id:
+  base: $(arg robot_namespace)/base_link
+  imu: $(arg robot_namespace)/vn100

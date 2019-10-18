@@ -39,89 +39,133 @@ public:
         data->at(j, i).z = 0.0f;
       }
     }
-    }
-    ~TestLampRobot(){}
 
-    LampRobot lr;
+  }
+  ~TestLampRobot() {}
 
-    // Pass-through functions
-    bool SetInitialKey() {return lr.SetInitialKey();}
-    bool SetFactorPrecisions() {return lr.SetFactorPrecisions();}
-    bool SetInitialPosition() {return lr.SetInitialPosition();}
-    int GetValuesSize() {return lr.values_.size();}
-    gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {return lr.GetKeyAtTime(stamp);}
-    gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {return lr.GetClosestKeyAtTime(stamp);}
-    pose_graph_msgs::PoseGraphConstPtr
-    ConvertPoseGraphToMsg(gtsam::Values values,
-                          EdgeMessages edges_info,
-                          PriorMessages priors_info) {
-      return lr.ConvertPoseGraphToMsg(values, edges_info, priors_info);
-    }
-    gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
-      return lr.SetFixedNoiseModels(type);
-    }
-    void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, int type, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance) {
-      lr.TrackEdges(key_from, key_to, type, pose, covariance);
-    }
-    void TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance) {
-      lr.TrackPriors(stamp, key, pose, covariance);
-    }
+  LampRobot lr;
 
-    void
-    LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
-      lr.LaserLoopClosureCallback(msg);
-    }
-    bool GenerateMapPointCloud() {
-      lr.GenerateMapPointCloud();
-    }
-    // Access functions
-    void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
-      lr.stamp_to_odom_key_[stamp.toSec()] = key;
-    }
-    void AddKeyedStamp(gtsam::Symbol key, ros::Time stamp) {
-      lr.keyed_stamps_[key] = stamp;
-    }
-    void SetTimeThreshold(double threshold) {lr.time_threshold_ = threshold;}
-    void SetPrefix(char c) {lr.prefix_ = c;}
-    void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) { lr.values_.insert(key, pose); }
+  // Pass-through functions
+  bool SetInitialKey() {
+    return lr.SetInitialKey();
+  }
+  bool SetFactorPrecisions() {
+    return lr.SetFactorPrecisions();
+  }
+  bool SetInitialPosition() {
+    return lr.SetInitialPosition();
+  }
+  int GetValuesSize() {
+    return lr.values_.size();
+  }
+  gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {
+    return lr.GetKeyAtTime(stamp);
+  }
+  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {
+    return lr.GetClosestKeyAtTime(stamp);
+  }
+  pose_graph_msgs::PoseGraphConstPtr
+  ConvertPoseGraphToMsg(gtsam::Values values,
+                        EdgeMessages edges_info,
+                        PriorMessages priors_info) {
+    return lr.ConvertPoseGraphToMsg(values, edges_info, priors_info);
+  }
+  gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
+    return lr.SetFixedNoiseModels(type);
+  }
+  void TrackEdges(gtsam::Symbol key_from,
+                  gtsam::Symbol key_to,
+                  int type,
+                  gtsam::Pose3 pose,
+                  gtsam::SharedNoiseModel covariance) {
+    lr.TrackEdges(key_from, key_to, type, pose, covariance);
+  }
+  void TrackPriors(ros::Time stamp,
+                   gtsam::Symbol key,
+                   gtsam::Pose3 pose,
+                   gtsam::SharedNoiseModel covariance) {
+    lr.TrackPriors(stamp, key, pose, covariance);
+  }
+  
+  void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
+    lr.LaserLoopClosureCallback(msg);
+  }
+  bool GenerateMapPointCloud() {
+    lr.GenerateMapPointCloud();
+  }
+  // Access functions
+  void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
+    lr.stamp_to_odom_key_[stamp.toSec()] = key;
+  }
+  void AddKeyedStamp(gtsam::Symbol key, ros::Time stamp) {
+    lr.keyed_stamps_[key] = stamp;
+  }
+  void SetTimeThreshold(double threshold) {
+    lr.time_threshold_ = threshold;
+  }
+  void SetPrefix(char c) {
+    lr.prefix_ = c;
+  }
+  void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) {
+    lr.values_.insert(key, pose);
+  }
 
-    bool GetOptFlag() {
-      return lr.b_run_optimization_;
-    }
+  bool GetOptFlag() {
+    return lr.b_run_optimization_;
+  }
 
-    gtsam::Values GetValues() {
-      return lr.values_;
-    }
+  void setArtifactInGlobal(bool value) {
+    lr.b_artifacts_in_global_ = value;
+  }
 
-    void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
-      lr.keyed_scans_.insert(
-          std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
-    }
+  void LidarCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    lr.odometry_handler_.LidarOdometryCallback(msg);
+  }
 
-    gtsam::NonlinearFactorGraph GetNfg() {
-      return lr.nfg_;
-    }
-    EdgeMessages GetEdges() {
-      return lr.edges_info_;
-    }
-    PriorMessages GetPriors() {
-      return lr.priors_info_;
-    }
+  void setFixedCovariance(bool value) {
+    lr.b_use_fixed_covariances_ = value;
+  }
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
-      return lr.mapper_.GetMapData();
-    }
-    // Other utilities
+  void ProcessArtifacts(FactorData* data) {
+    lr.ProcessArtifactData(data);
+  }
 
-  protected: 
-    
-    // Tolerance on EXPECT_NEAR assertions
-    double tolerance_ = 1e-5;
+  void ConvertGlobalToRelative(const ros::Time stamp,
+                               const gtsam::Pose3 pose_global,
+                               gtsam::Pose3& pose_relative) {
+    lr.ConvertGlobalToRelative(stamp, pose_global, pose_relative);
+  }
+  // Other utilities
 
-  private:
+  gtsam::Values GetValues() {
+    return lr.values_;
+  }
 
+  void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
+    lr.keyed_scans_.insert(
+        std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+  }
 
+  gtsam::NonlinearFactorGraph GetNfg() {
+    return lr.nfg_;
+  }
+  EdgeMessages GetEdges() {
+    return lr.edges_info_;
+  }
+  PriorMessages GetPriors() {
+    return lr.priors_info_;
+  }
 
+  pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
+    return lr.mapper_.GetMapData();
+  }
+  // Other utilities
+
+protected:
+  // Tolerance on EXPECT_NEAR assertions
+  double tolerance_ = 1e-5;
+
+private:
 };
 
 TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
@@ -165,7 +209,135 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
   ros::param::set("init/orientation_sigma/yaw", 1.0);
 
   EXPECT_TRUE(SetInitialPosition());
-  EXPECT_EQ(GetValuesSize(),1);
+  EXPECT_EQ(GetValuesSize(), 1);
+}
+
+/**
+ *  Creating a FactorData with new artifact l1.
+ *  l1.pose = gtsam::Rot3(), gtsam::Point3 (9.7, 0, 0)
+ *  l1.time = ros::Time (5.0)
+ *  ArtifactInGlobal = false
+ *  FixedCovariance = true
+ * 
+ * Nearest Odom key for GetClosestKey
+ *  Node = a0
+ *  Node.time = ros::Time(4.0)
+ *  value of node = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3 (0, 0, 0))
+ * 
+ * Call ProcessArtifacts with this new artifact. New artifact added
+ * 
+ * TODO: Maybe I sould give a new node as well for GetClosestKey
+ * Change the time of l1 to ros::Time = 6.0
+ * Change transform (TODO: Change value)
+ * Call ProcessArtifacts again on this new data. However
+ * this time this should be present in values.
+ * 
+ */ 
+TEST_F(TestLampRobot, TestProcessArtifactData) {
+  // Construct the new Artifact data
+  ArtifactData* new_data = new ArtifactData();
+  new_data->b_has_data = true;
+  new_data->type = "artifact";
+
+  ArtifactFactor new_factor;
+  new_factor.key = gtsam::Symbol('l',1);
+  new_factor.position = gtsam::Point3 (9.7, 0, 0);
+  gtsam::Vector6 sig;
+  sig << 0.3,0.3,0.3,0.3,0.3,0.3;
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
+  new_factor.covariance = noise;
+  new_factor.stamp =  ros::Time(0.11);
+
+  // Add the new factor
+  new_data->factors.push_back(new_factor);
+
+  // Set the global flag
+  setArtifactInGlobal(false);
+  setFixedCovariance(false);
+
+  // Add to values
+  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a',0));
+  InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (0, 0, 0)));
+  // AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a',1));
+  // InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(), 
+  //                                         gtsam::Point3 (2.0, 0, 0)));
+
+  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a',2));
+  InsertValues(gtsam::Symbol('a',2), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (4.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a',3));
+  InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (6.0, 0, 0)));
+
+  AddKeyedStamp(gtsam::Symbol('a',2), ros::Time(0.15));
+
+  // Construct the odometry message for a0 (the nearest key)
+  nav_msgs::Odometry a0_value;
+  a0_value.header.stamp = ros::Time(0.05);
+  geometry_msgs::PoseWithCovariance msg_pose;
+  a0_value.pose = msg_pose;
+  nav_msgs::Odometry::ConstPtr a0_odom(
+      new nav_msgs::Odometry(a0_value));
+
+  // Call Lidar callback
+  LidarCallback(a0_odom);
+
+  // New message at 0.1 (the nearest key)
+  nav_msgs::Odometry l1_value;
+  l1_value.header.stamp = ros::Time(0.1);
+  l1_value.pose.pose.position.x = 2.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a1_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a1_odom);
+
+  // New message at 0.15
+  l1_value.header.stamp = ros::Time(0.15);
+  l1_value.pose.pose.position.x = 4.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a2_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a2_odom);
+
+  // New message at 0.2
+  l1_value.header.stamp = ros::Time(0.2);
+  l1_value.pose.pose.position.x = 6.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a3_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a3_odom);
+
+  // Call the ProcessArtifactData. Adding a new artifact
+  ProcessArtifacts(new_data);
+
+  // key_from = GetClosestKeyAtTime(stamp); gives 0.15 node
+  // GetFusedOdomDeltaBetweenTimes(stamp_from, stamp) goes with 0.15 and 0.11
+
+  // As this is a new artifact optimization should be false
+  // TODO: Need to check the transforms
+  EXPECT_FALSE(GetOptFlag());
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
+
+  // Should enable this after completely resolve the first one.
+  // Change time and send the message again
+  // new_data->time_stamps.clear();
+  // new_data->time_stamps.push_back(std::make_pair<ros::Time, ros::Time>(ros::Time(0.13), ros::Time(0.0)));
+  // new_data->transforms.clear();
+  // new_data->transforms.push_back(gtsam::Pose3(gtsam::Rot3(), 
+  //                                         gtsam::Point3 (9.7, 0, 0)));
+
+  // // Call the ProcessArtifactData. Adding an old artifact
+  // ProcessArtifacts(new_data); 
 }
 
 TEST_F(TestLampRobot, SetInitialKey) {
@@ -186,9 +358,28 @@ TEST_F(TestLampRobot, SetInitialKey) {
   EXPECT_EQ(std::string("a0"), key_string);
 }
 
-TEST_F(TestLampRobot, SetFactorPrecisions) {
+TEST_F(TestLampRobot, ConvertGlobalToRelative) {
+  // Ros time to search for current key
+  const ros::Time stamp = ros::Time(5.0);
+  // Global pose of the artifact
+  const gtsam::Pose3 pose_global = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(5.0,0.0,0.0));
+  // Final relative pose between artifact and the current key
+  gtsam::Pose3 pose_relative;
+  // Add current key to map
+  AddStampToOdomKey(ros::Time(4.0), gtsam::Symbol('a', 0));
+  // Add value/pose for the current key
+  InsertValues(gtsam::Symbol('a', 0), gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(420.0, 0.0, 0.0)));
+  // Convert global to relative pose
+  ConvertGlobalToRelative(stamp,
+                          pose_global,
+                          pose_relative);
+  // Check
+  EXPECT_EQ(pose_relative.translation().vector(),
+                         gtsam::Point3(-415.0, 0.0, 0.0));
+}
 
-  // Set all parameter values  
+TEST_F(TestLampRobot, SetFactorPrecisions) {
+  // Set all parameter values
   ros::param::set("manual_lc_rot_precision", 1.0);
   ros::param::set("manual_lc_trans_precision", 1.0);
   ros::param::set("laser_lc_rot_sigma", 1.0);
@@ -252,7 +443,7 @@ TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   // Set large threshold
   SetTimeThreshold(1000.0);
 
-  // Check single key 
+  // Check single key
   AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
   EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(500.0)));
 
@@ -263,7 +454,8 @@ TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   AddStampToOdomKey(ros::Time(100.0), gtsam::Symbol('a', 4));
 
   // Exact matches
-  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); // TODO - fix this
+  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); //
+  // TODO - fix this
   EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(50.0)));
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.0)));
   EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(80.0)));
@@ -310,39 +502,44 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   SetPrefix('a');
 
   static const gtsam::SharedNoiseModel& noise =
-    gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+      gtsam::noiseModel::Isotropic::Variance(6, 0.1);
 
+  // Test values
+  InsertValues(gtsam::Symbol('a', 100),
+               gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
+                            gtsam::Point3(420.0, 69.0, 0.0)));
+  InsertValues(gtsam::Symbol('a', 101),
+               gtsam::Pose3(gtsam::Rot3(sqrt(0.3), sqrt(0.3), sqrt(0.4), 0.0),
+                            gtsam::Point3(10.0, -1.0, 1000.0)));
+  InsertValues(
+      gtsam::Symbol('m', 0),
+      gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(500.0, 433.5, -2.5)));
 
-  // Test values 
-  InsertValues(gtsam::Symbol('a', 100), gtsam::Pose3(gtsam::Rot3(sqrt(0.5),0,0,sqrt(0.5)), gtsam::Point3(420.0, 69.0, 0.0)));
-  InsertValues(gtsam::Symbol('a', 101), gtsam::Pose3(gtsam::Rot3(sqrt(0.3),sqrt(0.3),sqrt(0.4),0.0), gtsam::Point3(10.0, -1.0, 1000.0)));
-  InsertValues(gtsam::Symbol('m', 0), gtsam::Pose3(gtsam::Rot3(1,0,0,0), gtsam::Point3(500.0, 433.5, -2.5)));
+  // Test edges
+  TrackEdges(gtsam::Symbol('a', 55),
+             gtsam::Symbol('a', 56),
+             pose_graph_msgs::PoseGraphEdge::ODOM,
+             gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, 0, 0.1)),
+             noise);
+  TrackEdges(gtsam::Symbol('a', 32),
+             gtsam::Symbol('m', 0),
+             pose_graph_msgs::PoseGraphEdge::ARTIFACT,
+             gtsam::Pose3(gtsam::Rot3(0, 0, 1, 0), gtsam::Point3(0, 0.9, 21.1)),
+             noise);
 
-  // Test edges 
-  TrackEdges(gtsam::Symbol('a', 55), 
-             gtsam::Symbol('a', 56), 
-             pose_graph_msgs::PoseGraphEdge::ODOM, 
-             gtsam::Pose3(gtsam::Rot3(1,0,0,0), 
-             gtsam::Point3(1.0, 0, 0.1)), noise); 
-  TrackEdges(gtsam::Symbol('a', 32), 
-             gtsam::Symbol('m', 0), 
-             pose_graph_msgs::PoseGraphEdge::ARTIFACT, 
-             gtsam::Pose3(gtsam::Rot3(0,0,1,0), 
-             gtsam::Point3(0, 0.9, 21.1)), noise); 
-  
   // Test priors
   AddKeyedStamp(gtsam::Symbol('a', 50), ros::Time(67589467.0));
-  TrackPriors(ros::Time(67589467.0), 
-            gtsam::Symbol('a', 50), 
-            gtsam::Pose3(gtsam::Rot3(1,0,0,0), gtsam::Point3(1.0, -2.2, 0.03)),
-            noise); 
-
+  TrackPriors(
+      ros::Time(67589467.0),
+      gtsam::Symbol('a', 50),
+      gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, -2.2, 0.03)),
+      noise);
 
   // Convert pose-graph to message
   pose_graph_msgs::PoseGraphConstPtr g =
       ConvertPoseGraphToMsg(GetValues(), GetEdges(), GetPriors());
 
-  float x,y,z;
+  float x, y, z;
   for (auto n : g->nodes) {
     x = n.pose.position.x;
     y = n.pose.position.y;
@@ -398,7 +595,7 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   EXPECT_NEAR(0.0, e.pose.orientation.x, tolerance_);
   EXPECT_NEAR(0.0, e.pose.orientation.y, tolerance_);
   EXPECT_NEAR(0.0, e.pose.orientation.z, tolerance_);
-  
+
   // Artifact edge (TODO: test the covariance)
   e = g->edges[1];
   EXPECT_EQ(e.type, pose_graph_msgs::PoseGraphEdge::ARTIFACT);

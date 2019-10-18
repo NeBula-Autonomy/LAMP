@@ -4,8 +4,8 @@
 // Includes
 // For common datastructures
 #include "utils/CommonStructs.h"
-#include <tf2_ros/transform_listener.h>
 #include <core_msgs/Artifact.h>
+#include <tf2_ros/transform_listener.h>
 
 // Base class
 #include "LampDataHandlerBase.h"
@@ -16,23 +16,23 @@ namespace gu = geometry_utils;
 /*! \brief Stores Artifact information
  */
 struct ArtifactInfo {
-  std::string           id;                   // this corresponds to parent_id
-  int                   num_updates;          // how many times the optimizer has updated this
-  gtsam::Pose3          global_pose;          // Global pose of the artifact
-  core_msgs::Artifact   msg;                  // All fields in the artifact message that we need  
-  ArtifactInfo(std::string art_id="") :
-               id(art_id), 
-               num_updates(0),
-               global_pose(gtsam::Pose3())
-               {}
+  std::string id;           // this corresponds to parent_id
+  int num_updates;          // how many times the optimizer has updated this
+  gtsam::Pose3 global_pose; // Global pose of the artifact
+  core_msgs::Artifact msg;  // All fields in the artifact message that we need
+  ArtifactInfo(std::string art_id = "")
+    : id(art_id), num_updates(0), global_pose(gtsam::Pose3()) {}
 };
 
-/*! \brief  Handles artifact messages. Takes artifact data from the artifact message - 
-          - Timestamp of the artifact message to help decide where to add the artifact in the pose graph
+/*! \brief  Handles artifact messages. Takes artifact data from the artifact
+ message -
+          - Timestamp of the artifact message to help decide where to add the
+ artifact in the pose graph
           - Artifact relative transformation to make factor in pose graph
           - Key of the last corresponding artifact node.
  * \input   Artifact message
- * \output  Current Timestamp, key of last corresponding artifact node and relative transform to the pose graph
+ * \output  Current Timestamp, key of last corresponding artifact node and
+ relative transform to the pose graph
  */
 class ArtifactHandler : public LampDataHandlerBase {
     public:
@@ -51,7 +51,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
-    FactorData GetData();
+    FactorData* GetData();
 
     /*! \brief  Get the artifact_key2info_hash_
      * Returns  artifact_key2info_hash_
@@ -132,7 +132,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Add artifact data
      * Returns  Void
      */
-    void AddArtifactData(const gtsam::Symbol artifact_key, std::pair<ros::Time, ros::Time> time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
+    void AddArtifactData(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
 
     /*! \brief  Stores/Updated artifactInfo Hash
      * Returns  Void
@@ -160,7 +160,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     std::string name_;
 
     // Artifact output data
-    FactorData artifact_data_;
+    ArtifactData artifact_data_;
 
     // Transformer
     tf2_ros::Buffer tf_buffer_;

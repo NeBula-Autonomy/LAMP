@@ -17,8 +17,7 @@ protected:
     test_variable = new BlamSlam();
   }
 
-  virtual void TearDown() {
-  }
+  virtual void TearDown() {}
   ros::NodeHandle nh;
   BlamSlam* test_variable;
 };

@@ -11,7 +11,7 @@ Loop closure base class
 #include <gtsam/geometry/Rot3.h>
 
 LoopClosure::LoopClosure(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
 
   keyed_stamps_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_incremental", 10, &LoopClosure::InputCallback, this);
@@ -25,8 +25,9 @@ void LoopClosure::InputCallback(
   ROS_INFO("In Input Callback of loop closure");
   pose_graph_msgs::PoseGraphNode node_msg;
   for (const auto& node_msg : graph_msg->nodes) {
-    gtsam::Key new_key = node_msg.key;           // extract new key
-    ros::Time timestamp = node_msg.header.stamp; // extract new timestamp
+    gtsam::Key new_key = node_msg.key;            // extract new key
+    ros::Time timestamp = node_msg.header.stamp;  // extract new timestamp
+
 
     // also extract poses (NOTE(Yun) this pose will not be updated...)
     gtsam::Pose3 new_pose;
@@ -48,11 +49,13 @@ void LoopClosure::InputCallback(
     std::vector<pose_graph_msgs::PoseGraphEdge> loop_closure_edges;
     // first find loop closures
     if (FindLoopClosures(new_key, &loop_closure_edges)) {
-      ROS_INFO_STREAM("----------------------Found Loop "
-                      "Closure----------------------\n from key "
-                      << new_key);
+      ROS_INFO_STREAM(
+          "----------------------Found Loop "
+          "Closure----------------------\n from key "
+          << new_key);
       PublishLoopClosures(loop_closure_edges);
     }
+    ROS_INFO("No Loop Closure");
   }
 }
 

@@ -22,7 +22,7 @@ Lidar pointcloud based loop closure
 #include <point_cloud_filter/PointCloudFilter.h>
 
 class LaserLoopClosure : public LoopClosure {
- public:
+public:
   LaserLoopClosure(const ros::NodeHandle& n);
   ~LaserLoopClosure();
 
@@ -30,7 +30,7 @@ class LaserLoopClosure : public LoopClosure {
 
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
- private:
+private:
   bool FindLoopClosures(
       gtsam::Key new_key,
       std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
@@ -45,7 +45,7 @@ class LaserLoopClosure : public LoopClosure {
                         gtsam::Matrix66* covariance,
                         double& fitness_score);
 
- private:
+private:
   ros::Subscriber keyed_scans_sub_;
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
@@ -69,4 +69,4 @@ class LaserLoopClosure : public LoopClosure {
 
   IcpInitMethod icp_init_method_;
 };
-#endif  // LASER_LOOP_CLOSURE_H_
+#endif // LASER_LOOP_CLOSURE_H_

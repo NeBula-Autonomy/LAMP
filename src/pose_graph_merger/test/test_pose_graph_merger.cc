@@ -5,39 +5,34 @@
 
 #include <gtest/gtest.h>
 
-#include <ros/ros.h>
 #include <math.h>
+#include <ros/ros.h>
 
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 
-#include <gtsam/inference/Symbol.h>
 #include <gtsam/inference/Key.h>
+#include <gtsam/inference/Symbol.h>
 
 #include <pose_graph_merger/merger.h>
 
 class TestMerger : public ::testing::Test {
+public:
+  TestMerger() {
+    // Set params
+  }
+  ~TestMerger() {}
 
-  public: 
-    TestMerger(){
-      // Set params
+  Merger merger;
 
-    }
-    ~TestMerger(){}
+protected:
+  // Tolerance on EXPECT_NEAR assertions
+  double tolerance_ = 1e-5;
 
-    Merger merger;
-
-  protected:
-    // Tolerance on EXPECT_NEAR assertions
-    double tolerance_ = 1e-5;
-
-
-  private:
-
+private:
 };
-
 
 TEST_F(TestMerger, BasicMerge) {
   ros::NodeHandle nh, pnh("~");
@@ -45,14 +40,14 @@ TEST_F(TestMerger, BasicMerge) {
   pose_graph_msgs::PoseGraph g;
 
   // Make the fast graph
-  pose_graph_msgs::PoseGraphNode n0, n1, n2; 
+  pose_graph_msgs::PoseGraphNode n0, n1, n2;
   pose_graph_msgs::PoseGraphEdge e0, e1;
 
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 1.0;
   n1.pose.position.y = 0.0;
@@ -81,7 +76,8 @@ TEST_F(TestMerger, BasicMerge) {
   g.edges.push_back(e0);
   g.edges.push_back(e1);
 
-  pose_graph_msgs::PoseGraphConstPtr fast_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr fast_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Make the slow graph
   g = pose_graph_msgs::PoseGraph();
@@ -90,7 +86,7 @@ TEST_F(TestMerger, BasicMerge) {
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 0.0;
   n1.pose.position.y = 1.0;
@@ -110,7 +106,8 @@ TEST_F(TestMerger, BasicMerge) {
   g.nodes.push_back(n1);
   g.edges.push_back(e0);
 
-  pose_graph_msgs::PoseGraphConstPtr slow_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr slow_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Give graphs to merger
   merger.OnSlowGraphMsg(slow_graph);
@@ -154,14 +151,14 @@ TEST_F(TestMerger, FastGraphOnly) {
   pose_graph_msgs::PoseGraph g;
 
   // Make the fast graph
-  pose_graph_msgs::PoseGraphNode n0, n1, n2; 
+  pose_graph_msgs::PoseGraphNode n0, n1, n2;
   pose_graph_msgs::PoseGraphEdge e0, e1;
 
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 2.0;
   n1.pose.position.y = 0.0;
@@ -190,7 +187,8 @@ TEST_F(TestMerger, FastGraphOnly) {
   g.edges.push_back(e0);
   g.edges.push_back(e1);
 
-  pose_graph_msgs::PoseGraphConstPtr fast_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr fast_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Give graph to merger
   merger.OnFastGraphMsg(fast_graph);
@@ -225,21 +223,20 @@ TEST_F(TestMerger, FastGraphOnly) {
   EXPECT_NEAR(0.0, z, tolerance_);
 }
 
-
 TEST_F(TestMerger, MergeWithValuesOnlyInSlowGraph) {
   ros::NodeHandle nh, pnh("~");
 
   pose_graph_msgs::PoseGraph g;
 
   // Make the fast graph
-  pose_graph_msgs::PoseGraphNode n0, n1, n2; 
+  pose_graph_msgs::PoseGraphNode n0, n1, n2;
   pose_graph_msgs::PoseGraphEdge e0, e1;
 
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 5.0;
   n1.pose.position.y = 0.0;
@@ -268,7 +265,8 @@ TEST_F(TestMerger, MergeWithValuesOnlyInSlowGraph) {
   g.edges.push_back(e0);
   g.edges.push_back(e1);
 
-  pose_graph_msgs::PoseGraphConstPtr fast_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr fast_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Make the slow graph
   g = pose_graph_msgs::PoseGraph();
@@ -277,7 +275,7 @@ TEST_F(TestMerger, MergeWithValuesOnlyInSlowGraph) {
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 0.0;
   n1.pose.position.y = 5.0;
@@ -288,7 +286,8 @@ TEST_F(TestMerger, MergeWithValuesOnlyInSlowGraph) {
   g.nodes.push_back(n0);
   g.nodes.push_back(n1);
 
-  pose_graph_msgs::PoseGraphConstPtr slow_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr slow_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Give graphs to merger
   merger.OnSlowGraphMsg(slow_graph);
@@ -330,14 +329,14 @@ TEST_F(TestMerger, MergeWithEmptySlowGraph) {
   pose_graph_msgs::PoseGraph g;
 
   // Make the fast graph
-  pose_graph_msgs::PoseGraphNode n0, n1, n2; 
+  pose_graph_msgs::PoseGraphNode n0, n1, n2;
   pose_graph_msgs::PoseGraphEdge e0, e1;
 
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 5.0;
   n1.pose.position.y = 0.0;
@@ -366,11 +365,13 @@ TEST_F(TestMerger, MergeWithEmptySlowGraph) {
   g.edges.push_back(e0);
   g.edges.push_back(e1);
 
-  pose_graph_msgs::PoseGraphConstPtr fast_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr fast_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Make the slow graph
   g = pose_graph_msgs::PoseGraph();
-  pose_graph_msgs::PoseGraphConstPtr slow_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr slow_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Give graphs to merger
   merger.OnSlowGraphMsg(slow_graph);
@@ -406,12 +407,11 @@ TEST_F(TestMerger, MergeWithEmptySlowGraph) {
   EXPECT_NEAR(0.0, z, tolerance_);
 }
 
-
 TEST_F(TestMerger, DoubleMerge) {
   ros::NodeHandle nh, pnh("~");
 
   pose_graph_msgs::PoseGraph g;
-  pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, n4; 
+  pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, n4;
   pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
 
   // Make the fast graphs
@@ -419,7 +419,7 @@ TEST_F(TestMerger, DoubleMerge) {
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 1.0;
   n1.pose.position.y = 0.0;
@@ -464,24 +464,26 @@ TEST_F(TestMerger, DoubleMerge) {
   e3.pose.position.y = 0.0;
   e3.pose.position.z = 0.0;
 
-  // first fast graph 
+  // first fast graph
   g.nodes.push_back(n0);
   g.nodes.push_back(n1);
   g.nodes.push_back(n2);
   g.edges.push_back(e0);
   g.edges.push_back(e1);
-  pose_graph_msgs::PoseGraphConstPtr fast_graph_1(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr fast_graph_1(
+      new pose_graph_msgs::PoseGraph(g));
 
   // second fast graph
   g.nodes.push_back(n3);
   g.edges.push_back(e2);
-  pose_graph_msgs::PoseGraphConstPtr fast_graph_2(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr fast_graph_2(
+      new pose_graph_msgs::PoseGraph(g));
 
-  // third fast graph 
+  // third fast graph
   g.nodes.push_back(n4);
   g.edges.push_back(e3);
-  pose_graph_msgs::PoseGraphConstPtr fast_graph_3(new pose_graph_msgs::PoseGraph(g));
-
+  pose_graph_msgs::PoseGraphConstPtr fast_graph_3(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Make the first slow graph
   g = pose_graph_msgs::PoseGraph();
@@ -490,18 +492,19 @@ TEST_F(TestMerger, DoubleMerge) {
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 0.0;
   n1.pose.position.y = 1.0;
   n1.pose.position.z = 0.0;
   n1.pose.orientation.z = sqrt(0.5);
-  n1.pose.orientation.w = sqrt(0.5);  // facing +y direction
+  n1.pose.orientation.w = sqrt(0.5); // facing +y direction
 
   g.nodes.push_back(n0);
   g.nodes.push_back(n1);
 
-  pose_graph_msgs::PoseGraphConstPtr slow_graph_1(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr slow_graph_1(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Make the second slow graph
   g = pose_graph_msgs::PoseGraph();
@@ -510,26 +513,27 @@ TEST_F(TestMerger, DoubleMerge) {
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = -1.0;
   n1.pose.position.y = 0.0;
   n1.pose.position.z = 0.0;
-  n1.pose.orientation.w = 0.0; 
+  n1.pose.orientation.w = 0.0;
   n1.pose.orientation.z = 1.0; // facing -x direction
 
   n2.key = gtsam::Symbol('a', 2);
   n2.pose.position.x = -2.0;
   n2.pose.position.y = 0.0;
   n2.pose.position.z = 0.0;
-  n2.pose.orientation.w = 0.0; 
+  n2.pose.orientation.w = 0.0;
   n2.pose.orientation.z = 1.0; // facing -x direction
 
   g.nodes.push_back(n0);
   g.nodes.push_back(n1);
   g.nodes.push_back(n2);
 
-  pose_graph_msgs::PoseGraphConstPtr slow_graph_2(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr slow_graph_2(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Send first few graphs and get the intermediate result
   merger.OnFastGraphMsg(fast_graph_1);
@@ -541,7 +545,7 @@ TEST_F(TestMerger, DoubleMerge) {
   EXPECT_EQ(4, current_graph.nodes.size());
   EXPECT_EQ(3, current_graph.edges.size());
 
-  // Check the last node (a3) 
+  // Check the last node (a3)
   float x, y, z;
   bool found = false;
   for (const GraphNode& node : current_graph.nodes) {
@@ -566,7 +570,7 @@ TEST_F(TestMerger, DoubleMerge) {
   merger.OnFastGraphMsg(fast_graph_3);
   current_graph = merger.GetCurrentGraph();
 
-  // Check the last node (a4) 
+  // Check the last node (a4)
   found = false;
   for (const GraphNode& node : current_graph.nodes) {
     if (node.key != gtsam::Symbol('a', 4)) {
@@ -586,21 +590,20 @@ TEST_F(TestMerger, DoubleMerge) {
   EXPECT_NEAR(0.0, z, tolerance_);
 }
 
-
 TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   ros::NodeHandle nh, pnh("~");
 
   pose_graph_msgs::PoseGraph g;
 
   // Make the fast graph
-  pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, a0; 
+  pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, a0;
   pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
 
   n0.key = gtsam::Symbol('a', 0);
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 1.0;
   n1.pose.position.y = 0.0;
@@ -655,7 +658,8 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   g.edges.push_back(e2);
   g.edges.push_back(e3);
 
-  pose_graph_msgs::PoseGraphConstPtr fast_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr fast_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Make the slow graph
   g = pose_graph_msgs::PoseGraph();
@@ -664,7 +668,7 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   n0.pose.position.x = 0.0;
   n0.pose.position.y = 0.0;
   n0.pose.position.z = 0.0;
-  
+
   n1.key = gtsam::Symbol('a', 1);
   n1.pose.position.x = 0.0;
   n1.pose.position.y = 1.0;
@@ -682,7 +686,8 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   g.nodes.push_back(n0);
   g.nodes.push_back(n1);
 
-  pose_graph_msgs::PoseGraphConstPtr slow_graph(new pose_graph_msgs::PoseGraph(g));
+  pose_graph_msgs::PoseGraphConstPtr slow_graph(
+      new pose_graph_msgs::PoseGraph(g));
 
   // Give graphs to merger
   merger.OnSlowGraphMsg(slow_graph);
