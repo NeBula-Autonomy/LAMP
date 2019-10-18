@@ -288,6 +288,12 @@ struct ImuFactor {
   gtsam::Pose3AttitudeFactor attitude;
 };
 
+struct UwbFactor {
+  double range;
+  double range_error;
+};
+
+
 // ---------------------------------------------------------
 
 // Base factor data class
@@ -353,6 +359,18 @@ class AprilTagData : public FactorData {
 
     std::vector<AprilTagFactor> factors;
 };
+
+class UwbData : public FactorData {
+
+  public:
+    
+    UwbData() { };
+    virtual ~UwbData() { };
+
+    std::vector<UwbFactor> factors;
+};
+
+
 #endif
 
 // need to include source file for templatized save/load functions
