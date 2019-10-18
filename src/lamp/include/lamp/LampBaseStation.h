@@ -23,7 +23,7 @@ class LampBaseStation : public LampBase {
     ~LampBaseStation();    
 
     // Override base class functions where needed 
-    virtual bool Initialize(const ros::NodeHandle& n);
+    virtual bool Initialize(const ros::NodeHandle& n, bool from_log);
 
   protected: 
     
