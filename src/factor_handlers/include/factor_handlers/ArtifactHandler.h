@@ -132,7 +132,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Add artifact data
      * Returns  Void
      */
-    void AddArtifactData(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
+    void AddArtifactData(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
 
     /*! \brief  Stores/Updated artifactInfo Hash
      * Returns  Void
