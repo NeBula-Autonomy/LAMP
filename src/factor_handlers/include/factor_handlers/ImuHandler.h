@@ -1,7 +1,7 @@
 /*
  * Copyright Notes
  * Authors: Matteo Palieri      (matteo.palieri@jpl.nasa.gov)
-*/
+ */
 
 #ifndef IMU_HANDLER_H
 #define IMU_HANDLER_H
@@ -78,7 +78,6 @@ protected:
 
   // IMU output data
   ImuData factors_;
-
         
 };
 

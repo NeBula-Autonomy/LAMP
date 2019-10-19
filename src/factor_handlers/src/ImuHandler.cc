@@ -1,7 +1,7 @@
 /*
  * Copyright Notes
  * Authors: Matteo Palieri      (matteo.palieri@jpl.nasa.gov)
-*/
+ */
 
 // Includes
 #include <factor_handlers/ImuHandler.h>
@@ -66,7 +66,7 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
     ROS_INFO("ImuHandler - ImuCallback"); 
     // TODO: FIFO behaviour could be optimized
     if (CheckBufferSize() > buffer_size_limit_){
-            imu_buffer_.erase(imu_buffer_.begin());
+        imu_buffer_.erase(imu_buffer_.begin());
     }   
     if (!InsertMsgInBuffer(msg)){
         ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
@@ -93,12 +93,10 @@ FactorData* ImuHandler::GetData(){
     if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
         ROS_INFO("Successfully extracted data from buffer");
         Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
-        
-        factors_output->b_has_data = true; 
-        factors_output->type = "imu";
-
-        // Create the new factor and add it to the output
         ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
+
+        factors_output->b_has_data = true; 
+        factors_output->type = "imu";        
         factors_output->factors.push_back(new_factor);
 
         ResetFactorData();
