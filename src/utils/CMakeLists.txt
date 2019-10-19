@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   core_msgs
   pose_graph_msgs
   geometry_msgs
+  pcl_ros
 )
 
 find_package(Eigen3 REQUIRED)
@@ -30,11 +31,12 @@ catkin_package(
     core_msgs
     pose_graph_msgs
     geometry_msgs
+    pcl_ros
 )
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS})
-add_library(${PROJECT_NAME} src/CommonFunctions.cc)
+add_library(${PROJECT_NAME} src/CommonFunctions.cc src/PoseGraphMessageConversion.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   gtsam
