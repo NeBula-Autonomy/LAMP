@@ -78,8 +78,10 @@ private:
 
     // Factor Hanlder Wrappers
     bool ProcessOdomData(FactorData* data);
+    // Process the artifact factors if any available
     bool ProcessArtifactData(FactorData* data);
-    void ProcessAprilData(FactorData* data);
+    // Process the april tag factors if any available    
+    bool ProcessAprilTagData(FactorData* data);
     bool InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // void ProcessUWBData(FactorData data);
     // Example use:

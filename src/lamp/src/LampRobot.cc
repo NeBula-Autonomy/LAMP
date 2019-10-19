@@ -743,6 +743,8 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
     cur_april_tag_key = april_tag.key;
 
     // Get the ground truth data using april tag key in info hashmap.
+    // TODO: Usefulness of ground truth in april tag factor
+    // Currently using ground truth from artifactkey2infohash 
     gtsam::Pose3 ground_truth = april_tag_handler_.GetGroundTruthData(cur_april_tag_key);
 
     // Get the pose measurement
@@ -768,7 +770,7 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
     // Get the covariances (Should be in relative frame as well)
     // TODO - handle this better - need to add covariances from the odom - do in
     // the function above
-    covariance = april_tag.covariances;
+    covariance = april_tag.covariance;
 
     if (b_use_fixed_covariances_) {
       covariance = SetFixedNoiseModels("april");
