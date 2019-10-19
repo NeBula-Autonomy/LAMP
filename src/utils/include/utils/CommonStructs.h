@@ -20,6 +20,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/InitializePose3.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <gtsam/navigation/AttitudeFactor.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
@@ -81,6 +82,20 @@ struct PriorFactor {
   gtsam::SharedNoiseModel covariance;
 };
 
+struct ImuFactor {
+
+  // This is required because gtsam::Pose3AttitudeFactor has a deleted 
+  // operator= so the attitude can't be assigned a value
+  ImuFactor(ros::Time t, gtsam::Pose3AttitudeFactor factor) :
+    stamp(t),
+    attitude(factor) { }
+
+  ros::Time stamp;
+
+  gtsam::Pose3AttitudeFactor attitude;
+};
+
+
 // ---------------------------------------------------------
 
 // Base factor data class
@@ -117,8 +132,27 @@ class ArtifactData : public FactorData {
     std::vector<ArtifactFactor> factors;
 };
 
-class AprilTagData : public FactorData {
+class LoopClosureData : public FactorData {
 
+  public: 
+
+    LoopClosureData() { };
+    virtual ~LoopClosureData() { };
+
+    std::vector<LoopClosureFactor> factors;
+};
+
+class ImuData : public FactorData {
+
+  public: 
+
+    ImuData() { };
+    virtual ~ImuData() { };
+
+    std::vector<ImuFactor> factors;
+};
+
+class AprilTagData : public FactorData {
   public: 
 
     AprilTagData() { };
