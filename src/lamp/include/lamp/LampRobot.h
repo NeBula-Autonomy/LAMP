@@ -12,14 +12,12 @@
 
 #include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/OdometryHandler.h>
-#include <pcl/common/transforms.h>
 
 // Services
 
 // Class Definition
 class LampRobot : public LampBase {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   // Constructor
   LampRobot();
@@ -62,12 +60,7 @@ protected:
   void UpdateArtifactPositions();
   void UpdateAndPublishOdom();
 
-  // Generate map from keyed scans
-  bool GenerateMapPointCloud();
-  bool AddTransformedPointCloudToMap(gtsam::Symbol key);
 
-  PointCloudFilter filter_;
-  PointCloudMapper mapper_;
 
   // Publishers
   ros::Publisher pose_pub_;
