@@ -60,11 +60,15 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
 
     if (!pu::Get("robot_names", robot_names_)) {
+    ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
       return false;
     }
-    ROS_INFO_STREAM("Robots registered at base station: ");
-    for (auto s : robot_names_) {
-      ROS_INFO_STREAM("\t\t\t" << s);
+    else {
+      ROS_INFO_STREAM("Robots registered at base station: ");
+      for (auto s : robot_names_) {
+        ROS_INFO_STREAM("\t\t\t" << s);
+      }
+
     }
 
 
@@ -73,6 +77,32 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
 
 bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
 
+  // Create a local nodehandle to manage callback subscriptions.
+  ros::NodeHandle nl(n);
+
+  ros::Subscriber pose_graph_sub;
+  ros::Subscriber keyed_scan_sub;
+
+  // Create subscribers for each robot
+  for (std::string robot : robot_names_) {
+
+    // Pose graph
+    pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
+        "/" + robot + "/lamp/pose_graph",
+        1,
+        &LampBaseStation::PoseGraphCallback,
+        this);
+
+    // Keyed scans
+    keyed_scan_sub = nl.subscribe<pose_graph_msgs::KeyedScan>(
+        "/" + robot + "/lamp/keyed_scans",
+        10,
+        &LampBaseStation::KeyedScanCallback,
+        this);
+
+    subscribers_posegraph.push_back(pose_graph_sub);
+    subscribers_keyedscan.push_back(keyed_scan_sub);
+  }
 
   return true; 
 }
@@ -132,4 +162,13 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 bool LampBaseStation::CheckHandlers() {
 
   return true;
+}
+
+void LampBaseStation::PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
+
+}
+
+
+void LampBaseStation::KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
+
 }
