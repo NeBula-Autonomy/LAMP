@@ -707,10 +707,13 @@ bool LampRobot::ProcessArtifactData(FactorData* data){
   \author Abhishek Thakur
   \date Oct 2019
 */
-bool LampRobot::ProcessAprilTagData(FactorData data){
+bool LampRobot::ProcessAprilTagData(FactorData* data){
+
+    // Extract artifact data
+  AprilTagData* april_tag_data = dynamic_cast<AprilTagData*>(data);
 
   // Check if there are new factors 
-  if (!data.b_has_data) {
+  if (!april_tag_data->b_has_data) {
     return false;
   }
 
@@ -731,16 +734,13 @@ bool LampRobot::ProcessAprilTagData(FactorData data){
   // New Values to be added
   Values new_values;
 
-  // Get number of new measurements
-  int num_factors = data.transforms.size();
-
   // process data for each new factor
-  for (int i = 0; i < num_factors; i++) {
+  for (auto april_tag : april_tag_data->factors) {  
     // Get the time
-    timestamp = data.time_stamps[i].first;
+    timestamp = april_tag.stamp;
 
     // Get the april tag key
-    cur_april_tag_key = data.artifact_key[i];
+    cur_april_tag_key = april_tag.key;
 
     // Get the ground truth data using april tag key in info hashmap.
     gtsam::Pose3 ground_truth = april_tag_handler_.GetGroundTruthData(cur_april_tag_key);
@@ -748,10 +748,10 @@ bool LampRobot::ProcessAprilTagData(FactorData data){
     // Get the pose measurement
     if (b_artifacts_in_global_) {
       // Convert pose to relative frame
-      ConvertGlobalToRelative(timestamp, data.transforms[i], temp_transform);
+      ConvertGlobalToRelative(timestamp, gtsam::Pose3(gtsam::Rot3(), april_tag.position), temp_transform);
     } else {
       // Is in relative already
-      temp_transform = data.transforms[i];
+      temp_transform = gtsam::Pose3(gtsam::Rot3(), april_tag.position);
     }
 
     // Is a relative tranform, so need to handle linking to the pose-graph
@@ -768,7 +768,7 @@ bool LampRobot::ProcessAprilTagData(FactorData data){
     // Get the covariances (Should be in relative frame as well)
     // TODO - handle this better - need to add covariances from the odom - do in
     // the function above
-    covariance = data.covariances[i];
+    covariance = april_tag.covariances;
 
     if (b_use_fixed_covariances_) {
       covariance = SetFixedNoiseModels("april");

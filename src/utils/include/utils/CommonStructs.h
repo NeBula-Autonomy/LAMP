@@ -117,5 +117,13 @@ class ArtifactData : public FactorData {
     std::vector<ArtifactFactor> factors;
 };
 
+class AprilTagData : public FactorData {
 
+  public: 
+
+    AprilTagData() { };
+    virtual ~AprilTagData() { };
+
+    std::vector<AprilTagFactor> factors;
+};
 #endif
