@@ -108,11 +108,11 @@ void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
     if ((num_updates == 0) && (artifact_key2info_hash_[april_tag_key].num_updates == 1)) {
       // Check what kind - curently distal, calibration left and right 
       if (artifact_key2info_hash_[april_tag_key].id == "distal") {
-          artifact_key2info_hash_[april_tag_key].global_pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(distal_x_, distal_y_, distal_z_));
+          artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(distal_x_, distal_y_, distal_z_);
       } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_left") {
-          artifact_key2info_hash_[april_tag_key].global_pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_));
+          artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_);
       } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_right") {
-          artifact_key2info_hash_[april_tag_key].global_pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_));
+          artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_);
       }
     }
   } 
@@ -152,7 +152,7 @@ core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_
   */
 gtsam::Pose3 AprilTagHandler::GetGroundTruthData(const gtsam::Symbol april_tag_key) {
   if (artifact_key2info_hash_.find(april_tag_key) != artifact_key2info_hash_.end()) {
-    return artifact_key2info_hash_[april_tag_key].global_pose;
+    return gtsam::Pose3(gtsam::Rot3(), artifact_key2info_hash_[april_tag_key].global_position);
   } else {
     std::cout << "Key not found in the April Tag id to key map.";
     return gtsam::Pose3();
