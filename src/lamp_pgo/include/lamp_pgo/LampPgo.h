@@ -43,6 +43,9 @@ private:
 
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
+
+  // Namespace ("robot" or "lamp")
+  std::string ns_;
 };
 
 #endif // LAMP_PGO_H_

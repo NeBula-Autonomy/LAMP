@@ -115,6 +115,10 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
+  // Base station publishers
+  pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
+  keyed_scan_pub_ = nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+
   return true; 
 }
 
