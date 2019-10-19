@@ -93,6 +93,10 @@ public:
   bool ReGenerateMapPointCloud() {
     lr.ReGenerateMapPointCloud();
   }
+  bool AddTransformedPointCloudToMap(const gtsam::Symbol key) {
+    lr.AddTransformedPointCloudToMap(key);
+  }
+
   // Access functions
   void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
     lr.stamp_to_odom_key_[stamp.toSec()] = key;
@@ -733,6 +737,43 @@ TEST_F(TestLampRobot, TestPointCloudTransform) {
 
   // Test the function
   ReGenerateMapPointCloud();
+
+  // Output
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();
+
+  // Transform the main point cloud
+  Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+  Eigen::Vector3f rotVec(0.0, 0.0, 1);
+  transform.rotate(Eigen::AngleAxisf(M_PI / 2.0f, rotVec));
+
+  pcl::transformPointCloud(*data, *data, transform);
+
+  // Compare
+  for (int i; i < 4; i++) {
+    std::cout << "Points are " << data->at(i) << " and " << pc_out->at(i)
+              << std::endl;
+    EXPECT_NEAR(data->at(i).x, pc_out->at(i).x, tolerance_);
+    EXPECT_NEAR(data->at(i).y, pc_out->at(i).y, tolerance_);
+    EXPECT_NEAR(data->at(i).z, pc_out->at(i).z, tolerance_);
+  }
+}
+
+TEST_F(TestLampRobot, TestPointCloudTransformSingle) {
+  // Add the scan and values to the graph
+  ros::NodeHandle nh, pnh("~");
+  lr.Initialize(nh);
+
+  // Scan
+  gtsam::Symbol key = gtsam::Symbol('a', 1);
+  AddToKeyScans(key, data);
+
+  // Values
+  InsertValues(gtsam::Symbol('a', 1),
+               gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
+                            gtsam::Point3(0.0, 0.0, 0.0)));
+
+  // Test the function
+  AddTransformedPointCloudToMap(key);
 
   // Output
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();

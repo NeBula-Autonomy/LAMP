@@ -117,8 +117,9 @@ protected:
   // Generate map from keyed scans
   bool ReGenerateMapPointCloud();
   bool CombineKeyedScansWorld(PointCloud* points);
-  bool GetTransformedPointCloudWorld(gtsam::Symbol key, PointCloud* points);
-  bool AddTransformedPointCloudToMap(gtsam::Symbol key);
+  bool GetTransformedPointCloudWorld(const gtsam::Symbol key,
+                                     PointCloud* points);
+  bool AddTransformedPointCloudToMap(const gtsam::Symbol key);
 
   // Convert timestamps to gtsam keys
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;

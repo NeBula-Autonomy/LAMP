@@ -324,11 +324,13 @@ bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
     // Append the world-frame point cloud to the output.
     *points += *scan_world;
   }
+  ROS_INFO_STREAM("Points size is: " << points->points.size()
+                                     << ", in CombineKeyedScansWorld");
 }
 
 // Transform the point cloud to world frame
-bool LampBase::GetTransformedPointCloudWorld(gtsam::Symbol key, PointCloud* points){
-  
+bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
+                                             PointCloud* points) {
   if (points == NULL) {
     ROS_ERROR("%s: Output point cloud container is null.", name_.c_str());
     return false;
@@ -337,14 +339,16 @@ bool LampBase::GetTransformedPointCloudWorld(gtsam::Symbol key, PointCloud* poin
 
   // No key associated with the scan
   if (!keyed_scans_.count(key)) {
-    ROS_WARN("Could not find scan associated with key");
+    ROS_WARN("Could not find scan associated with key in "
+             "GetTransformedPointCloudWorld");
     return false;
   }
 
   // Check that the key exists
   if (!values_.exists(key)) {
-    ROS_WARN("Key %u does not exist in values_",
-             gtsam::DefaultKeyFormatter(key));
+    ROS_WARN(
+        "Key %u does not exist in values_ in GetTransformedPointCloudWorld",
+        gtsam::DefaultKeyFormatter(key));
     return false;
   }
 
@@ -355,14 +359,19 @@ bool LampBase::GetTransformedPointCloudWorld(gtsam::Symbol key, PointCloud* poin
 
   // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*keyed_scans_[key], *points, b2w);
+
+  ROS_INFO_STREAM("Points size is: " << points->points.size()
+                                     << ", in GetTransformedPointCloudWorld");
 }
 
 // For adding one scan to the map
-bool LampBase::AddTransformedPointCloudToMap(gtsam::Symbol key) {
-  
+bool LampBase::AddTransformedPointCloudToMap(const gtsam::Symbol key) {
   PointCloud::Ptr points(new PointCloud);
 
   GetTransformedPointCloudWorld(key, points.get());
+
+  ROS_INFO_STREAM("Points size is: " << points->points.size()
+                                     << ", in AddTransformedPointCloudToMap");
 
   // Add to the map
   PointCloud::Ptr unused(new PointCloud);
