@@ -121,7 +121,7 @@ void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
 /*! \brief  Convert April tag message to Artifact message.
   * Returns  Artifacts message
   */
-core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg) {
+core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg) const {
   core_msgs::Artifact artifact_msg;
 
   // Fill april tags name

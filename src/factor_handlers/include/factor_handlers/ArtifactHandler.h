@@ -61,12 +61,12 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Updates the global pose of an artifact 
      * Returns  bool
      */
-    bool UpdateGlobalPosition(gtsam::Symbol artifact_key ,gtsam::Point3 global_position);
+    bool UpdateGlobalPosition(const gtsam::Symbol artifact_key ,const gtsam::Point3 global_position);
 
     /*! \brief  Publish Artifact
      * Returns  Void
      */
-    void PublishArtifacts(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose);
+    void PublishArtifacts(const gtsam::Symbol artifact_key ,const gtsam::Pose3 global_pose);
 
     protected:
     /*! \brief Load artifact parameters. 
@@ -97,12 +97,12 @@ class ArtifactHandler : public LampDataHandlerBase {
      * Not sure how necessary this is ????
      * Returns Transform
      */
-    Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg);
+    Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg) const;
 
     /*! \brief  Get artifacts ID from artifact key
      * Returns Artifacts ID
      */
-    std::string GetArtifactID(gtsam::Symbol artifact_key);
+    std::string GetArtifactID(const gtsam::Symbol artifact_key) const;
 
     /*! \brief  Callback for Artifacts.
      * Returns  Void
@@ -117,12 +117,12 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Print Artifact input message for debugging
      * Returns  Void
      */
-    void PrintArtifactInputMessage(const core_msgs::Artifact& msg);
+    void PrintArtifactInputMessage(const core_msgs::Artifact& msg) const;
 
     /*! \brief  Extracts covariance from artifact message and converts to gtsam::SharedNoiseModel
      * Returns  gtsam::SharedNoiseModel
      */
-    gtsam::SharedNoiseModel ExtractCovariance(const boost::array<float, 9> covariance);
+    gtsam::SharedNoiseModel ExtractCovariance(const boost::array<float, 9> covariance) const;
 
     /*! \brief  Clear artifact data
      * Returns  Void
@@ -132,7 +132,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Add artifact data
      * Returns  Void
      */
-    void AddArtifactData(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
+    void AddArtifactData(const gtsam::Symbol artifact_key, const ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
 
     /*! \brief  Stores/Updated artifactInfo Hash
      * Returns  Void
@@ -167,7 +167,6 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     // Subscribers
     ros::Subscriber artifact_sub_;
-    std::vector<ros::Subscriber> Subscriber_artifactList_;
 
     private:
     // Artifact output data

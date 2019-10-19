@@ -1,25 +1,6 @@
 // Includes
 #include "factor_handlers/ArtifactHandler.h"
 
-/**
- * Constructor             - Done
- * Initialize              - Done
- * LoadParameters          - Done
- * RegisterCallbacks       - Not sure here
- * ComputeTransform        - Done
- * GetData                 - Done
- * PublishArtifacts        - Done
- * RegisterOnlineCallbacks - b_is_basestation_ and b_use_lo_frontend_ and
- * b_is_front_end_ in lamp. else Nearly Done GetArtifactID           - Done
- * ArtifactCallback        - Check if this needs more
- * ArtifactBaseCallback    - Need to check this
- * RegisterLogCallbacks    - Done
- * CreatePublishers        - Done
- * UpdateGlobalPose        - Done
- * Tests                   - Test needed.
- * covariances             - Done
- */
-
 // Constructor
 ArtifactHandler::ArtifactHandler()
   : largest_artifact_id_(0), use_artifact_loop_closure_(false) {}
@@ -91,7 +72,7 @@ bool ArtifactHandler::RegisterCallbacks(const ros::NodeHandle& n,
  * Returns Transform
  */
 Eigen::Vector3d
-ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) {
+ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) const {
   // Get artifact position
   Eigen::Vector3d artifact_position;
   artifact_position << msg.point.point.x, msg.point.point.y, msg.point.point.z;
@@ -105,7 +86,7 @@ ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) {
 /*! \brief  Get artifacts ID from artifact key
  * Returns Artifacts ID
  */
-std::string ArtifactHandler::GetArtifactID(gtsam::Symbol artifact_key) {
+std::string ArtifactHandler::GetArtifactID(const gtsam::Symbol artifact_key) const {
   std::string artifact_id;
   for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end();
        ++it) {
@@ -234,8 +215,8 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 /*! \brief  Updates the global pose of an artifact
  * Returns  Void
  */
-bool ArtifactHandler::UpdateGlobalPosition(gtsam::Symbol artifact_key,
-                                       gtsam::Point3 global_position) {
+bool ArtifactHandler::UpdateGlobalPosition(const gtsam::Symbol artifact_key,
+                                           const gtsam::Point3 global_position) {
   if (artifact_key2info_hash_.find(artifact_key) !=
       artifact_key2info_hash_.end()) {
     artifact_key2info_hash_[artifact_key].global_position = global_position;
@@ -253,8 +234,8 @@ bool ArtifactHandler::UpdateGlobalPosition(gtsam::Symbol artifact_key,
  * in output message.
  * Returns  Void
  */
-void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key,
-                                       gtsam::Pose3 global_pose) {
+void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
+                                       const gtsam::Pose3 global_pose) {
   // Get the artifact pose
   Eigen::Vector3d artifact_position = global_pose.translation().vector();
   std::string artifact_label;
@@ -319,7 +300,7 @@ void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key,
  * Returns  Void
  */
 void ArtifactHandler::PrintArtifactInputMessage(
-    const core_msgs::Artifact& artifact) {
+    const core_msgs::Artifact& artifact) const {
   std::cout << "Artifact position in world is: " << artifact.point.point.x
             << ", " << artifact.point.point.y << ", " << artifact.point.point.z
             << std::endl;
@@ -337,7 +318,7 @@ void ArtifactHandler::PrintArtifactInputMessage(
  * gtsam::SharedNoiseModel Returns  gtsam::SharedNoiseModel
  */
 gtsam::SharedNoiseModel
-ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) {
+ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) const {
   // Extract covariance information
   gtsam::Matrix33 cov;
   for (int i = 0; i < 3; ++i)
@@ -362,7 +343,7 @@ void ArtifactHandler::ClearArtifactData() {
  */
 void ArtifactHandler::AddArtifactData(
     const gtsam::Symbol cur_key,
-    ros::Time time_stamp,
+    const ros::Time time_stamp,
     const gtsam::Point3 transform,
     const gtsam::SharedNoiseModel noise) {
   // Make new data true
