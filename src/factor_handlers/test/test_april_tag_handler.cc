@@ -17,6 +17,22 @@ class TestAprilTagHandler : public ::testing::Test{
     ~TestAprilTagHandler(){}
 };
 
+// Check if callback working correctly.
+TEST_F(TestAprilTagHandler, AprilTagCallback) {
+}
+
+// Check if April tag message is being converted into artifacts correctly
+TEST_F(TestAprilTagHandler, ConvertAprilTagMsgToArtifactMsg) {
+}
+
+// Check if ground truth is being extracted.
+TEST_F(TestAprilTagHandler, GetGroundTruthData) {
+}
+
+// Check if parameters are being loaded properly. 
+TEST_F(TestAprilTagHandler, LoadParameters) {
+}
+
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);

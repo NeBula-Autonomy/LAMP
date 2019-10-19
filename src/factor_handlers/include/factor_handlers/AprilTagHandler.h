@@ -58,7 +58,10 @@ class AprilTagHandler : public ArtifactHandler {
     double distal_x_;
     double distal_y_;
     double distal_z_;
-  
+    
+    // April Tag output data
+    AprilTagData artifact_data_;
+
     // Test class
     friend class TestAprilTagHandler;
 };

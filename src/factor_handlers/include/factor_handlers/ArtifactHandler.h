@@ -159,9 +159,6 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Namespace for publishing
     std::string name_;
 
-    // Artifact output data
-    ArtifactData artifact_data_;
-
     // Transformer
     tf2_ros::Buffer tf_buffer_;
 
@@ -173,6 +170,9 @@ class ArtifactHandler : public LampDataHandlerBase {
     std::vector<ros::Subscriber> Subscriber_artifactList_;
 
     private:
+    // Artifact output data
+    ArtifactData artifact_data_;
+    
     // Test class
     friend class TestArtifactHandler;
 };

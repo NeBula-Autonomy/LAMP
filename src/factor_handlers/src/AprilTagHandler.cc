@@ -1,15 +1,5 @@
 #include "factor_handlers/AprilTagHandler.h"
 
-/**
- * QUESTION: 
- * A little background on fiducials. When are they observed.
- * A overall summary of the code. How they are different from
- * artifacts.
- * What would change in the new messages for april tags
- * What would be the functionality as in what would be in message
- * and what should be in FactorData.
- */ 
-
 /*! \brief Initialize parameters and callbacks. 
  * n - Nodehandle
  * Returns bool

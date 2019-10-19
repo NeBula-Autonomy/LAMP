@@ -340,6 +340,11 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   // ProcessArtifacts(new_data); 
 }
 
+// Check Process April tag data. 
+TEST_F(TestLampRobot, TestProcessAprilTagData) {
+
+}
+
 TEST_F(TestLampRobot, SetInitialKey) {
   // Set string
   std::string prefix = "a";
