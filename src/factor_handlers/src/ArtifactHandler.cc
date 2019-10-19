@@ -168,8 +168,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
   }
   // Generate gtsam pose
-  const gtsam::Pose3 relative_pose =
-      gtsam::Pose3(gtsam::Rot3(),
+  const gtsam::Pose3 relative_pose = gtsam::Pose3(gtsam::Rot3(), 
                    gtsam::Point3(R_artifact_position[0],
                                  R_artifact_position[1],
                                  R_artifact_position[2]));
@@ -181,7 +180,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   gtsam::SharedNoiseModel noise = ExtractCovariance(msg.covariance);
 
   // Fill artifact_data_
-  AddArtifactData(cur_artifact_key, msg.header.stamp, relative_pose, noise);
+  AddArtifactData(cur_artifact_key, msg.header.stamp, relative_pose.translation(), noise);
 }
 
 /*! \brief  Gives the factors to be added and clears to start afresh.
@@ -235,11 +234,11 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 /*! \brief  Updates the global pose of an artifact
  * Returns  Void
  */
-bool ArtifactHandler::UpdateGlobalPose(gtsam::Symbol artifact_key,
-                                       gtsam::Pose3 global_pose) {
+bool ArtifactHandler::UpdateGlobalPosition(gtsam::Symbol artifact_key,
+                                       gtsam::Point3 global_position) {
   if (artifact_key2info_hash_.find(artifact_key) !=
       artifact_key2info_hash_.end()) {
-    artifact_key2info_hash_[artifact_key].global_pose = global_pose;
+    artifact_key2info_hash_[artifact_key].global_position = global_position;
     return true;
   } else {
     std::cout << "Key not found in the Artifact id to key map.";
@@ -364,7 +363,7 @@ void ArtifactHandler::ClearArtifactData() {
 void ArtifactHandler::AddArtifactData(
     const gtsam::Symbol cur_key,
     ros::Time time_stamp,
-    const gtsam::Pose3 transform,
+    const gtsam::Point3 transform,
     const gtsam::SharedNoiseModel noise) {
   // Make new data true
   artifact_data_.b_has_data = true;
@@ -373,7 +372,7 @@ void ArtifactHandler::AddArtifactData(
 
   // Create and add the new artifact
   ArtifactFactor new_artifact;
-  new_artifact.position = transform.translation(); // TODO change transform to position only
+  new_artifact.position = transform;
   new_artifact.covariance = noise;
   new_artifact.stamp = time_stamp;
   new_artifact.key = cur_key;

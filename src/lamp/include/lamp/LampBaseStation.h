@@ -7,31 +7,53 @@
 #ifndef LAMP_BASE_STATION_H
 #define LAMP_BASE_STATION_H
 
-// Includes
 #include <lamp/LampBase.h>
+
+#include <factor_handlers/ManualLoopClosureHandler.h>
 
 // Services
 
 // Class Definition
 class LampBaseStation : public LampBase {
-public:
-  // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+  public:
+    // Constructor
+    LampBaseStation();
 
-  // Constructor
-  LampBaseStation();
+    // Destructor
+    ~LampBaseStation();    
 
-  // Destructor
-  ~LampBaseStation();
+    // Override base class functions where needed 
+    virtual bool Initialize(const ros::NodeHandle& n, bool from_log);
 
-  // Override base class functions where needed
-  bool Initialize();
+  protected: 
+    
+    // instantiate all handlers that are being used in the derived classes
+    virtual bool InitializeHandlers(const ros::NodeHandle& n); 
 
-private:
-  // Overwrite base classs functions where needed
+    // load parameters from yaml files
+    virtual bool LoadParameters(const ros::NodeHandle& n);
 
-  // Add new functions as needed
+    // retrieve data from all handlers
+    virtual bool CheckHandlers(); // - inside timed callback
+    // TODO consider checking handlers at different frequencies
 
-  // Add new variables as needed
+    virtual bool RegisterCallbacks(const ros::NodeHandle& n);
+
+    virtual bool CreatePublishers(const ros::NodeHandle& n);
+
+    // Main update timer callback
+    virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
+
+    PointCloudMapper mapper_;
+
+  private:
+    // Overwrite base classs functions where needed
+
+
+    // Data Handler classes
+    ManualLoopClosureHandler manual_loop_closure_handler_; 
+
 };
+
 
 #endif

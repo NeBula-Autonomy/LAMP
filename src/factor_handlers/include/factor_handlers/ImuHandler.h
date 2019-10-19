@@ -1,7 +1,7 @@
 /*
  * Copyright Notes
  * Authors: Matteo Palieri      (matteo.palieri@jpl.nasa.gov)
-*/
+ */
 
 #ifndef IMU_HANDLER_H
 #define IMU_HANDLER_H
@@ -49,6 +49,7 @@ protected:
 
   // Buffers
   ImuBuffer imu_buffer_;
+  int buffer_size_limit_;
   bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) ;
   int CheckBufferSize() const; 
   bool ClearBuffer();          
@@ -77,7 +78,6 @@ protected:
 
   // IMU output data
   ImuData factors_;
-
         
 };
 
