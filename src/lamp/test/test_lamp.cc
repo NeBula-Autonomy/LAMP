@@ -90,8 +90,8 @@ public:
   void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
     lr.LaserLoopClosureCallback(msg);
   }
-  bool GenerateMapPointCloud() {
-    lr.GenerateMapPointCloud();
+  bool ReGenerateMapPointCloud() {
+    lr.ReGenerateMapPointCloud();
   }
   // Access functions
   void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
@@ -732,7 +732,7 @@ TEST_F(TestLampRobot, TestPointCloudTransform) {
                             gtsam::Point3(0.0, 0.0, 0.0)));
 
   // Test the function
-  GenerateMapPointCloud();
+  ReGenerateMapPointCloud();
 
   // Output
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();

@@ -46,6 +46,7 @@
 #include <geometry_utils/Transform3.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl/common/transforms.h>
 
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -67,6 +68,8 @@ class LampBase {
 public:
   typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
   typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
+  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+
   // Constructor
   LampBase();
 
@@ -111,6 +114,12 @@ protected:
   bool PublishPoseGraph();
   bool PublishPoseGraphForOptimizer();
 
+  // Generate map from keyed scans
+  bool ReGenerateMapPointCloud();
+  bool CombineKeyedScansWorld(PointCloud* points);
+  bool GetTransformedPointCloudWorld(gtsam::Symbol key, PointCloud* points);
+  bool AddTransformedPointCloudToMap(gtsam::Symbol key);
+
   // Convert timestamps to gtsam keys
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
   gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) const;
@@ -149,9 +158,6 @@ protected:
 
   // Set artifact positions
   virtual void UpdateArtifactPositions();
-
-  // Typedef for stored point clouds.
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   // Variables - can be able to be accessed in the derived class
   gtsam::NonlinearFactorGraph nfg_;
@@ -206,6 +212,12 @@ protected:
 
   // Pose graph merger
   Merger merger_;
+
+  // Point cloud filter
+  PointCloudFilter filter_;
+
+  // Mapper
+  PointCloudMapper mapper_;
 
   // Precisions
   double attitude_sigma_;

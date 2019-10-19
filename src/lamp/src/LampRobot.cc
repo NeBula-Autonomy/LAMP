@@ -321,27 +321,18 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Publish the pose graph
   if (b_has_new_factor_) {
-    ROS_INFO_STREAM("Publishing pose graph with new factor");
     PublishPoseGraph();
 
-    // Update and publish the map
-    // GenerateMapPointCloud();
+    // Publish the full map (for debug)
     mapper_.PublishMap();
-    ROS_INFO_STREAM("Published new map");
 
     b_has_new_factor_ = false;
 
-    // Optimize every 10 factors
-    static int x = 0;
-    x++;
-    if (x % 100 == 0) {
-      b_run_optimization_ = true;
-    }
   }
 
   // Start optimize, if needed
   if (b_run_optimization_) {
-    ROS_INFO_STREAM("Publishing pose graph to optimizer");
+    ROS_INFO_STREAM("Optimization activated: Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
 
     b_run_optimization_ = false;
@@ -458,7 +449,6 @@ bool LampRobot::ProcessOdomData(FactorData* data){
       keyed_scans_.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(
           current_key, new_scan));
       AddTransformedPointCloudToMap(current_key);
-      GenerateMapPointCloud();
 
       // publish keyed scan
       pose_graph_msgs::KeyedScan keyed_scan_msg;
@@ -471,50 +461,6 @@ bool LampRobot::ProcessOdomData(FactorData* data){
   // Add factors and values to the graph
   nfg_.add(new_factors);
   AddNewValues(new_values);
-
-  return true;
-}
-
-bool LampRobot::GenerateMapPointCloud() {
-  // Reset the map
-  mapper_.Reset();
-
-  // Iterate over poses in the graph, transforming their corresponding laser
-  // scans into world frame and appending them to the output.
-  for (const auto& keyed_pose : values_) {
-    const gtsam::Symbol key = keyed_pose.key;
-
-    // Append the world-frame point cloud to the output.
-    AddTransformedPointCloudToMap(key);
-  }
-}
-
-bool LampRobot::AddTransformedPointCloudToMap(gtsam::Symbol key) {
-  // No key associated with the scan
-  if (!keyed_scans_.count(key)) {
-    ROS_WARN("Could not find scan associated with key");
-    return false;
-  }
-
-  // Check that the key exists
-  if (!values_.exists(key)) {
-    ROS_WARN("Key %u does not exist in values_",
-             gtsam::DefaultKeyFormatter(key));
-    return false;
-  }
-
-  const gu::Transform3 pose = utils::ToGu(values_.at<Pose3>(key));
-  Eigen::Matrix4d b2w;
-  b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
-  b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
-
-  // Transform the body-frame scan into world frame.
-  PointCloud::Ptr points(new PointCloud);
-  pcl::transformPointCloud(*keyed_scans_[key], *points, b2w);
-
-  // Add to the map
-  PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(points, unused.get());
 
   return true;
 }

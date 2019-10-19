@@ -202,7 +202,15 @@ void LampBase::OptimizerUpdateCallback(
   // update the LAMP internal values_ and factors
   utils::PoseGraphMsgToGtsam(fused_graph, &nfg_, &values_);
 
-  // TODO-maybe - make the copy more efficient
+  // Note that the edges should not have changed (only values)
+
+  // Publish the pose graph and update the map 
+  PublishPoseGraph();
+
+  // Update the map (also publishes)
+  ReGenerateMapPointCloud();
+
+  // TODO - check that this works as it is defined in the LampRobot class
   UpdateArtifactPositions();
 }
 
@@ -272,6 +280,95 @@ LampBase::ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
   }
 
   return msg;
+}
+
+//------------------------------------------------------------------------------------------
+// Map generation functions
+//------------------------------------------------------------------------------------------
+
+
+bool LampBase::ReGenerateMapPointCloud() {
+  // Reset the map
+  mapper_.Reset();
+
+  // Combine the keyed scans with the latest node values
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  CombineKeyedScansWorld(regenerated_map.get());
+
+  // Insert points into the map (publishes incremental point clouds)
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
+
+  // Publish map
+  mapper_.PublishMap();
+}
+
+// For combining all the scans together
+bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
+  if (points == NULL) {
+    ROS_ERROR("%s: Output point cloud container is null.", name_.c_str());
+    return false;
+  }
+  points->points.clear();
+
+  // Iterate over poses in the graph, transforming their corresponding laser
+  // scans into world frame and appending them to the output.
+  for (const auto& keyed_pose : values_) {
+    const gtsam::Symbol key = keyed_pose.key;
+
+    PointCloud::Ptr scan_world(new PointCloud);
+
+    // Transform the body-frame scan into world frame.
+    GetTransformedPointCloudWorld(key, scan_world.get());
+
+    // Append the world-frame point cloud to the output.
+    *points += *scan_world;
+  }
+}
+
+// Transform the point cloud to world frame
+bool LampBase::GetTransformedPointCloudWorld(gtsam::Symbol key, PointCloud* points){
+  
+  if (points == NULL) {
+    ROS_ERROR("%s: Output point cloud container is null.", name_.c_str());
+    return false;
+  }
+  points->points.clear();
+
+  // No key associated with the scan
+  if (!keyed_scans_.count(key)) {
+    ROS_WARN("Could not find scan associated with key");
+    return false;
+  }
+
+  // Check that the key exists
+  if (!values_.exists(key)) {
+    ROS_WARN("Key %u does not exist in values_",
+             gtsam::DefaultKeyFormatter(key));
+    return false;
+  }
+
+  const gu::Transform3 pose = utils::ToGu(values_.at<Pose3>(key));
+  Eigen::Matrix4d b2w;
+  b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
+  b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
+
+  // Transform the body-frame scan into world frame.
+  pcl::transformPointCloud(*keyed_scans_[key], *points, b2w);
+}
+
+// For adding one scan to the map
+bool LampBase::AddTransformedPointCloudToMap(gtsam::Symbol key) {
+  
+  PointCloud::Ptr points(new PointCloud);
+
+  GetTransformedPointCloudWorld(key, points.get());
+
+  // Add to the map
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(points, unused.get());
+
+  return true;
 }
 
 //------------------------------------------------------------------------------------------
