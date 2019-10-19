@@ -1,9 +1,8 @@
-#include "utils/CommonStructs.h"
 #include "utils/CommonFunctions.h"
+#include "utils/CommonStructs.h"
 
 namespace gu = geometry_utils;
 namespace gr = gu::ros;
-
 
 GraphMsgPtr PoseGraph::ToMsg() const {
   return ToMsg(values, edges, priors);
@@ -68,4 +67,6 @@ GraphMsgPtr PoseGraph::ToMsg(const gtsam::Values& values,
   return GraphMsgPtr(msg);
 }
 
-bool PoseGraph::FromMsg(const GraphMsgPtr& msg) {}
+void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
+  utils::PoseGraphMsgToGtsam(msg, &nfg, &values);
+}

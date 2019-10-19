@@ -96,8 +96,8 @@ struct PoseGraph {
                     const EdgeMessages& edges,
                     const NodeMessages& priors) const;
 
-  // Update from pose graph message.
-  bool FromMsg(const GraphMsgPtr& msg);
+  // Incremental update from pose graph message.
+  void UpdateFromMsg(const GraphMsgPtr& msg);
 };
 
 // Struct definition
