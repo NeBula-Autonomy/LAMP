@@ -101,6 +101,15 @@ target_link_libraries(${PROJECT_NAME}_node
   ${Boost_LIBRARIES}
   gtsam
 )
+
+add_executable(${PROJECT_NAME}_base_station_node src/${PROJECT_NAME}_base_station_node.cc)
+target_link_libraries(${PROJECT_NAME}_base_station_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 #add_executable(${PROJECT_NAME}_offline src/${PROJECT_NAME}_offline.cc)

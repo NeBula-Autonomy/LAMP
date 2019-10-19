@@ -1,26 +1,8 @@
 <launch>
-  <arg name="robot_namespace" default="base_station"/>
+  <arg name="robot_namespace" default="robot"/>
 
  
   <group ns="$(arg robot_namespace)">
-
-    <!-- Base station LAMP -->
-    <node pkg="lamp"
-          name="lamp_base"
-          type="lamp_base_station_node"
-          output="screen">
-
-      <!-- Topics -->
-      <remap from="~manual_lc" to="manual_loop_closure"/>
-
-      <!-- Frames -->
-      <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>
-
-      <!-- Point cloud mapper -->
-      <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
-
-    </node>
-
 
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"

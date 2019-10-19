@@ -18,10 +18,10 @@ namespace gu = geometry_utils;
 struct ArtifactInfo {
   std::string id;           // this corresponds to parent_id
   int num_updates;          // how many times the optimizer has updated this
-  gtsam::Pose3 global_pose; // Global pose of the artifact
+  gtsam::Point3 global_position; // Global pose of the artifact
   core_msgs::Artifact msg;  // All fields in the artifact message that we need
   ArtifactInfo(std::string art_id = "")
-    : id(art_id), num_updates(0), global_pose(gtsam::Pose3()) {}
+    : id(art_id), num_updates(0), global_position(gtsam::Point3()) {}
 };
 
 /*! \brief  Handles artifact messages. Takes artifact data from the artifact
@@ -61,7 +61,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Updates the global pose of an artifact 
      * Returns  bool
      */
-    bool UpdateGlobalPose(gtsam::Symbol artifact_key ,gtsam::Pose3 global_pose);
+    bool UpdateGlobalPosition(gtsam::Symbol artifact_key ,gtsam::Point3 global_position);
 
     /*! \brief  Publish Artifact
      * Returns  Void
@@ -132,7 +132,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Add artifact data
      * Returns  Void
      */
-    void AddArtifactData(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Pose3 transform, const gtsam::SharedNoiseModel noise);
+    void AddArtifactData(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
 
     /*! \brief  Stores/Updated artifactInfo Hash
      * Returns  Void
