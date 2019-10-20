@@ -37,25 +37,62 @@ void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
                          gtsam::NonlinearFactorGraph* graph_nfg,
                          gtsam::Values* graph_vals);
 
-// Converte edge message to gtsam pose
-gtsam::Pose3 EdgeMessageToPose(pose_graph_msgs::PoseGraphEdge msg_edge);
+// Convert edge message to gtsam pose
+gtsam::Pose3 EdgeMessageToPose(const pose_graph_msgs::PoseGraphEdge& msg_edge);
 
-// Extrac the covariance (as Gaussian Covariance in Shared Noise Model) from
-// edge message
+// Extract the covariance (as Gaussian Covariance in Shared Noise Model) from
+// edge or node message
+template <typename MessageT>
 Gaussian::shared_ptr
-EdgeMessageToCovariance(pose_graph_msgs::PoseGraphEdge msg_edge);
+MessageToCovariance(const MessageT& msg) {
+  // TODO: unit test
+  gtsam::Matrix66 covariance;
+  for (size_t i = 0; i < msg.covariance.size(); i++) {
+    size_t row = static_cast<size_t>(i / 6);
+    size_t col = i % 6;
+    covariance(row, col) = msg.covariance[i];
+  }
+  Gaussian::shared_ptr noise = Gaussian::Covariance(covariance);
 
-// Update covariances in an edge message
-void UpdateEdgeCovariance(pose_graph_msgs::PoseGraphEdge& msg_edge,
-                          gtsam::Matrix66 covariance);
-void UpdateEdgeCovariance(pose_graph_msgs::PoseGraphEdge& msg_edge,
-                          gtsam::SharedNoiseModel noise);
+  return noise;
+}
+
+// Update covariances in an edge or node message
+template <typename MessageT>
+void UpdateCovariance(MessageT& msg, const gtsam::Matrix66& covariance) {
+  for (size_t i = 0; i < msg.covariance.size(); i++) {
+    size_t row = static_cast<size_t>(i / 6);
+    size_t col = i % 6;
+    msg.covariance[i] = covariance(row, col);
+  }
+}
+template <typename MessageT>
+void UpdateCovariance(MessageT& msg, const gtsam::SharedNoiseModel& noise) {
+  gtsam::Matrix66 covariance =
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>(noise)
+          ->covariance();
+  UpdateCovariance(msg, covariance);
+}
 
 // Convert gtsam data types to a ros message
 geometry_msgs::PoseWithCovariance GtsamToRosMsg(const gtsam::Pose3& pose,
-                                                gtsam::Matrix66& covariance);
+                                                const gtsam::Matrix66& covariance);
 
 geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose);
+
+pose_graph_msgs::PoseGraphEdge
+GtsamToRosMsg(gtsam::Symbol key_from,
+              gtsam::Symbol key_to,
+              int type,
+              const gtsam::Pose3& pose,
+              const gtsam::SharedNoiseModel& covariance);
+
+pose_graph_msgs::PoseGraphNode
+GtsamToRosMsg(ros::Time stamp,
+const std::string& fixed_frame_id,
+              gtsam::Symbol key,
+              const gtsam::Pose3& pose,
+              const gtsam::SharedNoiseModel& covariance);
 
 inline gu::Transform3 ToGu(const gtsam::Pose3& pose) {
   gu::Transform3 out;
@@ -100,7 +137,8 @@ inline Mat66 ToGu(const Gaussian::shared_ptr& covariance) {
 
   Mat66 out;
   for (int i = 0; i < 6; ++i)
-    for (int j = 0; j < 6; ++j) out(i, j) = gtsam_covariance(i, j);
+    for (int j = 0; j < 6; ++j)
+      out(i, j) = gtsam_covariance(i, j);
 
   return out;
 }
@@ -109,7 +147,8 @@ inline Gaussian::shared_ptr ToGtsam(const Mat66& covariance) {
   gtsam::Matrix66 gtsam_covariance;
 
   for (int i = 0; i < 6; ++i)
-    for (int j = 0; j < 6; ++j) gtsam_covariance(i, j) = covariance(i, j);
+    for (int j = 0; j < 6; ++j)
+      gtsam_covariance(i, j) = covariance(i, j);
 
   return Gaussian::Covariance(gtsam_covariance);
 }
@@ -117,8 +156,9 @@ inline Gaussian::shared_ptr ToGtsam(const Mat66& covariance) {
 inline Gaussian::shared_ptr ToGtsam(const Mat1212& covariance) {
   gtsam::Vector12 gtsam_covariance;
   // TODO CHECK
-  for (int i = 0; i < 12; ++i) gtsam_covariance(i) = covariance(i, i);
+  for (int i = 0; i < 12; ++i)
+    gtsam_covariance(i) = covariance(i, i);
   return gtsam::noiseModel::Diagonal::Covariance(gtsam_covariance);
 }
-}  // namespace utils
-#endif  // COMMON_FUNCTIONS_H
+} // namespace utils
+#endif // COMMON_FUNCTIONS_H

@@ -64,20 +64,18 @@
 
 // Class definition
 class LampBase {
- public:
-   typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
-   typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
-   // Constructor
-   LampBase();
+public:
+  // Constructor
+  LampBase();
 
-   // Destructor
-   ~LampBase();
+  // Destructor
+  ~LampBase();
 
-   // Define main interface functions
+  // Define main interface functions
 
-   virtual bool Initialize(const ros::NodeHandle& n);
+  virtual bool Initialize(const ros::NodeHandle& n);
 
- protected:
+protected:
   // TODO: make most of these pure virtual
 
   // Use this for any "private" things to be used in the derived class
@@ -111,20 +109,6 @@ class LampBase {
   bool PublishPoseGraph();
   bool PublishPoseGraphForOptimizer();
 
-  // Convert timestamps to gtsam keys 
-  gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
-  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) const;
-  bool IsTimeWithinThreshold(double time, const ros::Time& target) const;
-
-  // Convert values to PoseGraphNode Messages
-  bool
-  ConvertValuesToNodeMsgs(gtsam::Values values,
-                          std::vector<pose_graph_msgs::PoseGraphNode>& nodes);
-
-  // Convert internal pose graph to message
-  pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg(
-      gtsam::Values values, EdgeMessages edges_info, PriorMessages priors_info);
-
   // Placeholder for setting fixed noise
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
   gtsam::SharedNoiseModel laser_lc_noise_;
@@ -135,41 +119,15 @@ class LampBase {
   virtual void
   OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
-  // Tracking info for publishing messages
-  void AddNewValues(gtsam::Values new_values);
-  void TrackEdges(gtsam::Symbol key_from,
-                  gtsam::Symbol key_to,
-                  int type,
-                  gtsam::Pose3 pose,
-                  gtsam::SharedNoiseModel covariance);
-  void TrackPriors(ros::Time stamp,
-                   gtsam::Symbol key,
-                   gtsam::Pose3 pose,
-                   gtsam::SharedNoiseModel covariance);
-
   // Set artifact positions
   virtual void UpdateArtifactPositions();
 
-  // Typedef for stored point clouds.
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+  // Pose graph structure storing values, factors and meta data.
+  PoseGraph pose_graph_;
+  gtsam::Symbol initial_key_{0};
 
-  // Variables - can be able to be accessed in the derived class
-  gtsam::NonlinearFactorGraph nfg_;
-  gtsam::Values values_;
-
-  // Keep a list of keyed laser scans and keyed timestamps.
-  std::map<gtsam::Symbol, PointCloud::ConstPtr> keyed_scans_;
-  std::map<gtsam::Symbol, ros::Time> keyed_stamps_;  // All nodes
-  std::map<double, gtsam::Symbol> stamp_to_odom_key_;
-
-    // List of all factors with additional information
-  EdgeMessages edges_info_;
-  PriorMessages priors_info_;
-
-  // Variables for tracking the new features only
-  gtsam::Values values_new_;
-  EdgeMessages edges_info_new_;
-  PriorMessages priors_info_new_;
+  // Function used for retrieving internal identifier given gtsam::Symbol.
+  virtual std::string MapSymbolToId(gtsam::Symbol key) const;
 
   // Publishers
   ros::Publisher pose_graph_pub_;
@@ -183,15 +141,6 @@ class LampBase {
 
   // Services
 
-  // Message filters (if any)
-  std::string prefix_;
-
-  // Initial key
-  gtsam::Symbol initial_key_;
-
-  // Current key
-  gtsam::Symbol key_;
-
   // Main process name
   std::string name_;
 
@@ -201,7 +150,6 @@ class LampBase {
   bool b_use_fixed_covariances_;
 
   // Frames.
-  std::string fixed_frame_id_;
   std::string base_frame_id_;
 
   // Pose graph merger
@@ -220,14 +168,8 @@ class LampBase {
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
 
-  // Time threshold for GetKeyAtTime
-  double time_threshold_; 
-
- private:
+private:
   // Anything just in the base class
-
-
-
 };
 
 #endif

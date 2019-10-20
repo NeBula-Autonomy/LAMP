@@ -1,22 +1,29 @@
 #include "utils/CommonFunctions.h"
 #include "utils/CommonStructs.h"
 
+#include <gtsam/sam/RangeFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/PriorFactor.h>
+
 namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 GraphMsgPtr PoseGraph::ToMsg() const {
-  return ToMsg(values, edges, priors);
+  return ToMsg_(values, edges_, priors_);
 }
 
-GraphMsgPtr PoseGraph::ToMsg(const gtsam::Values& values,
-                             const EdgeMessages& edges,
-                             const NodeMessages& priors) const {
+GraphMsgPtr PoseGraph::ToIncrementalMsg() const {
+  return ToMsg_(values_new_, edges_new_, priors_new_);
+}
+
+GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
+                              const EdgeMessages& edges,
+                              const NodeMessages& priors) const {
   // Create the Pose Graph Message
   auto* msg = new pose_graph_msgs::PoseGraph;
   msg->header.frame_id = fixed_frame_id;
-  // TODO: get time stamp?
-  msg->header.stamp =
-      keyed_stamps.at(key - 1); // Get timestamp from latest keyed pose
+  // Get timestamp from latest keyed pose
+  msg->header.stamp = keyed_stamps.at(key - 1);
 
   // Get Values
   // Converts the internal values
@@ -26,7 +33,7 @@ GraphMsgPtr PoseGraph::ToMsg(const gtsam::Values& values,
     gtsam::Symbol sym_key = gtsam::Symbol(keyed_pose.key);
 
     // Populate the message with the pose's data.
-    GraphNode node;
+    NodeMessage node;
     node.key = keyed_pose.key;
     node.header.frame_id = fixed_frame_id;
     node.pose = gr::ToRosPose(t);
@@ -36,24 +43,12 @@ GraphMsgPtr PoseGraph::ToMsg(const gtsam::Values& values,
     // TODO: check if time stamps are necessary
     node.header.stamp = keyed_stamps.at(keyed_pose.key);
 
-    // Get the IDs
-    if (keyed_scans.count(keyed_pose.key)) {
-      // Key frame, note in the ID
-      node.ID = "key_frame";
-    } else if (sym_key.chr() == prefix[0]) {
-      // Odom or key frame
-      node.ID = "odom";
-    } else if (sym_key.chr() == 'u') {
-      // UWB
-      // node.ID = uwd_handler_.GetUWBID(keyed_pose.key); // TODO
-      node.ID = "UWB"; // TEMPORARY
-    } else {
-      // Artifact
-      // node.ID = artifact_handler_.GetArtifactID(keyed_pose.key);// TODO
-      node.ID = "Artifact"; // TEMPORARY
-    }
+    // Get the IDs (see LampBase::MapSymbolToId for example implementation).
+    if (!symbol_id_map.empty())
+      node.ID = symbol_id_map(sym_key);
 
-    // TODO: fill covariance
+    // TODO: How to get covariance from node?
+    // utils::UpdateCovariance(node, keyed_pose.covariance);
 
     // Add to the vector of nodes
     msg->nodes.push_back(node);
@@ -67,6 +62,194 @@ GraphMsgPtr PoseGraph::ToMsg(const gtsam::Values& values,
   return GraphMsgPtr(msg);
 }
 
+// Pose graph msg to gtsam conversion
+void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
+                         gtsam::NonlinearFactorGraph* graph_nfg,
+                         gtsam::Values* graph_vals) {
+  using gtsam::BetweenFactor;
+  using gtsam::PriorFactor;
+  using gtsam::RangeFactor;
+
+  *graph_nfg = gtsam::NonlinearFactorGraph();
+  *graph_vals = gtsam::Values();
+
+  for (const auto& msg_edge : graph_msg->edges) {
+    // gtsam::Point3 delta_translation(msg_edge.pose.position.x,
+    //                                 msg_edge.pose.position.y,
+    //                                 msg_edge.pose.position.z);
+    // gtsam::Rot3 delta_orientation(
+    //     gtsam::Rot3::quaternion(msg_edge.pose.orientation.w,
+    //                             msg_edge.pose.orientation.x,
+    //                             msg_edge.pose.orientation.y,
+    //                             msg_edge.pose.orientation.z));
+    // gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
+
+    gtsam::Pose3 delta = utils::EdgeMessageToPose(msg_edge);
+
+    Gaussian::shared_ptr noise = utils::MessageToCovariance(msg_edge);
+
+    // // TODO(Yun) fill in covariance
+    // gtsam::Matrix66 covariance;
+    // for (size_t i = 0; i < msg_edge.covariance.size(); i++) {
+    //   size_t row = static_cast<size_t>(i / 6);
+    //   size_t col = i % 6;
+    //   covariance(row, col) = msg_edge.covariance[i];
+    // }
+    // Gaussian::shared_ptr noise = Gaussian::Covariance(covariance);
+    //-------------------------------------------------------------------------
+
+    if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
+      // Add to posegraph
+      ROS_DEBUG_STREAM("Adding Odom edge for key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_from)
+                       << " to key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+      graph_nfg->add(
+          BetweenFactor<gtsam::Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                      gtsam::Symbol(msg_edge.key_to),
+                                      delta,
+                                      noise));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+      ROS_DEBUG_STREAM("Adding loop closure edge for key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_from)
+                       << " to key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+      graph_nfg->add(
+          BetweenFactor<gtsam::Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                      gtsam::Symbol(msg_edge.key_to),
+                                      delta,
+                                      noise));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      ROS_DEBUG_STREAM("Adding artifact edge for key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_from)
+                       << " to key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+      graph_nfg->add(
+          BetweenFactor<gtsam::Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                      gtsam::Symbol(msg_edge.key_to),
+                                      delta,
+                                      noise));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+      ROS_DEBUG_STREAM("Adding UWB range factor for key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_from)
+                       << " to key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+      double range = msg_edge.range;
+      double sigmaR = msg_edge.range_error;
+      gtsam::noiseModel::Base::shared_ptr rangeNoise =
+          gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
+      graph_nfg->add(RangeFactor<gtsam::Pose3, gtsam::Pose3>(
+          gtsam::Symbol(msg_edge.key_from),
+          gtsam::Symbol(msg_edge.key_to),
+          range,
+          rangeNoise));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+      ROS_DEBUG_STREAM("Adding UWB beteen factor for key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_from)
+                       << " to key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_to));
+      graph_nfg->add(
+          BetweenFactor<gtsam::Pose3>(gtsam::Symbol(msg_edge.key_from),
+                                      gtsam::Symbol(msg_edge.key_to),
+                                      delta,
+                                      noise));
+    }
+  }
+
+  //-----------------------------------------------//
+  // Add the values
+  for (const pose_graph_msgs::PoseGraphNode& msg_node : graph_msg->nodes) {
+    gtsam::Pose3 full_pose;
+    gtsam::Point3 pose_translation(msg_node.pose.position.x,
+                                   msg_node.pose.position.y,
+                                   msg_node.pose.position.z);
+    gtsam::Rot3 pose_orientation(
+        gtsam::Rot3::quaternion(msg_node.pose.orientation.w,
+                                msg_node.pose.orientation.x,
+                                msg_node.pose.orientation.y,
+                                msg_node.pose.orientation.z));
+    full_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    gtsam::Key key = gtsam::Key(msg_node.key);
+    graph_vals->insert(key, full_pose);
+  }
+
+  // TODO right now this only accounts for translation part of prior (see
+  for (const pose_graph_msgs::PoseGraphNode& msg_prior : graph_msg->priors) {
+    ROS_DEBUG_STREAM("Adding prior in pose graph callback for key "
+                     << gtsam::DefaultKeyFormatter(msg_prior.key));
+    // create the prior factor
+
+    // create precisions // TODO - the precision should come from the message
+    // shouldn't it? As we will use priors for different applications
+    gtsam::Vector6 prior_precisions;
+    prior_precisions.head<3>().setConstant(0.0);
+    prior_precisions.tail<3>().setConstant(10.0);
+    // TODO(Yun) create parameter for this
+    static const gtsam::SharedNoiseModel& prior_noise =
+        gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
+
+    gtsam::Point3 pose_translation(msg_prior.pose.position.x,
+                                   msg_prior.pose.position.y,
+                                   msg_prior.pose.position.z);
+    gtsam::Rot3 pose_orientation(
+        gtsam::Rot3::quaternion(msg_prior.pose.orientation.w,
+                                msg_prior.pose.orientation.x,
+                                msg_prior.pose.orientation.y,
+                                msg_prior.pose.orientation.z));
+    gtsam::Pose3 prior_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    graph_nfg->add(
+        PriorFactor<gtsam::Pose3>(msg_prior.key, prior_pose, prior_noise));
+  }
+}
+
 void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
-  utils::PoseGraphMsgToGtsam(msg, &nfg, &values);
+  gtsam::NonlinearFactorGraph new_factors;
+  gtsam::Values blank_values;
+  utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
+  nfg.add(new_factors);
+
+  // Get info for publishing later - in edges_info
+  gtsam::Pose3 transform;
+  gtsam::SharedNoiseModel covariance;
+
+  // Add the factors to the pose_graph - loop through in case of multiple loop
+  // closures
+  for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
+    // Transform to gtsam format
+    transform = utils::EdgeMessageToPose(edge);
+    covariance = utils::MessageToCovariance(edge);
+
+    // Add to tracked edges
+    // EdgeMessage edge_msg = utils::GtsamToRosMsg(edge_msg.key_from,
+    //                                             edge_msg.key_to,
+    //                                             edge_msg.type,
+    //                                             transform,
+    //                                             covariance);
+    edges_.push_back(edge);
+  }
+}
+
+EdgeMessage Factor::ToMsg() const {
+  return utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
+}
+
+Factor Factor::FromMsg(const EdgeMessage& msg) {
+  Factor factor;
+  factor.type = msg.type;
+  factor.key_from = gtsam::Symbol(msg.key_from);
+  factor.key_to = gtsam::Symbol(msg.key_to);
+  factor.transform = utils::EdgeMessageToPose(msg);
+  factor.covariance = utils::MessageToCovariance(msg);
+  return factor;
+}
+
+NodeMessage Node::ToMsg() const {
+  NodeMessage msg =
+      utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
+  // Determine internal ID from pose graph
+  if (graph && !graph->symbol_id_map.empty())
+    msg.ID = graph->symbol_id_map(key);
+  return msg;
 }

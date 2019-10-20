@@ -36,7 +36,11 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS})
-add_library(${PROJECT_NAME} src/CommonFunctions.cc src/PoseGraphMessageConversion.cc)
+add_library(${PROJECT_NAME}
+  src/CommonFunctions.cc
+  src/PoseGraphMessageConversion.cc
+  src/PoseGraphBookkeeping.cc
+  src/PoseGraphLookupUtils.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   gtsam
