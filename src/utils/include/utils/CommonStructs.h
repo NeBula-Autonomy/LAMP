@@ -151,7 +151,7 @@ public:
   void TrackNode(const ros::Time& stamp,
                  gtsam::Symbol key,
                  const gtsam::Pose3& pose,
-                 const Diagonal::shared_ptr& covariance);
+                 const gtsam::SharedNoiseModel& covariance);
 
   void AddNewValues(const gtsam::Values& new_values);
 

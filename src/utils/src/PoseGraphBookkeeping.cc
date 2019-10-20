@@ -39,7 +39,7 @@ void PoseGraph::TrackNode(const NodeMessage& msg) {
 void PoseGraph::TrackNode(const ros::Time& stamp,
                           gtsam::Symbol key,
                           const gtsam::Pose3& pose,
-                          const Diagonal::shared_ptr& covariance) {
+                          const gtsam::SharedNoiseModel& covariance) {
   NodeMessage msg =
       utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
   priors_.push_back(msg);

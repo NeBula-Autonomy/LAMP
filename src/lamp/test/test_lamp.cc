@@ -63,12 +63,6 @@ public:
   gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {
     return lr.graph().GetClosestKeyAtTime(stamp);
   }
-  pose_graph_msgs::PoseGraphConstPtr
-  ConvertPoseGraphToMsg(gtsam::Values values,
-                        EdgeMessages edges_info,
-                        PriorMessages priors_info) {
-    return lr.ConvertPoseGraphToMsg(values, edges_info, priors_info);
-  }
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
     return lr.SetFixedNoiseModels(type);
   }
@@ -77,7 +71,7 @@ public:
                   int type,
                   gtsam::Pose3 pose,
                   gtsam::SharedNoiseModel covariance) {
-    lr.TrackEdges(key_from, key_to, type, pose, covariance);
+    lr.graph().TrackFactor(key_from, key_to, type, pose, covariance);
   }
   void TrackPriors(ros::Time stamp,
                    gtsam::Symbol key,
