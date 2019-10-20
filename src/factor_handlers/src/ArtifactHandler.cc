@@ -140,6 +140,9 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   } else {
     // New artifact - increment the id counters
     b_is_new_artifact = true;
+    std::cout << "The number key is " << largest_artifact_id_
+              << " with character "
+              << artifact_prefix_ << std::endl;
     cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
     ++largest_artifact_id_;
     std::cout << "new artifact observed, artifact id " << artifact_id
@@ -166,10 +169,11 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
 
 /*! \brief  Gives the factors to be added and clears to start afresh.
  * Returns  Factors
+ * TODO: IN case of AprilTag this would spit out ArtifactData which is wrong
  */
 FactorData* ArtifactHandler::GetData() {
   // Create a temporary copy to return
-  ArtifactData* temp_artifact_data_ = new ArtifactData(artifact_data_);
+  FactorData* temp_artifact_data_ = new ArtifactData(artifact_data_);
 
   // Clear artifact data
   ClearArtifactData();
@@ -319,13 +323,24 @@ void ArtifactHandler::PrintArtifactInputMessage(
  */
 gtsam::SharedNoiseModel
 ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) const {
-  // Extract covariance information
+  // Extract covariance information from the message
   gtsam::Matrix33 cov;
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
-      cov(i + 3, j + 3) = covariance[3 * i + j];
+      cov(i, j) = covariance[3 * i + j];
+  
+  // Convert covariance to gtsam
+  gtsam::SharedGaussian noise_cov = gtsam::noiseModel::Gaussian::Covariance(cov);
 
-  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Gaussian::Covariance(cov);
+  // Compute information matrix
+  Eigen::MatrixXd temp_info = Eigen::MatrixXd::Zero(6,6);
+
+  // Compute the full orientation and translational information matrix
+  temp_info.block(3,3,3,3) = noise_cov->information();
+
+  // Generate noise
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Gaussian::Information(temp_info);
+
   return noise;
 }
 

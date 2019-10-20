@@ -12,6 +12,10 @@ bool AprilTagHandler::Initialize(const ros::NodeHandle& n){
     return false;
   }
   // Need to change this
+  // TODO: need to check this. RegisterCallbacks is not a
+  // virtual function so this takes artifact one. But
+  // now artifact one would call April or artifacts
+  // RegisterOnlineCallback
   if (!RegisterCallbacks(n, false)) {
     ROS_ERROR("%s: Failed to register April Tag callback.", name_.c_str());
     return false;
@@ -31,16 +35,16 @@ bool AprilTagHandler::LoadParameters(const ros::NodeHandle& n) {
 
   //Get the artifact prefix from launchfile to set initial unique artifact ID
   bool b_initialized_artifact_prefix_from_launchfile = true;
-  std::string artifact_prefix;
-  unsigned char artifact_prefix_converter[1];
-  if (!pu::Get("artifact_prefix", artifact_prefix)){
+  std::string april_tag_prefix;
+  unsigned char april_tag_prefix_converter[1];
+  if (!pu::Get("april_tag_prefix", april_tag_prefix)){
      b_initialized_artifact_prefix_from_launchfile = false;
      ROS_ERROR("Could not find node ID assosiated with robot_namespace");
   }
   
   if (b_initialized_artifact_prefix_from_launchfile){
-    std::copy( artifact_prefix.begin(), artifact_prefix.end(), artifact_prefix_converter);
-    artifact_prefix_ = artifact_prefix_converter[0];
+    std::copy( april_tag_prefix.begin(), april_tag_prefix.end(), april_tag_prefix_converter);
+    artifact_prefix_ = april_tag_prefix_converter[0];
   }
 
   // Load april tag related parameters here.
@@ -100,22 +104,27 @@ void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
   // Get the april tag key from artifact_id2key_hash map
   gtsam::Symbol april_tag_key;
 
-  // If callback above succeeded
-  if (artifact_key2info_hash_[april_tag_key].num_updates - num_updates == 1){
-    // Update type of factor data to april from artifact in base class
-    artifact_data_.type = "april";
-    // If new measurement and successful callback, update the global position
-    if ((num_updates == 0) && (artifact_key2info_hash_[april_tag_key].num_updates == 1)) {
-      // Check what kind - curently distal, calibration left and right 
-      if (artifact_key2info_hash_[april_tag_key].id == "distal") {
-          artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(distal_x_, distal_y_, distal_z_);
-      } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_left") {
-          artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_);
-      } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_right") {
-          artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_);
+  if (artifact_id2key_hash.find(msg.id) == artifact_id2key_hash.end()) {
+    return;
+  } else {
+    april_tag_key = artifact_id2key_hash[msg.id];
+    // If callback above succeeded
+    if (artifact_key2info_hash_[april_tag_key].num_updates - num_updates == 1){
+      // Update type of factor data to april from artifact in base class
+      artifact_data_.type = "april";
+      // If new measurement and successful callback, update the global position
+      if ((num_updates == 0) && (artifact_key2info_hash_[april_tag_key].num_updates == 1)) {
+        // Check what kind - curently distal, calibration left and right 
+        if (artifact_key2info_hash_[april_tag_key].id == "distal") {
+            artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(distal_x_, distal_y_, distal_z_);
+        } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_left") {
+            artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_);
+        } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_right") {
+            artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_);
+        }
       }
-    }
-  } 
+    } 
+  }
 }
 
 /*! \brief  Convert April tag message to Artifact message.
@@ -124,6 +133,8 @@ void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
 core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg) const {
   core_msgs::Artifact artifact_msg;
 
+  // Fill the header
+  artifact_msg.header = msg.header;
   // Fill april tags name
   artifact_msg.name = msg.name;
   // Put empty label
@@ -157,4 +168,40 @@ gtsam::Pose3 AprilTagHandler::GetGroundTruthData(const gtsam::Symbol april_tag_k
     std::cout << "Key not found in the April Tag id to key map.";
     return gtsam::Pose3();
   }
+}
+
+/*! \brief Gives the factors to be added and clears to start afresh.
+ *  \return New factor data
+ */
+FactorData* AprilTagHandler::GetData() {
+  // Create a temporary copy to return
+  FactorData* data_ptr = new AprilTagData(artifact_data_);
+
+  // Clear artifact data
+  ClearArtifactData();
+
+  // Return artifact data
+  return data_ptr;
+}
+
+/*! \brief  Add artifact data
+ * Returns  Void
+ */
+void AprilTagHandler::AddArtifactData(const gtsam::Symbol april_tag_key, 
+                                      const ros::Time time_stamp, 
+                                      const gtsam::Point3 transform, 
+                                      const gtsam::SharedNoiseModel noise) {
+  // Make new data true
+  artifact_data_.b_has_data = true;
+  // Fill type
+  artifact_data_.type = "april";
+
+  // Create and add the new artifact
+  AprilTagFactor new_april_tag;
+  new_april_tag.position = transform;
+  new_april_tag.covariance = noise;
+  new_april_tag.stamp = time_stamp;
+  new_april_tag.key = april_tag_key;
+
+  artifact_data_.factors.push_back(new_april_tag);
 }

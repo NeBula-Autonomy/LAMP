@@ -16,10 +16,10 @@ namespace gu = geometry_utils;
 /*! \brief Stores Artifact information
  */
 struct ArtifactInfo {
-  std::string id;           // this corresponds to parent_id
-  int num_updates;          // how many times the optimizer has updated this
-  gtsam::Point3 global_position; // Global pose of the artifact
-  core_msgs::Artifact msg;  // All fields in the artifact message that we need
+  std::string id;                       // this corresponds to parent_id
+  int num_updates;                      // how many times the optimizer has updated this
+  gtsam::Point3 global_position;        // Global pose of the artifact
+  core_msgs::Artifact msg;              // All fields in the artifact message that we need
   ArtifactInfo(std::string art_id = "")
     : id(art_id), num_updates(0), global_position(gtsam::Point3()) {}
 };
@@ -51,7 +51,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
-    FactorData* GetData();
+    virtual FactorData* GetData();
 
     /*! \brief  Get the artifact_key2info_hash_
      * Returns  artifact_key2info_hash_
@@ -132,7 +132,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Add artifact data
      * Returns  Void
      */
-    void AddArtifactData(const gtsam::Symbol artifact_key, const ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
+    virtual void AddArtifactData(const gtsam::Symbol artifact_key, const ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
 
     /*! \brief  Stores/Updated artifactInfo Hash
      * Returns  Void
@@ -153,9 +153,6 @@ class ArtifactHandler : public LampDataHandlerBase {
     int largest_artifact_id_; 
     bool use_artifact_loop_closure_;
 
-    // Artifact prefix
-    unsigned char artifact_prefix_;
-
     // Namespace for publishing
     std::string name_;
 
@@ -168,7 +165,11 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Subscribers
     ros::Subscriber artifact_sub_;
 
+    // Artifact prefix
+    unsigned char artifact_prefix_;
+    
     private:
+
     // Artifact output data
     ArtifactData artifact_data_;
     

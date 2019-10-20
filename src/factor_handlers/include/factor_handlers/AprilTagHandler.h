@@ -22,6 +22,11 @@ class AprilTagHandler : public ArtifactHandler {
      */
     gtsam::Pose3 GetGroundTruthData(const gtsam::Symbol april_tag_key);
     
+    /*! \brief Gives the factors to be added and clears to start afresh.
+     * Returns New factor data
+     */
+    virtual FactorData* GetData();
+
     protected:
 
     /*! \brief Load April Tag parameters. 
@@ -46,15 +51,22 @@ class AprilTagHandler : public ArtifactHandler {
      */
     core_msgs::Artifact ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg) const;
     
+    /*! \brief  Add artifact data
+     * Returns  Void
+     */
+    virtual void AddArtifactData(const gtsam::Symbol artifact_key, const ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
+
     private:
     // April related parameters
     // GT AprilTag world coordinates
     double calibration_left_x_;
     double calibration_left_y_;
     double calibration_left_z_;
+
     double calibration_right_x_;
     double calibration_right_y_;
     double calibration_right_z_;
+    
     double distal_x_;
     double distal_y_;
     double distal_z_;
