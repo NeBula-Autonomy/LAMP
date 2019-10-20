@@ -39,89 +39,109 @@ public:
         data->at(j, i).z = 0.0f;
       }
     }
-    }
-    ~TestLampRobot(){}
+  }
+  ~TestLampRobot() {}
 
-    LampRobot lr;
+  LampRobot lr;
 
-    // Pass-through functions
-    bool SetInitialKey() {return lr.SetInitialKey();}
-    bool SetFactorPrecisions() {return lr.SetFactorPrecisions();}
-    bool SetInitialPosition() {return lr.SetInitialPosition();}
-    int GetValuesSize() {return lr.values_.size();}
-    gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {return lr.GetKeyAtTime(stamp);}
-    gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {return lr.GetClosestKeyAtTime(stamp);}
-    pose_graph_msgs::PoseGraphConstPtr
-    ConvertPoseGraphToMsg(gtsam::Values values,
-                          EdgeMessages edges_info,
-                          PriorMessages priors_info) {
-      return lr.ConvertPoseGraphToMsg(values, edges_info, priors_info);
-    }
-    gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
-      return lr.SetFixedNoiseModels(type);
-    }
-    void TrackEdges(gtsam::Symbol key_from, gtsam::Symbol key_to, int type, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance) {
-      lr.TrackEdges(key_from, key_to, type, pose, covariance);
-    }
-    void TrackPriors(ros::Time stamp, gtsam::Symbol key, gtsam::Pose3 pose, gtsam::SharedNoiseModel covariance) {
-      lr.TrackPriors(stamp, key, pose, covariance);
-    }
+  // Pass-through functions
+  bool SetInitialKey() {
+    return lr.SetInitialKey();
+  }
+  bool SetFactorPrecisions() {
+    return lr.SetFactorPrecisions();
+  }
+  bool SetInitialPosition() {
+    return lr.SetInitialPosition();
+  }
+  int GetValuesSize() {
+    return lr.graph().values.size();
+  }
+  gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {
+    return lr.graph().GetKeyAtTime(stamp);
+  }
+  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {
+    return lr.graph().GetClosestKeyAtTime(stamp);
+  }
+  pose_graph_msgs::PoseGraphConstPtr
+  ConvertPoseGraphToMsg(gtsam::Values values,
+                        EdgeMessages edges_info,
+                        PriorMessages priors_info) {
+    return lr.ConvertPoseGraphToMsg(values, edges_info, priors_info);
+  }
+  gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
+    return lr.SetFixedNoiseModels(type);
+  }
+  void TrackEdges(gtsam::Symbol key_from,
+                  gtsam::Symbol key_to,
+                  int type,
+                  gtsam::Pose3 pose,
+                  gtsam::SharedNoiseModel covariance) {
+    lr.TrackEdges(key_from, key_to, type, pose, covariance);
+  }
+  void TrackPriors(ros::Time stamp,
+                   gtsam::Symbol key,
+                   gtsam::Pose3 pose,
+                   gtsam::SharedNoiseModel covariance) {
+    lr.graph().TrackNode(stamp, key, pose, covariance);
+  }
 
-    void
-    LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
-      lr.LaserLoopClosureCallback(msg);
-    }
-    bool GenerateMapPointCloud() {
-      lr.GenerateMapPointCloud();
-    }
-    // Access functions
-    void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
-      lr.stamp_to_odom_key_[stamp.toSec()] = key;
-    }
-    void AddKeyedStamp(gtsam::Symbol key, ros::Time stamp) {
-      lr.keyed_stamps_[key] = stamp;
-    }
-    void SetTimeThreshold(double threshold) {lr.time_threshold_ = threshold;}
-    void SetPrefix(char c) {lr.prefix_ = c;}
-    void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) { lr.values_.insert(key, pose); }
+  void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
+    lr.LaserLoopClosureCallback(msg);
+  }
+  bool GenerateMapPointCloud() {
+    lr.GenerateMapPointCloud();
+  }
+  // Access functions
+  void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
+    lr.graph().stamp_to_odom_key[stamp.toSec()] = key;
+  }
+  void AddKeyedStamp(gtsam::Symbol key, ros::Time stamp) {
+    lr.graph().keyed_stamps[key] = stamp;
+  }
+  void SetTimeThreshold(double threshold) {
+    lr.graph().time_threshold = threshold;
+  }
+  void SetPrefix(char c) {
+    lr.graph().prefix = c;
+  }
+  void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) {
+    lr.graph().values.insert(key, pose);
+  }
 
-    bool GetOptFlag() {
-      return lr.b_run_optimization_;
-    }
+  bool GetOptFlag() {
+    return lr.b_run_optimization_;
+  }
 
-    gtsam::Values GetValues() {
-      return lr.values_;
-    }
+  gtsam::Values GetValues() {
+    return lr.graph().values;
+  }
 
-    void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
-      lr.keyed_scans_.insert(
-          std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
-    }
+  void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
+    lr.graph().keyed_scans.insert(
+        std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+  }
 
-    gtsam::NonlinearFactorGraph GetNfg() {
-      return lr.nfg_;
-    }
-    EdgeMessages GetEdges() {
-      return lr.edges_info_;
-    }
-    PriorMessages GetPriors() {
-      return lr.priors_info_;
-    }
+  gtsam::NonlinearFactorGraph GetNfg() {
+    return lr.graph().nfg;
+  }
+  EdgeMessages GetEdges() {
+    return lr.graph().GetEdges();
+  }
+  PriorMessages GetPriors() {
+    return lr.graph().GetPriors();
+  }
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
-      return lr.mapper_.GetMapData();
-    }
-    // Other utilities
+  pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
+    return lr.mapper_.GetMapData();
+  }
+  // Other utilities
 
-  protected: 
-    
-    // Tolerance on EXPECT_NEAR assertions
-    double tolerance_ = 1e-5;
+protected:
+  // Tolerance on EXPECT_NEAR assertions
+  double tolerance_ = 1e-5;
 
-  private:
-
-
-
+private:
 };
 
 TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
@@ -165,7 +185,7 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
   ros::param::set("init/orientation_sigma/yaw", 1.0);
 
   EXPECT_TRUE(SetInitialPosition());
-  EXPECT_EQ(GetValuesSize(),1);
+  EXPECT_EQ(GetValuesSize(), 1);
 }
 
 TEST_F(TestLampRobot, SetInitialKey) {
@@ -187,8 +207,7 @@ TEST_F(TestLampRobot, SetInitialKey) {
 }
 
 TEST_F(TestLampRobot, SetFactorPrecisions) {
-
-  // Set all parameter values  
+  // Set all parameter values
   ros::param::set("manual_lc_rot_precision", 1.0);
   ros::param::set("manual_lc_trans_precision", 1.0);
   ros::param::set("laser_lc_rot_sigma", 1.0);
@@ -252,7 +271,7 @@ TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   // Set large threshold
   SetTimeThreshold(1000.0);
 
-  // Check single key 
+  // Check single key
   AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
   EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(500.0)));
 
@@ -263,7 +282,8 @@ TEST_F(TestLampRobot, GetClosestKeyAtTime) {
   AddStampToOdomKey(ros::Time(100.0), gtsam::Symbol('a', 4));
 
   // Exact matches
-  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); // TODO - fix this
+  // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); //
+  // TODO - fix this
   EXPECT_EQ(gtsam::Symbol('a', 1), GetClosestKeyAtTime(ros::Time(50.0)));
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.0)));
   EXPECT_EQ(gtsam::Symbol('a', 3), GetClosestKeyAtTime(ros::Time(80.0)));
@@ -310,39 +330,43 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   SetPrefix('a');
 
   static const gtsam::SharedNoiseModel& noise =
-    gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+      gtsam::noiseModel::Isotropic::Variance(6, 0.1);
 
+  // Test values
+  InsertValues(gtsam::Symbol('a', 100),
+               gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
+                            gtsam::Point3(420.0, 69.0, 0.0)));
+  InsertValues(gtsam::Symbol('a', 101),
+               gtsam::Pose3(gtsam::Rot3(sqrt(0.3), sqrt(0.3), sqrt(0.4), 0.0),
+                            gtsam::Point3(10.0, -1.0, 1000.0)));
+  InsertValues(
+      gtsam::Symbol('m', 0),
+      gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(500.0, 433.5, -2.5)));
 
-  // Test values 
-  InsertValues(gtsam::Symbol('a', 100), gtsam::Pose3(gtsam::Rot3(sqrt(0.5),0,0,sqrt(0.5)), gtsam::Point3(420.0, 69.0, 0.0)));
-  InsertValues(gtsam::Symbol('a', 101), gtsam::Pose3(gtsam::Rot3(sqrt(0.3),sqrt(0.3),sqrt(0.4),0.0), gtsam::Point3(10.0, -1.0, 1000.0)));
-  InsertValues(gtsam::Symbol('m', 0), gtsam::Pose3(gtsam::Rot3(1,0,0,0), gtsam::Point3(500.0, 433.5, -2.5)));
+  // Test edges
+  TrackEdges(gtsam::Symbol('a', 55),
+             gtsam::Symbol('a', 56),
+             pose_graph_msgs::PoseGraphEdge::ODOM,
+             gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, 0, 0.1)),
+             noise);
+  TrackEdges(gtsam::Symbol('a', 32),
+             gtsam::Symbol('m', 0),
+             pose_graph_msgs::PoseGraphEdge::ARTIFACT,
+             gtsam::Pose3(gtsam::Rot3(0, 0, 1, 0), gtsam::Point3(0, 0.9, 21.1)),
+             noise);
 
-  // Test edges 
-  TrackEdges(gtsam::Symbol('a', 55), 
-             gtsam::Symbol('a', 56), 
-             pose_graph_msgs::PoseGraphEdge::ODOM, 
-             gtsam::Pose3(gtsam::Rot3(1,0,0,0), 
-             gtsam::Point3(1.0, 0, 0.1)), noise); 
-  TrackEdges(gtsam::Symbol('a', 32), 
-             gtsam::Symbol('m', 0), 
-             pose_graph_msgs::PoseGraphEdge::ARTIFACT, 
-             gtsam::Pose3(gtsam::Rot3(0,0,1,0), 
-             gtsam::Point3(0, 0.9, 21.1)), noise); 
-  
   // Test priors
   AddKeyedStamp(gtsam::Symbol('a', 50), ros::Time(67589467.0));
-  TrackPriors(ros::Time(67589467.0), 
-            gtsam::Symbol('a', 50), 
-            gtsam::Pose3(gtsam::Rot3(1,0,0,0), gtsam::Point3(1.0, -2.2, 0.03)),
-            noise); 
-
+  TrackPriors(
+      ros::Time(67589467.0),
+      gtsam::Symbol('a', 50),
+      gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, -2.2, 0.03)),
+      noise);
 
   // Convert pose-graph to message
-  pose_graph_msgs::PoseGraphConstPtr g =
-      ConvertPoseGraphToMsg(GetValues(), GetEdges(), GetPriors());
+  pose_graph_msgs::PoseGraphConstPtr g = lr.graph().ToMsg();
 
-  float x,y,z;
+  float x, y, z;
   for (auto n : g->nodes) {
     x = n.pose.position.x;
     y = n.pose.position.y;
@@ -398,7 +422,7 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   EXPECT_NEAR(0.0, e.pose.orientation.x, tolerance_);
   EXPECT_NEAR(0.0, e.pose.orientation.y, tolerance_);
   EXPECT_NEAR(0.0, e.pose.orientation.z, tolerance_);
-  
+
   // Artifact edge (TODO: test the covariance)
   e = g->edges[1];
   EXPECT_EQ(e.type, pose_graph_msgs::PoseGraphEdge::ARTIFACT);

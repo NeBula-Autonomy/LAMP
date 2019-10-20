@@ -75,6 +75,14 @@ public:
 
   virtual bool Initialize(const ros::NodeHandle& n);
 
+  // Pose graph getters for outside modules (e.g. test fixtures).
+  inline const PoseGraph& graph() const {
+    return pose_graph_;
+  }
+  inline PoseGraph& graph() {
+    return pose_graph_;
+  }
+
 protected:
   // TODO: make most of these pure virtual
 

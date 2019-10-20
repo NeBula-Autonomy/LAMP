@@ -189,6 +189,13 @@ public:
     values_new_.clear();
   }
 
+  inline const EdgeMessages& GetEdges() const {
+    return edges_;
+  }
+  inline const NodeMessages& GetPriors() const {
+    return priors_;
+  }
+
 private:
   // Cached messages for edges and priors to reduce publishing overhead.
   EdgeMessages edges_;
