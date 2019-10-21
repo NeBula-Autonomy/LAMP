@@ -28,23 +28,25 @@ class LampBaseStation : public LampBase {
 
   protected: 
     
-    // instantiate all handlers that are being used in the derived classes
+    // Instantiate all handlers that are being used in the derived classes
     virtual bool InitializeHandlers(const ros::NodeHandle& n); 
 
-    // load parameters from yaml files
+    // Load parameters from yaml files
     virtual bool LoadParameters(const ros::NodeHandle& n);
+
+    // Create subscribers
+    virtual bool RegisterCallbacks(const ros::NodeHandle& n);
+
+    // Create publishers
+    virtual bool CreatePublishers(const ros::NodeHandle& n);
 
     // retrieve data from all handlers
     virtual bool CheckHandlers(); // - inside timed callback
-    // TODO consider checking handlers at different frequencies
-
-    virtual bool RegisterCallbacks(const ros::NodeHandle& n);
-
-    virtual bool CreatePublishers(const ros::NodeHandle& n);
 
     // Main update timer callback
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
+    // Point cloud mapper
     PointCloudMapper mapper_;
 
     // Robots that the base station subscribes to

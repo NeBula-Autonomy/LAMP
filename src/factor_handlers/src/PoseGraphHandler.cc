@@ -50,7 +50,6 @@ bool PoseGraphHandler::AddRobot(std::string robot) {
   return true;
 }
 
-
 bool PoseGraphHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
   ROS_INFO("%s: Registering callbacks in PoseGraphHandler",
@@ -85,9 +84,9 @@ bool PoseGraphHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 FactorData* PoseGraphHandler::GetData() {
-  // Main interface with lamp for getting factor information
-  PoseGraphData* output_data = new PoseGraphData(graphs_);
 
+  // Main interface with lamp for getting new pose graphs
+  PoseGraphData* output_data = new PoseGraphData(data_);
 
   // Clear the stored data
   ResetGraphData();
@@ -96,15 +95,20 @@ FactorData* PoseGraphHandler::GetData() {
 }
 
 void PoseGraphHandler::ResetGraphData() {
-  graphs_.b_has_data = false; 
-  graphs_.graphs.clear();
+  data_.b_has_data = false; 
+  data_.type = "posegraph";
+  data_.graphs.clear();
+  data_.scans.clear();
 }
 
 void PoseGraphHandler::PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
 
+  data_.b_has_data = true;
+  data_.graphs.push_back(*msg);
 }
-
 
 void PoseGraphHandler::KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
 
+  data_.b_has_data = true;
+  data_.scans.push_back(*msg);
 }

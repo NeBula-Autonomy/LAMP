@@ -23,6 +23,7 @@
 #include <gtsam/navigation/AttitudeFactor.h>
 
 #include <pose_graph_msgs/PoseGraph.h>
+#include <pose_graph_msgs/KeyedScan.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
@@ -162,6 +163,7 @@ class PoseGraphData : public FactorData {
     virtual ~PoseGraphData() { };
 
     std::vector<pose_graph_msgs::PoseGraph> graphs;
+    std::vector<pose_graph_msgs::KeyedScan> scans;
 };
 
 

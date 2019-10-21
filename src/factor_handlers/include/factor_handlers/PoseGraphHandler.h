@@ -48,8 +48,8 @@ class PoseGraphHandler : public LampDataHandlerBase {
     std::vector<ros::Subscriber> subscribers_posegraph;
     std::vector<ros::Subscriber> subscribers_keyedscan;
 
-    // Pose graphs received from robot
-    PoseGraphData graphs_;
+    // Pose graphs and keyed scans received from robot
+    PoseGraphData data_;
 
     // Robots that the base station subscribes to
     std::set<std::string> robot_names_;

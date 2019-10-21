@@ -110,11 +110,11 @@ bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
     ROS_ERROR("%s: No robots for base station to subscribe to.", name_.c_str());
     return false;
   }
+  else if (!pose_graph_handler_.Initialize(n, robot_names_)) {
+    ROS_ERROR("%s: Failed to initialize the pose graph handler.", name_.c_str());
+    return false;
+  }
   
-
-
-
-
   return true; 
 }
 
@@ -147,14 +147,24 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Publish anything that is needed 
 }
 
+bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
+
+  // Extract pose graph data
+  PoseGraphData* pose_graph_data = dynamic_cast<PoseGraphData*>(data);
+
+  // Check if there are new pose graphs
+  if (!pose_graph_data->b_has_data) {
+    return false; 
+  }
+
+}
 
 
 // Check for data from all of the handlers
 bool LampBaseStation::CheckHandlers() {
 
   // Check for pose graphs from the robots
-  // ProcessPoseGraphData(pose_graph_handler_.GetData());
-
+  ProcessPoseGraphData(pose_graph_handler_.GetData());
 
   return true;
 }
