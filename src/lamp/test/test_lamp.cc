@@ -101,6 +101,7 @@ public:
   }
   void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) {
     lr.graph().values.insert(key, pose);
+    lr.graph().keyed_stamps[key] = ros::Time::now();
   }
 
   bool GetOptFlag() {
