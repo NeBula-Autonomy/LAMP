@@ -39,7 +39,6 @@ public:
         data->at(j, i).z = 0.0f;
       }
     }
-
   }
   ~TestLampRobot() {}
 
@@ -56,19 +55,13 @@ public:
     return lr.SetInitialPosition();
   }
   int GetValuesSize() {
-    return lr.values_.size();
+    return lr.graph().values.size();
   }
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {
-    return lr.GetKeyAtTime(stamp);
+    return lr.graph().GetKeyAtTime(stamp);
   }
   gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) {
-    return lr.GetClosestKeyAtTime(stamp);
-  }
-  pose_graph_msgs::PoseGraphConstPtr
-  ConvertPoseGraphToMsg(gtsam::Values values,
-                        EdgeMessages edges_info,
-                        PriorMessages priors_info) {
-    return lr.ConvertPoseGraphToMsg(values, edges_info, priors_info);
+    return lr.graph().GetClosestKeyAtTime(stamp);
   }
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
     return lr.SetFixedNoiseModels(type);
@@ -78,36 +71,40 @@ public:
                   int type,
                   gtsam::Pose3 pose,
                   gtsam::SharedNoiseModel covariance) {
-    lr.TrackEdges(key_from, key_to, type, pose, covariance);
+    lr.graph().TrackFactor(key_from, key_to, type, pose, covariance);
   }
   void TrackPriors(ros::Time stamp,
                    gtsam::Symbol key,
                    gtsam::Pose3 pose,
                    gtsam::SharedNoiseModel covariance) {
-    lr.TrackPriors(stamp, key, pose, covariance);
+    lr.graph().TrackNode(stamp, key, pose, covariance);
   }
-  
+
+  // Access functions
+  void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
+    lr.graph().stamp_to_odom_key[stamp.toSec()] = key;
+  }
+  void AddKeyedStamp(gtsam::Symbol key, ros::Time stamp) {
+    lr.graph().keyed_stamps[key] = stamp;
+  }
+  void SetTimeThreshold(double threshold) {
+    lr.graph().time_threshold = threshold;
+  }
+  void SetPrefix(char c) {
+    lr.graph().prefix = c;
+  }
+  void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) {
+    lr.graph().values.insert(key, pose);
+  }
+
   void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
     lr.LaserLoopClosureCallback(msg);
   }
-  bool GenerateMapPointCloud() {
-    lr.GenerateMapPointCloud();
+  bool ReGenerateMapPointCloud() {
+    lr.ReGenerateMapPointCloud();
   }
-  // Access functions
-  void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
-    lr.stamp_to_odom_key_[stamp.toSec()] = key;
-  }
-  void AddKeyedStamp(gtsam::Symbol key, ros::Time stamp) {
-    lr.keyed_stamps_[key] = stamp;
-  }
-  void SetTimeThreshold(double threshold) {
-    lr.time_threshold_ = threshold;
-  }
-  void SetPrefix(char c) {
-    lr.prefix_ = c;
-  }
-  void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) {
-    lr.values_.insert(key, pose);
+  bool AddTransformedPointCloudToMap(const gtsam::Symbol key) {
+    lr.AddTransformedPointCloudToMap(key);
   }
 
   bool GetOptFlag() {
@@ -135,25 +132,26 @@ public:
                                gtsam::Pose3& pose_relative) {
     lr.ConvertGlobalToRelative(stamp, pose_global, pose_relative);
   }
+
   // Other utilities
 
   gtsam::Values GetValues() {
-    return lr.values_;
+    return lr.graph().values;
   }
 
   void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
-    lr.keyed_scans_.insert(
+    lr.graph().keyed_scans.insert(
         std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
   }
 
   gtsam::NonlinearFactorGraph GetNfg() {
-    return lr.nfg_;
+    return lr.graph().nfg;
   }
   EdgeMessages GetEdges() {
-    return lr.edges_info_;
+    return lr.graph().GetEdges();
   }
   PriorMessages GetPriors() {
-    return lr.priors_info_;
+    return lr.graph().GetPriors();
   }
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
@@ -229,13 +227,13 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   new_data->type = "artifact";
 
   ArtifactFactor new_factor;
-  new_factor.key = gtsam::Symbol('l',1);
-  new_factor.position = gtsam::Point3 (9.7, 0, 0);
+  new_factor.key = gtsam::Symbol('l', 1);
+  new_factor.position = gtsam::Point3(9.7, 0, 0);
   gtsam::Vector6 sig;
-  sig << 0.3,0.3,0.3,0.3,0.3,0.3;
+  sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
   gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
   new_factor.covariance = noise;
-  new_factor.stamp =  ros::Time(0.11);
+  new_factor.stamp = ros::Time(0.11);
 
   // Add the new factor
   new_data->factors.push_back(new_factor);
@@ -268,8 +266,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   a0_value.header.stamp = ros::Time(0.05);
   geometry_msgs::PoseWithCovariance msg_pose;
   a0_value.pose = msg_pose;
-  nav_msgs::Odometry::ConstPtr a0_odom(
-      new nav_msgs::Odometry(a0_value));
+  nav_msgs::Odometry::ConstPtr a0_odom(new nav_msgs::Odometry(a0_value));
 
   // Call Lidar callback
   LidarCallback(a0_odom);
@@ -280,8 +277,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   l1_value.pose.pose.position.x = 2.0;
   l1_value.pose.pose.orientation.w = 1.0;
 
-  nav_msgs::Odometry::ConstPtr a1_odom(
-      new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a1_odom(new nav_msgs::Odometry(l1_value));
 
   // Call Lidar callback
   LidarCallback(a1_odom);
@@ -302,8 +298,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   l1_value.pose.pose.position.x = 4.0;
   l1_value.pose.pose.orientation.w = 1.0;
 
-  nav_msgs::Odometry::ConstPtr a2_odom(
-      new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a2_odom(new nav_msgs::Odometry(l1_value));
 
   // Call Lidar callback
   LidarCallback(a2_odom);
@@ -313,8 +308,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   l1_value.pose.pose.position.x = 6.0;
   l1_value.pose.pose.orientation.w = 1.0;
 
-  nav_msgs::Odometry::ConstPtr a3_odom(
-      new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a3_odom(new nav_msgs::Odometry(l1_value));
 
   // Call Lidar callback
   LidarCallback(a3_odom);
@@ -401,20 +395,20 @@ TEST_F(TestLampRobot, ConvertGlobalToRelative) {
   // Ros time to search for current key
   const ros::Time stamp = ros::Time(5.0);
   // Global pose of the artifact
-  const gtsam::Pose3 pose_global = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(5.0,0.0,0.0));
+  const gtsam::Pose3 pose_global =
+      gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(5.0, 0.0, 0.0));
   // Final relative pose between artifact and the current key
   gtsam::Pose3 pose_relative;
   // Add current key to map
   AddStampToOdomKey(ros::Time(4.0), gtsam::Symbol('a', 0));
   // Add value/pose for the current key
-  InsertValues(gtsam::Symbol('a', 0), gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(420.0, 0.0, 0.0)));
+  InsertValues(gtsam::Symbol('a', 0),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(420.0, 0.0, 0.0)));
   // Convert global to relative pose
-  ConvertGlobalToRelative(stamp,
-                          pose_global,
-                          pose_relative);
+  ConvertGlobalToRelative(stamp, pose_global, pose_relative);
   // Check
   EXPECT_EQ(pose_relative.translation().vector(),
-                         gtsam::Point3(-415.0, 0.0, 0.0));
+            gtsam::Point3(-415.0, 0.0, 0.0));
 }
 
 TEST_F(TestLampRobot, SetFactorPrecisions) {
@@ -575,8 +569,7 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
       noise);
 
   // Convert pose-graph to message
-  pose_graph_msgs::PoseGraphConstPtr g =
-      ConvertPoseGraphToMsg(GetValues(), GetEdges(), GetPriors());
+  pose_graph_msgs::PoseGraphConstPtr g = lr.graph().ToMsg();
 
   float x, y, z;
   for (auto n : g->nodes) {
@@ -771,7 +764,44 @@ TEST_F(TestLampRobot, TestPointCloudTransform) {
                             gtsam::Point3(0.0, 0.0, 0.0)));
 
   // Test the function
-  GenerateMapPointCloud();
+  ReGenerateMapPointCloud();
+
+  // Output
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();
+
+  // Transform the main point cloud
+  Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+  Eigen::Vector3f rotVec(0.0, 0.0, 1);
+  transform.rotate(Eigen::AngleAxisf(M_PI / 2.0f, rotVec));
+
+  pcl::transformPointCloud(*data, *data, transform);
+
+  // Compare
+  for (int i; i < 4; i++) {
+    std::cout << "Points are " << data->at(i) << " and " << pc_out->at(i)
+              << std::endl;
+    EXPECT_NEAR(data->at(i).x, pc_out->at(i).x, tolerance_);
+    EXPECT_NEAR(data->at(i).y, pc_out->at(i).y, tolerance_);
+    EXPECT_NEAR(data->at(i).z, pc_out->at(i).z, tolerance_);
+  }
+}
+
+TEST_F(TestLampRobot, TestPointCloudTransformSingle) {
+  // Add the scan and values to the graph
+  ros::NodeHandle nh, pnh("~");
+  lr.Initialize(nh);
+
+  // Scan
+  gtsam::Symbol key = gtsam::Symbol('a', 1);
+  AddToKeyScans(key, data);
+
+  // Values
+  InsertValues(gtsam::Symbol('a', 1),
+               gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
+                            gtsam::Point3(0.0, 0.0, 0.0)));
+
+  // Test the function
+  AddTransformedPointCloudToMap(key);
 
   // Output
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();

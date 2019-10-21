@@ -13,15 +13,12 @@
 #include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/OdometryHandler.h>
-#include <pcl/common/transforms.h>
 
 // Services
 
 // Class Definition
 class LampRobot : public LampBase {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-
   // Constructor
   LampRobot();
 
@@ -35,7 +32,7 @@ public:
     return initial_key_;
   };
   gtsam::Symbol GetCurrentKey() {
-    return key_;
+    return pose_graph_.key;
   };
 
 protected:
@@ -63,13 +60,6 @@ protected:
   void UpdateArtifactPositions();
   void UpdateAndPublishOdom();
 
-  // Generate map from keyed scans
-  bool GenerateMapPointCloud();
-  bool AddTransformedPointCloudToMap(gtsam::Symbol key);
-
-  PointCloudFilter filter_;
-  PointCloudMapper mapper_;
-
   // Publishers
   ros::Publisher pose_pub_;
 
@@ -82,7 +72,8 @@ private:
     bool ProcessArtifactData(FactorData* data);
     // Process the april tag factors if any available    
     bool ProcessAprilTagData(FactorData* data);
-    bool InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance);
+    bool InitializeGraph(gtsam::Pose3& pose, 
+                         gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // void ProcessUWBData(FactorData data);
     // Example use:
     // ProcessArtifactData(artifact_handler_.GetData());

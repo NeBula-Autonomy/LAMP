@@ -21,11 +21,9 @@ OdometryHandler::OdometryHandler()
     ts_threshold_(0.1),
     query_timestamp_first_(0),
     b_is_first_query_(true) {
-  ROS_INFO("Odometry Handler Class Constructor");
 }
 
 OdometryHandler::~OdometryHandler() {
-  ROS_INFO("Odometry Handler Class Destructor");
 }
 
 // Initialize
@@ -48,7 +46,6 @@ bool OdometryHandler::Initialize(const ros::NodeHandle& n) {
 }
 
 bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
-  ROS_INFO("LoadParameters method called in OdometryHandler");
 
   // Thresholds to add new factors
   if (!pu::Get("translation_threshold", translation_threshold_))
@@ -91,7 +88,6 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 // --------------------------------------------------------------------------------------------
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
-  ROS_INFO("LidarOdometryCallback");
   if (!InsertMsgInBuffer(msg, lidar_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store "
              "message in buffer");
@@ -99,7 +95,6 @@ void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
-  ROS_INFO("VisualOdometryCallback");
   if (!InsertMsgInBuffer(msg, visual_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store "
              "message in buffer");
@@ -107,7 +102,6 @@ void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
 }
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {
-  ROS_INFO("WheelOdometryCallback");
   if (!InsertMsgInBuffer(msg, wheel_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store "
              "message in buffer");
@@ -170,8 +164,8 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
         gtsam::Pose3(); // TODO: Make sure this is needed at runtime
   }
 
-  ROS_INFO_STREAM("Delta between times is: "
-                  << (query_timestamp_first_.toSec() - t_now.toSec()));
+  // ROS_INFO_STREAM("Delta between times is: "
+  //                 << (query_timestamp_first_.toSec() - t_now.toSec()));
   fused_odom_ = GetFusedOdomDeltaBetweenTimes(query_timestamp_first_, t_now);
 
   if (!fused_odom_.b_has_value) {
@@ -219,11 +213,10 @@ FactorData* OdometryHandler::GetData() {
     return output_data;
   }
 
-  ROS_INFO("Odometry Handler - Perform Fusion Logic");
   GtsamPosCov fused_odom_for_factor;
 
   if (CalculatePoseDelta(fused_odom_) > translation_threshold_) {
-    ROS_INFO("Adding a new node");
+    // ROS_INFO("Adding a new node");
     // Get the most recent lidar timestamp
     ros::Time t2;
     t2.fromSec(lidar_odometry_buffer_.rbegin()->first);
@@ -345,12 +338,12 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
     return output_odom;
   }
 
-  ROS_INFO_STREAM("Timestamps are: " << t1.toSec() << " and " << t2.toSec()
-                                     << ". Difference is: "
-                                     << t2.toSec() - t1.toSec());
+  // ROS_INFO_STREAM("Timestamps are: " << t1.toSec() << " and " << t2.toSec()
+  //                                    << ". Difference is: "
+  //                                    << t2.toSec() - t1.toSec());
   GtsamPosCov lidar_odom, visual_odom, wheel_odom;
-  ROS_INFO_STREAM("Lidar buffer size in GetFusedOdom is: "
-                  << lidar_odometry_buffer_.size());
+  // ROS_INFO_STREAM("Lidar buffer size in GetFusedOdom is: "
+  //                 << lidar_odometry_buffer_.size());
   FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2);
   FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2);
   FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2);
@@ -497,8 +490,6 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1,
 
 bool OdometryHandler::GetClosestLidarTime(const ros::Time stamp,
                                           ros::Time& closest_stamp) const {
-  ROS_INFO("GetClosestLidarTime Map Based Method ");
-
   // Map based logic
 
   // If map is empty, return false to the caller
