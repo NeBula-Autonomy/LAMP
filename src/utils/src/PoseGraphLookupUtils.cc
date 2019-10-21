@@ -3,7 +3,7 @@
 double PoseGraph::time_threshold = 1.0;
 
 gtsam::Symbol PoseGraph::GetKeyAtTime(const ros::Time& stamp) const {
-  if (!stamp_to_odom_key.count(stamp.toSec())) {
+  if (stamp_to_odom_key.find(stamp.toSec()) == stamp_to_odom_key.end()) {
     ROS_ERROR("No key exists at given time");
     return gtsam::Symbol();
   }

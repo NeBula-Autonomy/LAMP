@@ -23,7 +23,12 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
   auto* msg = new pose_graph_msgs::PoseGraph;
   msg->header.frame_id = fixed_frame_id;
   // Get timestamp from latest keyed pose
-  msg->header.stamp = keyed_stamps.at(key - 1);
+  if (HasTime(key - 1))
+    msg->header.stamp = keyed_stamps.at(key - 1);
+  else {
+    ROS_WARN_STREAM("No time stamp exists for latest key "
+                    << (key - 1) << " while converting pose graph to message.");
+  }
 
   // Get Values
   // Converts the internal values
@@ -41,9 +46,14 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
     // Get timestamp
     // Note keyed_stamps are for all nodes TODO: check this is followed
     // TODO: check if time stamps are necessary
-    node.header.stamp = keyed_stamps.at(keyed_pose.key);
+    if (HasTime(keyed_pose.key))
+      node.header.stamp = keyed_stamps.at(keyed_pose.key);
+    else {
+      ROS_DEBUG_STREAM("No time stamp for key " << keyed_pose.key);
+    }
 
-    // Get the IDs (see LampBase::MapSymbolToId for example implementation).
+    // Get the IDs (see LampBase::MapSymbolToId for example
+    // implementation).
     if (!symbol_id_map.empty())
       node.ID = symbol_id_map(sym_key);
 
@@ -64,8 +74,8 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
 
 // Pose graph msg to gtsam conversion
 void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
-                         gtsam::NonlinearFactorGraph* graph_nfg,
-                         gtsam::Values* graph_vals) {
+                                gtsam::NonlinearFactorGraph* graph_nfg,
+                                gtsam::Values* graph_vals) {
   using gtsam::BetweenFactor;
   using gtsam::PriorFactor;
   using gtsam::RangeFactor;

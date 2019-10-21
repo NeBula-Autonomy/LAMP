@@ -164,6 +164,10 @@ public:
                                            const ros::Time& target) {
     return std::abs(time - target.toSec()) <= time_threshold;
   }
+  // Check if given key has a registered time stamp.
+  inline bool HasTime(gtsam::Symbol key) const {
+    return keyed_stamps.find(key) != keyed_stamps.end();
+  }
 
   // Saves pose graph and accompanying point clouds to a zip file.
   template <typename PGOSolver>
