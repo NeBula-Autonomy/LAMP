@@ -553,13 +553,6 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
     // Get the artifact key
     cur_artifact_key = artifact.key;
 
-    // TODO:
-    // QUESTION: ConvertGlobalToRelative: Gives relative measurement between
-    // artifact key and nearest odom key. QUESTION:
-    // HandleRelativePoseMeasurement: Accounts for small transforms between
-    // current nearest added key and the instantaneous pose (which might not
-    // have been added as node).
-
     // Get the pose measurement
     if (b_artifacts_in_global_) {
       // Convert pose to relative frame
@@ -688,9 +681,17 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
     // Get the pose measurement
     if (b_artifacts_in_global_) {
       // Convert pose to relative frame
-      ConvertGlobalToRelative(timestamp, gtsam::Pose3(gtsam::Rot3(), april_tag.position), temp_transform);
+      if (!ConvertGlobalToRelative(
+            timestamp, 
+            gtsam::Pose3(gtsam::Rot3(), april_tag.position), 
+            temp_transform)) {
+        ROS_ERROR("Can't convert April tag from global to relative");
+        b_has_new_factor_ = false;
+        return false;
+      }
     } else {
       // Is in relative already
+      ROS_INFO("Have April tag in relative frame");
       temp_transform = gtsam::Pose3(gtsam::Rot3(), april_tag.position);
     }
 
@@ -715,21 +716,29 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
     }
 
     // create and add the factor
-    new_factors.add(gtsam::BetweenFactor<Pose3>(pose_key, cur_april_tag_key, transform, covariance));
+    new_factors.add(gtsam::BetweenFactor<Pose3>(pose_key, 
+                                                cur_april_tag_key, 
+                                                transform, 
+                                                covariance));
+    ROS_INFO("Added April Tag to pose graph factors in lamp");
+
 
     // Check if it is a new april tag or not
-    if (!values_.exists(cur_april_tag_key)) {
+    if (!pose_graph_.values.exists(cur_april_tag_key)) {
+      ROS_INFO("Have a new April Tag in LAMP");
+
       // Insert into the values
       new_values.insert(cur_april_tag_key, global_pose);
 
       // Add keyed stamps
-      keyed_stamps_.insert(
-          std::pair<gtsam::Symbol, ros::Time>(cur_april_tag_key, timestamp));
+      pose_graph_.InsertKeyedStamp(cur_april_tag_key, timestamp);
+
 
       // Get the noise in ground truth data
       gtsam::SharedNoiseModel noise = SetFixedNoiseModels("april");
 
       // Add prior factor if its a new april tag.
+      ROS_INFO("Adding prior factor for April Tag");      
       new_factors.add(gtsam::PriorFactor<gtsam::Pose3>(cur_april_tag_key, ground_truth, noise));
     } else {
       // Second sighting of an april tag - we have a loop closure
@@ -741,14 +750,15 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
 
     // Track the edges that have been added
     int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
-    TrackEdges(pose_key, cur_april_tag_key, type, transform, covariance);
+    pose_graph_.TrackFactor(pose_key, cur_april_tag_key, type, transform, covariance);
   }
   // add factor to buffer to send to pgo
-  nfg_.add(new_factors);
-  AddNewValues(new_values);
+  pose_graph_.nfg.add(new_factors);
+  pose_graph_.AddNewValues(new_values);
+
+  ROS_INFO("Successfully complete ProcessAprilTagData call with an April Tag");
 
   return true;
-
 }
 
 // Function gets a relative pose and time, and returns the global pose and the
