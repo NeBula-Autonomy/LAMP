@@ -2,7 +2,7 @@
  * Copyright Notes
  *
  * Authors:
- * Alex Stephens       ()
+ * Alex Stephens       (alex.stephens@jpl.nasa.gov)
  * Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
  * Kamak Ebadi          ()
  * Matteo               ()

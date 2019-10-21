@@ -59,18 +59,17 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
 
-    if (!pu::Get("robot_names", robot_names_)) {
-    ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
-      return false;
+  // Names of all robots for base station to subscribe to
+  if (!pu::Get("robot_names", robot_names_)) {
+  ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
+    return false;
+  }
+  else {
+    ROS_INFO_STREAM("Robots registered at base station: ");
+    for (auto s : robot_names_) {
+      ROS_INFO_STREAM("\t\t\t" << s);
     }
-    else {
-      ROS_INFO_STREAM("Robots registered at base station: ");
-      for (auto s : robot_names_) {
-        ROS_INFO_STREAM("\t\t\t" << s);
-      }
-
-    }
-
+  }
 
   return true;
 }
@@ -79,30 +78,6 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
 
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
-
-  ros::Subscriber pose_graph_sub;
-  ros::Subscriber keyed_scan_sub;
-
-  // Create subscribers for each robot
-  for (std::string robot : robot_names_) {
-
-    // Pose graph
-    pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
-        "/" + robot + "/lamp/pose_graph",
-        1,
-        &LampBaseStation::PoseGraphCallback,
-        this);
-
-    // Keyed scans
-    keyed_scan_sub = nl.subscribe<pose_graph_msgs::KeyedScan>(
-        "/" + robot + "/lamp/keyed_scans",
-        10,
-        &LampBaseStation::KeyedScanCallback,
-        this);
-
-    subscribers_posegraph.push_back(pose_graph_sub);
-    subscribers_keyedscan.push_back(keyed_scan_sub);
-  }
 
   return true; 
 }
@@ -123,10 +98,22 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
 }
 
 bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
+  
+  // Manual loop closure handler
   if (!manual_loop_closure_handler_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize the manual loop closure handler.", name_.c_str());
     return false;
   }
+
+  // Pose graph handler -- requires robot_names parameter loaded
+  if (robot_names_.size() == 0) {
+    ROS_ERROR("%s: No robots for base station to subscribe to.", name_.c_str());
+    return false;
+  }
+  
+
+
+
 
   return true; 
 }
@@ -165,14 +152,9 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 // Check for data from all of the handlers
 bool LampBaseStation::CheckHandlers() {
 
+  // Check for pose graphs from the robots
+  // ProcessPoseGraphData(pose_graph_handler_.GetData());
+
+
   return true;
-}
-
-void LampBaseStation::PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
-
-}
-
-
-void LampBaseStation::KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
-
 }

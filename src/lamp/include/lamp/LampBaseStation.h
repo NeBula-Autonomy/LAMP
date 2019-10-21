@@ -10,6 +10,7 @@
 #include <lamp/LampBase.h>
 
 #include <factor_handlers/ManualLoopClosureHandler.h>
+#include <factor_handlers/PoseGraphHandler.h>
 
 // Services
 
@@ -49,14 +50,11 @@ class LampBaseStation : public LampBase {
     // Robots that the base station subscribes to
     std::vector<std::string> robot_names_;
 
-    // Subscribers
-    std::vector<ros::Subscriber> subscribers_posegraph;
-    std::vector<ros::Subscriber> subscribers_keyedscan;
+    // Factor handler wrappers
+    bool ProcessPoseGraphData(FactorData* data);
 
-    // Input callbacks
-    void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
-    void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
-
+    // Data handler classes
+    PoseGraphHandler pose_graph_handler_;
 
 
   private:

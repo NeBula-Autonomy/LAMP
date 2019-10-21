@@ -22,6 +22,8 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/navigation/AttitudeFactor.h>
 
+#include <pose_graph_msgs/PoseGraph.h>
+
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 
@@ -150,6 +152,16 @@ class ImuData : public FactorData {
     virtual ~ImuData() { };
 
     std::vector<ImuFactor> factors;
+};
+
+class PoseGraphData : public FactorData {
+
+  public: 
+
+    PoseGraphData() { };
+    virtual ~PoseGraphData() { };
+
+    std::vector<pose_graph_msgs::PoseGraph> graphs;
 };
 
 
