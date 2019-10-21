@@ -44,22 +44,22 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   ROS_INFO_STREAM("PGO PROCESS NAMESPACE: " << n.getNamespace());
   std::string full_namespace = n.getNamespace();
   if (full_namespace.find("base_station") != std::string::npos) {
-    ns_ = "base";
+    param_ns_ = "base";
   }
   else {
-    ns_ = "robot";
+    param_ns_ = "robot";
   }
-  ROS_INFO_STREAM("Chosen namespace: " << ns_);
+  ROS_INFO_STREAM("Chosen namespace: " << param_ns_);
 
   bool b_use_outlier_rejection;
-  if (!pu::Get(ns_ + "/b_use_outlier_rejection", b_use_outlier_rejection))
+  if (!pu::Get(param_ns_ + "/b_use_outlier_rejection", b_use_outlier_rejection))
     return false;
   if (b_use_outlier_rejection) {
     // outlier rejection on: set up PCM params
     double trans_threshold, rot_threshold;
-    if (!pu::Get(ns_ + "/translation_check_threshold", trans_threshold))
+    if (!pu::Get(param_ns_ + "/translation_check_threshold", trans_threshold))
       return false;
-    if (!pu::Get(ns_ + "/rotation_check_threshold", rot_threshold))
+    if (!pu::Get(param_ns_ + "/rotation_check_threshold", rot_threshold))
       return false;
     rpgo_params_.setPcmSimple3DParams(
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
@@ -75,7 +75,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // set solver
   int solver_num;
-  if (!pu::Get(ns_ + "/solver", solver_num))
+  if (!pu::Get(param_ns_ + "/solver", solver_num))
     return false;
 
   if (solver_num == 1) {
