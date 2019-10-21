@@ -43,6 +43,9 @@ class LampBaseStation : public LampBase {
     // retrieve data from all handlers
     virtual bool CheckHandlers(); // - inside timed callback
 
+    // Initialize the base station pose graph
+    virtual bool InitializeGraph();
+
     // Main update timer callback
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 

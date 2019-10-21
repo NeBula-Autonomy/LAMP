@@ -117,6 +117,21 @@ bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
   return true; 
 }
 
+bool LampBaseStation::InitializeGraph() {
+
+  gtsam::Pose3 pose = gtsam::Pose3(gtsam::Rot3(1,0,0,0), 
+                                   gtsam::Point3(0,0,0));
+  gtsam::Vector6 zero;
+  zero << 0, 0, 0, 0, 0, 0;
+  gtsam::noiseModel::Diagonal::shared_ptr covariance =        
+      gtsam::noiseModel::Diagonal::Sigmas(zero);
+
+  pose_graph_.Initialize(initial_key_, pose, covariance);
+
+  return true;
+}
+
+
 void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Check the handlers
