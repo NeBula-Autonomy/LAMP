@@ -65,9 +65,8 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
     return false;
   }
   else {
-    ROS_INFO_STREAM("Robots registered at base station: ");
     for (auto s : robot_names_) {
-      ROS_INFO_STREAM("\t\t\t" << s);
+      ROS_INFO_STREAM("Registered new robot: " << s);
     }
   }
 

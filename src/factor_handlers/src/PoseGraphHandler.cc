@@ -81,6 +81,8 @@ bool PoseGraphHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     subscribers_posegraph.push_back(pose_graph_sub);
     subscribers_keyedscan.push_back(keyed_scan_sub);
   }
+
+  return true;
 }
 
 FactorData* PoseGraphHandler::GetData() {
