@@ -10,11 +10,9 @@
 
 class PointCloudFilterTest : public ::testing::Test {
 protected:
-  virtual void SetUp() {
-  }
+  virtual void SetUp() {}
 
-  virtual void TearDown() {
-  }
+  virtual void TearDown() {}
 };
 
 int main(int argc, char** argv) {

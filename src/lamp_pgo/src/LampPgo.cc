@@ -27,7 +27,7 @@ LampPgo::~LampPgo() {}
 
 bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Create subscriber and publisher
-  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
 
   // Publisher
   optimized_pub_ =
@@ -47,23 +47,26 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   if (b_use_outlier_rejection) {
     // outlier rejection on: set up PCM params
     double trans_threshold, rot_threshold;
-    if (!pu::Get("translation_check_threshold", trans_threshold)) return false;
-    if (!pu::Get("rotation_check_threshold", rot_threshold)) return false;
+    if (!pu::Get("translation_check_threshold", trans_threshold))
+      return false;
+    if (!pu::Get("rotation_check_threshold", rot_threshold))
+      return false;
     rpgo_params_.setPcmSimple3DParams(
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
   } else {
     rpgo_params_.setNoRejection(
-        KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection
+        KimeraRPGO::Verbosity::VERBOSE); // set no outlier rejection
   }
 
   // TODO - have a better way of handling special symbols...
   std::vector<char> special_symbs{
-      'l', 'm', 'n', 'o', 'p', 'q', 'u'};  // for artifacts
+      'l', 'm', 'n', 'o', 'p', 'q', 'u'}; // for artifacts
   rpgo_params_.specialSymbols = special_symbs;
 
   // set solver
   int solver_num;
-  if (!pu::Get("solver", solver_num)) return false;
+  if (!pu::Get("solver", solver_num))
+    return false;
 
   if (solver_num == 1) {
     // Levenberg-Marquardt
@@ -131,22 +134,22 @@ void LampPgo::PublishValues() const {
 
   // Then store the values as nodes
   gtsam::KeyVector key_list = values_.keys();
-  for (size_t i = 0; i < key_list.size(); i++) {
+  for (const auto& key : key_list) {
     pose_graph_msgs::PoseGraphNode node;
-    node.key = key_list[i];
+    node.key = key;
     // pose - translation
-    node.pose.position.x = values_.at<gtsam::Pose3>(i).translation().x();
-    node.pose.position.y = values_.at<gtsam::Pose3>(i).translation().y();
-    node.pose.position.z = values_.at<gtsam::Pose3>(i).translation().z();
+    node.pose.position.x = values_.at<gtsam::Pose3>(key).translation().x();
+    node.pose.position.y = values_.at<gtsam::Pose3>(key).translation().y();
+    node.pose.position.z = values_.at<gtsam::Pose3>(key).translation().z();
     // pose - rotation (to quaternion)
     node.pose.orientation.x =
-        values_.at<gtsam::Pose3>(i).rotation().toQuaternion().x();
+        values_.at<gtsam::Pose3>(key).rotation().toQuaternion().x();
     node.pose.orientation.y =
-        values_.at<gtsam::Pose3>(i).rotation().toQuaternion().y();
+        values_.at<gtsam::Pose3>(key).rotation().toQuaternion().y();
     node.pose.orientation.z =
-        values_.at<gtsam::Pose3>(i).rotation().toQuaternion().z();
+        values_.at<gtsam::Pose3>(key).rotation().toQuaternion().z();
     node.pose.orientation.w =
-        values_.at<gtsam::Pose3>(i).rotation().toQuaternion().w();
+        values_.at<gtsam::Pose3>(key).rotation().toQuaternion().w();
 
     pose_graph_msg.nodes.push_back(node);
   }

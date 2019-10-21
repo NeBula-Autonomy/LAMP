@@ -129,7 +129,15 @@ void LampBase::OptimizerUpdateCallback(
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
 
-  // TODO-maybe - make the copy more efficient
+  // Note that the edges should not have changed (only values)
+
+  // Publish the pose graph and update the map 
+  PublishPoseGraph();
+
+  // Update the map (also publishes)
+  ReGenerateMapPointCloud();
+
+  // TODO - check that this works as it is defined in the LampRobot class
   UpdateArtifactPositions();
 }
 
@@ -191,6 +199,104 @@ LampBase::ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
   }
 
   return msg;
+}
+
+//------------------------------------------------------------------------------------------
+// Map generation functions
+//------------------------------------------------------------------------------------------
+
+
+bool LampBase::ReGenerateMapPointCloud() {
+  // Reset the map
+  mapper_.Reset();
+
+  // Combine the keyed scans with the latest node values
+  PointCloud::Ptr regenerated_map(new PointCloud);
+  CombineKeyedScansWorld(regenerated_map.get());
+
+  // Insert points into the map (publishes incremental point clouds)
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(regenerated_map, unused.get());
+
+  // Publish map
+  mapper_.PublishMap();
+}
+
+// For combining all the scans together
+bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
+  if (points == NULL) {
+    ROS_ERROR("%s: Output point cloud container is null.", name_.c_str());
+    return false;
+  }
+  points->points.clear();
+
+  // Iterate over poses in the graph, transforming their corresponding laser
+  // scans into world frame and appending them to the output.
+  for (const auto& keyed_pose : pose_graph_.values) {
+    const gtsam::Symbol key = keyed_pose.key;
+
+    PointCloud::Ptr scan_world(new PointCloud);
+
+    // Transform the body-frame scan into world frame.
+    GetTransformedPointCloudWorld(key, scan_world.get());
+
+    // Append the world-frame point cloud to the output.
+    *points += *scan_world;
+  }
+  ROS_INFO_STREAM("Points size is: " << points->points.size()
+                                     << ", in CombineKeyedScansWorld");
+}
+
+// Transform the point cloud to world frame
+bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
+                                             PointCloud* points) {
+  if (points == NULL) {
+    ROS_ERROR("%s: Output point cloud container is null.", name_.c_str());
+    return false;
+  }
+  points->points.clear();
+
+  // No key associated with the scan
+  if (!pose_graph_.HasScan(key)) {
+    ROS_WARN("Could not find scan associated with key in "
+             "GetTransformedPointCloudWorld");
+    return false;
+  }
+
+  // Check that the key exists
+  if (!pose_graph_.values.exists(key)) {
+    ROS_WARN(
+        "Key %u does not exist in values_ in GetTransformedPointCloudWorld",
+        gtsam::DefaultKeyFormatter(key));
+    return false;
+  }
+
+  const gu::Transform3 pose = utils::ToGu(pose_graph_.GetPose(key));
+  Eigen::Matrix4d b2w;
+  b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
+  b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
+
+  // Transform the body-frame scan into world frame.
+  pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
+
+  ROS_INFO_STREAM("Points size is: " << points->points.size()
+                                     << ", in GetTransformedPointCloudWorld");
+}
+
+// For adding one scan to the map
+bool LampBase::AddTransformedPointCloudToMap(const gtsam::Symbol key) {
+  PointCloud::Ptr points(new PointCloud);
+
+  GetTransformedPointCloudWorld(key, points.get());
+
+  ROS_INFO_STREAM("Points size is: " << points->points.size()
+                                     << ", in AddTransformedPointCloudToMap");
+
+  // Add to the map
+  PointCloud::Ptr unused(new PointCloud);
+  mapper_.InsertPoints(points, unused.get());
+
+  return true;
 }
 
 //------------------------------------------------------------------------------------------
@@ -279,7 +385,7 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
 }
 
 std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
-  if (pose_graph_.keyed_scans.count(key)) {
+  if (pose_graph_.HasScan(key)) {
     // Key frame, note in the ID
     return "key_frame";
   } else if (key.chr() == pose_graph_.prefix[0]) {

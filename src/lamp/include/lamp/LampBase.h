@@ -45,6 +45,7 @@
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 #include <parameter_utils/ParameterUtils.h>
+#include <pcl/common/transforms.h>
 #include <pcl_ros/point_cloud.h>
 
 #include <factor_handlers/LampDataHandlerBase.h>
@@ -93,12 +94,11 @@ protected:
   // Set precisions for fixed covariance settings
   bool SetFactorPrecisions();
 
+  // Use this for any "private" things to be used in the derived class
+  // Node initialization.
+  // Set precisions for fixed covariance settings
   virtual bool CreatePublishers(const ros::NodeHandle& n);
-
-  // instantiate all handlers that are being used in the derived classes
   virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0;
-
-  // Main update timer callback
   virtual void ProcessTimerCallback(const ros::TimerEvent& ev) = 0;
   double update_rate_;
   ros::Timer update_timer_;
@@ -116,6 +116,13 @@ protected:
   // Functions to publish
   bool PublishPoseGraph();
   bool PublishPoseGraphForOptimizer();
+
+  // Generate map from keyed scans
+  bool ReGenerateMapPointCloud();
+  bool CombineKeyedScansWorld(PointCloud* points);
+  bool GetTransformedPointCloudWorld(const gtsam::Symbol key,
+                                     PointCloud* points);
+  bool AddTransformedPointCloudToMap(const gtsam::Symbol key);
 
   // Placeholder for setting fixed noise
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
@@ -162,6 +169,12 @@ protected:
 
   // Pose graph merger
   Merger merger_;
+
+  // Point cloud filter
+  PointCloudFilter filter_;
+
+  // Mapper
+  PointCloudMapper mapper_;
 
   // Precisions
   double attitude_sigma_;

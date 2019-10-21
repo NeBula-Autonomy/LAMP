@@ -4,8 +4,8 @@
  * Authors: Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
  */
 
-#include <ros/ros.h>
 #include <lamp/LampRobot.h>
+#include <ros/ros.h>
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "lamp");

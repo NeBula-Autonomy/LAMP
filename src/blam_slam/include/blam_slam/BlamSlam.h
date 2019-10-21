@@ -40,49 +40,49 @@
 #include <ros/ros.h>
 
 #include <blam_slam/AddFactor.h>
+#include <blam_slam/AddPositionEstimate.h>
 #include <blam_slam/BatchLoopClosure.h>
 #include <blam_slam/CorrectMapRotation.h>
 #include <blam_slam/CorrectMapRotationFromTotalStation.h>
-#include <blam_slam/PublishMapRotationFromTotalStation.h>
 #include <blam_slam/LoadGraph.h>
+#include <blam_slam/PublishMapRotationFromTotalStation.h>
 #include <blam_slam/RemoveFactor.h>
 #include <blam_slam/Restart.h>
 #include <blam_slam/SaveGraph.h>
-#include <blam_slam/AddPositionEstimate.h>
 
-#include <measurement_synchronizer/MeasurementSynchronizer.h>
-#include <point_cloud_filter/PointCloudFilter.h>
-#include <point_cloud_odometry/PointCloudOdometry.h>
 #include <laser_loop_closure/LaserLoopClosure.h>
+#include <measurement_synchronizer/MeasurementSynchronizer.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
+#include <point_cloud_filter/PointCloudFilter.h>
+#include <point_cloud_odometry/PointCloudOdometry.h>
 
 #include <point_cloud_localization/PointCloudLocalization.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
-#include <tf_conversions/tf_eigen.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf_conversions/tf_eigen.h>
 
 #include <message_filters/subscriber.h>
-#include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/synchronizer.h>
 
 #include <core_msgs/Artifact.h>
 #include <core_msgs/PoseAndScan.h>
-#include <uwb_msgs/Anchor.h>
 #include <mesh_msgs/ProcessCommNode.h>
+#include <uwb_msgs/Anchor.h>
 
 #include <message_filters/subscriber.h>
-#include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/synchronizer.h>
 
-#include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
+#include <geometry_utils/Transform3.h>
 
 class BlamSlam {
- public:
+public:
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
   BlamSlam();
@@ -95,7 +95,8 @@ class BlamSlam {
 
   // Sensor message processing.
   void ProcessPointCloudMessage(const PointCloud::ConstPtr& msg);
-  void ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose, const PointCloud::Ptr& scan);
+  void ProcessPoseScanMessage(geometry_utils::Transform3& fe_pose,
+                              const PointCloud::Ptr& scan);
 
   // UWB range measurement data processing
   void ProcessUwbRangeData(const std::string uwb_id);
@@ -103,14 +104,14 @@ class BlamSlam {
   // Transform a point cloud from the sensor frame into the fixed frame using
   // the current best position estimate.
   bool TransformPointsToFixedFrame(const PointCloud& points,
-                                   PointCloud* points_transformed) const;  
+                                   PointCloud* points_transformed) const;
 
   int marker_id_;
-  
-  //listener for tf published by fiducials
+
+  // listener for tf published by fiducials
   tf::TransformListener tf_listener_;
 
- private:
+private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
@@ -132,38 +133,41 @@ class BlamSlam {
   void VisualizationTimerCallback(const ros::TimerEvent& ev);
   void UwbTimerCallback(const ros::TimerEvent& ev);
 
-  void PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr& pointCloud, const geometry_msgs::PoseStamped pose);
+  void PoseAndScanFilterCB(const sensor_msgs::PointCloud2ConstPtr& pointCloud,
+                           const geometry_msgs::PoseStamped pose);
   // Base Station Callbacks
-  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr &msg);
-  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr &msg);
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
+  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
   void ArtifactBaseCallback(const core_msgs::Artifact::ConstPtr& msg);
   void PoseUpdateCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
   // Loop closing. Returns true if at least one loop closure was found. Also
   // output whether or not a new keyframe was added to the pose graph.
   bool HandleLoopClosures(const PointCloud::ConstPtr& scan, bool* new_keyframe);
-  bool HandleLoopClosures(const PointCloud::ConstPtr& scan, geometry_utils::Transform3 pose_delta, bool* new_keyframe);
+  bool HandleLoopClosures(const PointCloud::ConstPtr& scan,
+                          geometry_utils::Transform3 pose_delta,
+                          bool* new_keyframe);
 
   // Generic add Factor service - for human loop closures to start
-  bool AddFactorService(blam_slam::AddFactorRequest &request,
-                        blam_slam::AddFactorResponse &response);
+  bool AddFactorService(blam_slam::AddFactorRequest& request,
+                        blam_slam::AddFactorResponse& response);
   // Generic remove Factor service - removes edges from pose graph
-  bool RemoveFactorService(blam_slam::RemoveFactorRequest &request,
-                           blam_slam::RemoveFactorResponse &response);
+  bool RemoveFactorService(blam_slam::RemoveFactorRequest& request,
+                           blam_slam::RemoveFactorResponse& response);
 
   // Service for restarting from last saved posegraph
-  bool RestartService(blam_slam::RestartRequest &request,
-                        blam_slam::RestartResponse &response);
+  bool RestartService(blam_slam::RestartRequest& request,
+                      blam_slam::RestartResponse& response);
   // Drop UWB from a robot
-  bool DropUwbService(mesh_msgs::ProcessCommNodeRequest &request,
-                      mesh_msgs::ProcessCommNodeResponse &response);
-  
+  bool DropUwbService(mesh_msgs::ProcessCommNodeRequest& request,
+                      mesh_msgs::ProcessCommNodeResponse& response);
+
   // Clear UWB buffer
   void UwbClearBuffer(const std::string uwb_id);
 
   // Service for rinning lazer loop closure again
-  bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest &request,
-                        blam_slam::BatchLoopClosureResponse &response);
+  bool BatchLoopClosureService(blam_slam::BatchLoopClosureRequest& request,
+                               blam_slam::BatchLoopClosureResponse& response);
 
   // Service for correcting the global map rotation
   bool
@@ -171,36 +175,37 @@ class BlamSlam {
                             blam_slam::CorrectMapRotationResponse& response);
 
   // Service to add position measurement from survey tool
-  bool AddPositionEstimateService(blam_slam::AddPositionEstimateRequest& request, 
-                                blam_slam::AddPositionEstimateResponse& response);
-
-// Service for correcting the global map rotation from Total Station
   bool
-  CorrectMapRotationFromTotalStationService(blam_slam::CorrectMapRotationFromTotalStationRequest& request,
-                            blam_slam::CorrectMapRotationFromTotalStationResponse& response);
+  AddPositionEstimateService(blam_slam::AddPositionEstimateRequest& request,
+                             blam_slam::AddPositionEstimateResponse& response);
+
+  // Service for correcting the global map rotation from Total Station
+  bool CorrectMapRotationFromTotalStationService(
+      blam_slam::CorrectMapRotationFromTotalStationRequest& request,
+      blam_slam::CorrectMapRotationFromTotalStationResponse& response);
 
   // Service for correcting the global map rotation
-  bool
-  PublishMapRotationFromTotalStationService(blam_slam::PublishMapRotationFromTotalStationRequest& request,
-                            blam_slam::PublishMapRotationFromTotalStationResponse& response);
+  bool PublishMapRotationFromTotalStationService(
+      blam_slam::PublishMapRotationFromTotalStationRequest& request,
+      blam_slam::PublishMapRotationFromTotalStationResponse& response);
 
   bool use_chordal_factor_;
 
   // Service to write the pose graph and all point clouds to a zip file.
-  bool SaveGraphService(blam_slam::SaveGraphRequest &request,
-                        blam_slam::SaveGraphResponse &response);
+  bool SaveGraphService(blam_slam::SaveGraphRequest& request,
+                        blam_slam::SaveGraphResponse& response);
 
-  bool LoadGraphService(blam_slam::LoadGraphRequest &request,
-                        blam_slam::LoadGraphResponse &response);                      
+  bool LoadGraphService(blam_slam::LoadGraphRequest& request,
+                        blam_slam::LoadGraphResponse& response);
 
   // Publish Artifacts
   void PublishArtifact(const Eigen::Vector3d& W_artifact_position,
                        const core_msgs::Artifact& msg);
 
   // Send signal to republish the pose graph from the front end
-  void SendRepubPoseGraphFlag();  
-  
-// Publish pose when using LO Frontend
+  void SendRepubPoseGraphFlag();
+
+  // Publish pose when using LO Frontend
   void PublishPoseWithLoFrontend();
 
   bool getTransformEigenFromTF(const std::string& parent_frame,
@@ -209,7 +214,7 @@ class BlamSlam {
                                Eigen::Affine3d& T);
 
   void VisualizeGroundtruthFiducials();
-  
+
   std::string getRobotName(const ros::NodeHandle& n);
 
   // The node's name.
@@ -252,14 +257,16 @@ class BlamSlam {
 
   // Whether to use two point clouds.
   bool use_two_vlps_{false};
-  // Queue size of the approximate time policy that synchronizes the two point clouds.
+  // Queue size of the approximate time policy that synchronizes the two point
+  // clouds.
   int pcld_queue_size_{10};
   // Filters
   message_filters::Subscriber<sensor_msgs::PointCloud2>* pcld1_sub_;
   message_filters::Subscriber<sensor_msgs::PointCloud2>* pcld2_sub_;
   // Synchronization policy for the two point clouds.
-  typedef message_filters::sync_policies::ApproximateTime<
-    sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> PcldSyncPolicy;
+  typedef message_filters::sync_policies::
+      ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2>
+          PcldSyncPolicy;
   // Synchronizer for the two point clouds.
   typedef message_filters::Synchronizer<PcldSyncPolicy> PcldSynchronizer;
   std::unique_ptr<PcldSynchronizer> pcld_synchronizer;
@@ -315,16 +322,16 @@ class BlamSlam {
   std::string fixed_frame_id_;
   std::string base_frame_id_;
   bool artifacts_in_global_;
-  int largest_artifact_id_; 
+  int largest_artifact_id_;
   bool use_artifact_loop_closure_;
   bool b_use_uwb_;
   bool b_add_first_scan_to_key_;
 
-  //Basestation/back-end/mid-end
+  // Basestation/back-end/mid-end
   bool b_is_basestation_;
   std::vector<std::string> robot_names_;
   bool b_is_front_end_;
-  bool b_use_lo_frontend_{false}; 
+  bool b_use_lo_frontend_{false};
 
   bool b_publish_tfs_{false};
 
@@ -353,23 +360,18 @@ class BlamSlam {
   PointCloudMapper mapper_;
 
   // Pose handler
-  geometry_utils::Transform3 fe_last_pose_; // Note that this never touches loop closure updates
+  geometry_utils::Transform3
+      fe_last_pose_; // Note that this never touches loop closure updates
   bool b_first_pose_scan_revieved_;
 
   geometry_utils::Transform3 be_current_pose_;
-  
+
   // Pose and Scan filters
   message_filters::Subscriber<sensor_msgs::PointCloud2>* filterPointSub_;
   message_filters::Subscriber<geometry_msgs::PoseStamped>* filterPoseSub_;
-  message_filters::Synchronizer
-      <
-          message_filters::sync_policies::ApproximateTime
-          <
-            sensor_msgs::PointCloud2,
-            geometry_msgs::PoseStamped
-          >
-      >* poseScanSync_;
-
+  message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<
+      sensor_msgs::PointCloud2,
+      geometry_msgs::PoseStamped>>* poseScanSync_;
 };
 
 #endif

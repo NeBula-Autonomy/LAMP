@@ -68,3 +68,16 @@ void PoseGraph::Initialize(gtsam::Symbol initial_key,
 
   TrackNode(stamp, initial_key, pose, covariance);
 }
+
+void PoseGraph::InsertKeyedScan(gtsam::Symbol key,
+                                const PointCloud::ConstPtr& scan) {
+  keyed_scans.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+}
+
+void PoseGraph::InsertKeyedStamp(gtsam::Symbol key, const ros::Time& stamp) {
+  keyed_stamps.insert(std::pair<gtsam::Symbol, ros::Time>(key, stamp));
+}
+
+void PoseGraph::InsertStampedOdomKey(double seconds, gtsam::Symbol key) {
+  stamp_to_odom_key.insert(std::pair<double, gtsam::Symbol>(seconds, key));
+}

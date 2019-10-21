@@ -45,7 +45,8 @@ void MeasurementSynchronizer::SortMessages() {
   // Accumulate all new messages in a single list.
   unsigned int ii = 0;
   for (pcld_queue::const_iterator it = pending_pclds_.begin();
-       it != pending_pclds_.end(); ++it, ++ii) {
+       it != pending_pclds_.end();
+       ++it, ++ii) {
     TimestampedType::Ptr p = TimestampedType::Ptr(
         new TimestampedType((*it)->msg->header.stamp.toSec(), POINTCLOUD, ii));
     sensor_ordering_.push_back(p);
@@ -53,16 +54,18 @@ void MeasurementSynchronizer::SortMessages() {
 
   ii = 0;
   for (pcl_pcld_queue::const_iterator it = pending_pcl_pclds_.begin();
-       it != pending_pcl_pclds_.end(); ++it, ++ii) {
+       it != pending_pcl_pclds_.end();
+       ++it, ++ii) {
     ros::Time stamp;
-    stamp.fromNSec((*it)->msg->header.stamp*1e3);
+    stamp.fromNSec((*it)->msg->header.stamp * 1e3);
     TimestampedType::Ptr p = TimestampedType::Ptr(
         new TimestampedType(stamp.toSec(), PCL_POINTCLOUD, ii));
     sensor_ordering_.push_back(p);
   }
 
   // Sort the list by time.
-  std::sort(sensor_ordering_.begin(), sensor_ordering_.end(),
+  std::sort(sensor_ordering_.begin(),
+            sensor_ordering_.end(),
             MeasurementSynchronizer::CompareTimestamps);
 
   pending_index_ = 0;

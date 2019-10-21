@@ -1,19 +1,21 @@
 #ifndef GEOMETRY_UTILS_ROTATIONN_H
 #define GEOMETRY_UTILS_ROTATIONN_H
 
-#include <ostream>
-#include <Eigen/Core>
-#include "VectorNBase.h"
 #include "MatrixNxNBase.h"
+#include "VectorNBase.h"
+#include <Eigen/Core>
+#include <ostream>
 
 namespace geometry_utils {
 
 template <typename T, size_t N>
 struct RotationNBase : MatrixNxNBase<T, N> {
-  RotationNBase() : MatrixNxNBase<T, N>() { this->Eye(); }
+  RotationNBase() : MatrixNxNBase<T, N>() {
+    this->Eye();
+  }
 
   RotationNBase(const RotationNBase& in) : MatrixNxNBase<T, N>(in.data) {}
-  RotationNBase(const boost::array<T, N* N>& in) : MatrixNxNBase<T, N>(in) {}
+  RotationNBase(const boost::array<T, N * N>& in) : MatrixNxNBase<T, N>(in) {}
   RotationNBase(T (&in)[N * N]) : MatrixNxNBase<T, N>(in) {}
   RotationNBase(const Eigen::Matrix<T, N, N>& in) : MatrixNxNBase<T, N>(in) {}
   RotationNBase(const MatrixNxNBase<T, N>& in) : MatrixNxNBase<T, N>(in) {}
@@ -40,6 +42,6 @@ inline RotationNBase<T, N> Inv(const RotationNBase<T, N>& m) {
   return m.Inv();
 }
 
-}
+} // namespace geometry_utils
 
 #endif

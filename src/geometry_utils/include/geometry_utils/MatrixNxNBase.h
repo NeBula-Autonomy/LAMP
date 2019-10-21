@@ -1,10 +1,10 @@
 #ifndef GEOMETRY_UTILS_MATRIXNXN_H
 #define GEOMETRY_UTILS_MATRIXNXN_H
 
-#include <ostream>
-#include "VectorNBase.h"
 #include "GeometryUtilsMath.h"
 #include "MatrixNxMBase.h"
+#include "VectorNBase.h"
+#include <ostream>
 
 namespace geometry_utils {
 
@@ -13,12 +13,13 @@ struct MatrixNxNBase : MatrixNxMBase<T, N, N> {
   MatrixNxNBase() : MatrixNxMBase<T, N, N>() {}
   MatrixNxNBase(T val) : MatrixNxMBase<T, N, N>(val) {}
   MatrixNxNBase(const MatrixNxNBase& in) : MatrixNxMBase<T, N, N>(in.data) {}
-  MatrixNxNBase(const boost::array<T, N* N>& in) : MatrixNxMBase<T, N, N>(in) {}
+  MatrixNxNBase(const boost::array<T, N * N>& in)
+    : MatrixNxMBase<T, N, N>(in) {}
   MatrixNxNBase(T (&in)[N * N]) : MatrixNxMBase<T, N, N>(in) {}
   MatrixNxNBase(const Eigen::Matrix<T, N, N>& in)
-      : MatrixNxMBase<T, N, N>(in) {}
+    : MatrixNxMBase<T, N, N>(in) {}
   MatrixNxNBase(const MatrixNxMBase<T, N, N>& in)
-      : MatrixNxMBase<T, N, N>(in) {}
+    : MatrixNxMBase<T, N, N>(in) {}
 
   inline void Eye() {
     this->data.fill(0);
@@ -61,6 +62,6 @@ inline MatrixNxNBase<T, N> Inv(const MatrixNxNBase<T, N>& m) {
   return m.Inv();
 }
 
-}
+} // namespace geometry_utils
 
 #endif

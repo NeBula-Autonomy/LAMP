@@ -1,7 +1,6 @@
 /*
-  geometry_utils: Utility library to provide common geometry types and transformations
-  Copyright (C) 2014  Nathan Michael
-                2016  Erik Nelson
+  geometry_utils: Utility library to provide common geometry types and
+  transformations Copyright (C) 2014  Nathan Michael 2016  Erik Nelson
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -15,23 +14,24 @@
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+  USA.
 */
 
 #ifndef GEOMETRY_UTILS_H
 #define GEOMETRY_UTILS_H
 
-#include "Vector2.h"
-#include "Vector3.h"
-#include "Vector4.h"
-#include "Quaternion.h"
 #include "Matrix2x2.h"
 #include "Matrix3x3.h"
 #include "Matrix4x4.h"
+#include "Quaternion.h"
 #include "Rotation2.h"
 #include "Rotation3.h"
 #include "Transform2.h"
 #include "Transform3.h"
+#include "Vector2.h"
+#include "Vector3.h"
+#include "Vector4.h"
 
 namespace geometry_utils {
 inline double Unroll(double x) {
@@ -125,7 +125,8 @@ inline Vec3 CartesianToSpherical(const Vec3& v) {
 }
 
 inline Vec3 SphericalToCartesian(const Vec3& v) {
-  return Vec3(v(0) * sin(v(1)) * cos(v(2)), v(0) * sin(v(1)) * sin(v(2)),
+  return Vec3(v(0) * sin(v(1)) * cos(v(2)),
+              v(0) * sin(v(1)) * sin(v(2)),
               v(0) * cos(v(1)));
 }
 
@@ -133,6 +134,6 @@ inline Vec3 NEDCartesian(const Vec3& v) {
   return Vec3(v(0), -v(1), -v(2));
 }
 
-}
+} // namespace geometry_utils
 
 #endif

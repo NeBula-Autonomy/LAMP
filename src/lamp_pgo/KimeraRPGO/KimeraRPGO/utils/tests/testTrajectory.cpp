@@ -33,7 +33,7 @@ struct normal_rv {
 TEST(Trajectory, MonteCarlo) {
   gtsam::Key start_id = 0;
   gtsam::Key end_id = 100;
-  gtsam::Matrix init_covar = Eigen::MatrixXd::Zero(6, 6); // initialize as zero
+  gtsam::Matrix init_covar = Eigen::MatrixXd::Zero(6, 6);  // initialize as zero
 
   // construct initial pose with covar
   PoseWithCovariance<gtsam::Pose3> initial_pose;
@@ -52,7 +52,7 @@ TEST(Trajectory, MonteCarlo) {
     odom.pose = tf;
     odom.covariance_matrix = 0.0001 * Eigen::MatrixXd::Identity(6, 6);
 
-    current_pose = current_pose.compose(odom); // update pose
+    current_pose = current_pose.compose(odom);  // update pose
     test_traj.poses[i] = current_pose;
   }
 
@@ -72,7 +72,7 @@ TEST(Trajectory, MonteCarlo) {
     odom.pose = tf;
     odom.covariance_matrix = 0.0001 * Eigen::MatrixXd::Identity(6, 6);
     // between_rebuild.pose.print();
-    between_rebuild = between_rebuild.compose(odom); // update pose (stich)
+    between_rebuild = between_rebuild.compose(odom);  // update pose (stich)
   }
 
   // monte carlo

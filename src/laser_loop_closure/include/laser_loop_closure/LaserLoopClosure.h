@@ -38,9 +38,8 @@
 #define LASER_LOOP_CLOSURE_H
 
 // enables correct operations of GTSAM (correct Jacobians)
-#define SLOW_BUT_CORRECT_BETWEENFACTOR 
+#define SLOW_BUT_CORRECT_BETWEENFACTOR
 
-#include <ros/ros.h>
 #include <geometry_utils/Matrix3x3.h>
 #include <geometry_utils/Transform3.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -48,35 +47,36 @@
 #include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
+#include <ros/ros.h>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Rot3.h>
+#include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/ISAM2.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/DoglegOptimizer.h>
+#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/NonlinearConjugateGradientOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/InitializePose3.h>
-#include <gtsam/nonlinear/NonlinearConjugateGradientOptimizer.h>
-#include <gtsam/inference/Symbol.h>
+#include <gtsam/slam/PriorFactor.h>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
 
-#include <tf/transform_datatypes.h>
 #include <std_msgs/Bool.h>
+#include <tf/transform_datatypes.h>
 
 #include <core_msgs/Artifact.h>
 #include <pwd.h>
 
 // for UWB
-#include <gtsam/sam/RangeFactor.h>
 #include <gtsam/inference/Symbol.h>
+#include <gtsam/sam/RangeFactor.h>
 
 // #include "SESync/SESync.h"
 // #include "SESync/SESync_utils.h"
@@ -95,25 +95,26 @@
 #include "RobustPGO/RobustSolver.h"
 
 struct ArtifactInfo {
-  std::string id; // this corresponds to parent_id
+  std::string id;          // this corresponds to parent_id
   core_msgs::Artifact msg; // All fields in the artifact message that we need
-  int num_updates; // how many times the optimizer has updated this
-  ArtifactInfo(std::string art_id="") :
-               id(art_id), 
-               num_updates(0){}
+  int num_updates;         // how many times the optimizer has updated this
+  ArtifactInfo(std::string art_id = "") : id(art_id), num_updates(0) {}
 };
 
 // Structure to store UWB range measurement in UwbSignalCallback
 struct UwbMeasurementInfo {
-  std::string id; // UWB HEX-ID ex) CE6B
+  std::string id;     // UWB HEX-ID ex) CE6B
   std::string holder; // Robot name which carrys the UWB anchor
-  bool drop_status; // Flag of drop stats -dropped: true, -mounted: false
+  bool drop_status;   // Flag of drop stats -dropped: true, -mounted: false
   bool in_pose_graph; // Is included in the pose graph: true, not: false
-  std::vector<ros::Time> time_stamp; // Time when the ranage measurement is acquired
+  std::vector<ros::Time>
+      time_stamp;            // Time when the ranage measurement is acquired
   std::vector<double> range; // Range measurement data
-  std::vector<Eigen::Vector3d> robot_position; // The robot position where the range data is acquired
-  std::vector<double> dist_posekey; // The distance between robot_position and the position of the pose_key
-  std::vector<gtsam::Key> nearest_pose_key; 
+  std::vector<Eigen::Vector3d>
+      robot_position; // The robot position where the range data is acquired
+  std::vector<double> dist_posekey; // The distance between robot_position and
+                                    // the position of the pose_key
+  std::vector<gtsam::Key> nearest_pose_key;
 };
 
 // Structure to process UWB measurement data
@@ -122,19 +123,23 @@ struct UwbDataLinkedWithKey {
   unsigned int data_number; // Number of the range measurement data
   double range_average;
   std::vector<double> range; // Range measurement data
-  std::vector<Eigen::Vector3d> robot_position; // The robot position where the range data is acquired
-  std::vector<double> dist_posekey; // The distance between robot_position and the position of the pose_key
+  std::vector<Eigen::Vector3d>
+      robot_position; // The robot position where the range data is acquired
+  std::vector<double> dist_posekey; // The distance between robot_position and
+                                    // the position of the pose_key
 };
 
 struct UwbRearrangedData {
-  std::vector<gtsam::Key> pose_key_list; // List of pose keys which are linked with UWB range measurement
-  std::vector<double> range_nearest_key; // UWB range data observed when the robot was located at the nearest position aganst the pose key
+  std::vector<gtsam::Key> pose_key_list; // List of pose keys which are linked
+                                         // with UWB range measurement
+  std::vector<double>
+      range_nearest_key; // UWB range data observed when the robot was located
+                         // at the nearest position aganst the pose key
   std::map<gtsam::Key, UwbDataLinkedWithKey> posekey2data;
 };
 
-
 class LaserLoopClosure {
- public:
+public:
   LaserLoopClosure();
   ~LaserLoopClosure();
 
@@ -154,46 +159,56 @@ class LaserLoopClosure {
   // A return value of true lets the caller know when they should call
   // AddKeyScanPair().
   bool AddBetweenFactor(const geometry_utils::Transform3& delta,
-                        const Mat66& covariance, const ros::Time& stamp,
-                        gtsam::Symbol* key, bool check_threshold=true);
+                        const Mat66& covariance,
+                        const ros::Time& stamp,
+                        gtsam::Symbol* key,
+                        bool check_threshold = true);
 
-  bool AddBetweenFactorWithPointEstimation(const geometry_utils::Transform3& delta, 
-      const Mat66& covariance, const geometry_utils::Vec3& point, 
-      const ros::Time& stamp, gtsam::Symbol* key);
-  
+  bool
+  AddBetweenFactorWithPointEstimation(const geometry_utils::Transform3& delta,
+                                      const Mat66& covariance,
+                                      const geometry_utils::Vec3& point,
+                                      const ros::Time& stamp,
+                                      gtsam::Symbol* key);
+
   bool AddUwbFactor(const std::string uwb_id, UwbMeasurementInfo uwb_data);
-  
+
   bool DropUwbAnchor(const std::string uwb_id,
                      const ros::Time& stamp,
                      const Eigen::Matrix3d T_rot,
                      const Eigen::Vector3d robot_position);
-  
+
   bool UwbLoopClosureOptimization(gtsam::NonlinearFactorGraph new_factor,
                                   gtsam::Values new_values);
-  
-  void UwbDataOutlierRejection(UwbMeasurementInfo &uwb_data);
+
+  void UwbDataOutlierRejection(UwbMeasurementInfo& uwb_data);
   template <typename TYPE_DATA, typename TYPE_STAMP>
-  void hampelOutlierRejection(std::vector<TYPE_DATA> data_input, 
+  void hampelOutlierRejection(std::vector<TYPE_DATA> data_input,
                               std::vector<TYPE_STAMP> data_stamp,
                               std::vector<bool>& b_outlier_list);
   template <typename TYPE_DATA, typename TYPE_STAMP>
-  void calculateLocalWindow(std::vector<TYPE_DATA> data_input, std::vector<TYPE_STAMP> data_stamp,
-                            TYPE_STAMP half_window_length, unsigned int data_index,
-                            std::vector<TYPE_DATA>& local_ref, std::vector<TYPE_DATA>& local_var);
+  void calculateLocalWindow(std::vector<TYPE_DATA> data_input,
+                            std::vector<TYPE_STAMP> data_stamp,
+                            TYPE_STAMP half_window_length,
+                            unsigned int data_index,
+                            std::vector<TYPE_DATA>& local_ref,
+                            std::vector<TYPE_DATA>& local_var);
   template <typename TYPE>
   TYPE calculateMedian(std::vector<TYPE> data_input);
 
-  UwbRearrangedData RearrangeUwbData(UwbMeasurementInfo &uwb_data);
+  UwbRearrangedData RearrangeUwbData(UwbMeasurementInfo& uwb_data);
 
   void ShowUwbRawData(const UwbMeasurementInfo uwb_data);
   void ShowUwbRearrangedData(UwbRearrangedData uwb_data);
 
   template <class T1, class T2>
-  void Sort2Vectors(std::vector<T1> &vector1, std::vector<T2> &vector2);
+  void Sort2Vectors(std::vector<T1>& vector1, std::vector<T2>& vector2);
 
   // Upon successful addition of a new between factor, call this function to
   // associate a laser scan with the new pose.
-  bool AddKeyScanPair(gtsam::Symbol key, const PointCloud::ConstPtr& scan, bool initial_pose);
+  bool AddKeyScanPair(gtsam::Symbol key,
+                      const PointCloud::ConstPtr& scan,
+                      bool initial_pose);
 
   // After receiving an output key from 'AddBetweenFactor', call this to check
   // for loop closures with other poses in the pose graph.
@@ -212,11 +227,13 @@ class LaserLoopClosure {
   geometry_utils::Transform3 GetLastPose() const;
   gtsam::Symbol GetKey() const;
 
-  //Get initial key
-   gtsam::Symbol GetInitialKey() const;
+  // Get initial key
+  gtsam::Symbol GetInitialKey() const;
 
-  bool AddFactorAtRestart(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);
-  bool AddFactorAtLoad(const geometry_utils::Transform3& delta,const LaserLoopClosure::Mat66& covariance);
+  bool AddFactorAtRestart(const geometry_utils::Transform3& delta,
+                          const LaserLoopClosure::Mat66& covariance);
+  bool AddFactorAtLoad(const geometry_utils::Transform3& delta,
+                       const LaserLoopClosure::Mat66& covariance);
 
   // Get the most initial pose in the pose graph.
   geometry_utils::Transform3 GetInitialPose() const;
@@ -230,8 +247,8 @@ class LaserLoopClosure {
   // Get time at the last key
   ros::Time GetTimeAtLastKey();
 
-  // Get pose at an input key 
-  geometry_utils::Transform3 GetPoseAtKey(const gtsam::Key& key) const; 
+  // Get pose at an input key
+  geometry_utils::Transform3 GetPoseAtKey(const gtsam::Key& key) const;
 
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key& artifact_key) const;
 
@@ -240,8 +257,9 @@ class LaserLoopClosure {
   // Publish pose graph for visualization.
   bool PublishPoseGraph(bool only_publish_if_changed = true);
 
-  // Publish artifacts for visualization. 
-  void PublishArtifacts(gtsam::Key artifact_key = gtsam::Key(gtsam::Symbol('z',0)));
+  // Publish artifacts for visualization.
+  void
+  PublishArtifacts(gtsam::Key artifact_key = gtsam::Key(gtsam::Symbol('z', 0)));
 
   // Changes the keynumber of key_
   bool ChangeKeyNumber();
@@ -253,29 +271,35 @@ class LaserLoopClosure {
 
   // Function to correct the rotation of the map from Apriltags
   geometry_msgs::Quaternion CorrectMapRotation(Eigen::Vector3d v1,
-                          gtsam::Key gate_key,
-                          gtsam::Key distal_key,
-                          std::string robot_name);
-  
+                                               gtsam::Key gate_key,
+                                               gtsam::Key distal_key,
+                                               std::string robot_name);
+
   geometry_msgs::Quaternion PublishMapRotationFromTotalStation();
 
   // Function to correct the rotation of the map from total station
   bool CorrectMapRotationFromTotalStation(Eigen::Vector3d v1,
-                          gtsam::Key robot_key,
-                          std::string robot_name);  
+                                          gtsam::Key robot_key,
+                                          std::string robot_name);
 
   // AddManualLoopClosure between the two keys to connect them. This function is
   // designed for a scenario where a human operator can manually perform
   // loop closures by adding these factors to the pose graph.
-  bool AddManualLoopClosure(gtsam::Key key1, gtsam::Key key2, gtsam::Pose3 pose12);
+  bool
+  AddManualLoopClosure(gtsam::Key key1, gtsam::Key key2, gtsam::Pose3 pose12);
 
-  bool AddArtifact(gtsam::Key posekey, gtsam::Key artifact_key, gtsam::Pose3 pose12,
-                   ArtifactInfo artifact, bool fiducial = false, gtsam::Point3 location = gtsam::Point3());
+  bool AddArtifact(gtsam::Key posekey,
+                   gtsam::Key artifact_key,
+                   gtsam::Pose3 pose12,
+                   ArtifactInfo artifact,
+                   bool fiducial = false,
+                   gtsam::Point3 location = gtsam::Point3());
 
-  bool AddFactor(gtsam::Key key1, gtsam::Key key2, 
-                 gtsam::Pose3 pose12, 
+  bool AddFactor(gtsam::Key key1,
+                 gtsam::Key key2,
+                 gtsam::Pose3 pose12,
                  bool is_manual_loop_closure,
-                 double rot_precision, 
+                 double rot_precision,
                  double trans_precision);
 
   // Removes the factor between the two keys from the pose graph.
@@ -286,25 +310,28 @@ class LaserLoopClosure {
   // Erase the posegraph
   bool ErasePosegraph();
 
-  //Test to not add laserloopclosures close to a manual loop closure
+  // Test to not add laserloopclosures close to a manual loop closure
   bool BatchLoopClosingTest(unsigned int key, unsigned int other_key);
 
   // Saves pose graph and accompanying point clouds to a zip file.
-  bool Save(const std::string &zipFilename) const;
+  bool Save(const std::string& zipFilename) const;
 
   // Loads pose graph and accompanying point clouds from a zip file.
-  bool Load(const std::string &zipFilename);
+  bool Load(const std::string& zipFilename);
 
-  //Basestation callbackfunctions
+  // Basestation callbackfunctions
   void KeyedScanBaseHandler(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
-  void PoseGraphBaseHandler(const pose_graph_msgs::PoseGraph::ConstPtr& msg, bool* found_loop);
+  void PoseGraphBaseHandler(const pose_graph_msgs::PoseGraph::ConstPtr& msg,
+                            bool* found_loop);
 
 private:
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
-  // Checks on loop closure 
-  bool SanityCheckForLoopClosure(double translational_sanity_check, double cost_old, double cost);
+  // Checks on loop closure
+  bool SanityCheckForLoopClosure(double translational_sanity_check,
+                                 double cost_old,
+                                 double cost);
 
   // Pose conversion from/to GTSAM format.
   geometry_utils::Transform3 ToGu(const gtsam::Pose3& pose) const;
@@ -322,12 +349,15 @@ private:
   gtsam::Vector6 initial_noise_;
 
   // Create prior and between factors.
-  gtsam::PriorFactor<gtsam::Pose3> MakePriorFactor(
-      const gtsam::Pose3& pose, const Diagonal::shared_ptr& covariance);
-  gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactor(
-      const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
-  gtsam::BetweenFactor<gtsam::Pose3> MakeBetweenFactorAtLoad(
-      const gtsam::Pose3& pose, const Gaussian::shared_ptr& covariance);
+  gtsam::PriorFactor<gtsam::Pose3>
+  MakePriorFactor(const gtsam::Pose3& pose,
+                  const Diagonal::shared_ptr& covariance);
+  gtsam::BetweenFactor<gtsam::Pose3>
+  MakeBetweenFactor(const gtsam::Pose3& pose,
+                    const Gaussian::shared_ptr& covariance);
+  gtsam::BetweenFactor<gtsam::Pose3>
+  MakeBetweenFactorAtLoad(const gtsam::Pose3& pose,
+                          const Gaussian::shared_ptr& covariance);
 
   struct passwd* pw = getpwuid(getuid());
 
@@ -335,39 +365,53 @@ private:
 
   // Perform ICP between two laser scans.
   /**
-   *  Is the query scan filtered and transformed. Decreases computation of filtering the same query scan
-   *multiple times when matching to different scans. 
+   *  Is the query scan filtered and transformed. Decreases computation of
+   *filtering the same query scan multiple times when matching to different
+   *scans.
    *
    * @param[in]: is_filtered -->  is the scan already filtered
-   * @param[in]: frame_id  -->    Coordinate frame of the scan. ICP converts the frame to world, so currently would be just focussing on making changes for world.
-   */  
-  bool PerformICP(PointCloud::Ptr& scan1,
-                  const PointCloud::ConstPtr& scan2,
-                  const geometry_utils::Transform3& pose1,
-                  const geometry_utils::Transform3& pose2,
-                  geometry_utils::Transform3* delta, Mat66* covariance, const bool is_filtered, const std::string frame_id);
-
-  // Perform ICP between two laser scans.
-  /**
-   *  Is the query scan filtered and transformed. Decreases computation of filtering the same query scan
-   *multiple times when matching to different scans. 
-   *
-   * @param[in]: is_filtered -->  is the scan already filtered
-   * @param[in]: frame_id  -->    Coordinate frame of the scan. ICP converts the frame to world, so currently would be just focussing on making changes for world.
+   * @param[in]: frame_id  -->    Coordinate frame of the scan. ICP converts the
+   *frame to world, so currently would be just focussing on making changes for
+   *world.
    */
   bool PerformICP(PointCloud::Ptr& scan1,
                   const PointCloud::ConstPtr& scan2,
                   const geometry_utils::Transform3& pose1,
                   const geometry_utils::Transform3& pose2,
-                  geometry_utils::Transform3* delta, Mat1212* covarianc, const bool is_filtered, const std::string frame_id);
+                  geometry_utils::Transform3* delta,
+                  Mat66* covariance,
+                  const bool is_filtered,
+                  const std::string frame_id);
 
-  // bool AddFactorService(laser_loop_closure::ManualLoopClosureRequest &request,
-  //                       laser_loop_closure::ManualLoopClosureResponse &response);
+  // Perform ICP between two laser scans.
+  /**
+   *  Is the query scan filtered and transformed. Decreases computation of
+   *filtering the same query scan multiple times when matching to different
+   *scans.
+   *
+   * @param[in]: is_filtered -->  is the scan already filtered
+   * @param[in]: frame_id  -->    Coordinate frame of the scan. ICP converts the
+   *frame to world, so currently would be just focussing on making changes for
+   *world.
+   */
+  bool PerformICP(PointCloud::Ptr& scan1,
+                  const PointCloud::ConstPtr& scan2,
+                  const geometry_utils::Transform3& pose1,
+                  const geometry_utils::Transform3& pose2,
+                  geometry_utils::Transform3* delta,
+                  Mat1212* covarianc,
+                  const bool is_filtered,
+                  const std::string frame_id);
+
+  // bool AddFactorService(laser_loop_closure::ManualLoopClosureRequest
+  // &request,
+  //                       laser_loop_closure::ManualLoopClosureResponse
+  //                       &response);
 
   // Subscribe to laster lc toggle
   void LaserLCToggle(const std_msgs::Bool& msg);
 
-  // Update loop edges based on iniers 
+  // Update loop edges based on iniers
   void updateInlierLoopEdges();
 
   // Node name.
@@ -421,15 +465,15 @@ private:
   gtsam::Symbol first_loaded_key_;
   gtsam::Symbol stored_key_;
 
-  // Optimizer parameters 
+  // Optimizer parameters
   RobustPGO::RobustSolverParams rpgo_params_;
 
-  //Basestation
+  // Basestation
   bool b_is_basestation_;
   bool b_first_key_set_;
 
   // Sanity check parameters
-  bool b_check_deltas_; 
+  bool b_check_deltas_;
   double translational_sanity_check_lc_;
   double translational_sanity_check_odom_;
 
@@ -479,7 +523,7 @@ private:
   std::string fixed_frame_id_;
   std::string base_frame_id_;
 
-  // Artifacts and labels 
+  // Artifacts and labels
   std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
 
   // Visualization publishers.
@@ -493,9 +537,9 @@ private:
   ros::Publisher remove_factor_viz_pub_;
 
   std::map<long unsigned int, tf::Pose> keyed_poses_;
-  
-  //Function to get the gu position of all the keys
-  geometry_utils::Transform3 GetPoseAtLoadedKey(const gtsam::Key &key) const;
+
+  // Function to get the gu position of all the keys
+  geometry_utils::Transform3 GetPoseAtLoadedKey(const gtsam::Key& key) const;
 
   // Used for publishing pose graph only if it hasn't changed.
   bool has_changed_{true};
@@ -512,7 +556,7 @@ private:
 
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> Edge;
   typedef std::pair<gtsam::Symbol, gtsam::Symbol> ArtifactEdge;
-  typedef std::pair<gtsam::Symbol, gtsam::Pose3> Prior; 
+  typedef std::pair<gtsam::Symbol, gtsam::Pose3> Prior;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
   std::vector<Edge> inlier_loop_edges_;

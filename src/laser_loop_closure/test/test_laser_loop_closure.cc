@@ -11,19 +11,19 @@
 class LaserLoopClosureTest : public ::testing::Test {
 protected:
   virtual void SetUp() {
-    test_variable = new LaserLoopClosure(); 
+    test_variable = new LaserLoopClosure();
     test_point_cloud = nullptr;
   }
 
-  virtual void TearDown() {
-  }
+  virtual void TearDown() {}
   LaserLoopClosure* test_variable;
   ros::NodeHandle nh;
   pcl::PointCloud<pcl::PointXYZ>* test_point_cloud;
 };
 
 /**
- * Checks for null pointer (no pointcloud) for maximum likelihood point estimation 
+ * Checks for null pointer (no pointcloud) for maximum likelihood point
+ * estimation
  */
 TEST_F(LaserLoopClosureTest, GetMaximumLikelihoodPoints) {
   bool result = test_variable->GetMaximumLikelihoodPoints(test_point_cloud);

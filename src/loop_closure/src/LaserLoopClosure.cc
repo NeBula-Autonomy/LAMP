@@ -5,10 +5,10 @@ Lidar pointcloud based loop closure
 */
 #include "loop_closure/LaserLoopClosure.h"
 
+#include <boost/range/as_array.hpp>
 #include <pcl/io/pcd_io.h>
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <boost/range/as_array.hpp>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
@@ -19,12 +19,12 @@ namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
-    : LoopClosure(n), last_closure_key_(0) {}
+  : LoopClosure(n), last_closure_key_(0) {}
 
 LaserLoopClosure::~LaserLoopClosure() {}
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
 
   // Subscribers
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
@@ -39,27 +39,29 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   // Load loop closing parameters.
   if (!pu::Get("translation_threshold_nodes", translation_threshold_nodes_))
     return false;
-  if (!pu::Get("proximity_threshold", proximity_threshold_)) return false;
-  if (!pu::Get("max_tolerable_fitness", max_tolerable_fitness_)) return false;
+  if (!pu::Get("proximity_threshold", proximity_threshold_))
+    return false;
+  if (!pu::Get("max_tolerable_fitness", max_tolerable_fitness_))
+    return false;
   if (!pu::Get("distance_to_skip_recent_poses", distance_to_skip_recent_poses))
     return false;
   if (!pu::Get("distance_before_reclosing", distance_before_reclosing_))
     return false;
 
   // Load ICP parameters (from point_cloud localization)
-  if (!pu::Get("icp_lc/tf_epsilon", icp_tf_epsilon_))
-    return false;
-  if (!pu::Get("icp_lc/corr_dist", icp_corr_dist_))
-    return false;
-  if (!pu::Get("icp_lc/iterations", icp_iterations_))
-    return false;
+  if (!pu::Get("icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
+  if (!pu::Get("icp_lc/corr_dist", icp_corr_dist_)) return false;
+  if (!pu::Get("icp_lc/iterations", icp_iterations_)) return false;
 
   // Hard coded covariances
-  if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;
-  if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_)) return false;
+  if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
+    return false;
+  if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_))
+    return false;
 
   int icp_init_method;
-  if (!pu::Get("icp_initialization_method", icp_init_method)) return false;
+  if (!pu::Get("icp_initialization_method", icp_init_method))
+    return false;
   icp_init_method_ = IcpInitMethod(icp_init_method);
 
   skip_recent_poses_ =
@@ -100,10 +102,12 @@ bool LaserLoopClosure::FindLoopClosures(
     const gtsam::Symbol other_key = it->first;
 
     // Don't self-check.
-    if (other_key == new_key) continue;
+    if (other_key == new_key)
+      continue;
 
     // Don't compare against poses that were recently collected.
-    if (std::fabs(new_key - other_key) < skip_recent_poses_) continue;
+    if (std::fabs(new_key - other_key) < skip_recent_poses_)
+      continue;
 
     // Get pose for the other key.
     const gtsam::Pose3 pose2 = keyed_poses_.at(other_key);
@@ -112,9 +116,12 @@ bool LaserLoopClosure::FindLoopClosures(
       const PointCloud::ConstPtr scan2 = keyed_scans_[other_key];
 
       gu::Transform3 delta;  // (Using BetweenFactor)
-      gtsam::Matrix66 covariance;
+      gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
 
-      double fitness_score;  // retrieve ICP fitness score if matched
+      double fitness_score; // retrieve ICP fitness score if matched
+      ROS_INFO_STREAM("Performing alignment between "
+                      << gtsam::DefaultKeyFormatter(new_key) << " and "
+                      << gtsam::DefaultKeyFormatter(other_key));
       if (PerformAlignment(
               scan1, scan2, pose1, pose2, &delta, &covariance, fitness_score)) {
         ROS_INFO_STREAM("Closed loop between "
@@ -138,7 +145,7 @@ bool LaserLoopClosure::FindLoopClosures(
         loop_closure_edges->push_back(edge);
       }
     }
-  }  // end of for loop
+  } // end of for loop
 
   return closed_loop;
 }
@@ -155,6 +162,10 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
     return false;
   }
 
+  if (scan1 == NULL || scan2 == NULL) {
+    ROS_ERROR("PerformAlignment: Null point clouds.");
+    return false;
+  }
   // Set up ICP.
   pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
@@ -184,31 +195,29 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
   Eigen::Matrix4f initial_guess;
 
   switch (icp_init_method_) {
-    case IcpInitMethod::IDENTITY:  // initialize with idientity
-    {
-      initial_guess = Eigen::Matrix4f::Identity(4, 4);
-    } break;
-    case IcpInitMethod::ODOMETRY:  // initialize with odometry
-    {
-      gtsam::Pose3 pose_21 = pose2.between(pose1);
-      initial_guess = Eigen::Matrix4f::Identity(4, 4);
-      initial_guess.block(0, 0, 3, 3) =
-          pose_21.rotation().matrix().cast<float>();
-      initial_guess.block(0, 3, 3, 1) =
-          pose_21.translation().vector().cast<float>();
-    } break;
-    case IcpInitMethod::ODOM_ROTATION:  // initialize with zero translation but
-                                        // rot from odom
-    {
-      gtsam::Pose3 pose_21 = pose2.between(pose1);
-      initial_guess = Eigen::Matrix4f::Identity(4, 4);
-      initial_guess.block(0, 0, 3, 3) =
-          pose_21.rotation().matrix().cast<float>();
-    } break;
-    default:  // identity as default (default in ICP anyways)
-    {
-      initial_guess = Eigen::Matrix4f::Identity(4, 4);
-    }
+  case IcpInitMethod::IDENTITY: // initialize with idientity
+  {
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+  } break;
+  case IcpInitMethod::ODOMETRY: // initialize with odometry
+  {
+    gtsam::Pose3 pose_21 = pose2.between(pose1);
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+    initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
+    initial_guess.block(0, 3, 3, 1) =
+        pose_21.translation().vector().cast<float>();
+  } break;
+  case IcpInitMethod::ODOM_ROTATION: // initialize with zero translation but
+                                     // rot from odom
+  {
+    gtsam::Pose3 pose_21 = pose2.between(pose1);
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+    initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
+  } break;
+  default: // identity as default (default in ICP anyways)
+  {
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+  }
   }
 
   // Perform ICP.
@@ -244,8 +253,8 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
   fitness_score = icp.getFitnessScore();
 
   // Find transform from pose2 to pose1 from output of ICP.
-  *delta = gu::PoseInverse(*delta);  // NOTE: gtsam need 2_Transform_1 while
-                                     // ICP output 1_Transform_2
+  *delta = gu::PoseInverse(*delta); // NOTE: gtsam need 2_Transform_1 while
+                                    // ICP output 1_Transform_2
 
   // TODO: Use real ICP covariance.
   for (int i = 0; i < 3; ++i)

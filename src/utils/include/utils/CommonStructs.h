@@ -17,6 +17,7 @@
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/NoiseModel.h>
+#include <gtsam/navigation/AttitudeFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
@@ -117,6 +118,18 @@ public:
   std::map<gtsam::Symbol, ros::Time> keyed_stamps; // All nodes
   std::map<double, gtsam::Symbol> stamp_to_odom_key;
 
+  void InsertKeyedScan(gtsam::Symbol key, const PointCloud::ConstPtr& scan);
+  void InsertKeyedStamp(gtsam::Symbol key, const ros::Time& stamp);
+  void InsertStampedOdomKey(double seconds, gtsam::Symbol key);
+
+  // Check if given key has a registered time stamp.
+  inline bool HasTime(gtsam::Symbol key) const {
+    return keyed_stamps.find(key) != keyed_stamps.end();
+  }
+  inline bool HasScan(gtsam::Symbol key) const {
+    return keyed_scans.find(key) != keyed_scans.end();
+  }
+
   // Message filters (if any)
   std::string prefix{""};
 
@@ -154,6 +167,9 @@ public:
                  const gtsam::SharedNoiseModel& covariance);
 
   void AddNewValues(const gtsam::Values& new_values);
+  inline void ClearNewValues() {
+    values_new_.clear();
+  }
 
   // Time threshold for time-based lookup functions.
   static double time_threshold;
@@ -163,10 +179,6 @@ public:
   inline static bool IsTimeWithinThreshold(double time,
                                            const ros::Time& target) {
     return std::abs(time - target.toSec()) <= time_threshold;
-  }
-  // Check if given key has a registered time stamp.
-  inline bool HasTime(gtsam::Symbol key) const {
-    return keyed_stamps.find(key) != keyed_stamps.end();
   }
 
   // Saves pose graph and accompanying point clouds to a zip file.
@@ -217,20 +229,100 @@ private:
                      const NodeMessages& priors) const;
 };
 
-// Struct definition
-struct FactorData {
-  bool b_has_data;  // False if there is no data
-  std::string type; // odom, artifact, loop clsoure
-  // Vector for possible multiple factors
-  std::vector<gtsam::Pose3> transforms; // The transform (for odom, loop
-                                        // closures etc.) and pose for TS
-  std::vector<gtsam::SharedNoiseModel>
-      covariances; // Covariances for each transform
-  std::vector<std::pair<ros::Time, ros::Time>>
-      time_stamps; // Time when the measurement as acquired (first, second)
-  // TODO - use ros::Time or something else?
+// ---------------------------------------------------------
+// Data structures for each factor type
+struct ArtifactFactor {
+  ros::Time stamp;
+  gtsam::Symbol key;
 
-  std::vector<gtsam::Symbol> artifact_key; // key for the artifacts
+  gtsam::Point3 position;
+  gtsam::SharedNoiseModel covariance;
+};
+
+struct AprilTagFactor {
+  ros::Time stamp;
+  gtsam::Symbol key;
+
+  gtsam::Point3 position;
+  gtsam::Point3 ground_truth;
+  gtsam::SharedNoiseModel covariance;
+};
+
+struct OdometryFactor {
+  std::pair<ros::Time, ros::Time> stamps;
+
+  gtsam::Pose3 transform;
+  gtsam::SharedNoiseModel covariance;
+};
+
+struct LoopClosureFactor {
+  ros::Time stamp;
+  gtsam::Symbol key_from;
+  gtsam::Symbol key_to;
+
+  gtsam::Pose3 transform;
+  gtsam::SharedNoiseModel covariance;
+};
+
+struct PriorFactor {
+  ros::Time stamp;
+  gtsam::Symbol key;
+
+  gtsam::Pose3 pose;
+  gtsam::SharedNoiseModel covariance;
+};
+
+struct ImuFactor {
+  // This is required because gtsam::Pose3AttitudeFactor has a deleted
+  // operator= so the attitude can't be assigned a value
+  ImuFactor(gtsam::Pose3AttitudeFactor factor) : attitude(factor) {}
+
+  gtsam::Pose3AttitudeFactor attitude;
+};
+
+// ---------------------------------------------------------
+
+// Base factor data class
+class FactorData {
+public:
+  FactorData(){};
+  virtual ~FactorData(){};
+
+  bool b_has_data;  // False if there is no data
+  std::string type; // odom, artifact, loop closure
+};
+
+// Derived classes
+class OdomData : public FactorData {
+public:
+  OdomData(){};
+  virtual ~OdomData(){};
+
+  std::vector<OdometryFactor> factors;
+};
+
+class ArtifactData : public FactorData {
+public:
+  ArtifactData(){};
+  virtual ~ArtifactData(){};
+
+  std::vector<ArtifactFactor> factors;
+};
+
+class LoopClosureData : public FactorData {
+public:
+  LoopClosureData(){};
+  virtual ~LoopClosureData(){};
+
+  std::vector<LoopClosureFactor> factors;
+};
+
+class ImuData : public FactorData {
+public:
+  ImuData(){};
+  virtual ~ImuData(){};
+
+  std::vector<ImuFactor> factors;
 };
 
 #endif

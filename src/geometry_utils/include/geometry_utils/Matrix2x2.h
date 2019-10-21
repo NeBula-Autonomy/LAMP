@@ -47,8 +47,10 @@ struct Matrix2x2Base : MatrixNxNBase<T, 2> {
       T c = this->data[2];
       T d = this->data[3];
 
-      T tmp[4] = {d / (-b * c + a * d), b / (b * c - a * d),
-                  c / (b * c - a * d),  a / (-b * c + a * d)};
+      T tmp[4] = {d / (-b * c + a * d),
+                  b / (b * c - a * d),
+                  c / (b * c - a * d),
+                  a / (-b * c + a * d)};
       return MatrixNxNBase<T, 2>(tmp);
     } else
       throw std::runtime_error("Matrix2x2Base: appears singular");
@@ -92,6 +94,6 @@ typedef Matrix2x2Base<double> Mat22d;
 typedef Matrix2x2Base<double> Matrix2x2;
 typedef Matrix2x2Base<double> Mat22;
 
-}
+} // namespace geometry_utils
 
 #endif

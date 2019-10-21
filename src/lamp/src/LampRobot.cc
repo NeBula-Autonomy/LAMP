@@ -98,6 +98,9 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
     return false;
 
+  if (!pu::Get("time_threshold", pose_graph_.time_threshold))
+    return false;
+
   // TODO - bring in other parameter
 
   // Set Precisions
@@ -122,10 +125,8 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Timestamp to keys initialization (initilization is particular to the robot
   // version of lamp)
   ros::Time stamp = ros::Time::now();
-  pose_graph_.keyed_stamps.insert(
-      std::pair<gtsam::Symbol, ros::Time>(initial_key_, stamp));
-  pose_graph_.stamp_to_odom_key.insert(
-      std::pair<double, gtsam::Symbol>(stamp.toSec(), initial_key_));
+  pose_graph_.InsertKeyedStamp(initial_key_, stamp);
+  pose_graph_.InsertStampedOdomKey(stamp.toSec(), initial_key_);
 
   // Set initial key
   pose_graph_.key = initial_key_ + 1;
@@ -309,27 +310,18 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Publish the pose graph
   if (b_has_new_factor_) {
-    ROS_INFO_STREAM("Publishing pose graph with new factor");
     PublishPoseGraph();
 
-    // Update and publish the map
-    // GenerateMapPointCloud();
+    // Publish the full map (for debug)
     mapper_.PublishMap();
-    ROS_INFO_STREAM("Published new map");
 
     b_has_new_factor_ = false;
-
-    // Optimize every 10 factors
-    static int x = 0;
-    x++;
-    if (x % 100 == 0) {
-      b_run_optimization_ = true;
-    }
   }
 
   // Start optimize, if needed
   if (b_run_optimization_) {
-    ROS_INFO_STREAM("Publishing pose graph to optimizer");
+    ROS_INFO_STREAM(
+        "Optimization activated: Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
 
     b_run_optimization_ = false;
@@ -357,11 +349,12 @@ void LampRobot::UpdateArtifactPositions() {
     gtsam::Symbol artifact_key = gtsam::Symbol(it.first);
 
     // Get the pose from the pose graph
-    Pose3 artifact_pose = pose_graph_.GetPose(artifact_key);
+    gtsam::Point3 artifact_position =
+        pose_graph_.GetPose(artifact_key).translation();
 
     // Update global pose just for what has changed. returns bool
     result = result ||
-        artifact_handler_.UpdateGlobalPose(artifact_key, artifact_pose);
+        artifact_handler_.UpdateGlobalPosition(artifact_key, artifact_position);
   }
 }
 
@@ -376,17 +369,17 @@ void LampRobot::UpdateArtifactPositions() {
   \author Benjamin Morrell
   \date 01 Oct 2019
 */
-bool LampRobot::ProcessOdomData(FactorData data) {
+bool LampRobot::ProcessOdomData(FactorData* data) {
+  // Extract odom data
+  OdomData* odom_data = dynamic_cast<OdomData*>(data);
+
   // Check if there are new factors
-  if (!data.b_has_data) {
+  if (!odom_data->b_has_data) {
     return false;
   }
 
   // Record new factor being added - need to publish pose graph
   b_has_new_factor_ = true;
-
-  // Number of factors from size of data vector
-  int num_factors = data.time_stamps.size();
 
   // factors to add
   NonlinearFactorGraph new_factors;
@@ -395,18 +388,19 @@ bool LampRobot::ProcessOdomData(FactorData data) {
   Values new_values;
 
   // process data for each new factor
-  for (int i = 0; i < num_factors; i++) {
+  for (auto odom_factor : odom_data->factors) {
     ROS_INFO("Adding new odom factor to pose graph");
     // Get the transforms - odom transforms
-    Pose3 transform = data.transforms[i];
+    Pose3 transform = odom_factor.transform;
     gtsam::SharedNoiseModel covariance =
-        data.covariances[i]; // TODO - check format
+        odom_factor.covariance; // TODO - check format
 
     if (b_use_fixed_covariances_) {
       covariance = SetFixedNoiseModels("odom");
     }
 
-    std::pair<ros::Time, ros::Time> times = data.time_stamps[i];
+    std::pair<ros::Time, ros::Time> times = odom_factor.stamps;
+    ;
 
     // Get the previous key - special case for odom that we use key)
     Symbol prev_key = pose_graph_.key - 1;
@@ -427,10 +421,8 @@ bool LampRobot::ProcessOdomData(FactorData data) {
     new_values.insert(current_key, last_pose.compose(transform));
 
     // add  node/keyframe to keyed stamps
-    pose_graph_.keyed_stamps.insert(
-        std::pair<gtsam::Symbol, ros::Time>(current_key, times.second));
-    pose_graph_.stamp_to_odom_key.insert(
-        std::pair<double, gtsam::Symbol>(times.second.toSec(), current_key));
+    pose_graph_.InsertKeyedStamp(current_key, times.second);
+    pose_graph_.InsertStampedOdomKey(times.second.toSec(), current_key);
 
     // Track the edges that have been added
     int type = pose_graph_msgs::PoseGraphEdge::ODOM;
@@ -442,11 +434,8 @@ bool LampRobot::ProcessOdomData(FactorData data) {
     if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
       // Store the keyed scan and add it to the map
       // TODO : filter before adding
-      pose_graph_.keyed_scans.insert(
-          std::pair<gtsam::Symbol, PointCloud::ConstPtr>(current_key,
-                                                         new_scan));
+      pose_graph_.InsertKeyedScan(current_key, new_scan);
       AddTransformedPointCloudToMap(current_key);
-      GenerateMapPointCloud();
 
       // publish keyed scan
       pose_graph_msgs::KeyedScan keyed_scan_msg;
@@ -459,50 +448,6 @@ bool LampRobot::ProcessOdomData(FactorData data) {
   // Add factors and values to the graph
   pose_graph_.nfg.add(new_factors);
   pose_graph_.AddNewValues(new_values);
-
-  return true;
-}
-
-bool LampRobot::GenerateMapPointCloud() {
-  // Reset the map
-  mapper_.Reset();
-
-  // Iterate over poses in the graph, transforming their corresponding laser
-  // scans into world frame and appending them to the output.
-  for (const auto& keyed_pose : pose_graph_.values) {
-    const gtsam::Symbol key = keyed_pose.key;
-
-    // Append the world-frame point cloud to the output.
-    AddTransformedPointCloudToMap(key);
-  }
-}
-
-bool LampRobot::AddTransformedPointCloudToMap(gtsam::Symbol key) {
-  // No key associated with the scan
-  if (!pose_graph_.keyed_scans.count(key)) {
-    ROS_WARN("Could not find scan associated with key");
-    return false;
-  }
-
-  // Check that the key exists
-  if (!pose_graph_.values.exists(key)) {
-    ROS_WARN("Key %u does not exist in values_",
-             gtsam::DefaultKeyFormatter(key));
-    return false;
-  }
-
-  const gu::Transform3 pose = utils::ToGu(pose_graph_.GetPose(key));
-  Eigen::Matrix4d b2w;
-  b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
-  b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
-
-  // Transform the body-frame scan into world frame.
-  PointCloud::Ptr points(new PointCloud);
-  pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
-
-  // Add to the map
-  PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(points, unused.get());
 
   return true;
 }
@@ -525,8 +470,8 @@ void LampRobot::UpdateAndPublishOdom() {
     ROS_INFO("Got good result from getting delta at the latest time");
   }
 
-  // odometry_handler_.GetDeltaBetweenTimes(pose_graph_.keyed_stamps[pose_graph_.key
-  // - 1], stamp, delta_pose);
+  // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp,
+  // delta_pose);
 
   // Compose the delta
   auto delta_pose = delta_pose_cov.pose;
@@ -566,9 +511,12 @@ void LampRobot::UpdateAndPublishOdom() {
   \author Abhishek Thakur
   \date 08 Oct 2019
 */
-bool LampRobot::ProcessArtifactData(FactorData data) {
+bool LampRobot::ProcessArtifactData(FactorData* data) {
+  // Extract artifact data
+  ArtifactData* artifact_data = dynamic_cast<ArtifactData*>(data);
+
   // Check if there are new factors
-  if (!data.b_has_data) {
+  if (!artifact_data->b_has_data) {
     return false;
   }
 
@@ -589,24 +537,36 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
   // New Values to be added
   Values new_values;
 
-  // Get number of new measurements
-  int num_factors = data.transforms.size();
-
   // process data for each new factor
-  for (int i = 0; i < num_factors; i++) {
+  for (auto artifact : artifact_data->factors) {
     // Get the time
-    timestamp = data.time_stamps[i].first;
+    timestamp = artifact.stamp;
 
     // Get the artifact key
-    cur_artifact_key = data.artifact_key[i];
+    cur_artifact_key = artifact.key;
+
+    // TODO:
+    // QUESTION: ConvertGlobalToRelative: Gives relative measurement between
+    // artifact key and nearest odom key. QUESTION:
+    // HandleRelativePoseMeasurement: Accounts for small transforms between
+    // current nearest added key and the instantaneous pose (which might not
+    // have been added as node).
 
     // Get the pose measurement
     if (b_artifacts_in_global_) {
       // Convert pose to relative frame
-      ConvertGlobalToRelative(timestamp, data.transforms[i], temp_transform);
+      if (!ConvertGlobalToRelative(
+              timestamp,
+              gtsam::Pose3(gtsam::Rot3(), artifact.position),
+              temp_transform)) {
+        ROS_ERROR("Can't convert artifact from global to relative");
+        b_has_new_factor_ = false;
+        return false;
+      }
     } else {
       // Is in relative already
-      temp_transform = data.transforms[i];
+      ROS_INFO("Have artifact in relative frame");
+      temp_transform = gtsam::Pose3(gtsam::Rot3(), artifact.position);
     }
 
     // Is a relative tranform, so need to handle linking to the pose-graph
@@ -623,7 +583,7 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
     // Get the covariances (Should be in relative frame as well)
     // TODO - handle this better - need to add covariances from the odom - do in
     // the function above
-    covariance = data.covariances[i];
+    covariance = artifact.covariance;
 
     if (b_use_fixed_covariances_) {
       covariance = SetFixedNoiseModels("artifact");
@@ -632,17 +592,20 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
     // create and add the factor
     new_factors.add(BetweenFactor<Pose3>(
         pose_key, cur_artifact_key, transform, covariance));
+    ROS_INFO("Added artifact to pose graph factors in lamp");
 
     // Check if it is a new artifact or not
     if (!pose_graph_.values.exists(cur_artifact_key)) {
+      ROS_INFO("Have a new artifact in LAMP");
+
       // Insert into the values
       new_values.insert(cur_artifact_key, global_pose);
 
       // Add keyed stamps
-      pose_graph_.keyed_stamps.insert(
-          std::pair<gtsam::Symbol, ros::Time>(cur_artifact_key, timestamp));
+      pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
 
       // Publish the new artifact, with the global pose
+      ROS_INFO("Calling Publish Artifacts");
       artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
 
     } else {
@@ -660,6 +623,8 @@ bool LampRobot::ProcessArtifactData(FactorData data) {
   // add factor to buffer to send to pgo
   pose_graph_.nfg.add(new_factors);
   pose_graph_.AddNewValues(new_values);
+
+  ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
 
   return true;
 }
@@ -717,18 +682,26 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
 }
 
 // Placeholder function for handling global artifacts (will soon be relative)
-void LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
+bool LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
                                         const gtsam::Pose3 pose_global,
                                         gtsam::Pose3& pose_relative) {
   // Get the closes node in the pose-graph
   gtsam::Symbol key_from = pose_graph_.GetClosestKeyAtTime(stamp);
 
+  if (key_from == gtsam::Symbol()) {
+    ROS_ERROR(
+        "Key from artifact key_from is outside of range - can't link artifact");
+    return false;
+  }
+
   // Pose of closest node
-  gtsam::Pose3 node_pose = pose_graph_.values.at<gtsam::Pose3>(key_from);
+  gtsam::Pose3 node_pose = pose_graph_.GetPose(key_from);
 
   // Compose to get the relative position (relative pose between node and
   // global)
   pose_relative = node_pose.between(pose_global);
+
+  return true;
 }
 
 // TODO Function handler wrappers

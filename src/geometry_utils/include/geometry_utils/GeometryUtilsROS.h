@@ -1,7 +1,6 @@
 /*
-geometry_utils: Utility library to provide common geometry types and transformations
-Copyright (C) 2013  Nathan Michael
-              2015  Erik Nelson
+geometry_utils: Utility library to provide common geometry types and
+transformations Copyright (C) 2013  Nathan Michael 2015  Erik Nelson
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -23,10 +22,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "GeometryUtils.h"
 
-#include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Transform.h>
 #include <nav_msgs/Odometry.h>
 
@@ -173,6 +172,6 @@ inline double GetYaw(const geometry_msgs::Quaternion& q) {
   return Rot3(FromROS(q)).Yaw();
 }
 
-}
-}
+} // namespace ros
+} // namespace geometry_utils
 #endif
