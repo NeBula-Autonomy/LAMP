@@ -12,15 +12,12 @@
 
 #include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/OdometryHandler.h>
-#include <pcl/common/transforms.h>
 
 // Services
 
 // Class Definition
 class LampRobot : public LampBase {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-
   // Constructor
   LampRobot();
 
@@ -34,7 +31,7 @@ public:
     return initial_key_;
   };
   gtsam::Symbol GetCurrentKey() {
-    return key_;
+    return pose_graph_.key;
   };
 
 protected:
@@ -62,27 +59,21 @@ protected:
   void UpdateArtifactPositions();
   void UpdateAndPublishOdom();
 
-  // Generate map from keyed scans
-  bool GenerateMapPointCloud();
-  bool AddTransformedPointCloudToMap(gtsam::Symbol key);
-
-  PointCloudFilter filter_;
-  PointCloudMapper mapper_;
-
   // Publishers
   ros::Publisher pose_pub_;
 
 private:
   // Overwrite base classs functions where needed
 
-    // Factor Hanlder Wrappers
-    bool ProcessOdomData(FactorData* data);
-    bool ProcessArtifactData(FactorData* data);
-    void ProcessAprilData(FactorData* data);
-    bool InitializeGraph(gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-    // void ProcessUWBData(FactorData data);
-    // Example use:
-    // ProcessArtifactData(artifact_handler_.GetData());
+  // Factor Hanlder Wrappers
+  bool ProcessOdomData(FactorData* data);
+  bool ProcessArtifactData(FactorData* data);
+  void ProcessAprilData(FactorData* data);
+  bool InitializeGraph(gtsam::Pose3& pose,
+                       gtsam::noiseModel::Diagonal::shared_ptr& covariance);
+  // void ProcessUWBData(FactorData data);
+  // Example use:
+  // ProcessArtifactData(artifact_handler_.GetData());
 
   void HandleRelativePoseMeasurement(const ros::Time& time,
                                      const gtsam::Pose3& relative_pose,
