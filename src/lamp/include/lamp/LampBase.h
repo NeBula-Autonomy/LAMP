@@ -45,8 +45,8 @@
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 #include <parameter_utils/ParameterUtils.h>
-#include <pcl_ros/point_cloud.h>
 #include <pcl/common/transforms.h>
+#include <pcl_ros/point_cloud.h>
 
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <point_cloud_filter/PointCloudFilter.h>
@@ -66,10 +66,6 @@
 // Class definition
 class LampBase {
 public:
-  typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
-  typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-
   // Constructor
   LampBase();
 
@@ -79,6 +75,14 @@ public:
   // Define main interface functions
 
   virtual bool Initialize(const ros::NodeHandle& n);
+
+  // Pose graph getters for outside modules (e.g. test fixtures).
+  inline const PoseGraph& graph() const {
+    return pose_graph_;
+  }
+  inline PoseGraph& graph() {
+    return pose_graph_;
+  }
 
 protected:
   // TODO: make most of these pure virtual
@@ -90,12 +94,11 @@ protected:
   // Set precisions for fixed covariance settings
   bool SetFactorPrecisions();
 
+  // Use this for any "private" things to be used in the derived class
+  // Node initialization.
+  // Set precisions for fixed covariance settings
   virtual bool CreatePublishers(const ros::NodeHandle& n);
-
-  // instantiate all handlers that are being used in the derived classes
   virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0;
-
-  // Main update timer callback
   virtual void ProcessTimerCallback(const ros::TimerEvent& ev) = 0;
   double update_rate_;
   ros::Timer update_timer_;
@@ -121,20 +124,6 @@ protected:
                                      PointCloud* points);
   bool AddTransformedPointCloudToMap(const gtsam::Symbol key);
 
-  // Convert timestamps to gtsam keys
-  gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
-  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) const;
-  bool IsTimeWithinThreshold(double time, const ros::Time& target) const;
-
-  // Convert values to PoseGraphNode Messages
-  bool
-  ConvertValuesToNodeMsgs(gtsam::Values values,
-                          std::vector<pose_graph_msgs::PoseGraphNode>& nodes);
-
-  // Convert internal pose graph to message
-  pose_graph_msgs::PoseGraphConstPtr ConvertPoseGraphToMsg(
-      gtsam::Values values, EdgeMessages edges_info, PriorMessages priors_info);
-
   // Placeholder for setting fixed noise
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
   gtsam::SharedNoiseModel laser_lc_noise_;
@@ -145,38 +134,15 @@ protected:
   virtual void
   OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
-  // Tracking info for publishing messages
-  void AddNewValues(gtsam::Values new_values);
-  void TrackEdges(gtsam::Symbol key_from,
-                  gtsam::Symbol key_to,
-                  int type,
-                  gtsam::Pose3 pose,
-                  gtsam::SharedNoiseModel covariance);
-  void TrackPriors(ros::Time stamp,
-                   gtsam::Symbol key,
-                   gtsam::Pose3 pose,
-                   gtsam::SharedNoiseModel covariance);
-
   // Set artifact positions
   virtual void UpdateArtifactPositions();
 
-  // Variables - can be able to be accessed in the derived class
-  gtsam::NonlinearFactorGraph nfg_;
-  gtsam::Values values_;
+  // Pose graph structure storing values, factors and meta data.
+  PoseGraph pose_graph_;
+  gtsam::Symbol initial_key_{0};
 
-  // Keep a list of keyed laser scans and keyed timestamps.
-  std::map<gtsam::Symbol, PointCloud::ConstPtr> keyed_scans_;
-  std::map<gtsam::Symbol, ros::Time> keyed_stamps_; // All nodes
-  std::map<double, gtsam::Symbol> stamp_to_odom_key_;
-
-  // List of all factors with additional information
-  EdgeMessages edges_info_;
-  PriorMessages priors_info_;
-
-  // Variables for tracking the new features only
-  gtsam::Values values_new_;
-  EdgeMessages edges_info_new_;
-  PriorMessages priors_info_new_;
+  // Function used for retrieving internal identifier given gtsam::Symbol.
+  virtual std::string MapSymbolToId(gtsam::Symbol key) const;
 
   // Publishers
   ros::Publisher pose_graph_pub_;
@@ -190,15 +156,6 @@ protected:
 
   // Services
 
-  // Message filters (if any)
-  std::string prefix_;
-
-  // Initial key
-  gtsam::Symbol initial_key_;
-
-  // Current key
-  gtsam::Symbol key_;
-
   // Main process name
   std::string name_;
 
@@ -208,7 +165,6 @@ protected:
   bool b_use_fixed_covariances_;
 
   // Frames.
-  std::string fixed_frame_id_;
   std::string base_frame_id_;
 
   // Pose graph merger
@@ -232,9 +188,6 @@ protected:
   double point_estimate_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
-
-  // Time threshold for GetKeyAtTime
-  double time_threshold_;
 
 private:
   // Anything just in the base class
