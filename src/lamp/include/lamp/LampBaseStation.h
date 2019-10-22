@@ -50,9 +50,6 @@ class LampBaseStation : public LampBase {
     // Main update timer callback
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
-    // Point cloud mapper
-    PointCloudMapper mapper_;
-
     // Robots that the base station subscribes to
     std::vector<std::string> robot_names_;
 

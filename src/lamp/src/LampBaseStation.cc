@@ -70,6 +70,14 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
     }
   }
 
+  // TODO : separate rate for base and robot
+  if (!pu::Get("rate/update_rate", update_rate_))
+    return false;
+
+  // Initialize frame IDs
+  pose_graph_.fixed_frame_id = "world";
+
+
   return true;
 }
 
@@ -77,6 +85,10 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
 
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
+
+  // Create the timed callback
+  update_timer_ =
+      nl.createTimer(update_rate_, &LampBaseStation::ProcessTimerCallback, this);
 
   return true; 
 }
@@ -139,13 +151,12 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Publish the pose graph
   if (b_has_new_factor_) {
-    ROS_INFO_STREAM("Publishing pose graph with new factor");
+    ROS_INFO_STREAM("Publishing pose graph and map");
     PublishPoseGraph();
 
     // Update and publish the map
     // GenerateMapPointCloud();
     mapper_.PublishMap();
-    ROS_INFO_STREAM("Published new map");
 
     b_has_new_factor_ = false;
   }
@@ -162,6 +173,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 }
 
 bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
+  // ROS_INFO_STREAM("In ProcessPoseGraphData");
 
   // Extract pose graph data
   PoseGraphData* pose_graph_data = dynamic_cast<PoseGraphData*>(data);
@@ -171,27 +183,45 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
     return false; 
   }
 
+  ROS_INFO_STREAM("New data received at base: " << pose_graph_data->graphs.size() <<
+   " graphs, " << pose_graph_data->scans.size() << " scans ");
+  b_has_new_factor_ = true;
+
+
   pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
   pcl::PointCloud<pcl::PointXYZ>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  // PointCloud::Ptr new_scan(new PointCloud);
 
-  for (pose_graph_msgs::PoseGraph g : pose_graph_data->graphs) {
-    *graph_ptr = g;
-    pose_graph_.UpdateFromMsg(graph_ptr);
+  gtsam::Values new_values;
+
+  for (auto g : pose_graph_data->graphs) {
+
+    for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
+      pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
+
+      // Values to be added to the graph
+      if (!pose_graph_.values.exists(n.key)) {
+        new_values.insert(n.key, utils::ToGtsam(n.pose));
+      }
+    }
+
+    ROS_INFO_STREAM("Added new pose graph");
   }
 
-  PointCloud::Ptr new_scan(new PointCloud);
+  // Add the new values to the graph
+  pose_graph_.AddNewValues(new_values);
+  new_values.clear();
 
-
-
+  ROS_INFO_STREAM("Keyed stamps: " << pose_graph_.keyed_stamps.size());
 
   // Update from stored keyed scans 
   for (auto s : pose_graph_data->scans) {
-    // *new_scan = s.scan;
-    pcl::fromROSMsg(s.scan, *new_scan);
-    pose_graph_.InsertKeyedScan(s.key, scan_ptr); // TODO: add overloaded function
+    pcl::fromROSMsg(s->scan, *scan_ptr);
+    pose_graph_.InsertKeyedScan(s->key, scan_ptr); // TODO: add overloaded function
+    AddTransformedPointCloudToMap(s->key);
+
+    ROS_INFO_STREAM("Added new point cloud to map, " << scan_ptr->points.size() << " points");
   }
-
-
 }
 
 

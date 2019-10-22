@@ -335,8 +335,8 @@ class PoseGraphData : public FactorData {
     PoseGraphData() { };
     virtual ~PoseGraphData() { };
 
-    std::vector<pose_graph_msgs::PoseGraph> graphs;
-    std::vector<pose_graph_msgs::KeyedScan> scans;
+    std::vector<pose_graph_msgs::PoseGraph::ConstPtr> graphs;
+    std::vector<pose_graph_msgs::KeyedScan::ConstPtr> scans;
 };
 
 

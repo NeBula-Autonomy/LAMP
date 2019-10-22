@@ -16,8 +16,11 @@
       <!-- Robots -->
       <rosparam file="$(find lamp)/config/robot_names.yaml" subst_value="true"/>
 
+      <!-- Rates -->
+      <rosparam file="$(find lamp)/config/lamp_rates.yaml"/>
+
       <!-- Frames -->
-      <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>
+      <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>
 
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
