@@ -294,9 +294,7 @@ bool LampBase::AddTransformedPointCloudToMap(const gtsam::Symbol key) {
 
   // Add to the map
   PointCloud::Ptr unused(new PointCloud);
-  ROS_INFO("test1");
   mapper_.InsertPoints(points, unused.get());
-  ROS_INFO("test2");
 
   return true;
 }

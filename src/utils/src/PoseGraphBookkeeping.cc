@@ -48,10 +48,18 @@ void PoseGraph::TrackNode(const ros::Time& stamp,
 
 void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
   // Main values variable
+  // for (auto v : new_values) {
+  //   if (values.exists(v.key)) {
+  //     ROS_WARN("Value already exists in values");
+  //   }
+  //   else {
+  //     values.insert(v);
+  //   }
+  // }
   values.insert(new_values);
 
   // New values tracking
-  values_new_.insert(new_values);
+  // values_new_.insert(new_values);
 }
 
 void PoseGraph::Initialize(gtsam::Symbol initial_key,

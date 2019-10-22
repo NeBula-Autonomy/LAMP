@@ -196,21 +196,37 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
   for (auto g : pose_graph_data->graphs) {
 
+    // Track nodes
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
       pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
 
       // Values to be added to the graph
       if (!pose_graph_.values.exists(n.key)) {
         new_values.insert(n.key, utils::ToGtsam(n.pose));
+
+        // Add the new values to the graph
+        pose_graph_.AddNewValues(new_values);
+        new_values.clear();
       }
+      else {
+        ROS_WARN("Tried adding value to pose graph that already exists");
+      }
+    }
+
+    // Track edges
+    for (pose_graph_msgs::PoseGraphEdge e : g->edges) {
+      pose_graph_.TrackFactor(e.key_from, 
+                              e.key_to, 
+                              e.type, 
+                              utils::ToGtsam(e.pose), 
+                              utils::ToGtsam(e.covariance));
+
     }
 
     ROS_INFO_STREAM("Added new pose graph");
   }
 
-  // Add the new values to the graph
-  pose_graph_.AddNewValues(new_values);
-  new_values.clear();
+
 
   ROS_INFO_STREAM("Keyed stamps: " << pose_graph_.keyed_stamps.size());
 
