@@ -431,6 +431,10 @@ bool LampRobot::ProcessOdomData(FactorData* data) {
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 
+    // Add values to graph so have it for adding map
+    pose_graph_.AddNewValues(new_values);
+    new_values.clear();
+
     if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
       // Store the keyed scan and add it to the map
       // TODO : filter before adding
@@ -447,7 +451,6 @@ bool LampRobot::ProcessOdomData(FactorData* data) {
 
   // Add factors and values to the graph
   pose_graph_.nfg.add(new_factors);
-  pose_graph_.AddNewValues(new_values);
 
   return true;
 }
