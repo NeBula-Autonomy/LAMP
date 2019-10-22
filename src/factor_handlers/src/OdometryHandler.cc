@@ -21,7 +21,8 @@ OdometryHandler::OdometryHandler()
     ts_threshold_(0.1),
     query_timestamp_first_(0),
     b_is_first_query_(true), 
-    max_buffer_size_limit_(6000) {
+    max_buffer_size_(6000),
+    min_buffer_size_(3000) {
 }
 
 OdometryHandler::~OdometryHandler() {
@@ -49,20 +50,18 @@ bool OdometryHandler::Initialize(const ros::NodeHandle& n) {
 bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
 
   // Thresholds to add new factors
-  if (!pu::Get("translation_threshold", translation_threshold_))
-    return false;
+  if (!pu::Get("translation_threshold", translation_threshold_)) return false;
 
   // Point Cloud buffer param
-  if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_))
-    return false;
-  if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_))
-    return false;
+  if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_)) return false;
+  if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_)) return false;
 
-  // Timestamp threshold used in GetPoseAtTime method to return true to the
-  // caller
-  if (!pu::Get("ts_threshold", ts_threshold_))
-    return false;
-
+  // Timestamp threshold used in GetPoseAtTime method to return true to the caller
+  if (!pu::Get("ts_threshold", ts_threshold_)) return false;
+  
+  if (!pu::Get("max_buffer_size", max_buffer_size_)) return false;
+  if (!pu::Get("min_buffer_size", min_buffer_size_)) return false;
+  
   return true;
 }
 
@@ -89,6 +88,11 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 // --------------------------------------------------------------------------------------------
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
+  
+  if (CheckBufferSize<double, PoseCovStamped>(lidar_odometry_buffer_)>max_buffer_size_){
+    ClearOdometryBuffer(lidar_odometry_buffer_, LIDAR_ODOM_BUFFER_ID);
+  }
+
   if (!InsertMsgInBuffer(msg, lidar_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store "
              "message in buffer");
@@ -96,6 +100,11 @@ void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
+
+  if (CheckBufferSize<double, PoseCovStamped>(visual_odometry_buffer_)>max_buffer_size_){
+    ClearOdometryBuffer(visual_odometry_buffer_, VISUAL_ODOM_BUFFER_ID);
+  }
+
   if (!InsertMsgInBuffer(msg, visual_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store "
              "message in buffer");
@@ -103,6 +112,11 @@ void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
 }
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {
+
+  if (CheckBufferSize<double, PoseCovStamped>(wheel_odometry_buffer_)>max_buffer_size_){
+    ClearOdometryBuffer(wheel_odometry_buffer_, WHEEL_ODOM_BUFFER_ID);
+  }
+
   if (!InsertMsgInBuffer(msg, wheel_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store "
              "message in buffer");
@@ -221,7 +235,7 @@ FactorData* OdometryHandler::GetData() {
     // Get the most recent lidar timestamp
     ros::Time t2;
     t2.fromSec(lidar_odometry_buffer_.rbegin()->first);
-    // GetClosestLidarTime(ros::Time::now(), t2);
+    // GetClosestLidarTime(ros::Time::now(), t2); TODO: Check how we're computing t2
 
     // Get the updated fused odom between the two lidar-linked timestamps
     fused_odom_for_factor =
@@ -347,9 +361,9 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
   GtsamPosCov lidar_odom, visual_odom, wheel_odom;
   // ROS_INFO_STREAM("Lidar buffer size in GetFusedOdom is: "
   //                 << lidar_odometry_buffer_.size());
-  FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2, "lidar");
-  FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2, "visual");
-  FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2, "wheel");
+  FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2, LIDAR_ODOM_BUFFER_ID);
+  FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2, VISUAL_ODOM_BUFFER_ID);
+  FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2, WHEEL_ODOM_BUFFER_ID);
   if (lidar_odom.b_has_value == true) {
     // TODO: For the first implementation, pure lidar-based odometry is used.
     output_odom = lidar_odom;
@@ -376,7 +390,7 @@ void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
                                           GtsamPosCov& measurement,
                                           const ros::Time t1,
                                           const ros::Time t2, 
-                                          const std::string& odom_buffer_id) const {
+                                          const int odom_buffer_id) const {
   /*
   Receives odometric buffer, search within it a pair of poses for the given
   timestamp, Computes the relative transformation between the two poses and
@@ -408,21 +422,32 @@ void OdometryHandler::ResetFactorData() {
   factors_.factors.clear();
 }
 
-void OdometryHandler::ClearOdometryBuffers() {
-  // TODO: The last few elements should be kept in buffer just in case
-  lidar_odometry_buffer_.clear();
-  visual_odometry_buffer_.clear();
-  wheel_odometry_buffer_.clear();
+void OdometryHandler::ClearOdometryBuffer(OdomPoseBuffer& odom_buffer, const unsigned int odom_buffer_id) {
+  auto itr_begin = odom_buffer.begin();
+  auto itr_last = std::next(odom_buffer.rbegin(), min_buffer_size_);
+  odom_buffer.erase(itr_begin, itr_last.base());
+  switch (odom_buffer_id) {
+    case LIDAR_ODOM_BUFFER_ID:
+      ROS_INFO("Clear Lidar odometry buffer"); 
+      break;
+    case VISUAL_ODOM_BUFFER_ID:
+      ROS_INFO("Clear Visual odometry buffer");
+      break;
+    case WHEEL_ODOM_BUFFER_ID:
+      ROS_INFO("Clear Wheel odometry buffer");
+    default:
+      ROS_ERROR("Invalid odometry buffer id in OdometryHandler::ClearOdometryBuffer");
+      break;
+  }
 }
 
 // Setters
 // -----------------------------------------------------------------------------------------------
 
 void OdometryHandler::SetOdomValuesAtKey(const ros::Time query) {
-  lidar_odom_value_at_key_; 
-  visual_odom_value_at_key_; 
-  wheel_odom_value_at_key_;
-  GetPoseAtTime(query, lidar_odometry_buffer_, )
+  GetPoseAtTime(query, lidar_odometry_buffer_, lidar_odom_value_at_key_);
+  GetPoseAtTime(query, visual_odometry_buffer_, visual_odom_value_at_key_);
+  GetPoseAtTime(query, wheel_odometry_buffer_, wheel_odom_value_at_key_);
 }
 
 // Getters
@@ -491,23 +516,24 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1,
                                       const ros::Time t2,
                                       const OdomPoseBuffer& odom_buffer,
                                       PoseCovStampedPair& output_poses, 
-                                      const std::string& odom_buffer_id) const {
+                                      const int odom_buffer_id) const {
   PoseCovStamped first_pose, second_pose;
 
   if (!GetPoseAtTime(t1, odom_buffer, first_pose)) {
-    switch (odom_buffer_id)
-      case "lidar":
+    switch (odom_buffer_id) {
+      case LIDAR_ODOM_BUFFER_ID:
         first_pose = lidar_odom_value_at_key_; 
         break;
-      case "visual":
+      case VISUAL_ODOM_BUFFER_ID:
         first_pose = visual_odom_value_at_key_;      
         break;
-      case "wheel":
+      case WHEEL_ODOM_BUFFER_ID:
         first_pose = wheel_odom_value_at_key_; 
       default:
         ROS_ERROR("Invalid odometry buffer id in OdometryHandler::GetPosesAtTimes");
         return false;
-        break;      
+        break; 
+    }    
   }
    
   if (GetPoseAtTime(t2, odom_buffer, second_pose)) {
