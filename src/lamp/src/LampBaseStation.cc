@@ -171,6 +171,27 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
     return false; 
   }
 
+  pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
+  pcl::PointCloud<pcl::PointXYZ>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+  for (pose_graph_msgs::PoseGraph g : pose_graph_data->graphs) {
+    *graph_ptr = g;
+    pose_graph_.UpdateFromMsg(graph_ptr);
+  }
+
+  PointCloud::Ptr new_scan(new PointCloud);
+
+
+
+
+  // Update from stored keyed scans 
+  for (auto s : pose_graph_data->scans) {
+    // *new_scan = s.scan;
+    pcl::fromROSMsg(s.scan, *new_scan);
+    pose_graph_.InsertKeyedScan(s.key, scan_ptr); // TODO: add overloaded function
+  }
+
+
 }
 
 

@@ -105,12 +105,12 @@ void PoseGraphHandler::ResetGraphData() {
 
 void PoseGraphHandler::PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
 
-  data_.b_has_data = true;
-  data_.graphs.push_back(*msg);
+  // data_.b_has_data = true;
+  // data_.graphs.push_back(msg);
 }
 
 void PoseGraphHandler::KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
 
-  data_.b_has_data = true;
-  data_.scans.push_back(*msg);
+  // data_.b_has_data = true;
+  // data_.scans.push_back(msg);
 }
