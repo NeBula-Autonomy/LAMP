@@ -392,14 +392,26 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   if (pose_graph_.HasScan(key)) {
     // Key frame, note in the ID
     return "key_frame";
-  } else if (utils::IsRobotPrefix(key.chr())) {
+  } 
+  
+  else if (utils::IsRobotPrefix(key.chr())) {
     // Odom or key frame
     return "odom_node";
-  } else if (key.chr() == 'u') {
+  } 
+
+  else if (utils::LAMP_BASE_INITIAL_KEY == key) {
+    // Base station root node
+    return "odom_node"; // TODO - add new type for this?
+  }
+  
+  else if (key.chr() == 'u') {
     // UWB
     // return uwd_handler_.GetUWBID(key); // TODO
     return "UWB"; // TEMPORARY
-  } else {
+
+  } 
+  
+  else {
     // Artifact
     // return artifact_handler_.GetArtifactID(key);// TODO
     return "Artifact"; // TEMPORARY

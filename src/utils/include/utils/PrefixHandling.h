@@ -13,23 +13,24 @@
 
 namespace utils {
 
+  const gtsam::Symbol LAMP_BASE_INITIAL_KEY('z', 0);
 
   const std::map<std::string, char> ROBOT_PREFIX = {
-      {"husky1",'a'},
-      {"husky2",'b'},
-      {"husky3",'c'},
+      {"husky1",  'a'},
+      {"husky2",  'b'},
+      {"husky3",  'c'},
       {"telemax1",'d'},
-      {"robot",'e'},
-      {"husky4",'f'}
+      {"robot",   'e'},
+      {"husky4",  'f'}
   };
 
   const std::map<std::string, char> ROBOT_ARTIFACT_PREFIX = {
-      {"husky1",'l'},
-      {"husky2",'m'},
-      {"husky3",'n'},
+      {"husky1",  'l'},
+      {"husky2",  'm'},
+      {"husky3",  'n'},
       {"telemax1",'o'},
-      {"robot",'p'},
-      {"husky4",'q'}
+      {"robot",   'p'},
+      {"husky4",  'q'}
   };
 
   inline bool IsRobotPrefix(unsigned char c) {

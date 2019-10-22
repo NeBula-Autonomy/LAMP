@@ -55,6 +55,9 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
     return false;
   }
 
+  // Init graph
+  InitializeGraph();
+
 }
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
@@ -138,7 +141,14 @@ bool LampBaseStation::InitializeGraph() {
   gtsam::noiseModel::Diagonal::shared_ptr covariance =        
       gtsam::noiseModel::Diagonal::Sigmas(zero);
 
-  pose_graph_.Initialize(initial_key_, pose, covariance);
+  pose_graph_.Initialize(utils::LAMP_BASE_INITIAL_KEY, pose, covariance);
+
+  // gtsam::Values new_values;
+  // new_values.insert(utils::LAMP_BASE_INITIAL_KEY, pose);
+  // pose_graph_.AddNewValues(new_values);
+
+
+
 
   return true;
 }
@@ -198,13 +208,30 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
     // Track nodes
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
+      ROS_INFO_STREAM("Received node with key " << gtsam::Symbol(n.key).chr() << gtsam::Symbol(n.key).index());
       pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
 
-      // Values to be added to the graph
-      if (!pose_graph_.values.exists(n.key)) {
-        new_values.insert(n.key, utils::ToGtsam(n.pose));
+      // First node from this robot
+      if (!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
+
+        ROS_INFO_STREAM("Tracking initial factor-----------------------");
+        pose_graph_.TrackFactor(utils::LAMP_BASE_INITIAL_KEY, 
+                        n.key, 
+                        pose_graph_msgs::PoseGraphEdge::ODOM, 
+                        utils::ToGtsam(n.pose), 
+                        utils::ToGtsam(n.covariance));
+
 
         // Add the new values to the graph
+        new_values.insert(n.key, utils::ToGtsam(n.pose));
+        pose_graph_.AddNewValues(new_values);
+        new_values.clear();
+      }
+
+      // Values to be added to the graph
+      else if (!pose_graph_.values.exists(n.key)) {
+        // Add the new values to the graph
+        new_values.insert(n.key, utils::ToGtsam(n.pose));
         pose_graph_.AddNewValues(new_values);
         new_values.clear();
       }

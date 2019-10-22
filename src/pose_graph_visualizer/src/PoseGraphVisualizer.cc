@@ -35,7 +35,8 @@ geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(
     const std::map<long unsigned int, tf::Pose>& poses) const {
   ROS_INFO("In getPositionMsg");
   if (poses.find(key) == poses.end()) {
-    ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
+    // ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
+    ROS_ERROR("PGV: Key %c%d does not exist in GetPositionMsg", gtsam::Symbol(key).chr(), gtsam::Symbol(key).index());
   }
   return tfpoint2msg(poses.at(key).getOrigin());
 }
