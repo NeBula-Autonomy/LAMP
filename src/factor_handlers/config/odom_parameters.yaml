@@ -7,3 +7,6 @@ pc_buffer_size_limit: 10
 
 # Timestamp threshold 
 ts_threshold: 5.0
+
+# Max buffer size limit 
+max_buffer_size_limit: 6000

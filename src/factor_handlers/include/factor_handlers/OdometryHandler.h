@@ -90,10 +90,14 @@ protected:
   bool CheckOdomSize();
   bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg,
                       OdomPoseBuffer& buffer);
-  void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
+  void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, 
+                           const ros::Time t1, const ros::Time t2, const std::string& odom_buffer_id) const;
   double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
   void ClearOdometryBuffers();
   void ResetFactorData();
+  
+  // Setters
+  void SetOdomValuesAtKey(const ros::Time query);
 
   // Getters
   bool GetPoseAtTime(const ros::Time stamp,
@@ -102,7 +106,8 @@ protected:
   bool GetPosesAtTimes(const ros::Time t1,
                     const ros::Time t2,
                     const OdomPoseBuffer& odom_buffer,
-                    PoseCovStampedPair& output_poses) const;
+                    PoseCovStampedPair& output_poses
+                    const std::string& odom_buffer_id) const;
   gtsam::Pose3 GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const;        
   gtsam::SharedNoiseModel GetCovariance(const PoseCovStampedPair pose_cov_stamped_pair) const; 
   bool GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const;
@@ -126,6 +131,13 @@ protected:
 
   // Factor data
   OdomData factors_;
+
+  // Handle corner cases 
+  int max_buffer_size_limit_;
+  PoseCovStamped lidar_odom_value_at_key_; 
+  PoseCovStamped visual_odom_value_at_key_; 
+  PoseCovStamped wheel_odom_value_at_key_; 
+  
 
 private:
 };
