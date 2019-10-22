@@ -3,16 +3,26 @@
 
 #include <gtsam/slam/PriorFactor.h>
 
-void PoseGraph::TrackFactor(const Factor& factor) {
-  auto msg = factor.ToMsg();
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+void PoseGraph::TrackFactor(const EdgeMessage& msg) {
+
+  auto edge_identifier = std::make_tuple(msg.key_from, msg.key_to, msg.type);
+
+  // Only add the edge if it is the only one of its type between its two keys
+  if (!tracked_edges_.count(edge_identifier)) {
+    edges_.push_back(msg);
+    edges_new_.push_back(msg);
+
+    tracked_edges_.insert(edge_identifier);
+  }
+
 }
 
-void PoseGraph::TrackFactor(const EdgeMessage& msg) {
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+void PoseGraph::TrackFactor(const Factor& factor) {
+  auto msg = factor.ToMsg();
+  TrackFactor(msg);
 }
+
+
 
 void PoseGraph::TrackFactor(gtsam::Symbol key_from,
                             gtsam::Symbol key_to,
@@ -21,8 +31,7 @@ void PoseGraph::TrackFactor(gtsam::Symbol key_from,
                             const gtsam::SharedNoiseModel& covariance) {
   auto msg =
       utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+  TrackFactor(msg);
 }
 
 void PoseGraph::TrackNode(const Node& node) {

@@ -311,6 +311,8 @@ bool LampBase::PublishPoseGraph() {
     // TODO - change interface to just take a flag? Then do the clear in there?
     // - no want to make sure it is published
 
+    ROS_INFO_STREAM("Publishing graph with " << g_inc->nodes.size() << " nodes and "
+     << g_inc->edges.size() << " edges");
     // Publish
     pose_graph_incremental_pub_.publish(*g_inc);
 
@@ -325,6 +327,8 @@ bool LampBase::PublishPoseGraph() {
 
     // Publish
     pose_graph_pub_.publish(*g_full);
+    ROS_INFO_STREAM("Publishing graph with " << g_full->nodes.size() << " nodes and "
+     << g_full->edges.size() << " edges");
   }
 
   return true;
@@ -388,9 +392,9 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   if (pose_graph_.HasScan(key)) {
     // Key frame, note in the ID
     return "key_frame";
-  } else if (key.chr() == pose_graph_.prefix[0]) {
+  } else if (IsRobotPrefix(key.chr())) {
     // Odom or key frame
-    return "odom";
+    return "odom_node";
   } else if (key.chr() == 'u') {
     // UWB
     // return uwd_handler_.GetUWBID(key); // TODO
@@ -400,4 +404,9 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
     // return artifact_handler_.GetArtifactID(key);// TODO
     return "Artifact"; // TEMPORARY
   }
+}
+
+bool LampBase::IsRobotPrefix(unsigned char c) const {
+  // TODO - read the robot prefixes from a file instead of this
+  return (std::string("abcdef").find(c) != std::string::npos);
 }
