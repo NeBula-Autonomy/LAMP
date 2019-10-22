@@ -55,6 +55,7 @@
 
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
+#include <utils/PrefixHandling.h>
 
 #include <math.h>
 
@@ -143,9 +144,6 @@ protected:
 
   // Function used for retrieving internal identifier given gtsam::Symbol.
   virtual std::string MapSymbolToId(gtsam::Symbol key) const;
-
-  // Check if a char is a robot prefix ('a', 'b', etc.)
-  virtual bool IsRobotPrefix(unsigned char c) const;
 
   // Publishers
   ros::Publisher pose_graph_pub_;

@@ -392,7 +392,7 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   if (pose_graph_.HasScan(key)) {
     // Key frame, note in the ID
     return "key_frame";
-  } else if (IsRobotPrefix(key.chr())) {
+  } else if (utils::IsRobotPrefix(key.chr())) {
     // Odom or key frame
     return "odom_node";
   } else if (key.chr() == 'u') {
@@ -404,9 +404,4 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
     // return artifact_handler_.GetArtifactID(key);// TODO
     return "Artifact"; // TEMPORARY
   }
-}
-
-bool LampBase::IsRobotPrefix(unsigned char c) const {
-  // TODO - read the robot prefixes from a file instead of this
-  return (std::string("abcdef").find(c) != std::string::npos);
 }
