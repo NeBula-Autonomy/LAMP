@@ -155,6 +155,8 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
+
+  // Creates pose graph publishers in base class
   LampBase::CreatePublishers(n);
 
   // Create a local nodehandle to manage callback subscriptions.

@@ -93,6 +93,16 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
   update_timer_ =
       nl.createTimer(update_rate_, &LampBaseStation::ProcessTimerCallback, this);
 
+  back_end_pose_graph_sub_ = nl.subscribe("optimized_values",
+                                          1,
+                                          &LampBaseStation::OptimizerUpdateCallback,
+                                          dynamic_cast<LampBase*>(this));
+
+  // laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
+  //                                        1,
+  //                                        &LampBaseStation::LaserLoopClosureCallback,
+  //                                        dynamic_cast<LampBase*>(this));
+
   return true; 
 }
 
@@ -259,7 +269,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
       // Check for new loop closure edges
       if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
-        
+
       }
 
     }
