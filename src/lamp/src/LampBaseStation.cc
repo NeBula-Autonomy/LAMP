@@ -169,19 +169,8 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Check the handlers
   CheckHandlers();
 
-  // // Publish the pose graph
-  // if (b_has_new_factor_) {
-  //   ROS_INFO_STREAM("Publishing pose graph and map");
-  //   PublishPoseGraph();
-
-  //   // Update and publish the map
-  //   // GenerateMapPointCloud();
-  //   mapper_.PublishMap();
-
-  //   b_has_new_factor_ = false;
-  // }
-
-  // Start optimize, if needed
+  // Send data to optimizer - pose graph and map publishing happens in 
+  // callback when data is received back from optimizer
   if (b_run_optimization_) {
     ROS_INFO_STREAM("Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
@@ -223,7 +212,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
       ROS_INFO_STREAM("Received node with key " << gtsam::Symbol(n.key).chr() << gtsam::Symbol(n.key).index());
       pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
 
-      // First node from this robot
+      // First node from this robot - add factor connecting to origin
       if (!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
 
         ROS_INFO_STREAM("Tracking initial factor-----------------------");
@@ -232,21 +221,16 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
                         pose_graph_msgs::PoseGraphEdge::ODOM, 
                         utils::ToGtsam(n.pose), 
                         utils::ToGtsam(n.covariance));
-
-
-        // Add a placeholder node to the graph to avoid key lookup errors
-        new_values.insert(n.key, utils::ToGtsam(geometry_msgs::Pose()));
       }
 
-      // Add new value to graph
-      else if (!pose_graph_.values.exists(n.key)) {
-        // Add a placeholder node to the graph
+      // If node is not in graph, add as placeholder
+      if (!pose_graph_.values.exists(n.key)) {
         new_values.insert(n.key, utils::ToGtsam(geometry_msgs::Pose()));
       }
     }
 
-      pose_graph_.AddNewValues(new_values);
-      new_values.clear();
+    pose_graph_.AddNewValues(new_values);
+    new_values.clear();
 
     // Track edges
     for (pose_graph_msgs::PoseGraphEdge e : g->edges) {
@@ -258,7 +242,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
       // Check for new loop closure edges
       if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
-
+      
       }
 
     }
