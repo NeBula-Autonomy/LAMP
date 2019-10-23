@@ -241,7 +241,7 @@ void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
     //                                             edge_msg.type,
     //                                             transform,
     //                                             covariance);
-    edges_.insert(edge);
+    TrackFactor(edge);
     // TODO update new_edges_?
   }
 }

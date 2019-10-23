@@ -3,6 +3,9 @@
 
 #include <unordered_map>
 
+#include <pose_graph_visualizer/HighlightEdge.h>
+#include <pose_graph_visualizer/HighlightNode.h>
+
 #include <ros/ros.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
@@ -13,8 +16,6 @@
 #include <pose_graph_msgs/PoseGraphNode.h>
 #include <std_msgs/Bool.h>
 
-#include <pose_graph_visualizer/HighlightEdge.h>
-#include <pose_graph_visualizer/HighlightNode.h>
 #include <visualization_msgs/Marker.h>
 
 #include <core_msgs/Artifact.h>
@@ -39,9 +40,6 @@
 #include <gtsam/slam/InitializePose3.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <map>
-#include <vector>
-
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
 
@@ -57,7 +55,7 @@ public:
   // Typedef for stored point clouds.
   typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-  void MakeMenuMarker(const tf::Pose& position, const std::string& id_number);
+  void MakeMenuMarker(const gtsam::Pose3& pose, const std::string& id_number);
 
   // Visualizes an edge between the two keys.
   bool HighlightEdge(gtsam::Key key1, gtsam::Key key2);
@@ -108,9 +106,7 @@ private:
   HighlightEdgeService(pose_graph_visualizer::HighlightEdgeRequest& request,
                        pose_graph_visualizer::HighlightEdgeResponse& response);
 
-  geometry_msgs::Point
-  GetPositionMsg(gtsam::Key key,
-                 const std::map<gtsam::Key, tf::Pose>& poses) const;
+  geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
 
   inline bool KeyExists(gtsam::Key key) const {
     return pose_graph_.values.exists(key);
@@ -123,26 +119,17 @@ private:
   // Node name.
   std::string name_;
 
-  // Keep a list of keyed laser scans, poses and timestamps.
-  std::map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
-  std::map<gtsam::Key, tf::Pose> keyed_poses_;
-  std::map<gtsam::Key, tf::Pose> keyframe_poses_;
-  std::map<gtsam::Key, tf::Pose> keyed_artifact_poses_;
-  std::map<gtsam::Key, tf::Pose> keyed_uwb_poses_;
-  std::map<gtsam::Key, ros::Time> keyed_stamps_;
-
   // Frames.
-  std::string fixed_frame_id_;
   std::string base_frame_id_;
   bool artifacts_in_global_;
 
   std::unordered_map<std::string, ArtifactInfo>
       artifacts_; // Keyed with UUID so can build this when we get artifact
                   // messages
-  int largest_artifact_id_{0};
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash_;
   std::unordered_map<gtsam::Key, std::string> artifact_key2id_hash_;
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
+  std::map<gtsam::Key, tf::Pose> keyed_artifact_poses_;
 
   // Visualization publishers.
   ros::Publisher odometry_edge_pub_;
@@ -171,19 +158,10 @@ private:
   ros::ServiceServer highlight_node_srv_;
   ros::ServiceServer highlight_edge_srv_;
 
-  typedef std::pair<gtsam::Key, gtsam::Key> Edge;
-  std::vector<Edge> odometry_edges_;
-  std::vector<Edge> loop_edges_;
-  std::vector<Edge> artifact_edges_;
-  std::vector<Edge> uwb_edges_range_;
-  std::vector<Edge> uwb_edges_between_;
-
   bool publish_interactive_markers_{true};
 
   // Proximity threshold used by LaserLoopClosureNode.
   double proximity_threshold_{1};
-
-  gtsam::Symbol key_{0};
 };
 
 #endif

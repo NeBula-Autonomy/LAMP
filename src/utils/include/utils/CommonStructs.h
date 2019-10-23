@@ -256,6 +256,13 @@ public:
     return priors_;
   }
 
+  inline const EdgeSet& GetNewEdges() const {
+    return edges_new_;
+  }
+  inline const NodeSet& GetNewPriors() const {
+    return priors_new_;
+  }
+
 private:
   // Cached messages for edges and priors to reduce publishing overhead.
   EdgeSet edges_;
