@@ -254,7 +254,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
     for (pose_graph_msgs::PoseGraphNode p : g->priors) {
 
       // Ignore the prior attached to the first node
-      if (gtsam::Symbol(p.key).index() = 0) {
+      if (gtsam::Symbol(p.key).index() == 0) {
         continue;
       }
 
