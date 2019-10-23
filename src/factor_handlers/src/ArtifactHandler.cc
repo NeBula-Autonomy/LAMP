@@ -205,7 +205,7 @@ bool ArtifactHandler::CreatePublishers(const ros::NodeHandle& n) {
  * Returns bool
  */
 bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
-  ROS_INFO("%s: Registering online callbacks.", name_.c_str());
+  ROS_INFO("%s: Registering online callbacks for Artifacts.", name_.c_str());
 
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);

@@ -65,6 +65,10 @@ class TestAprilTagHandler : public ::testing::Test{
       return apt_handle.LoadParameters(nh);
     }
 
+    bool Initialize() {
+      return apt_handle.Initialize(nh);
+    }
+
     std::unordered_map<long unsigned int, ArtifactInfo> GetKeyInfoMap() {return apt_handle.artifact_key2info_hash_;};
     std::unordered_map<std::string, gtsam::Symbol> GetStringKeyMap() {return apt_handle.artifact_id2key_hash;};
 
@@ -173,6 +177,13 @@ TEST_F(TestAprilTagHandler, LoadParameters) {
   system("rosparam load $(rospack find "
              "factor_handlers)/config/april_parameters.yaml");
   EXPECT_TRUE(LoadParameters());
+}
+
+// Check if initialization is done properly.
+TEST_F(TestAprilTagHandler, Initialize) {
+  system("rosparam load $(rospack find "
+             "factor_handlers)/config/april_parameters.yaml");
+  EXPECT_TRUE(Initialize());
 }
 
 int main(int argc, char** argv)

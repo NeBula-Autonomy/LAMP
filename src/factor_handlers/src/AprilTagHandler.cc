@@ -1,5 +1,14 @@
 #include "factor_handlers/AprilTagHandler.h"
 
+/**
+ * \brief Constructor
+ */ 
+AprilTagHandler::AprilTagHandler()
+{
+  // April tag prefix is set to T
+  artifact_prefix_='T';
+}
+
 /*! \brief Initialize parameters and callbacks. 
  * n - Nodehandle
  * Returns bool
@@ -33,20 +42,6 @@ bool AprilTagHandler::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
 
-  //Get the artifact prefix from launchfile to set initial unique artifact ID
-  bool b_initialized_artifact_prefix_from_launchfile = true;
-  std::string april_tag_prefix;
-  unsigned char april_tag_prefix_converter[1];
-  if (!pu::Get("april_tag_prefix", april_tag_prefix)){
-     b_initialized_artifact_prefix_from_launchfile = false;
-     ROS_ERROR("Could not find node ID assosiated with robot_namespace");
-  }
-  
-  if (b_initialized_artifact_prefix_from_launchfile){
-    std::copy( april_tag_prefix.begin(), april_tag_prefix.end(), april_tag_prefix_converter);
-    artifact_prefix_ = april_tag_prefix_converter[0];
-  }
-
   // Load april tag related parameters here.
   // TODO: Change this section to reflect new april tags.
   if (!pu::Get("calibration_left_x", calibration_left_x_)) return false;
@@ -69,7 +64,7 @@ bool AprilTagHandler::LoadParameters(const ros::NodeHandle& n) {
  * Returns bool
  */
 bool AprilTagHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
-  ROS_INFO("%s: Registering online callbacks.", name_.c_str());
+  ROS_INFO("%s: Registering online callbacks for April Tags.", name_.c_str());
 
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
@@ -87,43 +82,36 @@ void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
   // Convert April tag message into Artifact message
   core_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
 
-  // How many times have we processed this artifact
-  int num_updates;
-  // Find num_updates
+  // Check if a new key arrived
+  bool new_april_tag = false;
   if (artifact_id2key_hash.find(msg.id) == artifact_id2key_hash.end()){
-    num_updates = 0;
-  } else {
-    num_updates = artifact_key2info_hash_[artifact_id2key_hash[msg.id]].num_updates;
+    new_april_tag = true;
   }
 
   // Call Artifact Callback
   ArtifactCallback(artifact_msg);
 
-  // If new april tag then update the global position in
-  // stored april tag info artifact_key2info_hash_
   // Get the april tag key from artifact_id2key_hash map
   gtsam::Symbol april_tag_key;
 
-  if (artifact_id2key_hash.find(msg.id) == artifact_id2key_hash.end()) {
-    return;
-  } else {
+  // Is the first callback for the new tag successful
+  bool is_successful = false;
+  if (artifact_id2key_hash.find(msg.id) != artifact_id2key_hash.end()){
+    is_successful = true;
+  }
+
+  // If new april tag then update the global position in
+  // stored april tag info artifact_key2info_hash_
+  if (new_april_tag && is_successful) {
     april_tag_key = artifact_id2key_hash[msg.id];
-    // If callback above succeeded
-    if (artifact_key2info_hash_[april_tag_key].num_updates - num_updates == 1){
-      // Update type of factor data to april from artifact in base class
-      artifact_data_.type = "april";
-      // If new measurement and successful callback, update the global position
-      if ((num_updates == 0) && (artifact_key2info_hash_[april_tag_key].num_updates == 1)) {
-        // Check what kind - curently distal, calibration left and right 
-        if (artifact_key2info_hash_[april_tag_key].id == "distal") {
-            artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(distal_x_, distal_y_, distal_z_);
-        } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_left") {
-            artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_);
-        } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_right") {
-            artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_);
-        }
-      }
-    } 
+    // Check what kind - curently distal, calibration left and right 
+    if (artifact_key2info_hash_[april_tag_key].id == "distal") {
+        artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(distal_x_, distal_y_, distal_z_);
+    } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_left") {
+        artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_left_x_, calibration_left_y_, calibration_left_z_);
+    } else if (artifact_key2info_hash_[april_tag_key].id == "calibration_right") {
+        artifact_key2info_hash_[april_tag_key].global_position = gtsam::Point3(calibration_right_x_, calibration_right_y_, calibration_right_z_);
+    }
   }
 }
 

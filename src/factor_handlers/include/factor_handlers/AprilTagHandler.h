@@ -7,7 +7,7 @@
 class AprilTagHandler : public ArtifactHandler {
     public:
     // Constructor
-    AprilTagHandler() {};
+    AprilTagHandler();
     // Destructor
     virtual ~AprilTagHandler() = default;
 
