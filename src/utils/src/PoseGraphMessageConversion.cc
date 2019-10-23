@@ -98,7 +98,7 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
     //                             msg_edge.pose.orientation.z));
     // gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
 
-    gtsam::Pose3 delta = utils::EdgeMessageToPose(msg_edge);
+    gtsam::Pose3 delta = utils::MessageToPose(msg_edge);
 
     Gaussian::shared_ptr noise = utils::MessageToCovariance(msg_edge);
 
@@ -232,7 +232,7 @@ void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
   // closures
   for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
     // Transform to gtsam format
-    // transform = utils::EdgeMessageToPose(edge);
+    // transform = utils::MessageToPose(edge);
     // covariance = utils::MessageToCovariance(edge);
 
     // Add to tracked edges
@@ -255,7 +255,7 @@ Factor Factor::FromMsg(const EdgeMessage& msg) {
   factor.type = msg.type;
   factor.key_from = gtsam::Symbol(msg.key_from);
   factor.key_to = gtsam::Symbol(msg.key_to);
-  factor.transform = utils::EdgeMessageToPose(msg);
+  factor.transform = utils::MessageToPose(msg);
   factor.covariance = utils::MessageToCovariance(msg);
   return factor;
 }

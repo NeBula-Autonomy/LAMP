@@ -42,6 +42,9 @@
 #include <map>
 #include <vector>
 
+#include <utils/CommonFunctions.h>
+#include <utils/CommonStructs.h>
+
 namespace gu = geometry_utils;
 
 class PoseGraphVisualizer {
@@ -57,16 +60,16 @@ public:
   void MakeMenuMarker(const tf::Pose& position, const std::string& id_number);
 
   // Visualizes an edge between the two keys.
-  bool HighlightEdge(long unsigned int key1, long unsigned int key2);
+  bool HighlightEdge(gtsam::Key key1, gtsam::Key key2);
   // Removes the edge visualization between the two keys.
   // Removes all highlighting visualizations if both keys are zero.
-  void UnhighlightEdge(long unsigned int key1, long unsigned int key2);
+  void UnhighlightEdge(gtsam::Key key1, gtsam::Key key2);
 
   // Highlights factor graph node associated with the given key.
-  bool HighlightNode(long unsigned int key);
+  bool HighlightNode(gtsam::Key key);
   // Unhighlights factor graph node associated with the given key.
   // Removes all highlighting visualizations if the key is zero.
-  void UnhighlightNode(long unsigned int key);
+  void UnhighlightNode(gtsam::Key key);
 
   void VisualizePoseGraph();
   void VisualizeArtifacts();
@@ -83,6 +86,8 @@ public:
                                  const ArtifactInfo& art);
 
 private:
+  PoseGraph pose_graph_;
+
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
@@ -104,26 +109,27 @@ private:
                        pose_graph_visualizer::HighlightEdgeResponse& response);
 
   geometry_msgs::Point
-  GetPositionMsg(long unsigned int key,
-                 const std::map<long unsigned int, tf::Pose>& poses) const;
+  GetPositionMsg(gtsam::Key key,
+                 const std::map<gtsam::Key, tf::Pose>& poses) const;
 
-  inline bool KeyExists(long unsigned int key) const {
-    return keyed_poses_.find(key) != keyed_poses_.end();
+  inline bool KeyExists(gtsam::Key key) const {
+    return pose_graph_.values.exists(key);
   }
 
-  gu::Transform3 GetPoseAtKey(const gtsam::Key& key) const;
+  inline gu::Transform3 GetPoseAtKey(const gtsam::Key& key) const {
+    return utils::ToGu(pose_graph_.GetPose(key));
+  }
 
   // Node name.
   std::string name_;
 
   // Keep a list of keyed laser scans, poses and timestamps.
-  std::map<long unsigned int, PointCloud::ConstPtr> keyed_scans_;
-  std::map<long unsigned int, tf::Pose> keyed_poses_;
-  std::map<long unsigned int, tf::Pose> keyframe_poses_;
-  std::map<long unsigned int, tf::Pose> keyed_artifact_poses_;
-  std::map<long unsigned int, tf::Pose> keyed_uwb_poses_;
-  std::map<long unsigned int, ros::Time> keyed_stamps_;
-  std::map<double, long unsigned int> stamps_keyed_;
+  std::map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
+  std::map<gtsam::Key, tf::Pose> keyed_poses_;
+  std::map<gtsam::Key, tf::Pose> keyframe_poses_;
+  std::map<gtsam::Key, tf::Pose> keyed_artifact_poses_;
+  std::map<gtsam::Key, tf::Pose> keyed_uwb_poses_;
+  std::map<gtsam::Key, ros::Time> keyed_stamps_;
 
   // Frames.
   std::string fixed_frame_id_;
@@ -165,7 +171,7 @@ private:
   ros::ServiceServer highlight_node_srv_;
   ros::ServiceServer highlight_edge_srv_;
 
-  typedef std::pair<long unsigned int, long unsigned int> Edge;
+  typedef std::pair<gtsam::Key, gtsam::Key> Edge;
   std::vector<Edge> odometry_edges_;
   std::vector<Edge> loop_edges_;
   std::vector<Edge> artifact_edges_;

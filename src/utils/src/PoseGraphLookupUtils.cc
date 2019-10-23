@@ -7,7 +7,6 @@ gtsam::Symbol PoseGraph::GetKeyAtTime(const ros::Time& stamp) const {
     ROS_ERROR("No key exists at given time");
     return gtsam::Symbol();
   }
-
   return stamp_to_odom_key.at(stamp.toSec());
 }
 

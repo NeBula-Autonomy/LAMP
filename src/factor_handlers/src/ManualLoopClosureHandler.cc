@@ -50,7 +50,7 @@ void ManualLoopClosureHandler::ManualLoopClosureCallback(const pose_graph_msgs::
 
     // Create the new factor
     LoopClosureFactor new_factor;
-    new_factor.transform = utils::EdgeMessageToPose(edge);
+    new_factor.transform = utils::MessageToPose(edge);
     new_factor.key_from = edge.key_from;
     new_factor.key_to = edge.key_to;
     new_factor.stamp = msg->header.stamp;

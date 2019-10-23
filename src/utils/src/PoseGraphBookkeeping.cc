@@ -29,11 +29,13 @@ void PoseGraph::TrackNode(const Node& node) {
   auto msg = node.ToMsg();
   priors_.insert(msg);
   priors_new_.insert(msg);
+  values.insert(key, node.pose);
 }
 
 void PoseGraph::TrackNode(const NodeMessage& msg) {
   priors_.insert(msg);
   priors_new_.insert(msg);
+  values.insert(key, utils::MessageToPose(msg));
 }
 
 void PoseGraph::TrackNode(const ros::Time& stamp,
@@ -44,6 +46,7 @@ void PoseGraph::TrackNode(const ros::Time& stamp,
       utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
   priors_.insert(msg);
   priors_new_.insert(msg);
+  values.insert(key, pose);
 }
 
 void PoseGraph::AddNewValues(const gtsam::Values& new_values) {

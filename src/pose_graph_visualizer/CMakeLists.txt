@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   interactive_markers
   message_generation
+  utils
 )
 
 add_service_files(FILES HighlightEdge.srv HighlightNode.srv)

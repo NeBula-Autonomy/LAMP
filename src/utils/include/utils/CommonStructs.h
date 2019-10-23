@@ -180,6 +180,7 @@ public:
                   const gtsam::Pose3& pose,
                   const Diagonal::shared_ptr& covariance);
 
+  // Tracks edge (factor) without updating nfg.
   void TrackFactor(const Factor& factor);
   void TrackFactor(const EdgeMessage& msg);
   void TrackFactor(gtsam::Symbol key_from,
@@ -188,6 +189,7 @@ public:
                    const gtsam::Pose3& transform,
                    const gtsam::SharedNoiseModel& covariance);
 
+  // Tracks node (prior) and updates values.
   void TrackNode(const Node& node);
   void TrackNode(const NodeMessage& msg);
   void TrackNode(const ros::Time& stamp,
@@ -233,6 +235,18 @@ public:
     edges_new_.clear();
     priors_new_.clear();
     values_new_.clear();
+  }
+
+  // Clears entire pose graph (values, factors, meta data)
+  inline void Reset() {
+    ClearIncrementalMessages();
+    edges_.clear();
+    priors_.clear();
+    values.clear();
+    nfg = gtsam::NonlinearFactorGraph();
+    keyed_scans.clear();
+    keyed_stamps.clear();
+    stamp_to_odom_key.clear();
   }
 
   inline const EdgeSet& GetEdges() const {
