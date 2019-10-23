@@ -5,8 +5,9 @@ session_name: husky_refactor
 # Default environment variables; Overwrite from command line
 environment:
   # LOG_PATH: /home/costar/data/EagleMineStandard
-  LOG_PATH: /home/costar/data/ParkingLot/husky2_2019-10-11-16-57-00_parking_t7/rosbag/  
-  ROBOT_NAME: husky2
+  #LOG_PATH: /home/costar/data/ParkingLot/husky2_2019-10-11-16-57-00_parking_t7/rosbag/  # husky 2
+  LOG_PATH: /home/costar/data/husky1_2019-10-21-20-21-00_PARKING_LAMP_1/rosbag/ # husky1
+  ROBOT_NAME: husky1
 
 options:
   default-command: /bin/bash
