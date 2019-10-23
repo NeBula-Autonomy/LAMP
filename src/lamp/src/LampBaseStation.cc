@@ -250,6 +250,20 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
     }
 
+    // Track priors
+    for (pose_graph_msgs::PoseGraphNode p : g->priors) {
+
+      // Ignore the prior attached to the first node
+      if (gtsam::Symbol(p.key).index() = 0) {
+        continue;
+      }
+
+      pose_graph_.TrackNode(p.header.stamp, 
+                            p.key, 
+                            utils::ToGtsam(p.pose), 
+                            utils::ToGtsam(p.covariance));
+    }
+
     ROS_INFO_STREAM("Added new pose graph");
   }
 

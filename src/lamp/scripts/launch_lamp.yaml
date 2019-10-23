@@ -17,7 +17,7 @@ windows:
   panes:
     - roscore
     - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
-    - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_robot_viz.launch robot_namespace:=$ROBOT_NAME
+    # - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_robot_viz.launch robot_namespace:=$ROBOT_NAME
     - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch    
     - sleep 3; rosparam set /use_sim_time true; roslaunch loop_closure laser_loop_closure.launch robot_namespace:=$ROBOT_NAME
     - sleep 4; rosbag play -l -r1.0 -s90 $LOG_PATH/*.bag --prefix=/$ROBOT_NAME --clock
@@ -26,3 +26,28 @@ windows:
     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$ROBOT_NAME/map # only for Eagle mine
     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /base_station/map # base station
     - sleep 2; rosparam set /use_sim_time true;rosrun rviz rviz
+
+
+
+# # Launch config for two robot testing
+# windows:
+# - window_name: lamp
+#   focus: true
+#   layout: tiled
+#   panes:
+#     - roscore
+#     - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
+#     - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=husky2
+#     - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch    
+#     # - sleep 3; rosparam set /use_sim_time true; roslaunch loop_closure laser_loop_closure.launch robot_namespace:=$ROBOT_NAME
+#     - sleep 4; rosbag play -l -r1.0 -s90 $LOG_PATH/*.bag --prefix=/$ROBOT_NAME --clock
+#     - sleep 4; rosbag play -l -r1.0 -s90 $LOG_PATH/*.bag --prefix=/husky2 
+#     - sleep 2; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME
+#     - sleep 2; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=husky2
+#     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /velodyne /$ROBOT_NAME/base_link # only for Eagle mine
+#     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$ROBOT_NAME/map # only for Eagle mine
+#     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /base_station/map # base station
+#     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /velodyne /husky2/base_link # only for Eagle mine
+#     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /husky2/map # only for Eagle mine
+#     - sleep 2; rosparam set /use_sim_time true;rosrun rviz rviz
+

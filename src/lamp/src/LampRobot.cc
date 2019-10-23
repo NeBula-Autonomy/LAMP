@@ -191,8 +191,12 @@ bool LampRobot::SetInitialKey() {
 
 bool LampRobot::SetInitialPosition() {
   // Load initial position and orientation.
-  double init_x = 0.0, init_y = 0.0, init_z = 0.0;
+  double init_x = 2.0, init_y = 2.0, init_z = 0.0;
   double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
+  if (pose_graph_.prefix.at(0) != 'a') {
+    init_x = 2.0, init_y = -2.0, init_z = 0.0;
+    init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
+  }
   bool b_have_fiducial = true;
   if (!pu::Get("fiducial_calibration/position/x", init_x))
     b_have_fiducial = false;
