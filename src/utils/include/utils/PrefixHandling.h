@@ -19,18 +19,18 @@ namespace utils {
       {"husky1",  'a'},
       {"husky2",  'b'},
       {"husky3",  'c'},
+      {"husky4",  'f'},
       {"telemax1",'d'},
-      {"robot",   'e'},
-      {"husky4",  'f'}
+      {"robot",   'e'}
   };
 
-  const std::map<std::string, char> ROBOT_ARTIFACT_PREFIX = {
+  const std::map<std::string, char> ARTIFACT_PREFIX = {
       {"husky1",  'l'},
       {"husky2",  'm'},
       {"husky3",  'n'},
+      {"husky4",  'q'},
       {"telemax1",'o'},
-      {"robot",   'p'},
-      {"husky4",  'q'}
+      {"robot",   'p'}
   };
 
   inline bool IsRobotPrefix(unsigned char c) {
@@ -42,8 +42,8 @@ namespace utils {
     return false;
   }
 
-  inline bool IsRobotArtifactPrefix(unsigned char c) {
-    for (auto k : ROBOT_ARTIFACT_PREFIX) {  
+  inline bool IsArtifactPrefix(unsigned char c) {
+    for (auto k : ARTIFACT_PREFIX) {  
       if (k.second == c) {
         return true;
       }
@@ -60,13 +60,13 @@ namespace utils {
     return ROBOT_PREFIX.at(robot);
   }
 
-  inline unsigned char GetRobotArtifactPrefix(std::string robot) {
+  inline unsigned char GetArtifactPrefix(std::string robot) {
     
-    if (ROBOT_PREFIX.find(robot) != ROBOT_PREFIX.end()) {
+    if (ARTIFACT_PREFIX.find(robot) != ARTIFACT_PREFIX.end()) {
       return 0; 
     }
 
-    return ROBOT_ARTIFACT_PREFIX.at(robot);
+    return ARTIFACT_PREFIX.at(robot);
   }
 
 } // namespace utils

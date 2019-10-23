@@ -87,11 +87,6 @@
       <rosparam>ns: 'robot'</rosparam>     
     </node>
 
-    <!-- Loop Closure  -->
-    <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
-      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-    </include>
-
   </group>
 
   <!-- launch rviz  -->

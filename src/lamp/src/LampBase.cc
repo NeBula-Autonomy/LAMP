@@ -311,7 +311,7 @@ bool LampBase::PublishPoseGraph() {
     // TODO - change interface to just take a flag? Then do the clear in there?
     // - no want to make sure it is published
 
-    ROS_INFO_STREAM("Publishing graph with " << g_inc->nodes.size() << " nodes and "
+    ROS_INFO_STREAM("Publishing inc graph with " << g_inc->nodes.size() << " nodes and "
      << g_inc->edges.size() << " edges");
     // Publish
     pose_graph_incremental_pub_.publish(*g_inc);
@@ -327,7 +327,7 @@ bool LampBase::PublishPoseGraph() {
 
     // Publish
     pose_graph_pub_.publish(*g_full);
-    ROS_INFO_STREAM("Publishing graph with " << g_full->nodes.size() << " nodes and "
+    ROS_INFO_STREAM("Publishing full graph with " << g_full->nodes.size() << " nodes and "
      << g_full->edges.size() << " edges");
   }
 

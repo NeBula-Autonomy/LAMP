@@ -68,7 +68,7 @@ void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
   values.insert(new_values);
 
   // New values tracking
-  // values_new_.insert(new_values);
+  values_new_.insert(new_values);
 }
 
 void PoseGraph::Initialize(gtsam::Symbol initial_key,

@@ -17,7 +17,7 @@ windows:
   panes:
     - roscore
     - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
-    # - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_robot_viz.launch robot_namespace:=$ROBOT_NAME
+    - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_robot_viz.launch robot_namespace:=$ROBOT_NAME
     - sleep 3; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch    
     - sleep 3; rosparam set /use_sim_time true; roslaunch loop_closure laser_loop_closure.launch robot_namespace:=$ROBOT_NAME
     - sleep 4; rosbag play -l -r1.0 -s90 $LOG_PATH/*.bag --prefix=/$ROBOT_NAME --clock
