@@ -285,7 +285,7 @@ struct ImuFactor {
 // Base factor data class
 class FactorData {
 public:
-  FactorData(){};
+  FactorData() : b_has_data(false) {};
   virtual ~FactorData(){};
 
   bool b_has_data;  // False if there is no data
