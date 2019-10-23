@@ -20,11 +20,7 @@ bool AprilTagHandler::Initialize(const ros::NodeHandle& n){
     ROS_ERROR("%s: Failed to load April Tag parameters.", name_.c_str());
     return false;
   }
-  // Need to change this
-  // TODO: need to check this. RegisterCallbacks is not a
-  // virtual function so this takes artifact one. But
-  // now artifact one would call April or artifacts
-  // RegisterOnlineCallback
+  
   if (!RegisterCallbacks(n, false)) {
     ROS_ERROR("%s: Failed to register April Tag callback.", name_.c_str());
     return false;
