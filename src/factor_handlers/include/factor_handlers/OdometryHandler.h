@@ -14,8 +14,8 @@
 #include <factor_handlers/LampDataHandlerBase.h>
 
 // Typedefs
-typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 typedef nav_msgs::Odometry Odometry;
+typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
 typedef std::map<double, PoseCovStamped> OdomPoseBuffer;
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
@@ -28,6 +28,10 @@ typedef struct {
 } GtsamPosCov;
 
 typedef std::pair<GtsamPosCov, GtsamPosCov> GtsamPosCovPair;
+
+const unsigned int LIDAR_ODOM_BUFFER_ID = 0;
+const unsigned int VISUAL_ODOM_BUFFER_ID = 1;
+const unsigned int WHEEL_ODOM_BUFFER_ID = 2;
 
 // Class Definition 
 class OdometryHandler : public LampDataHandlerBase{
@@ -52,7 +56,7 @@ public:
   bool GetOdomDeltaLatestTime(ros::Time& t_now, GtsamPosCov& delta_pose);
   bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg);
   GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
-                                        const ros::Time t2);
+                                            const ros::Time t2);
 
 protected:
 
@@ -80,29 +84,34 @@ protected:
   // Point Cloud Storage (Time stamp and point cloud)
   std::map<double, PointCloud> point_cloud_buffer_;
 
-  // TODO: Check to see if we need this function? Not used anywhere in the
-  // code.
-  // template <typename T1, typename T2>
-  // int CheckBufferSize(const std::map<T1, T2>& x) {
-  //   return x.size();
-  // }
+  // Utilities 
+  template <typename T1, typename T2>
+  int CheckBufferSize(const std::map<T1, T2>& x){
+      return x.size();
+  }
+
+  void ClearOdometryBuffer(OdomPoseBuffer& odom_buffer, const unsigned int odom_buffer_id);
 
   bool CheckOdomSize();
   bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg,
-                      OdomPoseBuffer& buffer);
-  void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, const ros::Time t1, const ros::Time t2) const;
+                         OdomPoseBuffer& buffer);
+  void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, 
+                           const ros::Time t1, const ros::Time t2, const int odom_buffer_id) const;
   double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
-  void ClearOdometryBuffers();
   void ResetFactorData();
+  
+  // Setters
+  void SetOdomValuesAtKey(const ros::Time query);
 
   // Getters
   bool GetPoseAtTime(const ros::Time stamp,
-                  const OdomPoseBuffer& odom_buffer,
-                  PoseCovStamped& output) const;
+                     const OdomPoseBuffer& odom_buffer,
+                     PoseCovStamped& output) const;
   bool GetPosesAtTimes(const ros::Time t1,
-                    const ros::Time t2,
-                    const OdomPoseBuffer& odom_buffer,
-                    PoseCovStampedPair& output_poses) const;
+                       const ros::Time t2,
+                       const OdomPoseBuffer& odom_buffer,
+                       PoseCovStampedPair& output_poses, 
+                       const int odom_buffer_id) const;
   gtsam::Pose3 GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const;        
   gtsam::SharedNoiseModel GetCovariance(const PoseCovStampedPair pose_cov_stamped_pair) const; 
   bool GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const;
@@ -127,7 +136,15 @@ protected:
   // Factor data
   OdomData factors_;
 
+  // Corner case handling
+  int max_buffer_size_; 
+  int min_buffer_size_;
+  PoseCovStamped lidar_odom_value_at_key_; 
+  PoseCovStamped visual_odom_value_at_key_; 
+  PoseCovStamped wheel_odom_value_at_key_;   
+
 private:
+
 };
 
 #endif
