@@ -225,25 +225,6 @@ void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
   values = blank_values; 
   values_new_ = values;
 
-  // Get info for publishing later - in edges_info
-  gtsam::Pose3 transform;
-  gtsam::SharedNoiseModel covariance;
-
-  // Add the factors to the pose_graph - loop through in case of multiple loop
-  // closures
-  for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
-    // Transform to gtsam format
-    transform = utils::EdgeMessageToPose(edge);
-    covariance = utils::MessageToCovariance(edge);
-
-    // Add to tracked edges
-    // EdgeMessage edge_msg = utils::GtsamToRosMsg(edge_msg.key_from,
-    //                                             edge_msg.key_to,
-    //                                             edge_msg.type,
-    //                                             transform,
-    //                                             covariance);
-    edges_.push_back(edge);
-  }
 }
 
 EdgeMessage Factor::ToMsg() const {

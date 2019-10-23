@@ -133,6 +133,7 @@ void LampPgo::InputCallback(
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
   ROS_INFO_STREAM("PGO stored values of size " << values_.size());
+  ROS_INFO_STREAM("PGO stored nfg of size " << nfg_.size());
 
   // publish posegraph
   PublishValues();

@@ -13,6 +13,12 @@ void PoseGraph::TrackFactor(const EdgeMessage& msg) {
     edges_new_.push_back(msg);
 
     tracked_edges_.insert(edge_identifier);
+
+    ROS_INFO_STREAM("Tracking new factor: ("
+      << gtsam::DefaultKeyFormatter(msg.key_from) << ", "
+      << gtsam::DefaultKeyFormatter(msg.key_to) << ", "
+      << msg.type << ") - " 
+      << edges_.size() << " factors in total");
   }
 
 }

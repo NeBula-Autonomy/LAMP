@@ -339,6 +339,11 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   // Convert master pose-graph to messages
   pose_graph_msgs::PoseGraphConstPtr g = pose_graph_.ToMsg();
 
+  ROS_INFO_STREAM("Publishing pose graph for optimizer with " << g->nodes.size() << " nodes and "  << g->edges.size() << " edges");
+  for (auto v : g->nodes) {
+    ROS_INFO_STREAM("Key : " << gtsam::DefaultKeyFormatter(v.key));
+  }
+
   // Publish
   pose_graph_to_optimize_pub_.publish(*g);
 

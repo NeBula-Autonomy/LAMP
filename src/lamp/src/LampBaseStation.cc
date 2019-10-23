@@ -169,24 +169,24 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Check the handlers
   CheckHandlers();
 
-  // Publish the pose graph
-  if (b_has_new_factor_) {
-    ROS_INFO_STREAM("Publishing pose graph and map");
-    PublishPoseGraph();
+  // // Publish the pose graph
+  // if (b_has_new_factor_) {
+  //   ROS_INFO_STREAM("Publishing pose graph and map");
+  //   PublishPoseGraph();
 
-    // Update and publish the map
-    // GenerateMapPointCloud();
-    mapper_.PublishMap();
+  //   // Update and publish the map
+  //   // GenerateMapPointCloud();
+  //   mapper_.PublishMap();
 
-    b_has_new_factor_ = false;
-  }
+  //   b_has_new_factor_ = false;
+  // }
 
   // Start optimize, if needed
   if (b_run_optimization_) {
-      ROS_INFO_STREAM("Publishing pose graph to optimizer");
-      PublishPoseGraphForOptimizer();
+    ROS_INFO_STREAM("Publishing pose graph to optimizer");
+    PublishPoseGraphForOptimizer();
 
-      b_run_optimization_ = false; 
+    b_run_optimization_ = false; 
   }
 
   // Publish anything that is needed 
@@ -203,6 +203,9 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
     return false; 
   }
 
+  // Run optimization to update the base station graph afterwards
+  b_run_optimization_ = true;
+
   ROS_INFO_STREAM("New data received at base: " << pose_graph_data->graphs.size() <<
    " graphs, " << pose_graph_data->scans.size() << " scans ");
   b_has_new_factor_ = true;
@@ -216,7 +219,6 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
   for (auto g : pose_graph_data->graphs) {
 
-    // Track nodes
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
       ROS_INFO_STREAM("Received node with key " << gtsam::Symbol(n.key).chr() << gtsam::Symbol(n.key).index());
       pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
@@ -232,32 +234,19 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
                         utils::ToGtsam(n.covariance));
 
 
-        // Add the new values to the graph
-        new_values.insert(n.key, utils::ToGtsam(n.pose));
-
+        // Add a placeholder node to the graph to avoid key lookup errors
+        new_values.insert(n.key, utils::ToGtsam(geometry_msgs::Pose()));
       }
 
       // Add new value to graph
       else if (!pose_graph_.values.exists(n.key)) {
-        // Add the new values to the graph
-        new_values.insert(n.key, utils::ToGtsam(n.pose));
-
+        // Add a placeholder node to the graph
+        new_values.insert(n.key, utils::ToGtsam(geometry_msgs::Pose()));
       }
+    }
 
-      // Update existing value in graph
-      else {
-        if (new_values.exists(n.key)) {
-          new_values.update(n.key, utils::ToGtsam(n.pose));
-        }
-        else {
-          new_values.insert(n.key, utils::ToGtsam(n.pose));
-        }
-      }
-
-      // Add the new value
       pose_graph_.AddNewValues(new_values);
       new_values.clear();
-    }
 
     // Track edges
     for (pose_graph_msgs::PoseGraphEdge e : g->edges) {

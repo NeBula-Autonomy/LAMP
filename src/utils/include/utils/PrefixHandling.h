@@ -15,6 +15,8 @@ namespace utils {
 
   const gtsam::Symbol LAMP_BASE_INITIAL_KEY('z', 0);
 
+  const char UWB_PREFIX = 'u';
+
   const std::map<std::string, char> ROBOT_PREFIX = {
       {"husky1",  'a'},
       {"husky2",  'b'},
@@ -33,6 +35,7 @@ namespace utils {
       {"robot",   'p'}
   };
 
+  // Checks if the character is a robot node prefix;
   inline bool IsRobotPrefix(unsigned char c) {
     for (auto k : ROBOT_PREFIX) {  
       if (k.second == c) {
@@ -42,6 +45,7 @@ namespace utils {
     return false;
   }
 
+  // Checks if the character is an artifact prefix;
   inline bool IsArtifactPrefix(unsigned char c) {
     for (auto k : ARTIFACT_PREFIX) {  
       if (k.second == c) {
@@ -49,6 +53,11 @@ namespace utils {
       }
     }
     return false;
+  }
+
+  // Checks if the character is an artifact or UWB prefix;
+  inline bool IsSpecialSymbol(unsigned char c) {
+    return IsArtifactPrefix(c) || (c == UWB_PREFIX);
   }
 
   inline unsigned char GetRobotPrefix(std::string robot) {
