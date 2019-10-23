@@ -69,7 +69,8 @@ target_link_libraries(${PROJECT_NAME}
 ## Testing ##
 #############
 if (CATKIN_ENABLE_TESTING)
+  find_package(rostest REQUIRED)
   ## Add gtest based cpp test target and link libraries
-  catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cc)
+  add_rostest_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.test test/test_${PROJECT_NAME}.cc)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES} gtsam)
 endif()
