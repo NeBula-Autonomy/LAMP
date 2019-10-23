@@ -177,6 +177,7 @@ public:
   inline void ClearNewValues() {
     values_new_.clear();
   }
+  bool EraseValue(const gtsam::Symbol key);
 
   // Time threshold for time-based lookup functions.
   static double time_threshold;

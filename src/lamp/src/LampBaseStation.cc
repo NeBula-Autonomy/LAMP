@@ -224,20 +224,29 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
         // Add the new values to the graph
         new_values.insert(n.key, utils::ToGtsam(n.pose));
-        pose_graph_.AddNewValues(new_values);
-        new_values.clear();
+
       }
 
-      // Values to be added to the graph
+      // Add new value to graph
       else if (!pose_graph_.values.exists(n.key)) {
         // Add the new values to the graph
         new_values.insert(n.key, utils::ToGtsam(n.pose));
-        pose_graph_.AddNewValues(new_values);
-        new_values.clear();
+
       }
+
+      // Update existing value in graph
       else {
-        ROS_WARN("Tried adding value to pose graph that already exists");
+        if (new_values.exists(n.key)) {
+          new_values.update(n.key, utils::ToGtsam(n.pose));
+        }
+        else {
+          new_values.insert(n.key, utils::ToGtsam(n.pose));
+        }
       }
+
+      // Add the new value
+      pose_graph_.AddNewValues(new_values);
+      new_values.clear();
     }
 
     // Track edges
@@ -247,6 +256,11 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
                               e.type, 
                               utils::ToGtsam(e.pose), 
                               utils::ToGtsam(e.covariance));
+
+      // Check for new loop closure edges
+      if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+        
+      }
 
     }
 

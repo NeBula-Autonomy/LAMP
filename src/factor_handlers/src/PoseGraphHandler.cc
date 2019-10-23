@@ -65,7 +65,7 @@ bool PoseGraphHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
     // Pose graph
     pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
-        "/" + robot + "/lamp/pose_graph",
+        "/" + robot + "/lamp/pose_graph_incremental",
         1,
         &PoseGraphHandler::PoseGraphCallback,
         this);
