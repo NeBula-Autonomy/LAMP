@@ -349,48 +349,6 @@ std::string GenerateKey(long unsigned int key1, long unsigned int key2) {
   return std::to_string(key1) + '|' + std::to_string(key2);
 }
 
-gtsam::Key PoseGraphVisualizer::GetKeyAtTime(const ros::Time& stamp) const {
-  ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
-
-  auto iterTime = stamps_keyed_.lower_bound(
-      stamp.toSec()); // First key that is not less than timestamp
-
-  // std::cout << "Got iterator at lower_bound. Input: " << stamp.toSec() << ",
-  // found " << iterTime->first << std::endl;
-
-  // TODO - interpolate - currently just take one
-  double t2 = iterTime->first;
-  double t1 = std::prev(iterTime, 1)->first;
-
-  // std::cout << "Time 1 is: " << t1 << ", Time 2 is: " << t2 << std::endl;
-
-  long unsigned int key;
-
-  if (t2 - stamp.toSec() < stamp.toSec() - t1) {
-    // t2 is closer - use that key
-    // std::cout << "Selecting later time: " << t2 << std::endl;
-    key = iterTime->second;
-  } else {
-    // t1 is closer - use that key
-    // std::cout << "Selecting earlier time: " << t1 << std::endl;
-    key = std::prev(iterTime, 1)->second;
-    iterTime--;
-  }
-  // std::cout << "Key is: " << key << std::endl;
-  if (iterTime == std::prev(stamps_keyed_.begin())) {
-    // ROS_WARN("Invalid time for graph (before start of graph range). Choosing
-    // next value");
-    iterTime++;
-    // iterTime = stamps_keyed_.begin();
-    key = iterTime->second;
-  } else if (iterTime == stamps_keyed_.end()) {
-    ROS_WARN(
-        "Invalid time for graph (past end of graph range). take latest pose");
-  }
-
-  return key;
-}
-
 gu::Transform3 PoseGraphVisualizer::GetPoseAtKey(const gtsam::Key& key) const {
   // Get the pose at that key
   if (keyed_poses_.find(key) == keyed_poses_.end()) {

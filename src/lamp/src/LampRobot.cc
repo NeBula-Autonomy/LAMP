@@ -125,11 +125,11 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Timestamp to keys initialization (initilization is particular to the robot
   // version of lamp)
   ros::Time stamp = ros::Time::now();
-  pose_graph_.InsertKeyedStamp(initial_key_, stamp);
-  pose_graph_.InsertStampedOdomKey(stamp.toSec(), initial_key_);
+  pose_graph_.InsertKeyedStamp(pose_graph_.initial_key, stamp);
+  pose_graph_.InsertStampedOdomKey(stamp.toSec(), pose_graph_.initial_key);
 
   // Set initial key
-  pose_graph_.key = initial_key_ + 1;
+  pose_graph_.key = pose_graph_.initial_key + 1;
 
   return true;
 }
@@ -179,12 +179,12 @@ bool LampRobot::SetInitialKey() {
 
   if (!pu::Get("robot_prefix", pose_graph_.prefix)) {
     ROS_ERROR("Could not find node ID assosiated with robot_namespace");
-    initial_key_ = 0;
+    pose_graph_.initial_key = 0;
     return false;
   } else {
     std::copy(
         pose_graph_.prefix.begin(), pose_graph_.prefix.end(), prefix_converter);
-    initial_key_ = gtsam::Symbol(prefix_converter[0], 0);
+    pose_graph_.initial_key = gtsam::Symbol(prefix_converter[0], 0);
     return true;
   }
 }
@@ -260,7 +260,7 @@ bool LampRobot::SetInitialPosition() {
 
 bool LampRobot::InitializeGraph(
     gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
-  pose_graph_.Initialize(initial_key_, pose, covariance);
+  pose_graph_.Initialize(pose_graph_.initial_key, pose, covariance);
 
   return true;
 }
@@ -400,7 +400,6 @@ bool LampRobot::ProcessOdomData(FactorData* data) {
     }
 
     std::pair<ros::Time, ros::Time> times = odom_factor.stamps;
-    ;
 
     // Get the previous key - special case for odom that we use key)
     Symbol prev_key = pose_graph_.key - 1;

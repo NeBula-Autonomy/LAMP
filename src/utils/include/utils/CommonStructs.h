@@ -54,6 +54,34 @@ typedef pose_graph_msgs::PoseGraph::ConstPtr GraphMsgPtr;
 typedef std::vector<EdgeMessage> EdgeMessages;
 typedef std::vector<NodeMessage> NodeMessages;
 
+// Implements strictly-less-than operator for edge messages.
+static inline bool EdgeMessageComparator(const EdgeMessage& lhs,
+                                         const EdgeMessage& rhs) {
+  if (lhs.key_from < rhs.key_from)
+    return true;
+  if (lhs.key_from > rhs.key_from)
+    return false;
+  if (lhs.key_to < rhs.key_to)
+    return true;
+  if (lhs.key_to > rhs.key_to)
+    return false;
+  return lhs.type < rhs.type;
+}
+
+// Implements strictly-less-than operator for node messages.
+static inline bool NodeMessageComparator(const NodeMessage& lhs,
+                                         const NodeMessage& rhs) {
+  if (lhs.key < rhs.key)
+    return true;
+  if (lhs.key > rhs.key)
+    return false;
+  return lhs.header.frame_id < rhs.header.frame_id;
+}
+
+// Use sets of edges/nodes to avoid duplicates.
+typedef std::set<EdgeMessage, decltype(&EdgeMessageComparator)> EdgeSet;
+typedef std::set<NodeMessage, decltype(&NodeMessageComparator)> NodeSet;
+
 // Typedef for stored point clouds.
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
@@ -123,7 +151,7 @@ public:
   void InsertStampedOdomKey(double seconds, gtsam::Symbol key);
 
   // Check if given key has a registered time stamp.
-  inline bool HasTime(gtsam::Symbol key) const {
+  inline bool HasStamp(gtsam::Symbol key) const {
     return keyed_stamps.find(key) != keyed_stamps.end();
   }
   inline bool HasScan(gtsam::Symbol key) const {
@@ -137,7 +165,7 @@ public:
   gtsam::Symbol initial_key{0};
 
   // Current key
-  gtsam::Symbol key;
+  gtsam::Symbol key{0};
 
   gtsam::Vector6 initial_noise{gtsam::Vector6::Zero()};
 
@@ -159,6 +187,7 @@ public:
                    int type,
                    const gtsam::Pose3& transform,
                    const gtsam::SharedNoiseModel& covariance);
+
   void TrackNode(const Node& node);
   void TrackNode(const NodeMessage& msg);
   void TrackNode(const ros::Time& stamp,
@@ -175,7 +204,8 @@ public:
   static double time_threshold;
   // Convert timestamps to gtsam keys.
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
-  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) const;
+  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp,
+                                    bool check_threshold = true) const;
   inline static bool IsTimeWithinThreshold(double time,
                                            const ros::Time& target) {
     return std::abs(time - target.toSec()) <= time_threshold;
@@ -205,28 +235,28 @@ public:
     values_new_.clear();
   }
 
-  inline const EdgeMessages& GetEdges() const {
+  inline const EdgeSet& GetEdges() const {
     return edges_;
   }
-  inline const NodeMessages& GetPriors() const {
+  inline const NodeSet& GetPriors() const {
     return priors_;
   }
 
 private:
   // Cached messages for edges and priors to reduce publishing overhead.
-  EdgeMessages edges_;
-  NodeMessages priors_;
+  EdgeSet edges_;
+  NodeSet priors_;
 
   // Variables for tracking the new features only
   gtsam::Values values_new_;
-  EdgeMessages edges_new_;
-  NodeMessages priors_new_;
+  EdgeSet edges_new_;
+  NodeSet priors_new_;
 
   // Convert incremental pose graph with given values, edges and priors to
   // message.
   GraphMsgPtr ToMsg_(const gtsam::Values& values,
-                     const EdgeMessages& edges,
-                     const NodeMessages& priors) const;
+                     const EdgeSet& edges,
+                     const NodeSet& priors) const;
 };
 
 // ---------------------------------------------------------

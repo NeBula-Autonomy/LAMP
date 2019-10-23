@@ -111,7 +111,6 @@ private:
     return keyed_poses_.find(key) != keyed_poses_.end();
   }
 
-  gtsam::Key GetKeyAtTime(const ros::Time& stamp) const;
   gu::Transform3 GetPoseAtKey(const gtsam::Key& key) const;
 
   // Node name.

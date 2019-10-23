@@ -172,18 +172,7 @@ void LampBase::LaserLoopClosureCallback(
 // Generic addition of loop closure information to the graph
 void LampBase::AddLoopClosureToGraph(
     const pose_graph_msgs::PoseGraphConstPtr msg) {
-  // Add to nfg
-  gtsam::NonlinearFactorGraph new_factors;
-  gtsam::Values blank_values;
-  utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
-  pose_graph_.nfg.add(new_factors);
-
-  // Add the factors to the pose_graph - loop through in case of multiple loop
-  // closures
-  for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
-    // Add to tracked edges
-    pose_graph_.TrackFactor(edge);
-  }
+  pose_graph_.UpdateFromMsg(msg);
 
   // Set flag to optimize
   b_run_optimization_ = true;

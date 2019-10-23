@@ -11,7 +11,8 @@ gtsam::Symbol PoseGraph::GetKeyAtTime(const ros::Time& stamp) const {
   return stamp_to_odom_key.at(stamp.toSec());
 }
 
-gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
+gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp,
+                                             bool check_threshold) const {
   // If there are no keys, throw an error
   if (stamp_to_odom_key.size() == 0) {
     ROS_ERROR("Cannot get closest key - no keys are stored");
@@ -54,8 +55,8 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
     }
   }
 
-  // Check thresholds
-  if (std::abs(t_closest - stamp.toSec()) > time_threshold) {
+  // Check threshold
+  if (check_threshold && std::abs(t_closest - stamp.toSec()) > time_threshold) {
     ROS_ERROR("Delta between queried time and closest time in graph too large");
     ROS_INFO_STREAM("Time queried is: " << stamp.toSec()
                                         << ", closest time is: " << t_closest);

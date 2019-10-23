@@ -139,7 +139,6 @@ protected:
 
   // Pose graph structure storing values, factors and meta data.
   PoseGraph pose_graph_;
-  gtsam::Symbol initial_key_{0};
 
   // Function used for retrieving internal identifier given gtsam::Symbol.
   virtual std::string MapSymbolToId(gtsam::Symbol key) const;

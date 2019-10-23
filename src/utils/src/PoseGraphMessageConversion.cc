@@ -17,13 +17,13 @@ GraphMsgPtr PoseGraph::ToIncrementalMsg() const {
 }
 
 GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
-                              const EdgeMessages& edges,
-                              const NodeMessages& priors) const {
+                              const EdgeSet& edges,
+                              const NodeSet& priors) const {
   // Create the Pose Graph Message
   auto* msg = new pose_graph_msgs::PoseGraph;
   msg->header.frame_id = fixed_frame_id;
   // Get timestamp from latest keyed pose
-  if (HasTime(key - 1))
+  if (HasStamp(key - 1))
     msg->header.stamp = keyed_stamps.at(key - 1);
   else {
     ROS_WARN_STREAM("No time stamp exists for latest key "
@@ -33,7 +33,7 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
   // Get Values
   // Converts the internal values
   for (const auto& keyed_pose : values) {
-    gu::Transform3 t = utils::ToGu(values.at<gtsam::Pose3>(keyed_pose.key));
+    gu::Transform3 t = utils::ToGu(GetPose(keyed_pose.key));
 
     gtsam::Symbol sym_key = gtsam::Symbol(keyed_pose.key);
 
@@ -46,7 +46,7 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
     // Get timestamp
     // Note keyed_stamps are for all nodes TODO: check this is followed
     // TODO: check if time stamps are necessary
-    if (HasTime(keyed_pose.key))
+    if (HasStamp(keyed_pose.key))
       node.header.stamp = keyed_stamps.at(keyed_pose.key);
     else {
       ROS_DEBUG_STREAM("No time stamp for key " << keyed_pose.key);
@@ -66,8 +66,12 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
 
   // Add the factors  // TODO: check integration of this tracking with all
   // handlers
-  msg->edges = edges;
-  msg->priors = priors;
+  msg->edges.resize(edges.size());
+  for (const auto& edge : edges)
+    msg->edges.emplace_back(edge);
+  msg->priors.resize(priors.size());
+  for (const auto& prior : priors)
+    msg->priors.emplace_back(prior);
 
   return GraphMsgPtr(msg);
 }
@@ -221,15 +225,15 @@ void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
   nfg.add(new_factors);
 
   // Get info for publishing later - in edges_info
-  gtsam::Pose3 transform;
-  gtsam::SharedNoiseModel covariance;
+  // gtsam::Pose3 transform;
+  // gtsam::SharedNoiseModel covariance;
 
   // Add the factors to the pose_graph - loop through in case of multiple loop
   // closures
   for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
     // Transform to gtsam format
-    transform = utils::EdgeMessageToPose(edge);
-    covariance = utils::MessageToCovariance(edge);
+    // transform = utils::EdgeMessageToPose(edge);
+    // covariance = utils::MessageToCovariance(edge);
 
     // Add to tracked edges
     // EdgeMessage edge_msg = utils::GtsamToRosMsg(edge_msg.key_from,
@@ -237,7 +241,7 @@ void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
     //                                             edge_msg.type,
     //                                             transform,
     //                                             covariance);
-    edges_.push_back(edge);
+    edges_.insert(edge);
   }
 }
 

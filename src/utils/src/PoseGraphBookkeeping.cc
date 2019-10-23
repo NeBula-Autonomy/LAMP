@@ -5,13 +5,13 @@
 
 void PoseGraph::TrackFactor(const Factor& factor) {
   auto msg = factor.ToMsg();
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+  edges_.insert(msg);
+  edges_new_.insert(msg);
 }
 
 void PoseGraph::TrackFactor(const EdgeMessage& msg) {
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+  edges_.insert(msg);
+  edges_new_.insert(msg);
 }
 
 void PoseGraph::TrackFactor(gtsam::Symbol key_from,
@@ -21,19 +21,19 @@ void PoseGraph::TrackFactor(gtsam::Symbol key_from,
                             const gtsam::SharedNoiseModel& covariance) {
   auto msg =
       utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+  edges_.insert(msg);
+  edges_new_.insert(msg);
 }
 
 void PoseGraph::TrackNode(const Node& node) {
   auto msg = node.ToMsg();
-  priors_.push_back(msg);
-  priors_new_.push_back(msg);
+  priors_.insert(msg);
+  priors_new_.insert(msg);
 }
 
 void PoseGraph::TrackNode(const NodeMessage& msg) {
-  priors_.push_back(msg);
-  priors_new_.push_back(msg);
+  priors_.insert(msg);
+  priors_new_.insert(msg);
 }
 
 void PoseGraph::TrackNode(const ros::Time& stamp,
@@ -42,8 +42,8 @@ void PoseGraph::TrackNode(const ros::Time& stamp,
                           const gtsam::SharedNoiseModel& covariance) {
   NodeMessage msg =
       utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
-  priors_.push_back(msg);
-  priors_new_.push_back(msg);
+  priors_.insert(msg);
+  priors_new_.insert(msg);
 }
 
 void PoseGraph::AddNewValues(const gtsam::Values& new_values) {

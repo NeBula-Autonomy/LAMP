@@ -28,7 +28,7 @@ public:
   virtual bool Initialize(const ros::NodeHandle& n);
 
   gtsam::Symbol GetInitialKey() {
-    return initial_key_;
+    return pose_graph_.initial_key;
   };
   gtsam::Symbol GetCurrentKey() {
     return pose_graph_.key;
