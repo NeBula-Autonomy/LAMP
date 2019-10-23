@@ -1,25 +1,6 @@
 // Includes
 #include "factor_handlers/ArtifactHandler.h"
 
-/**
- * Constructor             - Done
- * Initialize              - Done
- * LoadParameters          - Done
- * RegisterCallbacks       - Not sure here
- * ComputeTransform        - Done
- * GetData                 - Done
- * PublishArtifacts        - Done
- * RegisterOnlineCallbacks - b_is_basestation_ and b_use_lo_frontend_ and
- * b_is_front_end_ in lamp. else Nearly Done GetArtifactID           - Done
- * ArtifactCallback        - Check if this needs more
- * ArtifactBaseCallback    - Need to check this
- * RegisterLogCallbacks    - Done
- * CreatePublishers        - Done
- * UpdateGlobalPose        - Done
- * Tests                   - Test needed.
- * covariances             - Done
- */
-
 // Constructor
 ArtifactHandler::ArtifactHandler()
   : largest_artifact_id_(0), use_artifact_loop_closure_(false) {}
@@ -91,7 +72,7 @@ bool ArtifactHandler::RegisterCallbacks(const ros::NodeHandle& n,
  * Returns Transform
  */
 Eigen::Vector3d
-ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) {
+ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) const {
   // Get artifact position
   Eigen::Vector3d artifact_position;
   artifact_position << msg.point.point.x, msg.point.point.y, msg.point.point.z;
@@ -105,7 +86,7 @@ ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) {
 /*! \brief  Get artifacts ID from artifact key
  * Returns Artifacts ID
  */
-std::string ArtifactHandler::GetArtifactID(gtsam::Symbol artifact_key) {
+std::string ArtifactHandler::GetArtifactID(const gtsam::Symbol artifact_key) const {
   std::string artifact_id;
   for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end();
        ++it) {
@@ -159,6 +140,9 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   } else {
     // New artifact - increment the id counters
     b_is_new_artifact = true;
+    std::cout << "The number key is " << largest_artifact_id_
+              << " with character "
+              << artifact_prefix_ << std::endl;
     cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
     ++largest_artifact_id_;
     std::cout << "new artifact observed, artifact id " << artifact_id
@@ -185,10 +169,11 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
 
 /*! \brief  Gives the factors to be added and clears to start afresh.
  * Returns  Factors
+ * TODO: IN case of AprilTag this would spit out ArtifactData which is wrong
  */
 FactorData* ArtifactHandler::GetData() {
   // Create a temporary copy to return
-  ArtifactData* temp_artifact_data_ = new ArtifactData(artifact_data_);
+  FactorData* temp_artifact_data_ = new ArtifactData(artifact_data_);
 
   // Clear artifact data
   ClearArtifactData();
@@ -220,7 +205,7 @@ bool ArtifactHandler::CreatePublishers(const ros::NodeHandle& n) {
  * Returns bool
  */
 bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
-  ROS_INFO("%s: Registering online callbacks.", name_.c_str());
+  ROS_INFO("%s: Registering online callbacks for Artifacts.", name_.c_str());
 
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
@@ -234,8 +219,8 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 /*! \brief  Updates the global pose of an artifact
  * Returns  Void
  */
-bool ArtifactHandler::UpdateGlobalPosition(gtsam::Symbol artifact_key,
-                                       gtsam::Point3 global_position) {
+bool ArtifactHandler::UpdateGlobalPosition(const gtsam::Symbol artifact_key,
+                                           const gtsam::Point3 global_position) {
   if (artifact_key2info_hash_.find(artifact_key) !=
       artifact_key2info_hash_.end()) {
     artifact_key2info_hash_[artifact_key].global_position = global_position;
@@ -253,8 +238,8 @@ bool ArtifactHandler::UpdateGlobalPosition(gtsam::Symbol artifact_key,
  * in output message.
  * Returns  Void
  */
-void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key,
-                                       gtsam::Pose3 global_pose) {
+void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
+                                       const gtsam::Pose3 global_pose) {
   // Get the artifact pose
   Eigen::Vector3d artifact_position = global_pose.translation().vector();
   std::string artifact_label;
@@ -282,11 +267,14 @@ void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key,
   artifact_label = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg.label;
   
   // Increment update count
-  artifact_key2info_hash_[gtsam::Key(artifact_key)].num_updates++;
+  // TODO: I am moving this in Artifact callback representing the
+  // number of measurements I receive of one particular 
+  // artifact. Need to understand the use of this.
+  // artifact_key2info_hash_[artifact_key].num_updates++;
 
-  std::cout << "Number of updates of artifact is: "
-            << artifact_key2info_hash_[gtsam::Key(artifact_key)].num_updates
-            << std::endl;
+  // std::cout << "Number of updates of artifact is: "
+  //           << artifact_key2info_hash_[artifact_key].num_updates
+  //           << std::endl;
 
   // Fill artifact message
   core_msgs::Artifact new_msg = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg;
@@ -316,7 +304,7 @@ void ArtifactHandler::PublishArtifacts(gtsam::Symbol artifact_key,
  * Returns  Void
  */
 void ArtifactHandler::PrintArtifactInputMessage(
-    const core_msgs::Artifact& artifact) {
+    const core_msgs::Artifact& artifact) const {
   std::cout << "Artifact position in world is: " << artifact.point.point.x
             << ", " << artifact.point.point.y << ", " << artifact.point.point.z
             << std::endl;
@@ -334,14 +322,25 @@ void ArtifactHandler::PrintArtifactInputMessage(
  * gtsam::SharedNoiseModel Returns  gtsam::SharedNoiseModel
  */
 gtsam::SharedNoiseModel
-ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) {
-  // Extract covariance information
+ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) const {
+  // Extract covariance information from the message
   gtsam::Matrix33 cov;
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
-      cov(i + 3, j + 3) = covariance[3 * i + j];
+      cov(i, j) = covariance[3 * i + j];
+  
+  // Convert covariance to gtsam
+  gtsam::SharedGaussian noise_cov = gtsam::noiseModel::Gaussian::Covariance(cov);
 
-  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Gaussian::Covariance(cov);
+  // Compute information matrix
+  Eigen::MatrixXd temp_info = Eigen::MatrixXd::Zero(6,6);
+
+  // Compute the full orientation and translational information matrix
+  temp_info.block(3,3,3,3) = noise_cov->information();
+
+  // Generate noise
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Gaussian::Information(temp_info);
+
   return noise;
 }
 
@@ -359,7 +358,7 @@ void ArtifactHandler::ClearArtifactData() {
  */
 void ArtifactHandler::AddArtifactData(
     const gtsam::Symbol cur_key,
-    ros::Time time_stamp,
+    const ros::Time time_stamp,
     const gtsam::Point3 transform,
     const gtsam::SharedNoiseModel noise) {
   // Make new data true
@@ -378,19 +377,21 @@ void ArtifactHandler::AddArtifactData(
 }
 
 /*! \brief  Stores/Updated artifactInfo Hash
- * Returns  Void
- */
-void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
+  * Returns  Void
+  */
+void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key, 
                                         const core_msgs::Artifact& msg) {
-  ArtifactInfo artifactinfo(msg.parent_id);
-  artifactinfo.msg = msg;
-
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) == artifact_key2info_hash_.end()) {
     ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
-    artifact_key2info_hash_[gtsam::Key(artifact_key)] = artifactinfo;
+    ArtifactInfo artifactinfo(msg.parent_id);
+    artifactinfo.msg = msg;
+    artifactinfo.num_updates = artifactinfo.num_updates+1;
+    artifact_key2info_hash_[artifact_key] = artifactinfo;
   } else {
     ROS_INFO("Existing artifact detected");
-    artifact_key2info_hash_[gtsam::Key(artifact_key)] = artifactinfo;
+    // Existing artifact. Hence update the artifact info
+    artifact_key2info_hash_[artifact_key].num_updates += 1;
+    artifact_key2info_hash_[artifact_key].msg = msg;
   }
 }

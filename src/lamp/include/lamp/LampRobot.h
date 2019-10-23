@@ -11,6 +11,7 @@
 #include <lamp/LampBase.h>
 
 #include <factor_handlers/ArtifactHandler.h>
+#include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/OdometryHandler.h>
 
 // Services
@@ -65,15 +66,17 @@ protected:
 private:
   // Overwrite base classs functions where needed
 
-  // Factor Hanlder Wrappers
-  bool ProcessOdomData(FactorData* data);
-  bool ProcessArtifactData(FactorData* data);
-  void ProcessAprilData(FactorData* data);
-  bool InitializeGraph(gtsam::Pose3& pose,
-                       gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-  // void ProcessUWBData(FactorData data);
-  // Example use:
-  // ProcessArtifactData(artifact_handler_.GetData());
+    // Factor Hanlder Wrappers
+    bool ProcessOdomData(FactorData* data);
+    // Process the artifact factors if any available
+    bool ProcessArtifactData(FactorData* data);
+    // Process the april tag factors if any available    
+    bool ProcessAprilTagData(FactorData* data);
+    bool InitializeGraph(gtsam::Pose3& pose, 
+                         gtsam::noiseModel::Diagonal::shared_ptr& covariance);
+    // void ProcessUWBData(FactorData data);
+    // Example use:
+    // ProcessArtifactData(artifact_handler_.GetData());
 
   void HandleRelativePoseMeasurement(const ros::Time& time,
                                      const gtsam::Pose3& relative_pose,
@@ -85,14 +88,14 @@ private:
                                const gtsam::Pose3 pose_global,
                                gtsam::Pose3& pose_relative);
 
-  // Data Handler classes
-  OdometryHandler odometry_handler_;
-  ArtifactHandler artifact_handler_;
-  // AprilHandler april_handler_;
-  // Manual LC
-  // IMU
-  // TS
-  // LoopClosure
+    // Data Handler classes
+    OdometryHandler odometry_handler_; 
+    ArtifactHandler artifact_handler_;
+    AprilTagHandler april_tag_handler_;
+    // Manual LC
+    // IMU
+    // TS
+    // LoopClosure
 
   // Add new functions as needed
 

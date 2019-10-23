@@ -325,6 +325,14 @@ public:
   std::vector<ImuFactor> factors;
 };
 
+class AprilTagData : public FactorData {
+  public: 
+
+    AprilTagData() { };
+    virtual ~AprilTagData() { };
+
+    std::vector<AprilTagFactor> factors;
+};
 #endif
 
 // need to include source file for templatized save/load functions
