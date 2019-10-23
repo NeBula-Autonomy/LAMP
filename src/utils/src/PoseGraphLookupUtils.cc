@@ -14,7 +14,7 @@ gtsam::Symbol PoseGraph::GetKeyAtTime(const ros::Time& stamp) const {
 gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp,
                                              bool check_threshold) const {
   // If there are no keys, throw an error
-  if (stamp_to_odom_key.size() == 0) {
+  if (stamp_to_odom_key.empty()) {
     ROS_ERROR("Cannot get closest key - no keys are stored");
     return gtsam::Symbol();
   }

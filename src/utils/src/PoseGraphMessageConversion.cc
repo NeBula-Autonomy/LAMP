@@ -242,6 +242,7 @@ void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
     //                                             transform,
     //                                             covariance);
     edges_.insert(edge);
+    // TODO update new_edges_?
   }
 }
 

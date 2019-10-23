@@ -9,9 +9,6 @@
 
 class TestLampRobot : public ::testing::Test {
 public:
-  typedef std::vector<pose_graph_msgs::PoseGraphEdge> EdgeMessages;
-  typedef std::vector<pose_graph_msgs::PoseGraphNode> PriorMessages;
-
   pcl::PointCloud<pcl::PointXYZ>::Ptr data;
 
   TestLampRobot() : data(new pcl::PointCloud<pcl::PointXYZ>(2, 2)) {
@@ -147,10 +144,10 @@ public:
   gtsam::NonlinearFactorGraph GetNfg() {
     return lr.graph().nfg;
   }
-  EdgeMessages GetEdges() {
+  EdgeSet GetEdges() {
     return lr.graph().GetEdges();
   }
-  PriorMessages GetPriors() {
+  NodeSet GetPriors() {
     return lr.graph().GetPriors();
   }
 
@@ -692,7 +689,7 @@ TEST_F(TestLampRobot, TestLaserLoopClosure) {
 
   LaserLoopClosureCallback(pg_ptr);
 
-  EdgeMessages edges_info = GetEdges();
+  EdgeSet edges_info = GetEdges();
 
   gtsam::NonlinearFactorGraph nfg = GetNfg();
 
@@ -705,9 +702,10 @@ TEST_F(TestLampRobot, TestLaserLoopClosure) {
   // TODO - more checks
 
   // Check edges track
-  EXPECT_NEAR(edges_info[0].pose.position.x, edge.pose.position.x, tolerance_);
-  EXPECT_NEAR(edges_info[0].pose.position.y, edge.pose.position.y, tolerance_);
-  EXPECT_NEAR(edges_info[0].pose.position.z, edge.pose.position.z, tolerance_);
+  const auto edge_pos = edges_info.begin()->pose.position;
+  EXPECT_NEAR(edge_pos.x, edge.pose.position.x, tolerance_);
+  EXPECT_NEAR(edge_pos.y, edge.pose.position.y, tolerance_);
+  EXPECT_NEAR(edge_pos.z, edge.pose.position.z, tolerance_);
 }
 
 TEST_F(TestLampRobot, TestPointCloudTransform) {
