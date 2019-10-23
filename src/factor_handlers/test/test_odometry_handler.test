@@ -1,0 +1,5 @@
+<launch>
+  <test test-name="test_odometry_handler"
+        pkg="factor_handlers"
+        type="test_odometry_handler"/>
+</launch>

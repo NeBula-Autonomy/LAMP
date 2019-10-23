@@ -23,12 +23,17 @@ public:
     system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
     system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
+
     system("rosparam load $(rospack find "
            "point_cloud_filter)/config/parameters.yaml");
     system("rosparam load $(rospack find "
            "point_cloud_mapper)/config/parameters.yaml");
     system("rosparam load $(rospack find "
            "factor_handlers)/config/odom_parameters.yaml");
+    system("rosparam load $(rospack find "
+             "factor_handlers)/config/april_parameters.yaml");
+    system("rosparam load $(rospack find "
+            "factor_handlers)/config/imu_parameters.yaml");           
 
     // Create data in the point cloud
     int n_points = 2;
