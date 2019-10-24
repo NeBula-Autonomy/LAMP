@@ -221,7 +221,7 @@ bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
 
   // Iterate over poses in the graph, transforming their corresponding laser
   // scans into world frame and appending them to the output.
-  for (const auto& keyed_pose : pose_graph_.values) {
+  for (const auto& keyed_pose : pose_graph_.GetValues()) {
     const gtsam::Symbol key = keyed_pose.key;
 
     PointCloud::Ptr scan_world(new PointCloud);
@@ -253,7 +253,7 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   }
 
   // Check that the key exists
-  if (!pose_graph_.values.exists(key)) {
+  if (!pose_graph_.HasKey(key)) {
     ROS_WARN(
         "Key %u does not exist in values_ in GetTransformedPointCloudWorld",
         gtsam::DefaultKeyFormatter(key));

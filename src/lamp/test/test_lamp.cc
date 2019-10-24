@@ -52,7 +52,7 @@ public:
     return lr.SetInitialPosition();
   }
   int GetValuesSize() {
-    return lr.graph().values.size();
+    return lr.graph().GetValues().size();
   }
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) {
     return lr.graph().GetKeyAtTime(stamp);
@@ -70,11 +70,10 @@ public:
                   gtsam::SharedNoiseModel covariance) {
     lr.graph().TrackFactor(key_from, key_to, type, pose, covariance);
   }
-  void TrackPriors(ros::Time stamp,
-                   gtsam::Symbol key,
+  void TrackPriors(gtsam::Symbol key,
                    gtsam::Pose3 pose,
                    gtsam::SharedNoiseModel covariance) {
-    lr.graph().TrackNode(stamp, key, pose, covariance);
+    lr.graph().TrackPrior(key, pose, covariance);
   }
 
   // Access functions
@@ -91,7 +90,7 @@ public:
     lr.graph().prefix = c;
   }
   void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) {
-    lr.graph().values.insert(key, pose);
+    lr.graph().GetValues().insert(key, pose);
   }
 
   void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
@@ -132,8 +131,8 @@ public:
 
   // Other utilities
 
-  gtsam::Values GetValues() {
-    return lr.graph().values;
+  const gtsam::Values& GetValues() const {
+    return lr.graph().GetValues();
   }
 
   void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
@@ -141,13 +140,13 @@ public:
         std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
   }
 
-  gtsam::NonlinearFactorGraph GetNfg() {
-    return lr.graph().nfg;
+  const gtsam::NonlinearFactorGraph& GetNfg() const {
+    return lr.graph().GetNfg();
   }
-  EdgeSet GetEdges() {
+  const EdgeSet& GetEdges() const {
     return lr.graph().GetEdges();
   }
-  NodeSet GetPriors() {
+  const EdgeSet& GetPriors() const {
     return lr.graph().GetPriors();
   }
 
@@ -521,7 +520,6 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   // Test priors
   AddKeyedStamp(gtsam::Symbol('a', 50), ros::Time(67589467.0));
   TrackPriors(
-      ros::Time(67589467.0),
       gtsam::Symbol('a', 50),
       gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, -2.2, 0.03)),
       noise);
@@ -600,16 +598,17 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   EXPECT_NEAR(0.0, e.pose.orientation.z, tolerance_);
 
   // Prior factor (TODO: test the covariance)
-  n = g->priors[0];
-  EXPECT_EQ(n.key, gtsam::Symbol('a', 50));
-  EXPECT_NEAR(67589467, n.header.stamp.toSec(), tolerance_);
-  EXPECT_NEAR(1.0, n.pose.position.x, tolerance_);
-  EXPECT_NEAR(-2.2, n.pose.position.y, tolerance_);
-  EXPECT_NEAR(0.03, n.pose.position.z, tolerance_);
-  EXPECT_NEAR(1.0, n.pose.orientation.w, tolerance_);
-  EXPECT_NEAR(0.0, n.pose.orientation.x, tolerance_);
-  EXPECT_NEAR(0.0, n.pose.orientation.y, tolerance_);
-  EXPECT_NEAR(0.0, n.pose.orientation.z, tolerance_);
+  e = g->edges[2];
+  EXPECT_EQ(e.type, pose_graph_msgs::PoseGraphEdge::PRIOR);
+  EXPECT_EQ(e.key_from, gtsam::Symbol('a', 50));
+  EXPECT_EQ(e.key_to, gtsam::Symbol('a', 50));
+  EXPECT_NEAR(1.0, e.pose.position.x, tolerance_);
+  EXPECT_NEAR(-2.2, e.pose.position.y, tolerance_);
+  EXPECT_NEAR(0.03, e.pose.position.z, tolerance_);
+  EXPECT_NEAR(1.0, e.pose.orientation.w, tolerance_);
+  EXPECT_NEAR(0.0, e.pose.orientation.x, tolerance_);
+  EXPECT_NEAR(0.0, e.pose.orientation.y, tolerance_);
+  EXPECT_NEAR(0.0, e.pose.orientation.z, tolerance_);
 }
 
 // TODO - work out how to pass around SharedNoiseModels

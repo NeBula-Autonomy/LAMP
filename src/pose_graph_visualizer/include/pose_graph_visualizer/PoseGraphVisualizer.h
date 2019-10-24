@@ -52,9 +52,6 @@ public:
 
   bool Initialize(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  // Typedef for stored point clouds.
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-
   void MakeMenuMarker(const gtsam::Pose3& pose, const std::string& id_number);
 
   // Visualizes an edge between the two keys.
@@ -107,14 +104,6 @@ private:
                        pose_graph_visualizer::HighlightEdgeResponse& response);
 
   geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
-
-  inline bool KeyExists(gtsam::Key key) const {
-    return pose_graph_.values.exists(key);
-  }
-
-  inline gu::Transform3 GetPoseAtKey(const gtsam::Key& key) const {
-    return utils::ToGu(pose_graph_.GetPose(key));
-  }
 
   // Node name.
   std::string name_;

@@ -449,7 +449,7 @@ bool LampRobot::ProcessOdomData(FactorData* data) {
   }
 
   // Add factors and values to the graph
-  pose_graph_.nfg.add(new_factors);
+  pose_graph_.AddNewFactors(new_factors);
 
   return true;
 }
@@ -597,7 +597,7 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
     ROS_INFO("Added artifact to pose graph factors in lamp");
 
     // Check if it is a new artifact or not
-    if (!pose_graph_.values.exists(cur_artifact_key)) {
+    if (!pose_graph_.HasKey(cur_artifact_key)) {
       ROS_INFO("Have a new artifact in LAMP");
 
       // Insert into the values
@@ -623,7 +623,7 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
         pose_key, cur_artifact_key, type, transform, covariance);
   }
   // add factor to buffer to send to pgo
-  pose_graph_.nfg.add(new_factors);
+  pose_graph_.AddNewFactors(new_factors);
   pose_graph_.AddNewValues(new_values);
 
   ROS_INFO("Successfully complete ArtifactProcess call with an artifact");

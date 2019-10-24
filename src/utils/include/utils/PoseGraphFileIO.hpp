@@ -81,7 +81,7 @@ bool PoseGraph::Save(const std::string& zipFilename, PGOSolver& solver) const {
   boost::filesystem::create_directory(directory);
 
   solver.getFactorsUnsafe().print("In save, solvernfg is: ");
-  nfg.print("In save, from nfg is: ");
+  nfg_.print("In save, from nfg is: ");
 
   writeG2o(solver.getFactorsUnsafe(),
            solver.calculateEstimate(),
@@ -107,7 +107,7 @@ bool PoseGraph::Save(const std::string& zipFilename, PGOSolver& solver) const {
 
     ROS_INFO("Saved point cloud %d/%d.", i + 1, (int)keyed_scans.size());
     keys_file << pcd_filename << ",";
-    if (!values.exists(entry.first)) {
+    if (!values_.exists(entry.first)) {
       ROS_WARN("Key,  %u, does not exist in Save", entry.first);
       return false;
     }
@@ -257,9 +257,9 @@ bool PoseGraph::Load(const std::string& zipFilename, PGOSolver& solver) {
 
   // restore pose graph from g2o file
   const gtsam::GraphAndValues gv = gtsam::load3D(graphFilename);
-  nfg = *gv.first;
-  nfg.print("File output facrtors are: ");
-  values = *gv.second;
+  nfg_ = *gv.first;
+  nfg_.print("File output facrtors are: ");
+  values_ = *gv.second;
   ROS_INFO_STREAM("1");
 
   // TODO solver needs to be reset
@@ -269,21 +269,21 @@ bool PoseGraph::Load(const std::string& zipFilename, PGOSolver& solver) {
 
   // TODO: Should store initial_noise to use in load
   const Diagonal::shared_ptr covariance(Diagonal::Sigmas(initial_noise));
-  const gtsam::Symbol key0 = gtsam::Symbol(*nfg.keys().begin());
+  const gtsam::Symbol key0 = gtsam::Symbol(*nfg_.keys().begin());
   // TODO assign it
   // first_loaded_key = key0;
   ROS_INFO_STREAM("3");
-  if (!values.exists(key0)) {
+  if (!values_.exists(key0)) {
     ROS_WARN("Key0, %s, does not exist in Load",
              gtsam::DefaultKeyFormatter(key0));
     return false;
   }
   // update with prior
   solver.template loadGraph<gtsam::Pose3>(
-      nfg,
-      values,
+      nfg_,
+      values_,
       gtsam::PriorFactor<gtsam::Pose3>(
-          key0, values.at<gtsam::Pose3>(key0), covariance));
+          key0, GetPose(key0), covariance));
 
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
 

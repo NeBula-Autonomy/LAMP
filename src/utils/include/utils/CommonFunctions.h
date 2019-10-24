@@ -33,6 +33,7 @@ namespace gr = gu::ros;
 namespace utils {
 
 // Pose graph msg to gtsam conversion
+// TODO remove this function, use PoseGraph functions instead.
 void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
                          gtsam::NonlinearFactorGraph* graph_nfg,
                          gtsam::Values* graph_vals);

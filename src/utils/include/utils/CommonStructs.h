@@ -127,13 +127,32 @@ struct Node {
        const gtsam::Pose3& pose,
        const gtsam::SharedNoiseModel& covariance,
        PoseGraph* graph = nullptr);
+  Node() : stamp(ros::Time::now()) {}
 };
 
 // Pose graph structure storing values, factors and meta data.
 class PoseGraph {
 public:
-  gtsam::Values values;
-  gtsam::NonlinearFactorGraph nfg;
+  const gtsam::Values& GetValues() const {
+    return values_;
+  }
+  const gtsam::Values& GetNewValues() const {
+    return values_new_;
+  }
+  const gtsam::NonlinearFactorGraph& GetNfg() const {
+    return nfg_;
+  }
+
+  // Modifiable references to pose graph data structures.
+  gtsam::Values& GetValues() {
+    return values_;
+  }
+  gtsam::Values& GetNewValues() {
+    return values_new_;
+  }
+  gtsam::NonlinearFactorGraph& GetNfg() {
+    return nfg_;
+  }
 
   // Function that maps gtsam::Symbol to std::string (internal identifier for
   // node messages).
@@ -150,6 +169,9 @@ public:
   void InsertKeyedStamp(gtsam::Symbol key, const ros::Time& stamp);
   void InsertStampedOdomKey(double seconds, gtsam::Symbol key);
 
+  inline bool HasKey(gtsam::Symbol key) const {
+    return values_.exists(key);
+  }
   // Check if given key has a registered time stamp.
   inline bool HasStamp(gtsam::Symbol key) const {
     return keyed_stamps.find(key) != keyed_stamps.end();
@@ -170,34 +192,50 @@ public:
   gtsam::Vector6 initial_noise{gtsam::Vector6::Zero()};
 
   inline gtsam::Pose3 LastPose() const {
-    return values.at<gtsam::Pose3>(key - 1);
+    return values_.at<gtsam::Pose3>(key - 1);
   }
   inline gtsam::Pose3 GetPose(gtsam::Symbol key) const {
-    return values.at<gtsam::Pose3>(key);
+    return values_.at<gtsam::Pose3>(key);
   }
 
   void Initialize(gtsam::Symbol initial_key,
                   const gtsam::Pose3& pose,
                   const Diagonal::shared_ptr& covariance);
 
-  // Tracks edge (factor) without updating nfg.
-  void TrackFactor(const Factor& factor);
-  void TrackFactor(const EdgeMessage& msg);
-  void TrackFactor(gtsam::Symbol key_from,
+  // Tracks edge (factor) without updating nfg. Returns true if new factor is
+  // added.
+  bool TrackFactor(const Factor& factor);
+  bool TrackFactor(const EdgeMessage& msg);
+  bool TrackFactor(gtsam::Symbol key_from,
                    gtsam::Symbol key_to,
                    int type,
                    const gtsam::Pose3& transform,
                    const gtsam::SharedNoiseModel& covariance);
 
-  // Tracks node (prior) and updates values.
-  void TrackNode(const Node& node);
-  void TrackNode(const NodeMessage& msg);
-  void TrackNode(const ros::Time& stamp,
+  // Tracks nodes and updates values. Returns true if new node is added.
+  // Updates the internal keyed_stamp map for this key.
+  bool TrackNode(const Node& node);
+  bool TrackNode(const NodeMessage& msg);
+  bool TrackNode(const ros::Time& stamp,
                  gtsam::Symbol key,
                  const gtsam::Pose3& pose,
                  const gtsam::SharedNoiseModel& covariance);
 
+  // Tracks priors (one-sided edges). Returns true if new prior is added.
+  // Does NOT update the internal keyed_stamp map for this key.
+  bool TrackPrior(const Factor& prior);
+  bool TrackPrior(const Node& prior);
+  bool TrackPrior(const EdgeMessage& msg);
+  bool TrackPrior(gtsam::Symbol key,
+                  const gtsam::Pose3& pose,
+                  const gtsam::SharedNoiseModel& covariance);
+
+  // Adds gtsam::Values to internal values and values_new without updating node
+  // messages.
   void AddNewValues(const gtsam::Values& new_values);
+  // Adds factors to internal nfg without updating edge messages.
+  void AddNewFactors(const gtsam::NonlinearFactorGraph& nfg);
+
   inline void ClearNewValues() {
     values_new_.clear();
   }
@@ -206,6 +244,8 @@ public:
   static double time_threshold;
   // Convert timestamps to gtsam keys.
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
+  // Returns symbol of closest node to given time stamp or the last symbol if
+  // check_threshold, empty symbol otherwise.
   gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp,
                                     bool check_threshold = true) const;
   inline static bool IsTimeWithinThreshold(double time,
@@ -233,6 +273,7 @@ public:
 
   inline void ClearIncrementalMessages() {
     edges_new_.clear();
+    nodes_new_.clear();
     priors_new_.clear();
     values_new_.clear();
   }
@@ -241,9 +282,10 @@ public:
   inline void Reset() {
     ClearIncrementalMessages();
     edges_.clear();
+    nodes_.clear();
     priors_.clear();
-    values.clear();
-    nfg = gtsam::NonlinearFactorGraph();
+    values_.clear();
+    nfg_ = gtsam::NonlinearFactorGraph();
     keyed_scans.clear();
     keyed_stamps.clear();
     stamp_to_odom_key.clear();
@@ -252,32 +294,44 @@ public:
   inline const EdgeSet& GetEdges() const {
     return edges_;
   }
-  inline const NodeSet& GetPriors() const {
+  inline const NodeSet& GetNodes() const {
+    return nodes_;
+  }
+  inline const EdgeSet& GetPriors() const {
     return priors_;
   }
 
   inline const EdgeSet& GetNewEdges() const {
     return edges_new_;
   }
-  inline const NodeSet& GetNewPriors() const {
+  inline const NodeSet& GetNewNodes() const {
+    return nodes_new_;
+  }
+  inline const EdgeSet& GetNewPriors() const {
     return priors_new_;
   }
 
 private:
-  // Cached messages for edges and priors to reduce publishing overhead.
+  gtsam::Values values_;
+  gtsam::NonlinearFactorGraph nfg_;
+
+  // Cached messages for edges, nodes and priors to reduce publishing overhead.
   EdgeSet edges_;
-  NodeSet priors_;
+  NodeSet nodes_;
+  EdgeSet priors_;
 
   // Variables for tracking the new features only
   gtsam::Values values_new_;
   EdgeSet edges_new_;
-  NodeSet priors_new_;
+  NodeSet nodes_new_;
+  EdgeSet priors_new_;
 
   // Convert incremental pose graph with given values, edges and priors to
   // message.
   GraphMsgPtr ToMsg_(const gtsam::Values& values,
                      const EdgeSet& edges,
-                     const NodeSet& priors) const;
+                     const NodeSet& nodes,
+                     const EdgeSet& priors) const;
 };
 
 // ---------------------------------------------------------

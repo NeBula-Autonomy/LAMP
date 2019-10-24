@@ -9,16 +9,17 @@ namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 GraphMsgPtr PoseGraph::ToMsg() const {
-  return ToMsg_(values, edges_, priors_);
+  return ToMsg_(values_, edges_, nodes_, priors_);
 }
 
 GraphMsgPtr PoseGraph::ToIncrementalMsg() const {
-  return ToMsg_(values_new_, edges_new_, priors_new_);
+  return ToMsg_(values_new_, edges_new_, nodes_new_, priors_new_);
 }
 
 GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
                               const EdgeSet& edges,
-                              const NodeSet& priors) const {
+                              const NodeSet& nodes,
+                              const EdgeSet& priors) const {
   // Create the Pose Graph Message
   auto* msg = new pose_graph_msgs::PoseGraph;
   msg->header.frame_id = fixed_frame_id;
@@ -26,8 +27,9 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
   if (HasStamp(key - 1))
     msg->header.stamp = keyed_stamps.at(key - 1);
   else {
-    ROS_WARN_STREAM("No time stamp exists for latest key "
-                    << (key - 1) << " while converting pose graph to message.");
+    ROS_WARN_STREAM("No time stamp exists for latest key ("
+                    << (key - 1)
+                    << ") while converting pose graph to message.");
   }
 
   // Get Values
@@ -66,17 +68,17 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
 
   // Add the factors  // TODO: check integration of this tracking with all
   // handlers
-  msg->edges.resize(edges.size());
+  msg->edges.resize(edges.size() + priors.size());
   for (const auto& edge : edges)
     msg->edges.emplace_back(edge);
-  msg->priors.resize(priors.size());
   for (const auto& prior : priors)
-    msg->priors.emplace_back(prior);
+    msg->edges.emplace_back(prior);
 
   return GraphMsgPtr(msg);
 }
 
 // Pose graph msg to gtsam conversion
+// TODO remove this
 void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
                                 gtsam::NonlinearFactorGraph* graph_nfg,
                                 gtsam::Values* graph_vals) {
@@ -158,7 +160,7 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
           range,
           rangeNoise));
     } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
-      ROS_DEBUG_STREAM("Adding UWB beteen factor for key "
+      ROS_DEBUG_STREAM("Adding UWB between factor for key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_from)
                        << " to key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_to));
@@ -167,6 +169,20 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
                                       gtsam::Symbol(msg_edge.key_to),
                                       delta,
                                       noise));
+    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
+      // create precisions // TODO - the precision should come from the message
+      // shouldn't it? As we will use priors for different applications
+      gtsam::Vector6 prior_precisions;
+      prior_precisions.head<3>().setConstant(0.0);
+      prior_precisions.tail<3>().setConstant(10.0);
+      // TODO(Yun) create parameter for this
+      static const gtsam::SharedNoiseModel& prior_noise =
+          gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
+
+      ROS_DEBUG_STREAM("Adding prior factor for key "
+                       << gtsam::DefaultKeyFormatter(msg_edge.key_from));
+      graph_nfg->add(gtsam::PriorFactor<gtsam::Pose3>(
+          gtsam::Symbol(msg_edge.key_from), delta, prior_noise));
     }
   }
 
@@ -189,60 +205,47 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
   }
 
   // TODO right now this only accounts for translation part of prior (see
-  for (const pose_graph_msgs::PoseGraphNode& msg_prior : graph_msg->priors) {
-    ROS_DEBUG_STREAM("Adding prior in pose graph callback for key "
-                     << gtsam::DefaultKeyFormatter(msg_prior.key));
-    // create the prior factor
+  // for (const pose_graph_msgs::PoseGraphNode& msg_prior : graph_msg->priors) {
+  //   ROS_DEBUG_STREAM("Adding prior in pose graph callback for key "
+  //                    << gtsam::DefaultKeyFormatter(msg_prior.key));
+  //   // create the prior factor
 
-    // create precisions // TODO - the precision should come from the message
-    // shouldn't it? As we will use priors for different applications
-    gtsam::Vector6 prior_precisions;
-    prior_precisions.head<3>().setConstant(0.0);
-    prior_precisions.tail<3>().setConstant(10.0);
-    // TODO(Yun) create parameter for this
-    static const gtsam::SharedNoiseModel& prior_noise =
-        gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
+  //   // create precisions // TODO - the precision should come from the message
+  //   // shouldn't it? As we will use priors for different applications
+  //   gtsam::Vector6 prior_precisions;
+  //   prior_precisions.head<3>().setConstant(0.0);
+  //   prior_precisions.tail<3>().setConstant(10.0);
+  //   // TODO(Yun) create parameter for this
+  //   static const gtsam::SharedNoiseModel& prior_noise =
+  //       gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
 
-    gtsam::Point3 pose_translation(msg_prior.pose.position.x,
-                                   msg_prior.pose.position.y,
-                                   msg_prior.pose.position.z);
-    gtsam::Rot3 pose_orientation(
-        gtsam::Rot3::quaternion(msg_prior.pose.orientation.w,
-                                msg_prior.pose.orientation.x,
-                                msg_prior.pose.orientation.y,
-                                msg_prior.pose.orientation.z));
-    gtsam::Pose3 prior_pose = gtsam::Pose3(pose_orientation, pose_translation);
+  //   gtsam::Point3 pose_translation(msg_prior.pose.position.x,
+  //                                  msg_prior.pose.position.y,
+  //                                  msg_prior.pose.position.z);
+  //   gtsam::Rot3 pose_orientation(
+  //       gtsam::Rot3::quaternion(msg_prior.pose.orientation.w,
+  //                               msg_prior.pose.orientation.x,
+  //                               msg_prior.pose.orientation.y,
+  //                               msg_prior.pose.orientation.z));
+  //   gtsam::Pose3 prior_pose = gtsam::Pose3(pose_orientation,
+  //   pose_translation);
 
-    graph_nfg->add(
-        PriorFactor<gtsam::Pose3>(msg_prior.key, prior_pose, prior_noise));
-  }
+  //   graph_nfg->add(
+  //       PriorFactor<gtsam::Pose3>(msg_prior.key, prior_pose, prior_noise));
+  // }
 }
 
 void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
-  gtsam::NonlinearFactorGraph new_factors;
-  gtsam::Values blank_values;
-  utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
-  nfg.add(new_factors);
+  // gtsam::NonlinearFactorGraph new_factors;
+  // gtsam::Values blank_values;
+  // utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
+  // nfg_.add(new_factors);
 
-  // Get info for publishing later - in edges_info
-  // gtsam::Pose3 transform;
-  // gtsam::SharedNoiseModel covariance;
-
-  // Add the factors to the pose_graph - loop through in case of multiple loop
-  // closures
-  for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
-    // Transform to gtsam format
-    // transform = utils::MessageToPose(edge);
-    // covariance = utils::MessageToCovariance(edge);
-
-    // Add to tracked edges
-    // EdgeMessage edge_msg = utils::GtsamToRosMsg(edge_msg.key_from,
-    //                                             edge_msg.key_to,
-    //                                             edge_msg.type,
-    //                                             transform,
-    //                                             covariance);
+  for (const auto& edge : msg->edges) {
     TrackFactor(edge);
-    // TODO update new_edges_?
+  }
+  for (const auto& node : msg->nodes) {
+    TrackNode(node);
   }
 }
 

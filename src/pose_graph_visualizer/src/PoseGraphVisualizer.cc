@@ -28,7 +28,7 @@ std::string GenerateKey(gtsam::Key key1, gtsam::Key key2) {
 
 geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(gtsam::Key key) const {
   ROS_INFO("In getPositionMsg");
-  if (!KeyExists(key)) {
+  if (!pose_graph_.HasKey(key)) {
     ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
   }
   geometry_msgs::Point p;
@@ -248,8 +248,9 @@ void PoseGraphVisualizer::KeyedScanCallback(
 
 Eigen::Vector3d
 PoseGraphVisualizer::GetArtifactPosition(const gtsam::Key artifact_key) const {
-  const auto pose = GetPoseAtKey(artifact_key);
-  return pose.translation.Eigen();
+  const auto pose = pose_graph_.GetPose(artifact_key);
+  Eigen::Vector3d v(pose.x(), pose.y(), pose.z());
+  return v;
 }
 
 void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
@@ -285,7 +286,7 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
 bool PoseGraphVisualizer::HighlightEdge(gtsam::Key key1, gtsam::Key key2) {
   ROS_INFO("Highlighting factor between %i and %i.", key1, key2);
 
-  if (!KeyExists(key1) || !KeyExists(key2)) {
+  if (!pose_graph_.HasKey(key1) || !pose_graph_.HasKey(key2)) {
     ROS_WARN("Key %i or %i does not exist.", key1, key2);
     return false;
   }
@@ -315,7 +316,7 @@ bool PoseGraphVisualizer::HighlightEdge(gtsam::Key key1, gtsam::Key key2) {
 bool PoseGraphVisualizer::HighlightNode(gtsam::Key key) {
   ROS_INFO("Highlighting node %i.", key);
 
-  if (!KeyExists(key)) {
+  if (!pose_graph_.HasKey(key)) {
     ROS_WARN("Key %i does not exist.", key);
     return false;
   }
@@ -538,11 +539,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     tf::Pose pose;
     tf::poseMsgToTF(node.pose, pose);
 
-    gtsam::Symbol sym_key(gtsam::Key(node.key));
+    gtsam::Symbol sym_key(gtsam::Key(node.key_from));
 
     if (sym_key.chr() == 'u') {
       // UWB
-      uwb_nodes.points.push_back(GetPositionMsg(node.key));
+      uwb_nodes.points.push_back(GetPositionMsg(node.key_from));
       continue;
     }
 
@@ -553,7 +554,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     }
 
     // Fill pose nodes (representing the robot position)
-    generic_nodes.points.push_back(GetPositionMsg(node.key));
+    generic_nodes.points.push_back(GetPositionMsg(node.key_from));
     pose_keys.insert(sym_key);
   }
 
@@ -660,10 +661,61 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     closure_area_pub_.publish(m);
   }
 
+  // Publish Artifacts
+  if (artifact_marker_pub_.getNumSubscribers() > 0 ||
+      artifact_id_marker_pub_.getNumSubscribers() > 0) {
+    visualization_msgs::Marker m, m_id;
+    m.header.frame_id = pose_graph_.fixed_frame_id;
+    m_id.header.frame_id = m.header.frame_id;
+    m.ns = "artifact";
+    m_id.ns = "artifact_id";
+    // ROS_INFO("Publishing artifacts!");
+    for (const auto& keyedPose : keyed_artifact_poses_) {
+      ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
+      m.header.stamp = ros::Time::now();
+      m_id.header.stamp = ros::Time::now();
+
+      // get the gtsam key
+      gtsam::Key key(keyedPose.first);
+      m.id = key;
+      m_id.id = m.id;
+
+      ROS_INFO_STREAM("Artifact key (raw) is: " << keyedPose.first);
+      ROS_INFO_STREAM("Artifact key is " << key);
+      ROS_INFO_STREAM("Artifact hash key is "
+                      << gtsam::DefaultKeyFormatter(key));
+      if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' &&
+          gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' &&
+          gtsam::Symbol(key).chr() != 'p' && gtsam::Symbol(key).chr() != 'q') {
+        ROS_WARN("ERROR - have a non-landmark ID");
+        ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
+        continue;
+      }
+
+      // TODO only publish what has changed
+      ROS_INFO_STREAM("Artifact key to publish is "
+                      << gtsam::DefaultKeyFormatter(key));
+
+      ROS_INFO_STREAM(
+          "ID from key for the artifact is: " << artifact_key2id_hash_[key]);
+
+      // Get the artifact information
+      ArtifactInfo art = artifacts_[artifact_key2id_hash_[key]];
+
+      // Populate the artifact marker
+      VisualizeSingleArtifact(m, art);
+      VisualizeSingleArtifactId(m_id, art);
+
+      // Publish
+      artifact_marker_pub_.publish(m);
+      artifact_id_marker_pub_.publish(m_id);
+    }
+  }
+
   // Interactive markers.
   if (publish_interactive_markers_) {
     ROS_INFO("Pose Graph Nodes");
-    for (const auto& keyed_pose : pose_graph_.values) {
+    for (const auto& keyed_pose : pose_graph_.GetNewValues()) {
       gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.key);
       std::string robot_id = std::string(key_id);
       MakeMenuMarker(pose_graph_.GetPose(keyed_pose.key), robot_id);
