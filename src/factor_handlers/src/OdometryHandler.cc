@@ -22,8 +22,12 @@ OdometryHandler::OdometryHandler()
     query_timestamp_first_(0),
     b_is_first_query_(true), 
     max_buffer_size_(6000),
-    min_buffer_size_(3000) {
-}
+    min_buffer_size_(3000)
+    {
+      InitializePoseCovStampedMsgValue(lidar_odom_value_at_key_);
+      InitializePoseCovStampedMsgValue(visual_odom_value_at_key_);
+      InitializePoseCovStampedMsgValue(wheel_odom_value_at_key_);
+    }
 
 OdometryHandler::~OdometryHandler() {
 }
@@ -142,6 +146,16 @@ void OdometryHandler::PointCloudCallback(
 
 // Utilities
 // ---------------------------------------------------------------------------------------------
+void OdometryHandler::InitializePoseCovStampedMsgValue(PoseCovStamped& msg) {
+  msg.pose.pose.position.x = 0;
+  msg.pose.pose.position.y = 0;
+  msg.pose.pose.position.z = 0;
+  msg.pose.pose.orientation.x = 0;
+  msg.pose.pose.orientation.y = 0;
+  msg.pose.pose.orientation.z = 0;
+  msg.pose.pose.orientation.w = 1;
+}
+
 bool OdometryHandler::InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg,
                                         OdomPoseBuffer& buffer) {
   auto initial_size = buffer.size();
