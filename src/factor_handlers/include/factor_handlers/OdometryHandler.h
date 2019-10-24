@@ -136,7 +136,16 @@ protected:
   // Factor data
   OdomData factors_;
 
-  // Corner case handling
+  /*
+  Corner case handling
+
+    - Specify a maximum and minimum buffer size to store history 
+      of Odometric data stream  
+    
+    - Store individual odometric values in protected class members 
+      whenever a new key is created
+      
+  */ 
   int max_buffer_size_; 
   int min_buffer_size_;
   PoseCovStamped lidar_odom_value_at_key_; 

@@ -59,6 +59,7 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
   // Timestamp threshold used in GetPoseAtTime method to return true to the caller
   if (!pu::Get("ts_threshold", ts_threshold_)) return false;
   
+  // Specify a maximum and minimum buffer size to store history of Odometric data stream 
   if (!pu::Get("max_buffer_size", max_buffer_size_)) return false;
   if (!pu::Get("min_buffer_size", min_buffer_size_)) return false;
   
@@ -89,10 +90,11 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
   
+  // If buffer size exceeds limit, clear the buffer, keeping "min_buffer_size_" of data
   if (CheckBufferSize<double, PoseCovStamped>(lidar_odometry_buffer_)>max_buffer_size_){
     ClearOdometryBuffer(lidar_odometry_buffer_, LIDAR_ODOM_BUFFER_ID);
   }
-
+  // Insert message in buffer 
   if (!InsertMsgInBuffer(msg, lidar_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store "
              "message in buffer");
@@ -100,11 +102,12 @@ void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
-
+  
+  // If buffer size exceeds limit, clear the buffer, keeping "min_buffer_size_" of data
   if (CheckBufferSize<double, PoseCovStamped>(visual_odometry_buffer_)>max_buffer_size_){
     ClearOdometryBuffer(visual_odometry_buffer_, VISUAL_ODOM_BUFFER_ID);
   }
-
+  // Insert message in buffer
   if (!InsertMsgInBuffer(msg, visual_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store "
              "message in buffer");
@@ -113,10 +116,11 @@ void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {
 
+  // If buffer size exceeds limit, clear the buffer, keeping "min_buffer_size_" of data
   if (CheckBufferSize<double, PoseCovStamped>(wheel_odometry_buffer_)>max_buffer_size_){
     ClearOdometryBuffer(wheel_odometry_buffer_, WHEEL_ODOM_BUFFER_ID);
   }
-
+  // Insert message in buffer
   if (!InsertMsgInBuffer(msg, wheel_odometry_buffer_)) {
     ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store "
              "message in buffer");
@@ -380,8 +384,7 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
   return output_odom;
 }
 
-double
-OdometryHandler::CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const {
+double OdometryHandler::CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const {
   auto pose = gtsam_pos_cov.pose;
   return pose.translation().norm();
 }
@@ -422,6 +425,7 @@ void OdometryHandler::ResetFactorData() {
   factors_.factors.clear();
 }
 
+// Clear the buffer, keeping "min_buffer_size_" of data
 void OdometryHandler::ClearOdometryBuffer(OdomPoseBuffer& odom_buffer, const unsigned int odom_buffer_id) {
   auto itr_begin = odom_buffer.begin();
   auto itr_last = std::next(odom_buffer.rbegin(), min_buffer_size_);
@@ -444,6 +448,7 @@ void OdometryHandler::ClearOdometryBuffer(OdomPoseBuffer& odom_buffer, const uns
 // Setters
 // -----------------------------------------------------------------------------------------------
 
+// Store individual odometric values in protected class members whenever a new key is created
 void OdometryHandler::SetOdomValuesAtKey(const ros::Time query) {
   GetPoseAtTime(query, lidar_odometry_buffer_, lidar_odom_value_at_key_);
   GetPoseAtTime(query, visual_odometry_buffer_, visual_odom_value_at_key_);
@@ -519,6 +524,8 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1,
                                       const int odom_buffer_id) const {
   PoseCovStamped first_pose, second_pose;
 
+  // If unable to retrieve data of interest given query timestamp t1,
+  // store in first_pose the value contained by the correspondant protected class member
   if (!GetPoseAtTime(t1, odom_buffer, first_pose)) {
     switch (odom_buffer_id) {
       case LIDAR_ODOM_BUFFER_ID:
