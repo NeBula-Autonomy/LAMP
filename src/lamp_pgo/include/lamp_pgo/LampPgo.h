@@ -16,6 +16,8 @@ Interface for ROS and KimeraRPGO
 #include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/PoseGraphEdge.h>
 
+#include <utils/PrefixHandling.h>
+
 #include "KimeraRPGO/RobustSolver.h"
 
 class LampPgo {

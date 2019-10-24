@@ -59,6 +59,8 @@ class LampBaseStation : public LampBase {
     // Data handler classes
     PoseGraphHandler pose_graph_handler_;
 
+    // Handle first node from a robot (a0, b0, etc.)
+    void ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n);
 
   private:
     // Overwrite base classs functions where needed

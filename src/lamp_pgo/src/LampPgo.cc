@@ -68,10 +68,8 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
         KimeraRPGO::Verbosity::VERBOSE); // set no outlier rejection
   }
 
-  // TODO - have a better way of handling special symbols...
-  std::vector<char> special_symbs{
-      'l', 'm', 'n', 'o', 'p', 'q', 'u'}; // for artifacts
-  rpgo_params_.specialSymbols = special_symbs;
+  // Artifact or UWB keys (l, m, n, ... + u)
+  rpgo_params_.specialSymbols = utils::GetAllSpecialSymbols();
 
   // set solver
   int solver_num;

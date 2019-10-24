@@ -286,8 +286,8 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
 
-  ROS_INFO_STREAM("Points size is: " << points->points.size()
-                                     << ", in GetTransformedPointCloudWorld");
+  // ROS_INFO_STREAM("Points size is: " << points->points.size()
+  //                                    << ", in GetTransformedPointCloudWorld");
 }
 
 // For adding one scan to the map
