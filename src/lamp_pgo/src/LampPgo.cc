@@ -41,15 +41,25 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // Parse parameters
   // Optimizer backend
+  ROS_INFO_STREAM("PGO PROCESS NAMESPACE: " << n.getNamespace());
+  std::string full_namespace = n.getNamespace();
+  if (full_namespace.find("base_station") != std::string::npos) {
+    param_ns_ = "base";
+  }
+  else {
+    param_ns_ = "robot";
+  }
+  ROS_INFO_STREAM("Chosen namespace: " << param_ns_);
+
   bool b_use_outlier_rejection;
-  if (!pu::Get("b_use_outlier_rejection", b_use_outlier_rejection))
+  if (!pu::Get(param_ns_ + "/b_use_outlier_rejection", b_use_outlier_rejection))
     return false;
   if (b_use_outlier_rejection) {
     // outlier rejection on: set up PCM params
     double trans_threshold, rot_threshold;
-    if (!pu::Get("translation_check_threshold", trans_threshold))
+    if (!pu::Get(param_ns_ + "/translation_check_threshold", trans_threshold))
       return false;
-    if (!pu::Get("rotation_check_threshold", rot_threshold))
+    if (!pu::Get(param_ns_ + "/rotation_check_threshold", rot_threshold))
       return false;
     rpgo_params_.setPcmSimple3DParams(
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
@@ -65,7 +75,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // set solver
   int solver_num;
-  if (!pu::Get("solver", solver_num))
+  if (!pu::Get(param_ns_ + "/solver", solver_num))
     return false;
 
   if (solver_num == 1) {
@@ -93,14 +103,7 @@ void LampPgo::InputCallback(
 
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
-
-  // Extract the new factors
-  for (size_t i = 0; i < all_factors.size(); i++) {
-    if (std::find(nfg_.begin(), nfg_.end(), all_factors[i]) == nfg_.end()) {
-      // this factor does not exist before
-      new_factors.add(all_factors[i]);
-    }
-  }
+ 
 
   // Extract new values
   // TODO - use the merger here? In case the state of the graph here is
@@ -112,7 +115,27 @@ void LampPgo::InputCallback(
     }
   }
 
+  // Extract the new factors
+  for (size_t i = 0; i < all_factors.size(); i++) {
+    if (std::find(nfg_.begin(), nfg_.end(), all_factors[i]) == nfg_.end()) {
+      // this factor does not exist before
+      new_factors.add(all_factors[i]);
+    }
+  }
+
+  // Also add values that are present in the factors only
+  for (auto k : all_factors.keys()) {
+    ROS_INFO_STREAM("Checking for key " << gtsam::DefaultKeyFormatter(k));
+    if (!new_values.exists(k) && !values_.exists(k)) {
+      ROS_INFO_STREAM("---------EXTRA NODE " << gtsam::DefaultKeyFormatter(k));
+      new_values.insert(k, gtsam::Pose3());
+    }
+  }
+
   ROS_INFO_STREAM("PGO adding new values " << new_values.size());
+  for (auto k : new_values) {
+    ROS_INFO_STREAM("\t" << gtsam::DefaultKeyFormatter(k.key));
+  }
   ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
 
   // Run the optimizer
@@ -123,6 +146,7 @@ void LampPgo::InputCallback(
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
   ROS_INFO_STREAM("PGO stored values of size " << values_.size());
+  ROS_INFO_STREAM("PGO stored nfg of size " << nfg_.size());
 
   // publish posegraph
   PublishValues();
@@ -154,5 +178,6 @@ void LampPgo::PublishValues() const {
     pose_graph_msg.nodes.push_back(node);
   }
 
+  ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size() << " values");
   optimized_pub_.publish(pose_graph_msg);
 }

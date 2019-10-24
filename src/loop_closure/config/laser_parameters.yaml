@@ -19,7 +19,7 @@ max_tolerable_fitness: 5.0
 
 # Don't attempt loop closures with poses in the graph that were collected within
 # this translational distance (m) from the current pose.
-distance_to_skip_recent_poses: 50 #10 # 200
+distance_to_skip_recent_poses: 10 #10 # 200
 
 # If a loop has recently been closed, don't close a new one for at least this
 # amount of translational distance (m).

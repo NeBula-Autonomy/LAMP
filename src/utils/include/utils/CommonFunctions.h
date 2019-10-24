@@ -132,6 +132,17 @@ inline gtsam::Point3 ToGtsam(const gu::Vec3& point) {
   return pt;
 }
 
+inline gtsam::Pose3 ToGtsam(const geometry_msgs::Pose msg) {
+  gtsam::Pose3 pose(gtsam::Rot3(msg.orientation.w, 
+                                msg.orientation.x,
+                                msg.orientation.y,
+                                msg.orientation.z),
+                    gtsam::Point3(msg.position.x,
+                                  msg.position.y,
+                                  msg.position.z));
+  return pose;
+}
+
 inline Mat66 ToGu(const Gaussian::shared_ptr& covariance) {
   gtsam::Matrix66 gtsam_covariance = covariance->covariance();
 

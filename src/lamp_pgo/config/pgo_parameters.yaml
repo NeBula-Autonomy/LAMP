@@ -1,11 +1,25 @@
-# Toggle loop closures on or off. Setting this to off will increase run-time
-# Solver used in backend. 1 for LM, 2 for GN
-solver: 1
+robot: 
+  # Toggle loop closures on or off. Setting this to off will increase run-time
+  # Solver used in backend. 1 for LM, 2 for GN
+  solver: 1
 
-# Toggle outlier rejection
-b_use_outlier_rejection: true
+  # Toggle outlier rejection
+  b_use_outlier_rejection: true
 
-# outlier rejection thresholds (distances)
-translation_check_threshold: 0.1 # 10 centimeters
-rotation_check_threshold: 0.1 # ~5.7 degrees
-# TODO make these dynamic with the translation threshold for nodes
+  # outlier rejection thresholds (distances)
+  translation_check_threshold: 0.1 # 10 centimeters
+  rotation_check_threshold: 0.1 # ~5.7 degrees
+  # TODO make these dynamic with the translation threshold for nodes
+
+base:
+  # Toggle loop closures on or off. Setting this to off will increase run-time
+  # Solver used in backend. 1 for LM, 2 for GN
+  solver: 1
+
+  # Toggle outlier rejection
+  b_use_outlier_rejection: true
+
+  # outlier rejection thresholds (distances)
+  translation_check_threshold: 0.1 # 10 centimeters
+  rotation_check_threshold: 0.1 # ~5.7 degrees
+  # TODO make these dynamic with the translation threshold for nodes
