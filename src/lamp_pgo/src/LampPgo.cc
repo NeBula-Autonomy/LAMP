@@ -103,14 +103,7 @@ void LampPgo::InputCallback(
 
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
-
-  // Extract the new factors
-  for (size_t i = 0; i < all_factors.size(); i++) {
-    if (std::find(nfg_.begin(), nfg_.end(), all_factors[i]) == nfg_.end()) {
-      // this factor does not exist before
-      new_factors.add(all_factors[i]);
-    }
-  }
+ 
 
   // Extract new values
   // TODO - use the merger here? In case the state of the graph here is
@@ -122,7 +115,27 @@ void LampPgo::InputCallback(
     }
   }
 
+  // Extract the new factors
+  for (size_t i = 0; i < all_factors.size(); i++) {
+    if (std::find(nfg_.begin(), nfg_.end(), all_factors[i]) == nfg_.end()) {
+      // this factor does not exist before
+      new_factors.add(all_factors[i]);
+    }
+  }
+
+  // Also add values that are present in the factors only
+  for (auto k : all_factors.keys()) {
+    ROS_INFO_STREAM("Checking for key " << gtsam::DefaultKeyFormatter(k));
+    if (!new_values.exists(k) && !values_.exists(k)) {
+      ROS_INFO_STREAM("---------EXTRA NODE " << gtsam::DefaultKeyFormatter(k));
+      new_values.insert(k, gtsam::Pose3());
+    }
+  }
+
   ROS_INFO_STREAM("PGO adding new values " << new_values.size());
+  for (auto k : new_values) {
+    ROS_INFO_STREAM("\t" << gtsam::DefaultKeyFormatter(k.key));
+  }
   ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
 
   // Run the optimizer
@@ -165,5 +178,6 @@ void LampPgo::PublishValues() const {
     pose_graph_msg.nodes.push_back(node);
   }
 
+  ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size() << " values");
   optimized_pub_.publish(pose_graph_msg);
 }

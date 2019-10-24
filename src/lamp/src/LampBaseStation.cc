@@ -146,10 +146,19 @@ bool LampBaseStation::InitializeGraph() {
 
   gtsam::Pose3 pose = gtsam::Pose3(gtsam::Rot3(1,0,0,0), 
                                    gtsam::Point3(0,0,0));
-  gtsam::Vector6 zero;
-  zero << 0, 0, 0, 0, 0, 0;
-  gtsam::noiseModel::Diagonal::shared_ptr covariance =        
-      gtsam::noiseModel::Diagonal::Sigmas(zero);
+
+  gtsam::Vector6 noise;
+  noise << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
+  gtsam::noiseModel::Diagonal::shared_ptr covariance(
+      gtsam::noiseModel::Diagonal::Sigmas(noise));
+
+
+  gtsam::Matrix covar =
+          boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>(
+              covariance)
+              ->covariance();
+  ROS_INFO_STREAM("Pose graph cov1: " << covar(0,0));
+
 
   pose_graph_.Initialize(utils::LAMP_BASE_INITIAL_KEY, pose, covariance);
 
@@ -215,12 +224,17 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
       // First node from this robot - add factor connecting to origin
       if (!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
 
+        gtsam::Vector6 noise;
+        noise << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
+        gtsam::noiseModel::Diagonal::shared_ptr covariance(
+            gtsam::noiseModel::Diagonal::Sigmas(noise));
+
         ROS_INFO_STREAM("Tracking initial factor-----------------------");
         pose_graph_.TrackFactor(utils::LAMP_BASE_INITIAL_KEY, 
                         n.key, 
                         pose_graph_msgs::PoseGraphEdge::ODOM, 
                         utils::ToGtsam(n.pose), 
-                        utils::ToGtsam(n.covariance));
+                        covariance);
       }
 
       // If node is not in graph, add as placeholder

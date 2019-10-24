@@ -92,6 +92,8 @@ void PoseGraph::Initialize(gtsam::Symbol initial_key,
   values.insert(initial_key, pose);
   values_new_ = values; // init this to track new values
 
+  ROS_INFO_STREAM("Pose graph cov2: " << *covariance->covariance().data());
+
   ros::Time stamp = ros::Time::now();
   keyed_stamps[initial_key] = stamp;
 

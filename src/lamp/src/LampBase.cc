@@ -112,6 +112,13 @@ void LampBase::OptimizerUpdateCallback(
   ROS_INFO_STREAM("Received new pose graph from optimizer - merging now "
                   "--------------------------------------------------");
 
+  ROS_INFO_STREAM("New pose graph nodes: ");
+  for (auto n : msg->nodes) {
+    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key) << "(" <<
+    n.pose.position.x << ", " << n.pose.position.y << ", " << 
+    n.pose.position.z << ")");
+  }
+
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
