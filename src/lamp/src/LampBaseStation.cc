@@ -15,7 +15,7 @@ namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
 // Constructor (if there is override)
-LampBaseStation::LampBaseStation() {}
+LampBaseStation::LampBaseStation(): zero_noise_(0.0001) {}
 
 //Destructor
 LampBaseStation::~LampBaseStation() {}
@@ -148,7 +148,7 @@ bool LampBaseStation::InitializeGraph() {
                                    gtsam::Point3(0,0,0));
 
   gtsam::Vector6 noise;
-  noise << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
+  noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
   gtsam::noiseModel::Diagonal::shared_ptr covariance(
       gtsam::noiseModel::Diagonal::Sigmas(noise));
 
@@ -225,7 +225,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
       if (!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
 
         gtsam::Vector6 noise;
-        noise << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
+        noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
         gtsam::noiseModel::Diagonal::shared_ptr covariance(
             gtsam::noiseModel::Diagonal::Sigmas(noise));
 
