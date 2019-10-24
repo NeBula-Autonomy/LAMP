@@ -134,6 +134,7 @@ bool LaserLoopClosure::FindLoopClosures(
         pose_graph_msgs::PoseGraphEdge edge;
         edge.key_from = new_key;
         edge.key_to = other_key;
+        edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
         edge.pose = gr::ToRosPose(delta);
         // convert matrix covariance to vector
         for (size_t i = 0; i < 6; ++i) {

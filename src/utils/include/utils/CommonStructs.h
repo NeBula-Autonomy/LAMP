@@ -24,6 +24,9 @@
 #include <gtsam/slam/InitializePose3.h>
 #include <gtsam/slam/PriorFactor.h>
 
+#include <pose_graph_msgs/PoseGraph.h>
+#include <pose_graph_msgs/KeyedScan.h>
+
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 
@@ -166,10 +169,15 @@ public:
                  const gtsam::Pose3& pose,
                  const gtsam::SharedNoiseModel& covariance);
 
+  // Assume that only one edge can exist of the same type 
+  // between the same two keys
+  std::set<std::tuple<gtsam::Symbol, gtsam::Symbol, int> > tracked_edges_;
+
   void AddNewValues(const gtsam::Values& new_values);
   inline void ClearNewValues() {
     values_new_.clear();
   }
+  bool EraseValue(const gtsam::Symbol key);
 
   // Time threshold for time-based lookup functions.
   static double time_threshold;
@@ -285,7 +293,7 @@ struct ImuFactor {
 // Base factor data class
 class FactorData {
 public:
-  FactorData(){};
+  FactorData() : b_has_data(false) {};
   virtual ~FactorData(){};
 
   bool b_has_data;  // False if there is no data
@@ -325,6 +333,26 @@ public:
   std::vector<ImuFactor> factors;
 };
 
+class PoseGraphData : public FactorData {
+
+  public: 
+
+    PoseGraphData() { };
+    virtual ~PoseGraphData() { };
+
+    std::vector<pose_graph_msgs::PoseGraph::ConstPtr> graphs;
+    std::vector<pose_graph_msgs::KeyedScan::ConstPtr> scans;
+};
+
+
+class AprilTagData : public FactorData {
+  public: 
+
+    AprilTagData() { };
+    virtual ~AprilTagData() { };
+
+    std::vector<AprilTagFactor> factors;
+};
 #endif
 
 // need to include source file for templatized save/load functions

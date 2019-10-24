@@ -23,12 +23,17 @@ public:
     system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
     system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
+
     system("rosparam load $(rospack find "
            "point_cloud_filter)/config/parameters.yaml");
     system("rosparam load $(rospack find "
            "point_cloud_mapper)/config/parameters.yaml");
     system("rosparam load $(rospack find "
            "factor_handlers)/config/odom_parameters.yaml");
+    system("rosparam load $(rospack find "
+             "factor_handlers)/config/april_parameters.yaml");
+    system("rosparam load $(rospack find "
+            "factor_handlers)/config/imu_parameters.yaml");           
 
     // Create data in the point cloud
     int n_points = 2;
@@ -211,26 +216,15 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
 }
 
 /**
- *  Creating a FactorData with new artifact l1.
- *  l1.pose = gtsam::Rot3(), gtsam::Point3 (9.7, 0, 0)
- *  l1.time = ros::Time (5.0)
- *  ArtifactInGlobal = false
- *  FixedCovariance = true
- *
- * Nearest Odom key for GetClosestKey
- *  Node = a0
- *  Node.time = ros::Time(4.0)
- *  value of node = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3 (0, 0, 0))
- *
- * Call ProcessArtifacts with this new artifact. New artifact added
- *
- * TODO: Maybe I sould give a new node as well for GetClosestKey
- * Change the time of l1 to ros::Time = 6.0
- * Change transform (TODO: Change value)
- * Call ProcessArtifacts again on this new data. However
- * this time this should be present in values.
- *
- */
+ * Call ProcessArtifacts with this new artifact. New artifact added 
+ *                                                  |-----------------------------------------------------|                                    Graph loop closure
+ * a0       a1                          l1         a2                      l1       a3                l1  V                                    Node symbols
+ * Odom     Odom                     Artifact      Odom                 Artifact    Odom              Artifact position                        Type of measurement
+ * g(0,0,0) g(2,0,0)    g(2.4,0,0)   r(9.7,0,0)    g(4,0,0)  g(4.4,0,0) r(7.8,0,0)  g(6,0,0)          g(12.1,0,0)                              global(g)/relative(r) position
+ *o--------->o------------|------------------------->o------------------------------>o---------------------------------                        Graph odom
+ * -|--------|------------|------------|------------|-------------|---------|--------|--------------------|--------------                      1D line
+ * 0.05     0.1         0.109        0.11          0.15         0.159      0.16     2.0                                                        Time
+ */ 
 TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Construct the new Artifact data
   ArtifactData* new_data = new ArtifactData();
@@ -254,21 +248,23 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   setFixedCovariance(false);
 
   // Add to values
-  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a', 0));
-  InsertValues(gtsam::Symbol('a', 0),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 0)));
-  // AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a',1));
-  // InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(),
-  //                                         gtsam::Point3 (2.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a',0));
+  InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a',1));
+  InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (2.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a',2));
+  InsertValues(gtsam::Symbol('a',2), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (4.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a',3));
+  InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (6.0, 0, 0)));
 
-  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a', 2));
-  InsertValues(gtsam::Symbol('a', 2),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4.0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a', 3));
-  InsertValues(gtsam::Symbol('a', 3),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(6.0, 0, 0)));
-
-  AddKeyedStamp(gtsam::Symbol('a', 2), ros::Time(0.15));
+  AddKeyedStamp(gtsam::Symbol('a',0), ros::Time(0.05));
+  AddKeyedStamp(gtsam::Symbol('a',1), ros::Time(0.1));
+  AddKeyedStamp(gtsam::Symbol('a',2), ros::Time(0.15));
+  AddKeyedStamp(gtsam::Symbol('a',3), ros::Time(0.2));
 
   // Construct the odometry message for a0 (the nearest key)
   nav_msgs::Odometry a0_value;
@@ -280,7 +276,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Call Lidar callback
   LidarCallback(a0_odom);
 
-  // New message at 0.1 (the nearest key)
+  // New message at 0.1
   nav_msgs::Odometry l1_value;
   l1_value.header.stamp = ros::Time(0.1);
   l1_value.pose.pose.position.x = 2.0;
@@ -290,6 +286,17 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 
   // Call Lidar callback
   LidarCallback(a1_odom);
+
+  // New message at 0.109 (not gets added to pose graph)
+  l1_value.header.stamp = ros::Time(0.109);
+  l1_value.pose.pose.position.x = 2.4;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a1l1_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a1l1_odom);
 
   // New message at 0.15
   l1_value.header.stamp = ros::Time(0.15);
@@ -314,24 +321,61 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Call the ProcessArtifactData. Adding a new artifact
   ProcessArtifacts(new_data);
 
-  // key_from = GetClosestKeyAtTime(stamp); gives 0.15 node
-  // GetFusedOdomDeltaBetweenTimes(stamp_from, stamp) goes with 0.15 and 0.11
+  // As this is a new artifact optimization should be false
+  EXPECT_FALSE(GetOptFlag());
+  // Check if l1 is added to values
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
+  // Check the position of the artifact
+  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
+  
+  // New message at 0.159 (not gets added to pose graph)
+  l1_value.header.stamp = ros::Time(0.159);
+  l1_value.pose.pose.position.x = 4.4;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a2l1_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a2l1_odom);
+
+  // Change time and send the message again
+  new_data->b_has_data = true;
+  new_data->factors[0].stamp = ros::Time(0.16);
+  new_data->factors[0].position = gtsam::Point3 (7.8, 0, 0);
+
+  // Call the ProcessArtifactData. Adding an old artifact
+  ProcessArtifacts(new_data);
 
   // As this is a new artifact optimization should be false
-  // TODO: Need to check the transforms
-  EXPECT_FALSE(GetOptFlag());
-  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
+  EXPECT_TRUE(GetOptFlag());
+  // Check if l1 is added to values
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
+  // Check the position of the artifact
+  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
+  // Check the loop closure factor
+  gtsam::NonlinearFactorGraph graph = GetNfg();
+  std::vector<gtsam::Symbol> other_keys;
+  
+  for (auto factor:graph){
+    if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
+      if (factor->keys()[0] == gtsam::Symbol('l',1)){
+        other_keys.push_back(factor->keys()[1]);
+      } else {
+        other_keys.push_back(factor->keys()[0]);        
+      }
+    }
+  }
+  // Check if a1 is present in a factor with l1
+  EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',1)) != other_keys.end());
 
-  // Should enable this after completely resolve the first one.
-  // Change time and send the message again
-  // new_data->time_stamps.clear();
-  // new_data->time_stamps.push_back(std::make_pair<ros::Time,
-  // ros::Time>(ros::Time(0.13), ros::Time(0.0))); new_data->transforms.clear();
-  // new_data->transforms.push_back(gtsam::Pose3(gtsam::Rot3(),
-  //                                         gtsam::Point3 (9.7, 0, 0)));
+  // Check if a2 is present in a factor with l1  
+  EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2)) != other_keys.end());
+}
 
-  // // Call the ProcessArtifactData. Adding an old artifact
-  // ProcessArtifacts(new_data);
+// Check Process April tag data. 
+TEST_F(TestLampRobot, TestProcessAprilTagData) {
+
 }
 
 TEST_F(TestLampRobot, SetInitialKey) {
@@ -542,7 +586,7 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 
   // Node a100 - check all information
   pose_graph_msgs::PoseGraphNode n = g->nodes[0];
-  EXPECT_EQ("odom", n.ID);
+  EXPECT_EQ("odom_node", n.ID);
   EXPECT_EQ(gtsam::Symbol('a', 100), n.key);
   EXPECT_NEAR(420.0, n.pose.position.x, tolerance_);
   EXPECT_NEAR(69.0, n.pose.position.y, tolerance_);
@@ -554,7 +598,7 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 
   // Node a101 - check all information
   n = g->nodes[1];
-  EXPECT_EQ("odom", n.ID);
+  EXPECT_EQ("odom_node", n.ID);
   EXPECT_EQ(gtsam::Symbol('a', 101), n.key);
   EXPECT_NEAR(10.0, n.pose.position.x, tolerance_);
   EXPECT_NEAR(-1.0, n.pose.position.y, tolerance_);
