@@ -5,8 +5,9 @@ session_name: husky_refactor
 # Default environment variables; Overwrite from command line
 environment:
   # LOG_PATH: /home/costar/data/EagleMineStandard
-  LOG_PATH: /home/costar/data/ParkingLot/husky2_2019-10-11-16-57-00_parking_t7/rosbag/  
-  ROBOT_NAME: husky2
+  #LOG_PATH: /home/costar/data/ParkingLot/husky2_2019-10-11-16-57-00_parking_t7/rosbag/  # husky 2
+  LOG_PATH: /home/costar/data/husky1_2019-10-21-20-21-00_PARKING_LAMP_1/rosbag/ # husky1
+  ROBOT_NAME: husky1
 
 options:
   default-command: /bin/bash
@@ -20,9 +21,8 @@ windows:
     - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
     - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_robot_viz.launch robot_namespace:=$ROBOT_NAME
     # - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch    
-    - sleep 4; rosparam set /use_sim_time true; roslaunch loop_closure laser_loop_closure.launch robot_namespace:=$ROBOT_NAME
     # - sleep 2; rosbag play -r1.0 -s90 $LOG_PATH/*.bag --prefix=/$ROBOT_NAME --clock
-    - sleep 2; rosbag play -r1.0 -s200 $LOG_PATH/*.bag --clock # For new bags
+    - sleep 2; rosbag play -r1.0 -s0 $LOG_PATH/*.bag --clock # For new bags
     - sleep 3; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME
     #- rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /velodyne /$ROBOT_NAME/base_link # only for Eagle mine
     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /$ROBOT_NAME/velodyne /$ROBOT_NAME/base_link # only for Eagle mine

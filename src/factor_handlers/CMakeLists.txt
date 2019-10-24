@@ -74,7 +74,7 @@ endif()
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
-add_library(${PROJECT_NAME} src/LampDataHandlerBase.cc src/OdometryHandler.cc src/ImuHandler.cc src/ArtifactHandler.cc src/ManualLoopClosureHandler.cc)
+add_library(${PROJECT_NAME} src/LampDataHandlerBase.cc src/OdometryHandler.cc src/ImuHandler.cc src/ArtifactHandler.cc src/ManualLoopClosureHandler.cc src/AprilTagHandler.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
@@ -85,12 +85,15 @@ target_link_libraries(${PROJECT_NAME}
 ## Testing ##
 #############
 if (CATKIN_ENABLE_TESTING)
+  find_package(rostest REQUIRED)
   # add_subdirectory(test)
   ## Add gtest based cpp test target and link libraries
-  catkin_add_gtest(test_odometry_handler test/test_odometry_handler.cc)
+  add_rostest_gtest(test_odometry_handler test/test_odometry_handler.test test/test_odometry_handler.cc)
   target_link_libraries(test_odometry_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
-  catkin_add_gtest(test_artifact_handler test/test_artifact_handler.cc)
+  add_rostest_gtest(test_artifact_handler test/test_artifact_handler.test test/test_artifact_handler.cc)
   target_link_libraries(test_artifact_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
-  catkin_add_gtest(test_imu_handler test/test_imu_handler.cc)
+  add_rostest_gtest(test_april_tag_handler test/test_april_tag_handler.test test/test_april_tag_handler.cc)
+  target_link_libraries(test_april_tag_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_imu_handler test/test_imu_handler.test test/test_imu_handler.cc)
   target_link_libraries(test_imu_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()

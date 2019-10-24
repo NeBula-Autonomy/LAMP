@@ -43,6 +43,8 @@
 
       <!-- Factor handlers settings -->
       <rosparam file="$(find factor_handlers)/config/odom_parameters.yaml" subst_value="true"/>
+      <rosparam file="$(find factor_handlers)/config/imu_parameters.yaml" subst_value="true"/>
+      <rosparam file="$(find factor_handlers)/config/april_parameters.yaml" subst_value="true"/>
 
       <!-- Rates -->
       <rosparam file="$(find lamp)/config/lamp_rates.yaml"/>
@@ -87,6 +89,15 @@
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>      
     </node>
 
+    <!-- PC throttling and filtering -->
+    <group if="$(arg process_map)">
+      <include file="$(find lamp)/launch/map_processing.launch">
+        <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+        <arg name="map_update_freq" value="$(arg map_update_freq)"/>
+        <arg name="map_topic_input" value="$(arg map_topic_input)"/>
+        <arg name="map_topic_output" value="$(arg map_topic_output)"/>
+      </include>
+    </group>
 
   </group>
 
@@ -94,7 +105,8 @@
   <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
     <arg name="robot_namespace" value="$(arg robot_namespace)"/>
   </include>
-  <!-- launch rviz  -->
-  <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find blam_example)/rviz/lidar_slam.rviz" /> -->
+
+  
+
 
 </launch>
