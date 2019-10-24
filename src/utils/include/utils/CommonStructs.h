@@ -293,7 +293,7 @@ struct ImuFactor {
 // Base factor data class
 class FactorData {
 public:
-  FactorData(){};
+  FactorData() : b_has_data(false) {};
   virtual ~FactorData(){};
 
   bool b_has_data;  // False if there is no data
@@ -345,6 +345,14 @@ class PoseGraphData : public FactorData {
 };
 
 
+class AprilTagData : public FactorData {
+  public: 
+
+    AprilTagData() { };
+    virtual ~AprilTagData() { };
+
+    std::vector<AprilTagFactor> factors;
+};
 #endif
 
 // need to include source file for templatized save/load functions

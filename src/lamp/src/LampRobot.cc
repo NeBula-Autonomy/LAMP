@@ -282,7 +282,12 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
     return false;
   }
 
-  return true;
+  if (!april_tag_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the april tag handler.", name_.c_str());
+    return false;
+  }
+
+  return true; 
 }
 
 // Check for data from all of the handlers
@@ -293,13 +298,16 @@ bool LampRobot::CheckHandlers() {
   bool b_have_odom_factors;
   // bool b_have_loop_closure;
   bool b_have_new_artifacts;
+  bool b_have_new_april_tags;
 
   // Check the odom for adding new poses
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
+  // Check for artifacts
   b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
-
+  // Check for april tags
+  b_have_new_april_tags = ProcessAprilTagData(april_tag_handler_.GetData());
   // TODO - determine what a true and false return means here
   return true;
 }
@@ -554,13 +562,6 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
     // Get the artifact key
     cur_artifact_key = artifact.key;
 
-    // TODO:
-    // QUESTION: ConvertGlobalToRelative: Gives relative measurement between
-    // artifact key and nearest odom key. QUESTION:
-    // HandleRelativePoseMeasurement: Accounts for small transforms between
-    // current nearest added key and the instantaneous pose (which might not
-    // have been added as node).
-
     // Get the pose measurement
     if (b_artifacts_in_global_) {
       // Convert pose to relative frame
@@ -599,7 +600,7 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
     }
 
     // create and add the factor
-    new_factors.add(BetweenFactor<Pose3>(
+    new_factors.add(gtsam::BetweenFactor<Pose3>(
         pose_key, cur_artifact_key, transform, covariance));
     ROS_INFO("Added artifact to pose graph factors in lamp");
 
@@ -634,6 +635,137 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
   pose_graph_.AddNewValues(new_values);
 
   ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
+
+  return true;
+}
+
+/*!
+  \brief  Wrapper for the april tag class interactions
+  Creates factors from the april tag output
+  \param   data - the output data struct from the AprilTagHandler class
+  \warning ...
+  \author Abhishek Thakur
+  \date Oct 2019
+*/
+bool LampRobot::ProcessAprilTagData(FactorData* data){
+
+    // Extract artifact data
+  AprilTagData* april_tag_data = dynamic_cast<AprilTagData*>(data);
+
+  // Check if there are new factors 
+  if (!april_tag_data->b_has_data) {
+    return false;
+  }
+
+  b_has_new_factor_ = true;
+
+  // Necessary variables
+  Pose3 transform;
+  Pose3 temp_transform;
+  Pose3 global_pose;
+  gtsam::SharedNoiseModel covariance;
+  ros::Time timestamp;
+  gtsam::Symbol pose_key;
+  gtsam::Symbol cur_april_tag_key;
+
+  // New Factors to be added
+  NonlinearFactorGraph new_factors;
+
+  // New Values to be added
+  Values new_values;
+
+  // process data for each new factor
+  for (auto april_tag : april_tag_data->factors) {  
+    // Get the time
+    timestamp = april_tag.stamp;
+
+    // Get the april tag key
+    cur_april_tag_key = april_tag.key;
+
+    // Get the ground truth data using april tag key in info hashmap.
+    // TODO: Usefulness of ground truth in april tag factor
+    // Currently using ground truth from artifactkey2infohash 
+    gtsam::Pose3 ground_truth = april_tag_handler_.GetGroundTruthData(cur_april_tag_key);
+
+    // Get the pose measurement
+    if (b_artifacts_in_global_) {
+      // Convert pose to relative frame
+      if (!ConvertGlobalToRelative(
+            timestamp, 
+            gtsam::Pose3(gtsam::Rot3(), april_tag.position), 
+            temp_transform)) {
+        ROS_ERROR("Can't convert April tag from global to relative");
+        b_has_new_factor_ = false;
+        return false;
+      }
+    } else {
+      // Is in relative already
+      ROS_INFO("Have April tag in relative frame");
+      temp_transform = gtsam::Pose3(gtsam::Rot3(), april_tag.position);
+    }
+
+    // Is a relative tranform, so need to handle linking to the pose-graph
+    HandleRelativePoseMeasurement(
+        timestamp, temp_transform, transform, global_pose, pose_key);
+
+    if (pose_key == gtsam::Symbol()) {
+      ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
+                "BE HANDLED OR LOSE APRIL TAG!!");
+      b_has_new_factor_ = false;
+      return false;
+    }
+
+    // Get the covariances (Should be in relative frame as well)
+    // TODO - handle this better - need to add covariances from the odom - do in
+    // the function above
+    covariance = april_tag.covariance;
+
+    if (b_use_fixed_covariances_) {
+      covariance = SetFixedNoiseModels("april");
+    }
+
+    // create and add the factor
+    new_factors.add(gtsam::BetweenFactor<Pose3>(pose_key, 
+                                                cur_april_tag_key, 
+                                                transform, 
+                                                covariance));
+    ROS_INFO("Added April Tag to pose graph factors in lamp");
+
+
+    // Check if it is a new april tag or not
+    if (!pose_graph_.values.exists(cur_april_tag_key)) {
+      ROS_INFO("Have a new April Tag in LAMP");
+
+      // Insert into the values
+      new_values.insert(cur_april_tag_key, global_pose);
+
+      // Add keyed stamps
+      pose_graph_.InsertKeyedStamp(cur_april_tag_key, timestamp);
+
+
+      // Get the noise in ground truth data
+      gtsam::SharedNoiseModel noise = SetFixedNoiseModels("april");
+
+      // Add prior factor if its a new april tag.
+      ROS_INFO("Adding prior factor for April Tag");      
+      new_factors.add(gtsam::PriorFactor<gtsam::Pose3>(cur_april_tag_key, ground_truth, noise));
+    } else {
+      // Second sighting of an april tag - we have a loop closure
+      ROS_INFO_STREAM("April tag re-sighted with key: "
+                      << gtsam::DefaultKeyFormatter(cur_april_tag_key));
+    }
+    // Since a factor is added in any case new or seen, run optimization
+    b_run_optimization_ = true;
+
+    // Track the edges that have been added
+    int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+    pose_graph_.TrackFactor(pose_key, cur_april_tag_key, type, transform, covariance);
+  }
+  // add factor to buffer to send to pgo
+  pose_graph_.nfg.add(new_factors);
+  pose_graph_.AddNewValues(new_values);
+
+  ROS_INFO("Successfully complete ProcessAprilTagData call with an April Tag");
 
   return true;
 }

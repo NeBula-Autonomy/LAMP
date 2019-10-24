@@ -1,0 +1,5 @@
+<launch>
+  <test test-name="test_imu_handler"
+        pkg="factor_handlers"
+        type="test_imu_handler"/>
+</launch>
