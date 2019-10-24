@@ -54,7 +54,6 @@ TEST_F(TestArtifactHandler, RegisterCallbacks) {
   ASSERT_TRUE(RegisterCallbacks());
 }
 
-// TODO Something wrong in this. The artifact_key is missing something
 TEST_F(TestArtifactHandler, UpdateGlobalPosition) {
   // Key is 1
   gtsam::Symbol artifact_key = 1;
@@ -184,7 +183,6 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   std::cout << "retrieved artifact, position " << artifact_factor.position.x() << ", " << artifact_factor.position.y() << std::endl;
   std::cout << "vector: " << artifact_factor.position.vector();
   // Check if data is flowing correctly
-  // TODO Check next line
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(artifact_factor.key.index(), 0);

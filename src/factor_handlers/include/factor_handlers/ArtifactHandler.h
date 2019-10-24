@@ -144,7 +144,6 @@ class ArtifactHandler : public LampDataHandlerBase {
     std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
 
     // Mapping between a artifact id and the node where it is present in the pose graph
-    // TODO: Make keys as symbols gtsam.
     std::unordered_map<std::string, gtsam::Symbol> artifact_id2key_hash;
 
     

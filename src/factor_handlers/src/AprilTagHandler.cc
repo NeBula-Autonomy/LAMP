@@ -34,6 +34,8 @@ bool AprilTagHandler::Initialize(const ros::NodeHandle& n){
  * Returns bool
  */
 bool AprilTagHandler::LoadParameters(const ros::NodeHandle& n) {
+  // Can call base LoadParameters here for global and lc if artifact prefix can be constant in artifacts as well
+  // ArtifactHandler::LoadParameters(n);
   if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
     return false;
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
