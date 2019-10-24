@@ -726,7 +726,7 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
 
 
     // Check if it is a new april tag or not
-    if (!pose_graph_.values.exists(cur_april_tag_key)) {
+    if (!pose_graph_.HasKey(cur_april_tag_key)) {
       ROS_INFO("Have a new April Tag in LAMP");
 
       // Insert into the values
@@ -755,7 +755,7 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
     pose_graph_.TrackFactor(pose_key, cur_april_tag_key, type, transform, covariance);
   }
   // add factor to buffer to send to pgo
-  pose_graph_.nfg.add(new_factors);
+  pose_graph_.AddNewFactors(new_factors);
   pose_graph_.AddNewValues(new_values);
 
   ROS_INFO("Successfully complete ProcessAprilTagData call with an April Tag");
