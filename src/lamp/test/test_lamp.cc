@@ -10,6 +10,11 @@
 class TestLampRobot : public ::testing::Test {
 public:
   pcl::PointCloud<pcl::PointXYZ>::Ptr data;
+  typedef std::vector<EdgeMessage> EdgeMessages;
+  typedef std::vector<NodeMessage> NodeMessages;
+  // Use sets of edges/nodes to avoid duplicates.
+  typedef std::set<EdgeMessage, decltype(&EdgeMessageComparator)> EdgeSet;
+  typedef std::set<NodeMessage, decltype(&NodeMessageComparator)> NodeSet;
 
   TestLampRobot() : data(new pcl::PointCloud<pcl::PointXYZ>(2, 2)) {
     // Load params

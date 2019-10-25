@@ -457,6 +457,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       edge_target = &uwb_edges;
       break;
     }
+    // TODO - look at how to handle Priors - a small edge - 1 m down in z
     if (edge_target) {
       edge_target->points.push_back(GetPositionMsg(edge.key_from));
       edge_target->points.push_back(GetPositionMsg(edge.key_to));
@@ -535,7 +536,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   std::set<gtsam::Symbol> pose_keys;
 
   // TODO visualize new nodes/priors or all?
-  for (const auto& node : pose_graph_.GetNewPriors()) {
+  for (const auto& node : pose_graph_.GetNewPriors()) { // TODO Change to GetNewNodes
     tf::Pose pose;
     tf::poseMsgToTF(node.pose, pose);
 
@@ -670,6 +671,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     m.ns = "artifact";
     m_id.ns = "artifact_id";
     // ROS_INFO("Publishing artifacts!");
+    // TODO - use the pose from the pose-graph for the artifacts
     for (const auto& keyedPose : keyed_artifact_poses_) {
       ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
       m.header.stamp = ros::Time::now();
@@ -715,7 +717,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Interactive markers.
   if (publish_interactive_markers_) {
     ROS_INFO("Pose Graph Nodes");
-    for (const auto& keyed_pose : pose_graph_.GetNewValues()) {
+    for (const auto& keyed_pose : pose_graph_.GetNewValues()) { // TODO - just generic nodes
       gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.key);
       std::string robot_id = std::string(key_id);
       MakeMenuMarker(pose_graph_.GetPose(keyed_pose.key), robot_id);
