@@ -106,6 +106,7 @@ void LampPgo::InputCallback(
   // Extract new values
   // TODO - use the merger here? In case the state of the graph here is
   // different from the lamp node Will that ever be the case?
+
   gtsam::KeyVector key_list = all_values.keys();
   for (size_t i = 0; i < key_list.size(); i++) {
     if (!values_.exists(key_list[i])) {
@@ -115,18 +116,16 @@ void LampPgo::InputCallback(
 
   // Extract the new factors
   for (size_t i = 0; i < all_factors.size(); i++) {
-    if (std::find(nfg_.begin(), nfg_.end(), all_factors[i]) == nfg_.end()) {
+    bool factor_exists = false;
+    for (size_t j = 0; j < nfg_.size(); j++) {
+      if (nfg_[j]->keys() == all_factors[i]->keys()) {
+        factor_exists = true;
+        break;
+      }
+    }
+    if (!factor_exists) {
       // this factor does not exist before
       new_factors.add(all_factors[i]);
-    }
-  }
-
-  // Also add values that are present in the factors only
-  for (auto k : all_factors.keys()) {
-    ROS_INFO_STREAM("Checking for key " << gtsam::DefaultKeyFormatter(k));
-    if (!new_values.exists(k) && !values_.exists(k)) {
-      ROS_INFO_STREAM("---------EXTRA NODE " << gtsam::DefaultKeyFormatter(k));
-      new_values.insert(k, gtsam::Pose3());
     }
   }
 
@@ -136,12 +135,16 @@ void LampPgo::InputCallback(
   }
   ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
 
+  // new_factors.print("new factors");
+
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
 
   // Extract the optimized values
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  // nfg_.print("nfg");
 
   ROS_INFO_STREAM("PGO stored values of size " << values_.size());
   ROS_INFO_STREAM("PGO stored nfg of size " << nfg_.size());

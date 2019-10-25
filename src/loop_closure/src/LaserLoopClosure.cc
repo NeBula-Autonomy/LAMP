@@ -88,7 +88,7 @@ bool LaserLoopClosure::FindLoopClosures(
   }
 
   // If a loop has already been closed recently, don't try to close a new one.
-  if (std::fabs(new_key - last_closure_key_) * translation_threshold_nodes_ <
+  if (std::llabs(new_key - last_closure_key_) * translation_threshold_nodes_ <
       distance_before_reclosing_)
     return false;
 
@@ -106,7 +106,7 @@ bool LaserLoopClosure::FindLoopClosures(
       continue;
 
     // Don't compare against poses that were recently collected.
-    if (std::fabs(new_key - other_key) < skip_recent_poses_)
+    if (std::llabs(new_key - other_key) < skip_recent_poses_)
       continue;
 
     // Get pose for the other key.
