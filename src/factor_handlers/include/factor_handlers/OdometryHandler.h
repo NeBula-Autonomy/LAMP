@@ -43,7 +43,7 @@ public:
 
   // Constructors and Destructors
   OdometryHandler();
-  ~OdometryHandler();  
+  ~OdometryHandler(); 
 
   // Public methods
   bool Initialize (const ros::NodeHandle& n);
@@ -84,7 +84,8 @@ protected:
   // Point Cloud Storage (Time stamp and point cloud)
   std::map<double, PointCloud> point_cloud_buffer_;
 
-  // Utilities 
+  // Utilities
+  void InitializePoseCovStampedMsgValue(PoseCovStamped& msg);
   template <typename T1, typename T2>
   int CheckBufferSize(const std::map<T1, T2>& x){
       return x.size();
@@ -136,7 +137,16 @@ protected:
   // Factor data
   OdomData factors_;
 
-  // Corner case handling
+  /*
+  Corner case handling
+
+    - Specify a maximum and minimum buffer size to store history 
+      of Odometric data stream  
+    
+    - Store individual odometric values in protected class members 
+      whenever a new key is created
+      
+  */ 
   int max_buffer_size_; 
   int min_buffer_size_;
   PoseCovStamped lidar_odom_value_at_key_; 
