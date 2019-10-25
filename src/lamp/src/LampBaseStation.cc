@@ -57,7 +57,8 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
 
   // Init graph
   InitializeGraph();
-
+  b_run_optimization_ = true;
+  // PublishPoseGraphForOptimizer();
 }
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {

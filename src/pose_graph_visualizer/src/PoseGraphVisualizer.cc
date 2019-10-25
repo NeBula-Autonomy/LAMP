@@ -624,7 +624,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
   // Publish loop closure edges.
   if (loop_edge_pub_.getNumSubscribers() > 0) {
-    ROS_INFO("Loop Edges");
+    // ROS_INFO("Loop Edges");
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;
