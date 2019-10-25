@@ -118,7 +118,6 @@ private:
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash_;
   std::unordered_map<gtsam::Key, std::string> artifact_key2id_hash_;
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
-  std::map<gtsam::Key, tf::Pose> keyed_artifact_poses_;
 
   // Visualization publishers.
   ros::Publisher odometry_edge_pub_;

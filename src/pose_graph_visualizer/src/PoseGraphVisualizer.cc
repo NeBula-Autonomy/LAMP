@@ -171,8 +171,6 @@ void PoseGraphVisualizer::PoseGraphCallback(
         sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q') {
       ROS_INFO_STREAM("Have an artifact node with key "
                       << gtsam::DefaultKeyFormatter(sym_key));
-      // Artifact
-      keyed_artifact_poses_[msg_node.key] = pose;
 
       // node.ID = artifacts_[keyed_pose.key].msg.id;
       artifact_id2key_hash_[msg_node.ID] = msg_node.key;
@@ -439,7 +437,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   visualization_msgs::Marker uwb_edges;
 
   visualization_msgs::Marker* edge_target;
-  // TODO visualize new edges/priors or all?
+  // TODO visualize new edges/nodes or all?
   for (const auto& edge : pose_graph_.GetNewEdges()) {
     edge_target = nullptr;
     switch (edge.type) {
@@ -535,16 +533,15 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Store keys for generic (non-UWB, non-artifact) nodes for text markers
   std::set<gtsam::Symbol> pose_keys;
 
-  // TODO visualize new nodes/priors or all?
-  for (const auto& node : pose_graph_.GetNewPriors()) { // TODO Change to GetNewNodes
+  for (const auto& node : pose_graph_.GetNewNodes()) {
     tf::Pose pose;
     tf::poseMsgToTF(node.pose, pose);
 
-    gtsam::Symbol sym_key(gtsam::Key(node.key_from));
+    gtsam::Symbol sym_key(gtsam::Key(node.key));
 
     if (sym_key.chr() == 'u') {
       // UWB
-      uwb_nodes.points.push_back(GetPositionMsg(node.key_from));
+      uwb_nodes.points.push_back(GetPositionMsg(node.key));
       continue;
     }
 
@@ -555,7 +552,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     }
 
     // Fill pose nodes (representing the robot position)
-    generic_nodes.points.push_back(GetPositionMsg(node.key_from));
+    generic_nodes.points.push_back(GetPositionMsg(node.key));
     pose_keys.insert(sym_key);
   }
 
@@ -672,17 +669,16 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     m_id.ns = "artifact_id";
     // ROS_INFO("Publishing artifacts!");
     // TODO - use the pose from the pose-graph for the artifacts
-    for (const auto& keyedPose : keyed_artifact_poses_) {
-      ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
+    for (const auto& entry : artifact_key2id_hash_) {
       m.header.stamp = ros::Time::now();
       m_id.header.stamp = ros::Time::now();
 
       // get the gtsam key
-      gtsam::Key key(keyedPose.first);
+      gtsam::Key key(entry.first);
       m.id = key;
       m_id.id = m.id;
 
-      ROS_INFO_STREAM("Artifact key (raw) is: " << keyedPose.first);
+      ROS_INFO_STREAM("Artifact key (raw) is: " << entry.second);
       ROS_INFO_STREAM("Artifact key is " << key);
       ROS_INFO_STREAM("Artifact hash key is "
                       << gtsam::DefaultKeyFormatter(key));
@@ -698,11 +694,10 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       ROS_INFO_STREAM("Artifact key to publish is "
                       << gtsam::DefaultKeyFormatter(key));
 
-      ROS_INFO_STREAM(
-          "ID from key for the artifact is: " << artifact_key2id_hash_[key]);
+      ROS_INFO_STREAM("ID from key for the artifact is: " << entry.second);
 
       // Get the artifact information
-      ArtifactInfo art = artifacts_[artifact_key2id_hash_[key]];
+      ArtifactInfo art = artifacts_[entry.second];
 
       // Populate the artifact marker
       VisualizeSingleArtifact(m, art);
@@ -717,7 +712,8 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Interactive markers.
   if (publish_interactive_markers_) {
     ROS_INFO("Pose Graph Nodes");
-    for (const auto& keyed_pose : pose_graph_.GetNewValues()) { // TODO - just generic nodes
+    for (const auto& keyed_pose :
+         pose_graph_.GetNewValues()) { // TODO - just generic nodes
       gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.key);
       std::string robot_id = std::string(key_id);
       MakeMenuMarker(pose_graph_.GetPose(keyed_pose.key), robot_id);
