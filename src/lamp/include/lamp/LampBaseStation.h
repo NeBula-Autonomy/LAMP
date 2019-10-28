@@ -55,6 +55,7 @@ class LampBaseStation : public LampBase {
 
     // Factor handler wrappers
     bool ProcessPoseGraphData(FactorData* data);
+    bool ProcessManualLoopClosureData(FactorData* data);
 
     // Data handler classes
     PoseGraphHandler pose_graph_handler_;
