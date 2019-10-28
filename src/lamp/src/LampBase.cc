@@ -83,8 +83,8 @@ bool LampBase::SetFactorPrecisions() {
 
   // Artifact
   gtsam::Vector6 precisions;
-  sigmas.head<3>().setConstant(artifact_rot_precision_);
-  sigmas.tail<3>().setConstant(artifact_trans_precision_);
+  precisions.head<3>().setConstant(artifact_rot_precision_);
+  precisions.tail<3>().setConstant(artifact_trans_precision_);
   artifact_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
 
   return true;
