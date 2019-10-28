@@ -224,7 +224,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
   for (auto g : pose_graph_data->graphs) {
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
       // First node from this robot - add factor connecting to origin
-      if (!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
+      if (utils::IsRobotPrefix(gtsam::Symbol(n.key).chr()) &&!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
 
         ProcessFirstRobotNode(n);
         continue; // Each robot pose graph can only have one initial node
