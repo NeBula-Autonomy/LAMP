@@ -70,7 +70,12 @@ class ImuHandlerTest : public ::testing::Test {
 
     Symbol GetKeyForImuAttitude() {
       return ih.query_key_;
-    }     
+    }    
+
+    bool GetQuaternionAtTime(const ros::Time& stamp, 
+                             ImuQuaternion& imu_quaternion) const {
+      return ih.GetQuaternionAtTime(stamp, imu_quaternion);
+    }  
 
     ImuMessage msg_first;
     ImuMessage msg_second;
@@ -99,7 +104,7 @@ TEST_F(ImuHandlerTest, TestQuaternionToYpr) {
   Pitch -----------> rotation about y axis
   Yaw -------------> rotation about z axis
   */
-  ros::NodeHandle nh;
+  ros::NodeHandle nh("~");
   ih.Initialize(nh);
   ImuQuaternion imu_quaternion;
   // 0 degree Pitch (0 rad)
@@ -136,7 +141,7 @@ TEST_F(ImuHandlerTest, TestQuaternionToYpr) {
 
 /* TEST SetTimeForImuAttitude */
 TEST_F(ImuHandlerTest, TestSetTimeForImuAttitude) {
-  ros::NodeHandle nh;
+  ros::NodeHandle nh("~");
   ih.Initialize(nh);
   double input = 1.00;
   ros::Time input_stamp; 
@@ -148,7 +153,7 @@ TEST_F(ImuHandlerTest, TestSetTimeForImuAttitude) {
 
 /* TEST SetKeyForImuAttitude */
 TEST_F(ImuHandlerTest, TestSetKeyForImuAttitude) {
-  ros::NodeHandle nh;
+  ros::NodeHandle nh("~");
   ih.Initialize(nh);
   Key input_key = 2;
   Symbol input_key_symbol = Symbol(input_key);
