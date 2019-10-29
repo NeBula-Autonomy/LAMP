@@ -206,11 +206,13 @@ Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion)
 // --------------------------------------------------------------------------------
 
 Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const {
+    // Received imu_ypr is in radians 
+    // TODO: Make sure Rot3::Ypr works with input data expressed in radians
     ROS_INFO("ImuHandler - CreateAttitudeFactor");
     Unit3 ref(0, 0, -1); 
     SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, 0.25);    
     // Yaw can be set to 0
-    Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2])); 
+    Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2]));
     Unit3 meas = Unit3(Rot3(R_imu.transpose()).operator*(ref));
     Pose3AttitudeFactor factor(query_key_, meas, model, ref);
     return factor;

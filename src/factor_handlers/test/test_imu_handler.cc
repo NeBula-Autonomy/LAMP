@@ -56,6 +56,14 @@ class ImuHandlerTest : public ::testing::Test {
       return ih.QuaternionToYpr(imu_quaternion);
     }
 
+    bool SetTimeForImuAttitude(const ros::Time& stamp) {
+      return ih.SetTimeForImuAttitude(stamp);
+    }  
+
+    double GetTimeForImuAttitude() {
+      return ih.query_stamp_;
+    }     
+
     ImuMessage msg_first;
     ImuMessage msg_second;
     ImuMessage msg_third;
@@ -116,6 +124,18 @@ TEST_F(ImuHandlerTest, TestQuaternionToYpr) {
   std::cerr << "Test Roll: " << ypr[2] << std::endl;
   std::cerr << "------------------------------" << std::endl;
   ASSERT_NEAR(ypr[1], 0.349066, ImuHandlerTest::tolerance_);
+}
+
+/* TEST SetTimeForImuAttitude */
+TEST_F(ImuHandlerTest, TestSetTimeForImuAttitude) {
+  ros::NodeHandle nh;
+  ih.Initialize(nh);
+  double input = 1.00;
+  ros::Time input_stamp; 
+  input_stamp.fromSec(input);
+  SetTimeForImuAttitude(input_stamp);
+  double output = GetTimeForImuAttitude();
+  ASSERT_EQ(output, input);
 }
 
 int main(int argc, char** argv) {
