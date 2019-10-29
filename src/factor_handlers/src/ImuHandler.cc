@@ -198,6 +198,7 @@ bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_
 Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion) const {
     ROS_INFO("ImuHandler - QuaternionToYpr");
     auto ypr = imu_quaternion.toRotationMatrix().eulerAngles(2, 1, 0);
+    // Returned ypr is in radians
     return ypr;
 }
 
