@@ -60,8 +60,16 @@ class ImuHandlerTest : public ::testing::Test {
       return ih.SetTimeForImuAttitude(stamp);
     }  
 
+    bool SetKeyForImuAttitude(const Symbol& key) { 
+      return ih.SetKeyForImuAttitude(key);
+    } 
+
     double GetTimeForImuAttitude() {
       return ih.query_stamp_;
+    }     
+
+    Symbol GetKeyForImuAttitude() {
+      return ih.query_key_;
     }     
 
     ImuMessage msg_first;
@@ -136,6 +144,17 @@ TEST_F(ImuHandlerTest, TestSetTimeForImuAttitude) {
   SetTimeForImuAttitude(input_stamp);
   double output = GetTimeForImuAttitude();
   ASSERT_EQ(output, input);
+}
+
+/* TEST SetKeyForImuAttitude */
+TEST_F(ImuHandlerTest, TestSetKeyForImuAttitude) {
+  ros::NodeHandle nh;
+  ih.Initialize(nh);
+  Key input_key = 2;
+  Symbol input_key_symbol = Symbol(input_key);
+  SetKeyForImuAttitude(input_key_symbol);
+  Symbol output = GetKeyForImuAttitude();
+  ASSERT_EQ(output, input_key);
 }
 
 int main(int argc, char** argv) {
