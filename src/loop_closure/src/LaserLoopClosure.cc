@@ -83,7 +83,7 @@ bool LaserLoopClosure::FindLoopClosures(
   // Don't check for loop closures against poses that are missing scans.
   if (!keyed_scans_.count(new_key)) {
     ROS_WARN_STREAM("Key " << gtsam::DefaultKeyFormatter(new_key)
-                           << "does not have a scan");
+                           << " does not have a scan");
     return false;
   }
 

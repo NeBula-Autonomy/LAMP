@@ -684,6 +684,28 @@ TEST_F(TestLampRobot, TestSetFixedCovariancesOdom) {
   EXPECT_NEAR(sigma_out[3], position_sigma, tolerance_);
 }
 
+// TODO - work out how to pass around SharedNoiseModels
+TEST_F(TestLampRobot, TestSetFixedPrecisionsArtifacts) {
+  double rot_precision;
+  double trans_precision;
+
+  ros::NodeHandle nh, pnh("~");
+
+  lr.Initialize(nh);
+
+  ros::param::get("artifact_rot_precision", rot_precision);
+  ros::param::get("artifact_trans_precision", trans_precision);
+
+  // Set the paramters
+  gtsam::Vector precision_out =
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>(
+          SetFixedNoiseModels("artifact"))
+          ->precisions();
+
+  EXPECT_NEAR(precision_out[0], rot_precision, tolerance_);
+  EXPECT_NEAR(precision_out[3], trans_precision, tolerance_);
+}
+
 TEST_F(TestLampRobot, TestSetFixedCovariancesLoopClosure) {
   double laser_lc_rot_sigma;
   double laser_lc_trans_sigma;
