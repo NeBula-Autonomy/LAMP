@@ -4,9 +4,10 @@
  */
 
 // TODO: 1. The artifact message coming before the first pose which is causing it to crash.
-// Check and write unit test for it
+// Check and write unit test for it. The time in distal message can be a problem
+// I see Time queried is: 0 in some cases
 // 2. The covariance thing
-// 3. The non sequential nature of the artifact keys.
+// 3. The non sequential nature of the artifact keys. The artifacts and april tags have the same prefix.
 // Lamp -> scripts -> tmuxp load launch_lamp
 // Filter artifact_reconciled. Subscribed
 // Lamp bag.
@@ -174,6 +175,7 @@ TEST_F(TestArtifactHandler, AddArtifactData) {
 TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Construct the message
   core_msgs::Artifact msg;
+  msg.header.stamp = ros::Time(0.0);
   msg.parent_id = "distal";
   msg.confidence = 0.9;
   msg.id = "distal";
@@ -208,6 +210,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   
   // Construct a new message
   msg.parent_id = "distal";
+  msg.header.stamp = ros::Time(1.0);
   msg.confidence = 0.8;
   msg.id = "distal";
   msg.point.point.x = 0.3;
@@ -223,7 +226,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(artifact_factor.key.index(), 0);
-  EXPECT_EQ(artifact_factor.stamp, ros::Time(0.0));
+  EXPECT_EQ(artifact_factor.stamp, ros::Time(1.0));
   EXPECT_EQ(artifact_factor.position.x(), 0.3);
   EXPECT_EQ(artifact_factor.position.y(), 0.3);
   EXPECT_EQ(artifact_factor.position.z(), 0.3);
@@ -238,6 +241,50 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   KeyInfoMap = GetKeyInfoMap();
   // Is the data in ArtifactInfo correct
   EXPECT_EQ(KeyInfoMap.size(), 1);
+  // Delete data
+  delete internal_data;
+
+  // TODO: Why two vector elements
+  // Construct a new message
+  msg.parent_id = "artifact";
+  msg.header.stamp = ros::Time(2.0);
+  msg.confidence = 0.4;
+  msg.id = "artifact";
+  msg.point.point.x = 0.5;
+  msg.point.point.y = 0.1;
+  msg.point.point.z = 0.2;
+  msg.label = "backpack";
+  // Trigger the callback
+  ArtifactCallback(msg);
+  // Get the data
+  internal_data = dynamic_cast<ArtifactData*>(GetData());
+  artifact_factor = internal_data->factors[0];
+  // Check data
+  EXPECT_EQ(stored_data.type, "artifact");
+  ASSERT_TRUE(stored_data.b_has_data);
+  EXPECT_EQ(artifact_factor.key.index(), 1);
+  EXPECT_EQ(artifact_factor.stamp, ros::Time(2.0));
+  EXPECT_EQ(artifact_factor.position.x(), 0.5);
+  EXPECT_EQ(artifact_factor.position.y(), 0.1);
+  EXPECT_EQ(artifact_factor.position.z(), 0.2);
+
+  // Update the global position
+  global_position = gtsam::Point3(0.5, 0.3, 0.1);
+  UpdateGlobalPosition(artifact_factor.key, global_position);
+  // Get the Key Node
+  StringKeyMap = GetStringKeyMap();
+  // Is the data in ArtifactInfo correct
+  EXPECT_EQ(StringKeyMap.size(), 2);
+  EXPECT_EQ(StringKeyMap["artifact"].index(), 1);
+  EXPECT_EQ(StringKeyMap["artifact"].chr(), 'A');
+
+  // Get the ArtifactInfo
+  KeyInfoMap = GetKeyInfoMap();
+  // Is the data in ArtifactInfo correct
+  EXPECT_EQ(KeyInfoMap.size(), 2);
+  EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].num_updates, 1);
+  EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].global_position, gtsam::Point3(0.5,0.3,0.1));
+  EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].id, "artifact");    
 }
 
 int main(int argc, char** argv) {
