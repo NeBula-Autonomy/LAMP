@@ -9,3 +9,26 @@
 UwbHandler::UwbHandler() {}
 
 UwbHandler::~UwbHandler() {}
+
+bool UwbHandler::Initialize (const ros::NodeHandle& n) {
+    name_ = ros::names::append(n.getNamespace(), "OdometryHandler");
+
+    if (!LoadParameters(n)) {
+        ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
+        return false;
+    }
+
+    if (!RegisterCallbacks(n)) {
+        ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
+        return false;
+    }    
+    return true;
+}
+
+bool UwbHandler::LoadParameters(const ros::NodeHandle& n) {
+    return true;
+}
+
+bool UwbHandler::RegisterCallbacks(const ros::NodeHandle& n) {
+    return true;
+}

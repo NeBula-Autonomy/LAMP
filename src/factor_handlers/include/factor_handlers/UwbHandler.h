@@ -11,8 +11,20 @@
 
 class UwbHandler : public LampDataHandlerBase {
 
-    UwbHandler();
-    ~UwbHandler();
+    public:
+        UwbHandler();
+        ~UwbHandler();
+
+        bool Initialize (const ros::NodeHandle& n);
+    
+    private:
+        
+        bool LoadParameters(const ros::NodeHandle& n);
+        bool RegisterCallbacks(const ros::NodeHandle& n);
+
+        // The node's name.
+        std::string name_;
+
 };
 
 #endif
