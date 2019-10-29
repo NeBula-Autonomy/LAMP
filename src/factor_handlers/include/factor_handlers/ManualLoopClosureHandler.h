@@ -12,6 +12,7 @@
 
 namespace gu = geometry_utils;
 namespace gr = geometry_utils::ros;
+namespace pu = parameter_utils;
 
 class ManualLoopClosureHandler : public LampDataHandlerBase {
 
@@ -46,6 +47,14 @@ class ManualLoopClosureHandler : public LampDataHandlerBase {
 
     // Factor data
     LoopClosureData factors_; 
+
+    // Precisions
+    double manual_lc_rot_precision_;
+    double manual_lc_trans_precision_;
+    
+    // Manual LC noise
+    gtsam::SharedNoiseModel noise_;
+
 
 
   private:
