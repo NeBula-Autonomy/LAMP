@@ -3,6 +3,13 @@
  *
  */
 
+// TODO: 1. The artifact message coming before the first pose which is causing it to crash.
+// Check and write unit test for it
+// 2. The covariance thing
+// 3. The non sequential nature of the artifact keys.
+// Lamp -> scripts -> tmuxp load launch_lamp
+// Filter artifact_reconciled. Subscribed
+// Lamp bag.
 #include <gtest/gtest.h>
 
 #include "factor_handlers/ArtifactHandler.h"
