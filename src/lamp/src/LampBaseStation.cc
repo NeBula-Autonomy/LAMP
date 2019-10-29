@@ -104,10 +104,10 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                           &LampBaseStation::OptimizerUpdateCallback,
                                           dynamic_cast<LampBase*>(this));
 
-  // laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
-  //                                        1,
-  //                                        &LampBaseStation::LaserLoopClosureCallback,
-  //                                        dynamic_cast<LampBase*>(this));
+  laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
+                                         1,
+                                         &LampBaseStation::LaserLoopClosureCallback,
+                                         dynamic_cast<LampBase*>(this));
 
   return true; 
 }
@@ -122,7 +122,6 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
 
   // Base station publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
-  keyed_scan_pub_ = nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
 
   return true; 
 }
