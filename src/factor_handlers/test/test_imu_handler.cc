@@ -70,7 +70,15 @@ class ImuHandlerTest : public ::testing::Test {
 
     Symbol GetKeyForImuAttitude() {
       return ih.query_key_;
-    }    
+    }  
+
+    bool InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
+      return ih.InsertMsgInBuffer(msg);
+    }
+
+    int CheckBufferSize() const {  
+      return ih.CheckBufferSize();
+    }  
 
     bool GetQuaternionAtTime(const ros::Time& stamp, 
                              ImuQuaternion& imu_quaternion) const {
@@ -160,6 +168,18 @@ TEST_F(ImuHandlerTest, TestSetKeyForImuAttitude) {
   SetKeyForImuAttitude(input_key_symbol);
   Symbol output = GetKeyForImuAttitude();
   ASSERT_EQ(output, input_key);
+}
+
+/* TEST InsertMsgInBuffer */
+TEST_F(ImuHandlerTest, TestInsertMsgInBuffer) {
+  ros::NodeHandle nh("~");
+  ih.Initialize(nh);
+  ImuMessage imu_msg; 
+  imu_msg.header = msg_first.header; 
+  imu_msg.orientation = msg_first.orientation;
+  ImuMessage::ConstPtr imu_msg_ptr(new ImuMessage(imu_msg)); 
+  bool result = InsertMsgInBuffer(imu_msg_ptr);
+  ASSERT_TRUE(result);
 }
 
 int main(int argc, char** argv) {
