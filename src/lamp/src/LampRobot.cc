@@ -583,7 +583,7 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
 
-    if (pose_key == gtsam::Symbol()) {
+    if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
       ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE ARTIFACTS!!");
       b_has_new_factor_ = false;
@@ -708,7 +708,7 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
 
-    if (pose_key == gtsam::Symbol()) {
+    if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
       ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE APRIL TAG!!");
       b_has_new_factor_ = false;
@@ -790,7 +790,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   // Get the key from:
   key_from = pose_graph_.GetClosestKeyAtTime(stamp);
 
-  if (key_from == gtsam::Symbol()) {
+  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR("Measurement is from a time out of range. Rejecting");
     return;
   }
@@ -806,7 +806,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   if (!delta_pose_cov.b_has_value) {
     ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
               "WELL HANDLED YET-----------");
-    key_from = gtsam::Symbol();
+    key_from = utils::GTSAM_ERROR_SYMBOL;
     return;
   }
 
@@ -829,7 +829,7 @@ bool LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
   // Get the closes node in the pose-graph
   gtsam::Symbol key_from = pose_graph_.GetClosestKeyAtTime(stamp);
 
-  if (key_from == gtsam::Symbol()) {
+  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR(
         "Key from artifact key_from is outside of range - can't link artifact");
     return false;

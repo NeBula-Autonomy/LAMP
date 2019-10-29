@@ -18,6 +18,7 @@ namespace utils {
   // Base station
   const std::string LAMP_BASE_PREFIX = "base";
   const gtsam::Symbol LAMP_BASE_INITIAL_KEY('z', 0);
+  const gtsam::Symbol GTSAM_ERROR_SYMBOL('x', 9999);
 
   // UWB
   const char UWB_PREFIX = 'u';
