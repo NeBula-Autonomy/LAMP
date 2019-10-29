@@ -1,4 +1,7 @@
-base_frame_id: $(arg robot_namespace)/base_link
-imu_frame_id: $(arg robot_namespace)/vn100
+# TODO: Put $(arg robot_namespace) back in yaml
+# base_frame_id: $(arg robot_namespace)/base_link
+# imu_frame_id: $(arg robot_namespace)/vn100
+base_frame_id: base_link
+imu_frame_id: vn100
 buffer_size_limit: 1000
 ts_threshold: 5.0

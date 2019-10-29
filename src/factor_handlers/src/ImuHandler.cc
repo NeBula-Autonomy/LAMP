@@ -64,7 +64,6 @@ bool ImuHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {    
     ROS_INFO("ImuHandler - ImuCallback"); 
-    // TODO: FIFO behaviour could be optimized
     if (CheckBufferSize() > buffer_size_limit_){
         imu_buffer_.erase(imu_buffer_.begin());
     }   
