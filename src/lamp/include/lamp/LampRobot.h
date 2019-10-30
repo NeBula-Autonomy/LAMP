@@ -63,6 +63,8 @@ protected:
   // Publishers
   ros::Publisher pose_pub_;
 
+  // Flag for artifact initialization
+  bool is_artifact_initialized;
 private:
   // Overwrite base classs functions where needed
 

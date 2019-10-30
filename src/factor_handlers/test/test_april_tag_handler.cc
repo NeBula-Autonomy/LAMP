@@ -75,6 +75,9 @@ class TestAprilTagHandler : public ::testing::Test{
     gtsam::Pose3 GetGroundTruth(gtsam::Symbol key){
       return apt_handle.GetGroundTruthData(key);
     }
+
+    void setInitialize() {apt_handle.SetPgoInitialized(true);}
+    bool getInitialize() {return apt_handle.is_pgo_initialized;}
 };
 
 // Check if callback working correctly.
@@ -83,6 +86,9 @@ TEST_F(TestAprilTagHandler, AprilTagCallback) {
   system("rosparam load $(rospack find "
              "factor_handlers)/config/april_parameters.yaml");
   LoadParameters();
+  
+  // Set PGO initialized
+  setInitialize();
 
   // Callback
   AprilTagCallback(msg);
@@ -165,6 +171,9 @@ TEST_F(TestAprilTagHandler, GetGroundTruthData) {
              "factor_handlers)/config/april_parameters.yaml");
   LoadParameters();
 
+  // Set PGO initialized
+  setInitialize();
+  
   // Callback
   AprilTagCallback(msg);
 

@@ -2,15 +2,7 @@
  *  @brief Testing the Lamp Robot class
  *
  */
-
-// TODO: 1. The artifact message coming before the first pose which is causing it to crash.
-// Check and write unit test for it. The time in distal message can be a problem
-// I see Time queried is: 0 in some cases
-// 2. The covariance thing
-// 3. The non sequential nature of the artifact keys. The artifacts and april tags have the same prefix.
-// Lamp -> scripts -> tmuxp load launch_lamp
-// Filter artifact_reconciled. Subscribed
-// Lamp bag.
+ 
 #include <gtest/gtest.h>
 
 #include "factor_handlers/ArtifactHandler.h"
@@ -38,6 +30,8 @@ class TestArtifactHandler : public ::testing::Test{
     void AddArtifact(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Point3 position, const gtsam::SharedNoiseModel noise) {art_handle.AddArtifactData(artifact_key, time_stamp, position, noise);};
     Eigen::Vector3d ComputeTrans(const core_msgs::Artifact& msg) {return art_handle.ComputeTransform(msg);};
     void ClearData() {art_handle.ClearArtifactData();};
+    void setInitialize() {art_handle.SetPgoInitialized(true);};
+    bool getInitialize() {return art_handle.is_pgo_initialized;};
 };
 
 TEST_F(TestArtifactHandler, ArtifactInfoInitialize) {
@@ -183,6 +177,8 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   msg.point.point.y = 0.3;
   msg.point.point.z = 0.5;
   msg.label = "backpack";
+  setInitialize();
+
   // Trigger the callback
   ArtifactCallback(msg);
   // Get the data
@@ -285,6 +281,38 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].num_updates, 1);
   EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].global_position, gtsam::Point3(0.5,0.3,0.1));
   EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].id, "artifact");    
+}
+
+TEST_F(TestArtifactHandler, IsPgoIntialized) {
+  // Construct the message
+  core_msgs::Artifact msg;
+  msg.header.stamp = ros::Time(0.0);
+  msg.parent_id = "distal";
+  msg.confidence = 0.9;
+  msg.id = "distal";
+  msg.point.point.x = 0.9;
+  msg.point.point.y = 0.3;
+  msg.point.point.z = 0.5;
+  msg.label = "backpack";
+  
+  // PGO initialized should be false
+  EXPECT_FALSE(getInitialize());
+
+  // Trigger the callback
+  ArtifactCallback(msg);
+  
+  // Get the data
+  ArtifactData stored_data = GetArtifactData();
+  EXPECT_FALSE(stored_data.b_has_data);
+
+  // Initialize Artifacts
+  setInitialize();
+  EXPECT_TRUE(getInitialize());
+
+  // Trigger the callback
+  ArtifactCallback(msg);
+  stored_data = GetArtifactData();
+  EXPECT_TRUE(stored_data.b_has_data);
 }
 
 int main(int argc, char** argv) {
