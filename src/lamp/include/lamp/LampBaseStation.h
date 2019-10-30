@@ -70,6 +70,9 @@ class LampBaseStation : public LampBase {
     // Subscribers
     ros::Subscriber debug_sub_;
 
+    // Booleans
+    bool b_published_initial_node_;
+
   private:
     // Overwrite base classs functions where needed
 

@@ -15,7 +15,9 @@ namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
 // Constructor (if there is override)
-LampBaseStation::LampBaseStation(): zero_noise_(0.0001) {}
+LampBaseStation::LampBaseStation(): 
+        zero_noise_(0.0001),
+        b_published_initial_node_(false) {}
 
 //Destructor
 LampBaseStation::~LampBaseStation() {}
@@ -57,8 +59,6 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
 
   // Init graph
   InitializeGraph();
-  b_run_optimization_ = true;
-  // PublishPoseGraphForOptimizer();
 }
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
@@ -220,6 +220,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
   // First check for initial nodes
   for (auto g : pose_graph_data->graphs) {
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
+
       // First node from this robot - add factor connecting to origin
       if (utils::IsRobotPrefix(gtsam::Symbol(n.key).chr()) &&!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
 
@@ -312,6 +313,12 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 }
 
 void LampBaseStation::ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n) {
+
+  // If this is the first node from ANY robot, send the z0 node to the optimizer first
+  if (!b_published_initial_node_) {
+    PublishPoseGraphForOptimizer();
+    b_published_initial_node_ = true;
+  }
 
   pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
 
