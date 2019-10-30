@@ -12,12 +12,10 @@ UwbHandler::~UwbHandler() {}
 
 bool UwbHandler::Initialize (const ros::NodeHandle& n) {
     name_ = ros::names::append(n.getNamespace(), "OdometryHandler");
-
     if (!LoadParameters(n)) {
         ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
         return false;
     }
-
     if (!RegisterCallbacks(n)) {
         ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
         return false;
@@ -30,5 +28,13 @@ bool UwbHandler::LoadParameters(const ros::NodeHandle& n) {
 }
 
 bool UwbHandler::RegisterCallbacks(const ros::NodeHandle& n) {
+    ros::NodeHandle nl(n);
+    // Subscriber
+    uwb_factor_sub_ = nl.subscribe("uwb_factor", 10, &UwbHandler::UwbFactorCallback, this);
     return true;
+}
+
+
+void UwbHandler::UwbFactorCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
+
 }
