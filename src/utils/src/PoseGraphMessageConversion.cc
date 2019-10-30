@@ -236,18 +236,6 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
 }
 
 void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
-<<<<<<< HEAD
-  gtsam::NonlinearFactorGraph new_factors;
-  gtsam::Values blank_values;
-  utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
-  nfg.add(new_factors);
-
-  // Update all values - also update all values_new_ so the incremental publisher
-  // Republishes the whole graph 
-  values = blank_values; 
-  values_new_ = values;
-
-=======
   // gtsam::NonlinearFactorGraph new_factors;
   // gtsam::Values blank_values;
   // utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
@@ -259,7 +247,6 @@ void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
   for (const auto& node : msg->nodes) {
     TrackNode(node);
   }
->>>>>>> feature/inc_pg_pubsub
 }
 
 EdgeMessage Factor::ToMsg() const {

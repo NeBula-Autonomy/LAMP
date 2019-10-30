@@ -224,10 +224,17 @@ public:
                  const gtsam::Pose3& pose,
                  const gtsam::SharedNoiseModel& covariance);
 
-  // Assume that only one edge can exist of the same type 
-  // between the same two keys
-  std::set<std::tuple<gtsam::Symbol, gtsam::Symbol, int> > tracked_edges_;
+  // Tracks priors (one-sided edges). Returns true if new prior is added.
+  // Does NOT update the internal keyed_stamp map for this key.
+  bool TrackPrior(const Factor& prior);
+  bool TrackPrior(const Node& prior);
+  bool TrackPrior(const EdgeMessage& msg);
+  bool TrackPrior(gtsam::Symbol key,
+                  const gtsam::Pose3& pose,
+                  const gtsam::SharedNoiseModel& covariance);
 
+  // Adds gtsam::Values to internal values and values_new without updating node
+  // messages.
   void AddNewValues(const gtsam::Values& new_values);
   // Adds factors to internal nfg without updating edge messages.
   void AddNewFactors(const gtsam::NonlinearFactorGraph& nfg);

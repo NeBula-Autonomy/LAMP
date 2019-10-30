@@ -175,11 +175,9 @@ bool PoseGraph::TrackPrior(gtsam::Symbol key,
 
 void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
   // Main values variable
-  values_.insert(new_values);
-
   for (auto v : new_values) {
-    if (!values.tryInsert(v.key, v.value).second) {
-      values.update(v.key, v.value);
+    if (!values_.tryInsert(v.key, v.value).second) {
+      values_.update(v.key, v.value);
     }
     if (!values_new_.tryInsert(v.key, v.value).second) {
       values_new_.update(v.key, v.value);

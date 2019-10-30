@@ -41,7 +41,7 @@ bool ArtifactHandler::LoadParameters(const ros::NodeHandle& n) {
   unsigned char artifact_prefix_converter[1];
   if (!pu::Get("artifact_prefix", artifact_prefix)) {
     b_initialized_artifact_prefix_from_launchfile = false;
-    ROS_ERROR("Could not find node ID assosiated with robot_namespace");
+    ROS_ERROR("Could not find node ID assosiated with robot_namespace [Artifact Handler]");
   }
 
   if (b_initialized_artifact_prefix_from_launchfile) {

@@ -180,7 +180,7 @@ bool LampRobot::SetInitialKey() {
   unsigned char prefix_converter[1];
 
   if (!pu::Get("robot_prefix", pose_graph_.prefix)) {
-    ROS_ERROR("Could not find node ID assosiated with robot_namespace");
+    ROS_ERROR("Could not find node ID assosiated with robot_namespace [LampRobot]");
     pose_graph_.initial_key = 0;
     return false;
   } else {

@@ -216,7 +216,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
   for (auto g : pose_graph_data->graphs) {
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
       // First node from this robot - add factor connecting to origin
-      if (utils::IsRobotPrefix(gtsam::Symbol(n.key).chr()) &&!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
+      if (utils::IsRobotPrefix(gtsam::Symbol(n.key).chr()) &&!pose_graph_.HasKey(n.key) && gtsam::Symbol(n.key).index() == 0) {
 
         ProcessFirstRobotNode(n);
         continue; // Each robot pose graph can only have one initial node
@@ -234,7 +234,7 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
       pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
 
       // Add new value to graph
-      if (!pose_graph_.values.exists(n.key)) {
+      if (!pose_graph_.HasKey(n.key)) {
         // Add the new values to the graph
         new_values.insert(n.key, utils::ToGtsam(n.pose));
 
@@ -271,19 +271,19 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
     }
 
-    // Track priors
-    for (pose_graph_msgs::PoseGraphNode p : g->priors) {
+    // // Track priors
+    // for (pose_graph_msgs::PoseGraphNode p : g->priors) {
 
-      // Ignore the prior attached to the first node
-      if (gtsam::Symbol(p.key).index() == 0) {
-        continue;
-      }
+    //   // Ignore the prior attached to the first node
+    //   if (gtsam::Symbol(p.key).index() == 0) {
+    //     continue;
+    //   }
 
-      pose_graph_.TrackNode(p.header.stamp, 
-                            p.key, 
-                            utils::ToGtsam(p.pose), 
-                            utils::ToGtsam(p.covariance));
-    }
+    //   pose_graph_.TrackNode(p.header.stamp, 
+    //                         p.key, 
+    //                         utils::ToGtsam(p.pose), 
+    //                         utils::ToGtsam(p.covariance));
+    // }
 
     ROS_INFO_STREAM("Added new pose graph");
   }
