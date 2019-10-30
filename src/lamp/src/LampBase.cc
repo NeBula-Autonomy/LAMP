@@ -112,6 +112,13 @@ void LampBase::OptimizerUpdateCallback(
   ROS_INFO_STREAM("Received new pose graph from optimizer - merging now "
                   "--------------------------------------------------");
 
+  ROS_INFO_STREAM("New pose graph nodes: ");
+  for (auto n : msg->nodes) {
+    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key) << "(" <<
+    n.pose.position.x << ", " << n.pose.position.y << ", " << 
+    n.pose.position.z << ")");
+  }
+
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
@@ -311,6 +318,7 @@ bool LampBase::PublishPoseGraph() {
     // TODO - change interface to just take a flag? Then do the clear in there?
     // - no want to make sure it is published
 
+    ROS_INFO_STREAM("Publishing incremental graph with " << g_inc->nodes.size() << " nodes and " << g_inc->edges.size() << " edges");
     // Publish
     pose_graph_incremental_pub_.publish(*g_inc);
 
@@ -325,6 +333,8 @@ bool LampBase::PublishPoseGraph() {
 
     // Publish
     pose_graph_pub_.publish(*g_full);
+    ROS_INFO_STREAM("Publishing full graph with " << g_full->nodes.size() << " nodes and "
+     << g_full->edges.size() << " edges");
   }
 
   return true;
@@ -335,6 +345,11 @@ bool LampBase::PublishPoseGraphForOptimizer() {
 
   // Convert master pose-graph to messages
   pose_graph_msgs::PoseGraphConstPtr g = pose_graph_.ToMsg();
+
+  ROS_INFO_STREAM("Publishing pose graph for optimizer with " << g->nodes.size() << " nodes and "  << g->edges.size() << " edges");
+  for (auto v : g->nodes) {
+    ROS_INFO_STREAM("Key : " << gtsam::DefaultKeyFormatter(v.key));
+  }
 
   // Publish
   pose_graph_to_optimize_pub_.publish(*g);
@@ -388,14 +403,26 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   if (pose_graph_.HasScan(key)) {
     // Key frame, note in the ID
     return "key_frame";
-  } else if (key.chr() == pose_graph_.prefix[0]) {
+  } 
+  
+  else if (utils::IsRobotPrefix(key.chr())) {
     // Odom or key frame
-    return "odom";
-  } else if (key.chr() == 'u') {
+    return "odom_node";
+  } 
+
+  else if (utils::LAMP_BASE_INITIAL_KEY == key) {
+    // Base station root node
+    return "odom_node"; // TODO - add new type for this?
+  }
+  
+  else if (key.chr() == 'u') {
     // UWB
     // return uwd_handler_.GetUWBID(key); // TODO
     return "UWB"; // TEMPORARY
-  } else {
+
+  } 
+  
+  else {
     // Artifact
     // return artifact_handler_.GetArtifactID(key);// TODO
     return "Artifact"; // TEMPORARY

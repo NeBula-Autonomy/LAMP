@@ -16,6 +16,8 @@ AprilTagHandler::AprilTagHandler()
 bool AprilTagHandler::Initialize(const ros::NodeHandle& n){
   name_ = ros::names::append(n.getNamespace(), "April Tag");
 
+  artifact_data_.b_has_data = false;
+
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load April Tag parameters.", name_.c_str());
     return false;

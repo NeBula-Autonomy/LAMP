@@ -22,7 +22,8 @@ LoopClosure::~LoopClosure(){};
 void LoopClosure::InputCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
   // Loop through each node (but expect only one at a time)
-  ROS_INFO("In Input Callback of loop closure");
+  ROS_INFO_STREAM("In Input Callback of loop closure (" << graph_msg->nodes.size() <<
+      " nodes received)");
   pose_graph_msgs::PoseGraphNode node_msg;
   for (const auto& node_msg : graph_msg->nodes) {
     gtsam::Key new_key = node_msg.key;            // extract new key

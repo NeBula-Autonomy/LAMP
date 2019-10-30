@@ -63,7 +63,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
 
     newFastNodes[node.header.seq] = &node;
     fastKeyToNode[node.key] = &node;
-    ROS_INFO_STREAM("Added new fast node, key " << node.key);
+    // ROS_INFO_STREAM("Added new fast node, key " << node.key);
   }
 
   std::map<long unsigned int, std::set<const GraphEdge*>> fastOutAdjList;
@@ -75,7 +75,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
 
   // for each node in the fast graph which is not in the graph
   for (auto kv : fastKeyToNode) {
-    ROS_INFO_STREAM("Adding new node");
+    // ROS_INFO_STREAM("Adding new node");
     // the fast node to add to the merged_graph_
     const GraphNode* fastNode = kv.second;
 
