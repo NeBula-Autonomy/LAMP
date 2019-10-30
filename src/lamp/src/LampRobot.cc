@@ -2,7 +2,7 @@
  * Copyright Notes
  *
  * Authors:
- * Alex Stephens       ()
+ * Alex Stephens       (alex.stephens@jpl.nasa.gov)
  * Benjamin Morrell    (benjamin.morrell@jpl.nasa.gov)
  * Kamak Ebadi          ()
  * Matteo               ()
@@ -155,6 +155,8 @@ bool LampRobot::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
+
+  // Creates pose graph publishers in base class
   LampBase::CreatePublishers(n);
 
   // Create a local nodehandle to manage callback subscriptions.
@@ -193,6 +195,10 @@ bool LampRobot::SetInitialPosition() {
   // Load initial position and orientation.
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
+  // if (pose_graph_.prefix.at(0) != 'a') { // offset for debugging
+  //   init_x = 2.0, init_y = -2.0, init_z = 0.0;
+  //   init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
+  // }
   bool b_have_fiducial = true;
   if (!pu::Get("fiducial_calibration/position/x", init_x))
     b_have_fiducial = false;

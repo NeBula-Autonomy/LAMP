@@ -3,16 +3,32 @@
 
 #include <gtsam/slam/PriorFactor.h>
 
-void PoseGraph::TrackFactor(const Factor& factor) {
-  auto msg = factor.ToMsg();
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+void PoseGraph::TrackFactor(const EdgeMessage& msg) {
+
+  auto edge_identifier = std::make_tuple(msg.key_from, msg.key_to, msg.type);
+
+  // Only add the edge if it is the only one of its type between its two keys
+  if (!tracked_edges_.count(edge_identifier)) {
+    edges_.push_back(msg);
+    edges_new_.push_back(msg);
+
+    tracked_edges_.insert(edge_identifier);
+
+    ROS_INFO_STREAM("Tracking new factor: ("
+      << gtsam::DefaultKeyFormatter(msg.key_from) << ", "
+      << gtsam::DefaultKeyFormatter(msg.key_to) << ", "
+      << msg.type << ") - " 
+      << edges_.size() << " factors in total");
+  }
+
 }
 
-void PoseGraph::TrackFactor(const EdgeMessage& msg) {
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+void PoseGraph::TrackFactor(const Factor& factor) {
+  auto msg = factor.ToMsg();
+  TrackFactor(msg);
 }
+
+
 
 void PoseGraph::TrackFactor(gtsam::Symbol key_from,
                             gtsam::Symbol key_to,
@@ -21,8 +37,7 @@ void PoseGraph::TrackFactor(gtsam::Symbol key_from,
                             const gtsam::SharedNoiseModel& covariance) {
   auto msg =
       utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
-  edges_.push_back(msg);
-  edges_new_.push_back(msg);
+  TrackFactor(msg);
 }
 
 void PoseGraph::TrackNode(const Node& node) {
@@ -48,10 +63,24 @@ void PoseGraph::TrackNode(const ros::Time& stamp,
 
 void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
   // Main values variable
-  values.insert(new_values);
+  // for (auto v : new_values) {
+  //   if (values.exists(v.key)) {
+  //     ROS_WARN("Value already exists in values");
+  //   }
+  //   else {
+  //     values.insert(v);
+  //   }
+  // }
 
-  // New values tracking
-  values_new_.insert(new_values);
+  for (auto v : new_values) {
+    if (!values.tryInsert(v.key, v.value).second) {
+      values.update(v.key, v.value);
+    }
+    if (!values_new_.tryInsert(v.key, v.value).second) {
+      values_new_.update(v.key, v.value);
+    }    
+  }
+  
 }
 
 void PoseGraph::Initialize(gtsam::Symbol initial_key,
@@ -62,6 +91,8 @@ void PoseGraph::Initialize(gtsam::Symbol initial_key,
   nfg.add(gtsam::PriorFactor<gtsam::Pose3>(initial_key, pose, covariance));
   values.insert(initial_key, pose);
   values_new_ = values; // init this to track new values
+
+  ROS_INFO_STREAM("Pose graph cov2: " << *covariance->covariance().data());
 
   ros::Time stamp = ros::Time::now();
   keyed_stamps[initial_key] = stamp;

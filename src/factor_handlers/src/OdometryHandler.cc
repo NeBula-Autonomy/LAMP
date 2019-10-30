@@ -295,12 +295,14 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   // Check if it is past the end of the buffer - if so, then take the last point
   // cloud
   if (itrTime == point_cloud_buffer_.end()) {
-    ROS_WARN("Timestamp past the end of the point cloud buffer");
     itrTime--;
     *msg = itrTime->second;
-    ROS_INFO_STREAM("input time is " << stamp.toSec()
-                                     << "s, and latest time is "
-                                     << itrTime->first << " s");
+    if (stamp.toSec() - itrTime->first > ts_threshold_){
+      ROS_WARN("Timestamp past the end of the point cloud buffer [GetKeyedScan]");
+      ROS_INFO_STREAM("input time is " << stamp.toSec()
+                                      << "s, and latest time is "
+                                      << itrTime->first << " s [GetKeyedScan]");
+    }
     return true;
   }
 
@@ -435,6 +437,7 @@ void OdometryHandler::ClearOdometryBuffer(OdomPoseBuffer& odom_buffer, const uns
       break;
     case WHEEL_ODOM_BUFFER_ID:
       ROS_INFO("Clear Wheel odometry buffer");
+      break;
     default:
       ROS_ERROR("Invalid odometry buffer id in OdometryHandler::ClearOdometryBuffer");
       break;
@@ -471,19 +474,23 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
   if (itrTime == odom_buffer.begin()) {
     output = itrTime->second;
     time_diff = itrTime->first - stamp.toSec();
-    ROS_WARN("Timestamp before the start of the odometry buffer");
-    ROS_INFO_STREAM("time diff is: " << time_diff);
+    if (time_diff > ts_threshold_){
+      ROS_WARN("Timestamp before the start of the odometry buffer beyond threshold [GetPoseAtTime]");
+      ROS_INFO_STREAM("time diff is: " << time_diff << ". [GetPoseAtTime]");
+    }
   } else if (itrTime == odom_buffer.end()) {
     // Check if it is past the end of the buffer - if so, then take the last
     // PosCovStamped
-    ROS_WARN("Timestamp past the end of the odometry buffer");
     itrTime--;
     output = itrTime->second;
     time_diff = stamp.toSec() - itrTime->first;
-    ROS_INFO_STREAM("input time is " << stamp.toSec()
-                                     << "s, and latest time is "
-                                     << itrTime->first << " s"
-                                     << " diff is " << time_diff);
+    if (time_diff > ts_threshold_){
+      ROS_WARN("Timestamp past the end of the odometry buffer and beyond threshold [GetPoseAtTime]");
+      ROS_INFO_STREAM("input time is " << stamp.toSec()
+                                      << "s, and latest time is "
+                                      << itrTime->first << " s"
+                                      << " diff is " << time_diff << ". [GetPoseAtTime]");
+    }
   } else {
     // Otherwise step back by 1 to get the time before the input time (time1,
     // stamp, time2)
@@ -503,9 +510,9 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
   // Check if the time difference is too large
   if (time_diff > ts_threshold_) {
     ROS_WARN("Time difference between request and latest PosCovStamped is too "
-             "large, returning no PosC");
+             "large, returning no PosC [GetPoseAtTime]");
     ROS_INFO_STREAM("Time difference is "
-                    << time_diff << "s, threshold is: " << ts_threshold_);
+                    << time_diff << "s, threshold is: " << ts_threshold_ << ". [GetPoseAtTime]");
     return false;
   }
 
@@ -523,12 +530,14 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1,
     switch (odom_buffer_id) {
       case LIDAR_ODOM_BUFFER_ID:
         first_pose = lidar_odom_value_at_key_; 
+        ROS_INFO("correct lidar odom buffer id");
         break;
       case VISUAL_ODOM_BUFFER_ID:
         first_pose = visual_odom_value_at_key_;      
         break;
       case WHEEL_ODOM_BUFFER_ID:
         first_pose = wheel_odom_value_at_key_; 
+        break;
       default:
         ROS_ERROR("Invalid odometry buffer id in OdometryHandler::GetPosesAtTimes");
         return false;
@@ -539,9 +548,7 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1,
   if (GetPoseAtTime(t2, odom_buffer, second_pose)) {
     output_poses = std::make_pair(first_pose, second_pose);
     return true;
-  }
-
-  else {
+  } else {
     return false;
   }
 
@@ -570,12 +577,14 @@ bool OdometryHandler::GetClosestLidarTime(const ros::Time stamp,
   // Check if it is past the end of the buffer - if so, then take the last
   // PosCovStamped
   if (itrTime == lidar_odometry_buffer_.end()) {
-    ROS_WARN("Timestamp past the end of the lidar odometry buffer");
     itrTime--;
     closest_stamp.fromSec(itrTime->first);
-    ROS_INFO_STREAM("input time is " << stamp.toSec()
-                                     << "s, and latest time is "
-                                     << itrTime->first << " s");
+    if ((stamp - closest_stamp).toSec() > ts_threshold_){
+      ROS_WARN("Timestamp past the end of the lidar odometry buffer [GetClosestLidarTime]");
+      ROS_INFO_STREAM("input time is " << stamp.toSec()
+                                      << "s, and latest time is "
+                                      << itrTime->first << " s [GetClosestLidarTime]");
+    }
     return true;
   }
 

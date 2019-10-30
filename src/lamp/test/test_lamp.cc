@@ -23,12 +23,17 @@ public:
     system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
     system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
+
     system("rosparam load $(rospack find "
            "point_cloud_filter)/config/parameters.yaml");
     system("rosparam load $(rospack find "
            "point_cloud_mapper)/config/parameters.yaml");
     system("rosparam load $(rospack find "
            "factor_handlers)/config/odom_parameters.yaml");
+    system("rosparam load $(rospack find "
+             "factor_handlers)/config/april_parameters.yaml");
+    system("rosparam load $(rospack find "
+            "factor_handlers)/config/imu_parameters.yaml");           
 
     // Create data in the point cloud
     int n_points = 2;
@@ -775,7 +780,7 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 
   // Node a100 - check all information
   pose_graph_msgs::PoseGraphNode n = g->nodes[0];
-  EXPECT_EQ("odom", n.ID);
+  EXPECT_EQ("odom_node", n.ID);
   EXPECT_EQ(gtsam::Symbol('a', 100), n.key);
   EXPECT_NEAR(420.0, n.pose.position.x, tolerance_);
   EXPECT_NEAR(69.0, n.pose.position.y, tolerance_);
@@ -787,7 +792,7 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 
   // Node a101 - check all information
   n = g->nodes[1];
-  EXPECT_EQ("odom", n.ID);
+  EXPECT_EQ("odom_node", n.ID);
   EXPECT_EQ(gtsam::Symbol('a', 101), n.key);
   EXPECT_NEAR(10.0, n.pose.position.x, tolerance_);
   EXPECT_NEAR(-1.0, n.pose.position.y, tolerance_);
