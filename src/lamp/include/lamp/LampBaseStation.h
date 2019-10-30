@@ -11,6 +11,7 @@
 
 #include <factor_handlers/ManualLoopClosureHandler.h>
 #include <factor_handlers/PoseGraphHandler.h>
+#include <std_msgs/String.h>
 
 
 // Services
@@ -50,6 +51,9 @@ class LampBaseStation : public LampBase {
     // Main update timer callback
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
+    // Callback for debugging - put any code inside this
+    virtual void DebugCallback(const std_msgs::String msg);
+
     // Robots that the base station subscribes to
     std::vector<std::string> robot_names_;
 
@@ -62,6 +66,9 @@ class LampBaseStation : public LampBase {
 
     // Handle first node from a robot (a0, b0, etc.)
     void ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n);
+
+    // Subscribers
+    ros::Subscriber debug_sub_;
 
   private:
     // Overwrite base classs functions where needed

@@ -109,6 +109,11 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                          &LampBaseStation::LaserLoopClosureCallback,
                                          dynamic_cast<LampBase*>(this));
 
+  debug_sub_ = nl.subscribe("debug",
+                            1,
+                            &LampBaseStation::DebugCallback,
+                            this);
+
   return true; 
 }
 
@@ -367,4 +372,10 @@ bool LampBaseStation::CheckHandlers() {
 
 
   return true;
+}
+
+void LampBaseStation::DebugCallback(const std_msgs::String msg) {
+  ROS_INFO_STREAM("Debug message received");
+  ROS_INFO_STREAM(msg.data);
+
 }
