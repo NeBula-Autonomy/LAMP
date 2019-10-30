@@ -68,9 +68,18 @@ void UpdateCovariance(MessageT& msg, const gtsam::Matrix66& covariance) {
 }
 template <typename MessageT>
 void UpdateCovariance(MessageT& msg, const gtsam::SharedNoiseModel& noise) {
+  ROS_INFO_STREAM("In UpdateCovariance before gtsam cast");
+  noise->print();
   gtsam::Matrix66 covariance =
       boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>(noise)
           ->covariance();
+  ROS_INFO_STREAM("In UpdateCovariance after gtsam cast");
+  ROS_INFO_STREAM(covariance(0,0));
+  ROS_INFO_STREAM(covariance(1,1));
+  ROS_INFO_STREAM(covariance(2,2));
+  ROS_INFO_STREAM(covariance(3,3));
+  ROS_INFO_STREAM(covariance(4,4));
+  ROS_INFO_STREAM(covariance(5,5));
   UpdateCovariance(msg, covariance);
 }
 

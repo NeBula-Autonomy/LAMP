@@ -3,11 +3,22 @@
 
  
   <group ns="$(arg robot_namespace)">
+        
+    <!-- Pose graph optimizer -->
+    <node pkg="lamp_pgo"
+          name="lamp_pgo"
+          type="lamp_pgo_node"
+          output="screen">
+      <remap from="~pose_graph_to_optimize" to="lamp/pose_graph_to_optimize" />
+      <!-- Config - TODO move the proximity_threshold param elsewhere -->
+      <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/> 
+    </node>
 
     <!-- Base station LAMP -->
     <node pkg="lamp"
           name="lamp"
           type="lamp_base_station_node"
+          launch-prefix="bash -c 'sleep 1; $0 $@' "
           output="screen">
 
       <!-- Topics -->
@@ -26,20 +37,11 @@
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
 
-    </node>
+      <!-- Factor handlers -->
+      <rosparam file="$(find factor_handlers)/config/manual_lc_parameters.yaml" subst_value="true"/>
 
-        
-    <!-- Pose graph optimizer -->
-    <node pkg="lamp_pgo"
-          name="lamp_pgo"
-          type="lamp_pgo_node"
-          output="screen">
-      <remap from="~pose_graph_to_optimize" to="lamp/pose_graph_to_optimize" />
-      <!-- Config - TODO move the proximity_threshold param elsewhere -->
-      <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/> 
-      <rosparam>ns: 'robot'</rosparam>     
-    </node>
 
+    </node>
 
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"
@@ -49,7 +51,7 @@
       <!-- LAMP settings -->
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
       <!-- Frames -->
-      <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>      
+      <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>      
       <!-- Config - TODO move the proximity_threshold param elsewhere -->
       <rosparam file="$(find pose_graph_visualizer)/config/visualizer_parameters.yaml" subst_value="true"/>      
 
@@ -59,5 +61,10 @@
     </node>
 
   </group>
+
+  <!-- Loop Closure  -->
+  <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
+    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+  </include>
 
 </launch>

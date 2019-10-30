@@ -724,39 +724,38 @@ TEST_F(OdometryHandlerTest, TestGetRelativeData) {
 }
 
 // TODO: Fix this test as GetPosesAtTimes logic has been changed to handle corner cases
-// TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
-//   ros::NodeHandle nh("~");
-//   system("rosparam set ts_threshold 0.6");
-//   oh.Initialize(nh);
-//   // Create an output
-//   GtsamPosCov myOutput;
-//   nav_msgs::Odometry msg_first_odom;
-//   nav_msgs::Odometry msg_second_odom;
-//   nav_msgs::Odometry msg_third_odom;
-//   msg_first_odom.pose = msg_first.pose;
-//   msg_first_odom.header = msg_first.header;
-//   msg_second_odom.pose = msg_second.pose;
-//   msg_second_odom.header = msg_second.header;
-//   msg_third_odom.pose = msg_third.pose;
-//   msg_third_odom.header = msg_third.header;
-//   nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
-//       new nav_msgs::Odometry(msg_first_odom));
-//   nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
-//       new nav_msgs::Odometry(msg_second_odom));
-//   nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
-//       new nav_msgs::Odometry(msg_third_odom));
-//   // Call lidar callback
-//   LidarOdometryCallback(msg_first_odomPtr);
-//   LidarOdometryCallback(msg_second_odomPtr);
-//   LidarOdometryCallback(msg_third_odomPtr);
-//   ros::Time query1, query2;
-//   query1.fromSec(0.0);
-//   query2.fromSec(0.7);
-//   myOutput = GetFusedOdomDeltaBetweenTimes(query1, query2);
-//   myOutput.pose.print("myOutput.pose");
-//   EXPECT_TRUE((myOutput.pose).equals(gtsam::Pose3()));
-//   // EXPECT_FALSE(myOutput.b_has_value);
-// }
+TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+  // Create an output
+  GtsamPosCov myOutput;
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+  ros::Time query1, query2;
+  query1.fromSec(0.0);
+  query2.fromSec(2.0);
+  myOutput = GetFusedOdomDeltaBetweenTimes(query1, query2);
+  auto pose_expected = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(2, 0, 0));
+  EXPECT_FALSE(myOutput.b_has_value);
+}
 
 TEST_F(OdometryHandlerTest, TestGetCovariance) {
   ros::NodeHandle nh("~");

@@ -50,10 +50,6 @@ bool LampBase::SetFactorPrecisions() {
     return false;
   if (!pu::Get("position_sigma", position_sigma_))
     return false;
-  if (!pu::Get("manual_lc_rot_precision", manual_lc_rot_precision_))
-    return false;
-  if (!pu::Get("manual_lc_trans_precision", manual_lc_trans_precision_))
-    return false;
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
     return false;
   if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_))
@@ -83,8 +79,8 @@ bool LampBase::SetFactorPrecisions() {
 
   // Artifact
   gtsam::Vector6 precisions;
-  sigmas.head<3>().setConstant(artifact_rot_precision_);
-  sigmas.tail<3>().setConstant(artifact_trans_precision_);
+  precisions.head<3>().setConstant(artifact_rot_precision_);
+  precisions.tail<3>().setConstant(artifact_trans_precision_);
   artifact_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
 
   return true;
@@ -286,8 +282,8 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
 
-  ROS_INFO_STREAM("Points size is: " << points->points.size()
-                                     << ", in GetTransformedPointCloudWorld");
+  // ROS_INFO_STREAM("Points size is: " << points->points.size()
+  //                                    << ", in GetTransformedPointCloudWorld");
 }
 
 // For adding one scan to the map
@@ -377,11 +373,6 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
     // sigmas.tail<3>().setConstant(laser_lc_trans_sigma_);
     // noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
     noise = laser_lc_noise_;
-  } else if (type == "manual_loop_closure") {
-    gtsam::Vector6 noise_vec;
-    noise_vec.head<3>().setConstant(manual_lc_rot_precision_);
-    noise_vec.tail<3>().setConstant(manual_lc_trans_precision_);
-    noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
   } else if (type == "artifact") {
     noise = artifact_noise_;
   } else if (type == "april") {

@@ -15,20 +15,47 @@
 
 #include <gtsam/inference/Key.h>
 #include <gtsam/inference/Symbol.h>
+#include <gtsam/linear/NoiseModel.h>
 
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
 
 class TestUtils : public ::testing::Test {
-public:
-  TestUtils() {
-    // Set params
-  }
-  ~TestUtils() {}
+  public:
+    TestUtils() {
+      // Set params
+    }
+    ~TestUtils() {}
 
-protected:
-private:
+  protected:
+
+    double tolerance_ = 1e-5;
+  private:
 };
+
+TEST_F(TestUtils, UpdateEdgeCovariance) {
+  ros::NodeHandle nh, pnh("~");
+
+  pose_graph_msgs::PoseGraphEdge edge;
+
+  double trans_prec = 1e-10;
+  double rot_prec = 0.1;
+  gtsam::Vector6 prec; 
+  prec << rot_prec,rot_prec,rot_prec,trans_prec,trans_prec,trans_prec;
+
+  const gtsam::SharedNoiseModel covariance = 
+    gtsam::noiseModel::Diagonal::Precisions(prec);
+
+  utils::UpdateCovariance(edge, covariance);
+
+  EXPECT_NEAR(edge.covariance.at(0), 1/(rot_prec), tolerance_);
+  EXPECT_NEAR(edge.covariance.at(7), 1/(rot_prec), tolerance_);
+  EXPECT_NEAR(edge.covariance.at(14), 1/(rot_prec), tolerance_);
+  EXPECT_NEAR(edge.covariance.at(21), 1/(trans_prec), tolerance_);  
+  EXPECT_NEAR(edge.covariance.at(28), 1/(trans_prec), tolerance_);  
+  EXPECT_NEAR(edge.covariance.at(35), 1/(trans_prec), tolerance_);  
+
+}
 
 TEST_F(TestUtils, PoseGraphMsgToGtsam) {
   ros::NodeHandle nh, pnh("~");
