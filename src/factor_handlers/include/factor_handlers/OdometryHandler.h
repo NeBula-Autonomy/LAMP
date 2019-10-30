@@ -27,6 +27,12 @@ typedef struct {
   gtsam::SharedNoiseModel covariance;
 } GtsamPosCov;
 
+typedef struct {
+  bool lidar;
+  bool visual;
+  bool wheel;
+} OdomValueAtKeyInitializedStatus;
+
 typedef std::pair<GtsamPosCov, GtsamPosCov> GtsamPosCovPair;
 
 const unsigned int LIDAR_ODOM_BUFFER_ID = 0;
@@ -91,6 +97,7 @@ protected:
       return x.size();
   }
 
+  void InitializeOdomValueAtKey(const Odometry::ConstPtr& msg, const unsigned int odom_buffer_id);
   void ClearOdometryBuffer(OdomPoseBuffer& odom_buffer, const unsigned int odom_buffer_id);
 
   bool CheckOdomSize();
@@ -147,11 +154,12 @@ protected:
       whenever a new key is created
       
   */ 
+  OdomValueAtKeyInitializedStatus b_odom_value_initialized_;
   int max_buffer_size_; 
   int min_buffer_size_;
   PoseCovStamped lidar_odom_value_at_key_; 
   PoseCovStamped visual_odom_value_at_key_; 
-  PoseCovStamped wheel_odom_value_at_key_;   
+  PoseCovStamped wheel_odom_value_at_key_;
 
 private:
 

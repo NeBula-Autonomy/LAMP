@@ -751,10 +751,10 @@ TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
   LidarOdometryCallback(msg_third_odomPtr);
   ros::Time query1, query2;
   query1.fromSec(0.0);
-  query2.fromSec(1.07);
+  query2.fromSec(2.0);
   myOutput = GetFusedOdomDeltaBetweenTimes(query1, query2);
   auto pose_expected = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(2, 0, 0));
-  EXPECT_TRUE((myOutput.pose).equals(pose_expected));
+  EXPECT_FALSE(myOutput.b_has_value);
 }
 
 TEST_F(OdometryHandlerTest, TestGetCovariance) {
