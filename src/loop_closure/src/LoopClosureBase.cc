@@ -15,12 +15,21 @@ LoopClosure::LoopClosure(const ros::NodeHandle& n) {
 
   keyed_stamps_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_incremental", 10, &LoopClosure::InputCallback, this);
+
+  // False by default, set to true within derived class initializations
+  b_check_for_loop_closures_ = false;
 }
 
 LoopClosure::~LoopClosure(){};
 
 void LoopClosure::InputCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
+
+  // Exit immediately if not checking for loop closures
+  if (!b_check_for_loop_closures_) {
+    return;
+  }
+
   // Loop through each node (but expect only one at a time)
   ROS_INFO_STREAM("In Input Callback of loop closure (" << graph_msg->nodes.size() <<
       " nodes received)");

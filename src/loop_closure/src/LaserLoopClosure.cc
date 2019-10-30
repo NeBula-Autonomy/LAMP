@@ -36,22 +36,25 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 
   // Parameters
   double distance_to_skip_recent_poses;
+  param_ns_ = utils::GetParamNamespace(n.getNamespace());
   // Load loop closing parameters.
-  if (!pu::Get("translation_threshold_nodes", translation_threshold_nodes_))
+  if (!pu::Get(param_ns_ + "/b_check_for_loop_closures", b_check_for_loop_closures_))
     return false;
-  if (!pu::Get("proximity_threshold", proximity_threshold_))
+  if (!pu::Get(param_ns_ + "/translation_threshold_nodes", translation_threshold_nodes_))
     return false;
-  if (!pu::Get("max_tolerable_fitness", max_tolerable_fitness_))
+  if (!pu::Get(param_ns_ + "/proximity_threshold", proximity_threshold_))
     return false;
-  if (!pu::Get("distance_to_skip_recent_poses", distance_to_skip_recent_poses))
+  if (!pu::Get(param_ns_ + "/max_tolerable_fitness", max_tolerable_fitness_))
     return false;
-  if (!pu::Get("distance_before_reclosing", distance_before_reclosing_))
+  if (!pu::Get(param_ns_ + "/distance_to_skip_recent_poses", distance_to_skip_recent_poses))
+    return false;
+  if (!pu::Get(param_ns_ + "/distance_before_reclosing", distance_before_reclosing_))
     return false;
 
   // Load ICP parameters (from point_cloud localization)
-  if (!pu::Get("icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
-  if (!pu::Get("icp_lc/corr_dist", icp_corr_dist_)) return false;
-  if (!pu::Get("icp_lc/iterations", icp_iterations_)) return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/corr_dist", icp_corr_dist_)) return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/iterations", icp_iterations_)) return false;
 
   // Hard coded covariances
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
@@ -60,7 +63,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
     return false;
 
   int icp_init_method;
-  if (!pu::Get("icp_initialization_method", icp_init_method))
+  if (!pu::Get(param_ns_ + "/icp_initialization_method", icp_init_method))
     return false;
   icp_init_method_ = IcpInitMethod(icp_init_method);
 

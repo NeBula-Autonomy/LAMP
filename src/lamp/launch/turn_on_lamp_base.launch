@@ -37,6 +37,10 @@
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
 
+      <!-- Factor handlers -->
+      <rosparam file="$(find factor_handlers)/config/manual_lc_parameters.yaml" subst_value="true"/>
+
+
     </node>
 
     <!-- Pose graph visualization -->
@@ -57,5 +61,10 @@
     </node>
 
   </group>
+
+  <!-- Loop Closure  -->
+  <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
+    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+  </include>
 
 </launch>

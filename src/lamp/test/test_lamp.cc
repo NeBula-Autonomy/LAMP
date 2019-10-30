@@ -459,20 +459,20 @@ TEST_F(TestLampRobot, GetKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(2.0)));
 
   // Mismatches
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.0000001)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.4990001)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.9999999)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.5009999)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.9999000)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.0000001)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.4990001)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.9999999)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.5009999)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.9999000)));
 }
 
 TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
   ros::Time::init();
   SetTimeThreshold(0.001);
 
-  // Expect empty keys from invalid inputs
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.0)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.0)));
+  // Expect error keys from invalid inputs
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.0)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.0)));
 }
 
 TEST_F(TestLampRobot, GetClosestKeyAtTime) {
@@ -515,8 +515,8 @@ TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
 
   // Check single key
   AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
-  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(500.0)));
-  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(0.0)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(500.0)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(0.0)));
 
   // Add more keys
   AddStampToOdomKey(ros::Time(50.0), gtsam::Symbol('a', 1));
@@ -527,7 +527,7 @@ TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
   // Exact matches
   // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); //
   // TODO - fix this
-  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(55.0)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(55.0)));
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.5)));
 }
 

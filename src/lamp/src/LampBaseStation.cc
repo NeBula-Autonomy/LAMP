@@ -104,10 +104,10 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                           &LampBaseStation::OptimizerUpdateCallback,
                                           dynamic_cast<LampBase*>(this));
 
-  // laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
-  //                                        1,
-  //                                        &LampBaseStation::LaserLoopClosureCallback,
-  //                                        dynamic_cast<LampBase*>(this));
+  laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
+                                         1,
+                                         &LampBaseStation::LaserLoopClosureCallback,
+                                         dynamic_cast<LampBase*>(this));
 
   return true; 
 }
@@ -122,7 +122,6 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
 
   // Base station publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
-  keyed_scan_pub_ = nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
 
   return true; 
 }
@@ -159,13 +158,6 @@ bool LampBaseStation::InitializeGraph() {
       gtsam::noiseModel::Diagonal::Sigmas(noise));
 
   pose_graph_.Initialize(utils::LAMP_BASE_INITIAL_KEY, pose, covariance);
-
-  // gtsam::Values new_values;
-  // new_values.insert(utils::LAMP_BASE_INITIAL_KEY, pose);
-  // pose_graph_.AddNewValues(new_values);
-
-
-
 
   return true;
 }
@@ -257,12 +249,6 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
           new_values.insert(n.key, utils::ToGtsam(n.pose));
         }
       }
-
-
-      // // If node is not in graph, add as placeholder
-      // if (!pose_graph_.values.exists(n.key)) {
-      //   new_values.insert(n.key, utils::ToGtsam(geometry_msgs::Pose()));
-      // }
     }
 
     pose_graph_.AddNewValues(new_values);
@@ -302,8 +288,6 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
     ROS_INFO_STREAM("Added new pose graph");
   }
 
-
-
   ROS_INFO_STREAM("Keyed stamps: " << pose_graph_.keyed_stamps.size());
 
   // Update from stored keyed scans 
@@ -318,6 +302,8 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
     ROS_INFO_STREAM("Added new point cloud to map, " << scan_ptr->points.size() << " points");
   }
+
+  return true; 
 }
 
 void LampBaseStation::ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n) {
@@ -342,7 +328,30 @@ void LampBaseStation::ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n) {
   PublishPoseGraphForOptimizer();
 
   PublishPoseGraph();
+}
 
+bool LampBaseStation::ProcessManualLoopClosureData(FactorData* data) {
+
+  // Extract loop closure data
+  LoopClosureData* manual_loop_closure_data = dynamic_cast<LoopClosureData*>(data);
+
+  if (!manual_loop_closure_data->b_has_data) {
+    return false;
+  }
+
+  ROS_INFO_STREAM("Received new manual loop closure data");
+
+  for (auto factor : manual_loop_closure_data->factors) {
+    pose_graph_.TrackFactor(factor.key_from, 
+                            factor.key_to,
+                            pose_graph_msgs::PoseGraphEdge::LOOPCLOSE, 
+                            factor.transform, 
+                            factor.covariance);
+
+    b_run_optimization_ = true;
+  }
+
+  return true;
 }
 
 
@@ -351,6 +360,11 @@ bool LampBaseStation::CheckHandlers() {
 
   // Check for pose graphs from the robots
   ProcessPoseGraphData(pose_graph_handler_.GetData());
+
+  // Check for manual loop closures
+  ProcessManualLoopClosureData(manual_loop_closure_handler_.GetData());
+
+
 
   return true;
 }
