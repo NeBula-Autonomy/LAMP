@@ -109,10 +109,11 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                          &LampBaseStation::LaserLoopClosureCallback,
                                          dynamic_cast<LampBase*>(this));
 
-  debug_sub_ = nl.subscribe("debug",
-                            1,
-                            &LampBaseStation::DebugCallback,
-                            this);
+  // Uncomment when needed for debugging
+  // debug_sub_ = nl.subscribe("debug",
+  //                           1,
+  //                           &LampBaseStation::DebugCallback,
+  //                           this);
 
   return true; 
 }
