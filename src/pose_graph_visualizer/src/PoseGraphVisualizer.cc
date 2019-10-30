@@ -22,23 +22,21 @@ namespace pu = parameter_utils;
 
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
 
-inline geometry_msgs::Point tfpoint2msg(const tf::Vector3& v) {
-  geometry_msgs::Point p;
-  p.x = v.x();
-  p.y = v.y();
-  p.z = v.z();
-  return p;
+std::string GenerateKey(gtsam::Key key1, gtsam::Key key2) {
+  return std::to_string(key1) + '|' + std::to_string(key2);
 }
 
-geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(
-    long unsigned int key,
-    const std::map<long unsigned int, tf::Pose>& poses) const {
-  // ROS_INFO("In getPositionMsg");
-  if (poses.find(key) == poses.end()) {
-    // ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
-    ROS_ERROR("PGV: Key %s does not exist in GetPositionMsg", gtsam::DefaultKeyFormatter(key));
+geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(gtsam::Key key) const {
+  ROS_INFO("In getPositionMsg");
+  if (!pose_graph_.HasKey(key)) {
+    ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
   }
-  return tfpoint2msg(poses.at(key).getOrigin());
+  geometry_msgs::Point p;
+  auto pose = pose_graph_.GetPose(key);
+  p.x = pose.x();
+  p.y = pose.y();
+  p.z = pose.z();
+  return p;
 }
 
 bool PoseGraphVisualizer::Initialize(const ros::NodeHandle& nh,
@@ -62,7 +60,7 @@ bool PoseGraphVisualizer::Initialize(const ros::NodeHandle& nh,
 
 bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
   // Load frame ids.
-  if (!pu::Get("frame_id/fixed", fixed_frame_id_))
+  if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
     return false;
   if (!pu::Get("frame_id/base", base_frame_id_))
     return false;
@@ -153,9 +151,9 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
 void PoseGraphVisualizer::PoseGraphCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
   if (!msg->incremental) {
-    keyed_poses_.clear();
-    odometry_edges_.clear();
+    pose_graph_.Reset();
   }
+  pose_graph_.UpdateFromMsg(msg);
   for (const pose_graph_msgs::PoseGraphNode& msg_node : msg->nodes) {
     tf::Pose pose;
     tf::poseMsgToTF(msg_node.pose, pose);
@@ -173,98 +171,11 @@ void PoseGraphVisualizer::PoseGraphCallback(
         sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q') {
       ROS_INFO_STREAM("Have an artifact node with key "
                       << gtsam::DefaultKeyFormatter(sym_key));
-      // Artifact
-      keyed_artifact_poses_[msg_node.key] = pose;
 
       // node.ID = artifacts_[keyed_pose.key].msg.id;
       artifact_id2key_hash_[msg_node.ID] = msg_node.key;
       artifact_key2id_hash_[msg_node.key] = msg_node.ID;
       continue;
-    }
-
-    if (sym_key.chr() == 'u') {
-      // UWB
-      // TODO implement UWB logic
-      // cast uint64_t from the message to an long unsigned int to ensure
-      // comparisons are correct (do this explicitly here)
-      keyed_uwb_poses_[static_cast<long unsigned int>(msg_node.key)] = pose;
-      // node.ID = uwb_key2id_hash_[keyed_pose.key];
-      continue;
-    }
-
-    // Fill pose nodes (representing the robot position)
-    keyed_poses_[msg_node.key] = pose;
-
-    // Track key frames
-    if (msg_node.ID == "key_frame" || msg_node.ID == "odom_node") {
-      // Have key frame
-      keyframe_poses_[msg_node.key] = pose;
-    }
-
-    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(
-        msg_node.key, msg_node.header.stamp));
-    stamps_keyed_.insert(std::pair<double, long unsigned int>(
-        msg_node.header.stamp.toSec(), msg_node.key));
-  }
-
-  for (const auto& msg_edge : msg->edges) {
-    if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
-      odometry_edges_.emplace_back(
-          std::make_pair(msg_edge.key_from, msg_edge.key_to));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
-      loop_edges_.emplace_back(
-          std::make_pair(msg_edge.key_from, msg_edge.key_to));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
-      artifact_edges_.emplace_back(
-          std::make_pair(msg_edge.key_from, msg_edge.key_to));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
-      // TODO send only incremental UWB edges (if msg.incremental is true)
-      // uwb_edges_.clear();
-      bool found = false;
-      for (const auto& edge : uwb_edges_range_) {
-        // cast to long unsigned int to ensure comparisons are correct
-        if (edge.first == static_cast<long unsigned int>(msg_edge.key_from) &&
-            edge.second == static_cast<long unsigned int>(msg_edge.key_to)) {
-          found = true;
-          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
-                    msg_edge.key_from,
-                    msg_edge.key_to);
-          break;
-        }
-      }
-      // avoid duplicate UWB edges
-      if (!found) {
-        uwb_edges_range_.emplace_back(
-            std::make_pair(static_cast<long unsigned int>(msg_edge.key_from),
-                           static_cast<long unsigned int>(msg_edge.key_to)));
-        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
-                 msg_edge.key_from,
-                 msg_edge.key_to);
-      }
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
-      // TODO send only incremental UWB edges (if msg.incremental is true)
-      // uwb_edges_.clear();
-      bool found = false;
-      for (const auto& edge : uwb_edges_between_) {
-        // cast to long unsigned int to ensure comparisons are correct
-        if (edge.first == static_cast<long unsigned int>(msg_edge.key_from) &&
-            edge.second == static_cast<long unsigned int>(msg_edge.key_to)) {
-          found = true;
-          ROS_DEBUG("PGV: UWB edge from %u to %u already exists.",
-                    msg_edge.key_from,
-                    msg_edge.key_to);
-          break;
-        }
-      }
-      // avoid duplicate UWB edges
-      if (!found) {
-        uwb_edges_between_.emplace_back(
-            std::make_pair(static_cast<long unsigned int>(msg_edge.key_from),
-                           static_cast<long unsigned int>(msg_edge.key_to)));
-        ROS_INFO("PGV: Adding new UWB edge from %u to %u.",
-                 msg_edge.key_from,
-                 msg_edge.key_to);
-      }
     }
   }
 
@@ -273,18 +184,12 @@ void PoseGraphVisualizer::PoseGraphCallback(
 
 void PoseGraphVisualizer::PoseGraphNodeCallback(
     const pose_graph_msgs::PoseGraphNode::ConstPtr& msg) {
-  tf::Pose pose;
-  tf::poseMsgToTF(msg->pose, pose);
-  keyed_poses_[msg->key] = pose;
-  keyed_stamps_.insert(
-      std::pair<long unsigned int, ros::Time>(msg->key, msg->header.stamp));
-  stamps_keyed_.insert(std::pair<double, long unsigned int>(
-      msg->header.stamp.toSec(), msg->key));
+  pose_graph_.TrackNode(*msg);
 }
 
 void PoseGraphVisualizer::PoseGraphEdgeCallback(
     const pose_graph_msgs::PoseGraphEdge::ConstPtr& msg) {
-  odometry_edges_.emplace_back(std::make_pair(msg->key_from, msg->key_to));
+  pose_graph_.TrackFactor(*msg);
 }
 
 void PoseGraphVisualizer::ErasePosegraphCallback(
@@ -294,12 +199,7 @@ void PoseGraphVisualizer::ErasePosegraphCallback(
   // This gets called at restart and load to initialize everything before
   // loading the graph
   if (erase_all == true) {
-    keyed_scans_.clear();
-    keyed_stamps_.clear();
-    stamps_keyed_.clear();
-
-    loop_edges_.clear();
-    odometry_edges_.clear();
+    pose_graph_.Reset();
     if (publish_interactive_markers_) {
       server.reset(new interactive_markers::InteractiveMarkerServer(
           "interactive_node", "", false));
@@ -307,7 +207,7 @@ void PoseGraphVisualizer::ErasePosegraphCallback(
   }
 }
 
-// Callback function to remove the visialization of the edge between factors
+// Callback function to remove the visualization of the edge between factors
 void PoseGraphVisualizer::RemoveFactorVizCallback(
     const std_msgs::Bool::ConstPtr& msg) {
   const bool removefactor = msg->data;
@@ -315,14 +215,15 @@ void PoseGraphVisualizer::RemoveFactorVizCallback(
   // This gets called after remove factor, to remove the visualization of the
   // edge between the nodes
   if (removefactor == true) {
-    loop_edges_.clear();
+    // TODO remove all LOOPCLOSE edges from pose_graph_.edges_new_?
+    // loop_edges_.clear();
   }
 }
 
 void PoseGraphVisualizer::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
-  const long unsigned int key = msg->key;
-  if (keyed_scans_.find(key) != keyed_scans_.end()) {
+  const gtsam::Key key = msg->key;
+  if (pose_graph_.HasScan(key)) {
     ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
     return;
   }
@@ -334,85 +235,20 @@ void PoseGraphVisualizer::KeyedScanCallback(
   // scan's timestamp for pose zero.
   if (key == 0) {
     const ros::Time stamp = pcl_conversions::fromPCL(scan->header.stamp);
-    keyed_stamps_.insert(std::pair<long unsigned int, ros::Time>(key, stamp));
-    stamps_keyed_.insert(
-        std::pair<double, long unsigned int>(stamp.toSec(), key));
+    pose_graph_.InsertKeyedStamp(key, stamp);
   }
 
   // ROS_INFO_STREAM("AddKeyScanPair " << key);
 
   // Add the key and scan.
-  keyed_scans_.insert(
-      std::pair<long unsigned int, PointCloud::ConstPtr>(key, scan));
-}
-
-std::string GenerateKey(long unsigned int key1, long unsigned int key2) {
-  return std::to_string(key1) + '|' + std::to_string(key2);
-}
-
-gtsam::Key PoseGraphVisualizer::GetKeyAtTime(const ros::Time& stamp) const {
-  ROS_INFO("Get pose key closest to input time %f ", stamp.toSec());
-
-  auto iterTime = stamps_keyed_.lower_bound(
-      stamp.toSec()); // First key that is not less than timestamp
-
-  // std::cout << "Got iterator at lower_bound. Input: " << stamp.toSec() << ",
-  // found " << iterTime->first << std::endl;
-
-  // TODO - interpolate - currently just take one
-  double t2 = iterTime->first;
-  double t1 = std::prev(iterTime, 1)->first;
-
-  // std::cout << "Time 1 is: " << t1 << ", Time 2 is: " << t2 << std::endl;
-
-  long unsigned int key;
-
-  if (t2 - stamp.toSec() < stamp.toSec() - t1) {
-    // t2 is closer - use that key
-    // std::cout << "Selecting later time: " << t2 << std::endl;
-    key = iterTime->second;
-  } else {
-    // t1 is closer - use that key
-    // std::cout << "Selecting earlier time: " << t1 << std::endl;
-    key = std::prev(iterTime, 1)->second;
-    iterTime--;
-  }
-  // std::cout << "Key is: " << key << std::endl;
-  if (iterTime == std::prev(stamps_keyed_.begin())) {
-    // ROS_WARN("Invalid time for graph (before start of graph range). Choosing
-    // next value");
-    iterTime++;
-    // iterTime = stamps_keyed_.begin();
-    key = iterTime->second;
-  } else if (iterTime == stamps_keyed_.end()) {
-    ROS_WARN(
-        "Invalid time for graph (past end of graph range). take latest pose");
-  }
-
-  return key;
-}
-
-gu::Transform3 PoseGraphVisualizer::GetPoseAtKey(const gtsam::Key& key) const {
-  // Get the pose at that key
-  if (keyed_poses_.find(key) == keyed_poses_.end()) {
-    ROS_WARN("PGV: Key %u does not exist in GetPoseAtKey", key);
-    return gu::Transform3();
-  }
-  const tf::Pose& pose = keyed_poses_.at(key);
-  Eigen::Quaterniond quat;
-  // TODO convert tf pose's rotation to Eigen
-  // tf::quaternionTfToEigen(pose.getRotation(), quat);
-  gu::Transform3 result(gu::Vec3(pose.getOrigin().getX(),
-                                 pose.getOrigin().getY(),
-                                 pose.getOrigin().getZ()),
-                        gu::Quat(quat.w(), quat.x(), quat.y(), quat.z()));
-  return result;
+  pose_graph_.InsertKeyedScan(key, scan);
 }
 
 Eigen::Vector3d
 PoseGraphVisualizer::GetArtifactPosition(const gtsam::Key artifact_key) const {
-  const auto pose = GetPoseAtKey(artifact_key);
-  return pose.translation.Eigen();
+  const auto pose = pose_graph_.GetPose(artifact_key);
+  Eigen::Vector3d v(pose.x(), pose.y(), pose.z());
+  return v;
 }
 
 void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
@@ -445,18 +281,17 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
   // VisualizeArtifacts();
 }
 
-bool PoseGraphVisualizer::HighlightEdge(long unsigned int key1,
-                                        long unsigned int key2) {
+bool PoseGraphVisualizer::HighlightEdge(gtsam::Key key1, gtsam::Key key2) {
   ROS_INFO("Highlighting factor between %i and %i.", key1, key2);
 
-  if (!KeyExists(key1) || !KeyExists(key2)) {
+  if (!pose_graph_.HasKey(key1) || !pose_graph_.HasKey(key2)) {
     ROS_WARN("Key %i or %i does not exist.", key1, key2);
     return false;
   }
 
   visualization_msgs::Marker m;
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_ + "edge" + GenerateKey(key1, key2);
+  m.header.frame_id = pose_graph_.fixed_frame_id;
+  m.ns = pose_graph_.fixed_frame_id + "edge" + GenerateKey(key1, key2);
   m.id = 0;
   m.action = visualization_msgs::Marker::ADD;
   m.type = visualization_msgs::Marker::LINE_LIST;
@@ -466,8 +301,8 @@ bool PoseGraphVisualizer::HighlightEdge(long unsigned int key1,
   m.color.a = 1.0;
   m.scale.x = 0.05;
 
-  m.points.push_back(GetPositionMsg(key1, keyed_poses_));
-  m.points.push_back(GetPositionMsg(key2, keyed_poses_));
+  m.points.push_back(GetPositionMsg(key1));
+  m.points.push_back(GetPositionMsg(key2));
   highlight_pub_.publish(m);
 
   HighlightNode(key1);
@@ -476,17 +311,17 @@ bool PoseGraphVisualizer::HighlightEdge(long unsigned int key1,
   return true;
 }
 
-bool PoseGraphVisualizer::HighlightNode(long unsigned int key) {
+bool PoseGraphVisualizer::HighlightNode(gtsam::Key key) {
   ROS_INFO("Highlighting node %i.", key);
 
-  if (!KeyExists(key)) {
+  if (!pose_graph_.HasKey(key)) {
     ROS_WARN("Key %i does not exist.", key);
     return false;
   }
 
   visualization_msgs::Marker m;
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_ + "node" + std::to_string(key);
+  m.header.frame_id = pose_graph_.fixed_frame_id;
+  m.ns = pose_graph_.fixed_frame_id + "node" + std::to_string(key);
   m.action = visualization_msgs::Marker::ADD;
   m.type = visualization_msgs::Marker::SPHERE;
   m.color.r = 1.0;
@@ -497,17 +332,16 @@ bool PoseGraphVisualizer::HighlightNode(long unsigned int key) {
   m.scale.y = 0.27;
   m.scale.z = 0.27;
   m.id = 0;
-  m.pose.position = GetPositionMsg(key, keyed_poses_);
+  m.pose.position = GetPositionMsg(key);
   highlight_pub_.publish(m);
 
   return true;
 }
 
-void PoseGraphVisualizer::UnhighlightEdge(long unsigned int key1,
-                                          long unsigned int key2) {
+void PoseGraphVisualizer::UnhighlightEdge(gtsam::Key key1, gtsam::Key key2) {
   visualization_msgs::Marker m;
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_ + "edge" + GenerateKey(key1, key2);
+  m.header.frame_id = pose_graph_.fixed_frame_id;
+  m.ns = pose_graph_.fixed_frame_id + "edge" + GenerateKey(key1, key2);
   m.id = 0;
   if (key1 == key2 && key1 == 0)
     m.action = visualization_msgs::Marker::DELETEALL;
@@ -519,10 +353,10 @@ void PoseGraphVisualizer::UnhighlightEdge(long unsigned int key1,
   UnhighlightNode(key2);
 }
 
-void PoseGraphVisualizer::UnhighlightNode(long unsigned int key) {
+void PoseGraphVisualizer::UnhighlightNode(gtsam::Key key) {
   visualization_msgs::Marker m;
-  m.header.frame_id = fixed_frame_id_;
-  m.ns = fixed_frame_id_ + "node" + std::to_string(key);
+  m.header.frame_id = pose_graph_.fixed_frame_id;
+  m.ns = pose_graph_.fixed_frame_id + "node" + std::to_string(key);
   m.id = 0;
   if (key == 0)
     m.action = visualization_msgs::Marker::DELETEALL;
@@ -564,14 +398,14 @@ bool PoseGraphVisualizer::HighlightEdgeService(
 }
 
 // Interactive Marker Menu
-void PoseGraphVisualizer::MakeMenuMarker(const tf::Pose& position,
+void PoseGraphVisualizer::MakeMenuMarker(const gtsam::Pose3& pose,
                                          const std::string& id_number) {
   interactive_markers::MenuHandler menu_handler;
 
   visualization_msgs::InteractiveMarker int_marker;
-  int_marker.header.frame_id = PoseGraphVisualizer::fixed_frame_id_;
+  int_marker.header.frame_id = PoseGraphVisualizer::pose_graph_.fixed_frame_id;
   int_marker.scale = 1.0;
-  tf::poseTFToMsg(position, int_marker.pose);
+  int_marker.pose = utils::GtsamToRosMsg(pose);
   int_marker.name = id_number;
 
   visualization_msgs::Marker marker;
@@ -597,154 +431,170 @@ void PoseGraphVisualizer::MakeMenuMarker(const tf::Pose& position,
 }
 
 void PoseGraphVisualizer::VisualizePoseGraph() {
+  visualization_msgs::Marker odometry_edges;
+  visualization_msgs::Marker loop_edges;
+  visualization_msgs::Marker artifact_edges;
+  visualization_msgs::Marker uwb_edges;
+
+  visualization_msgs::Marker* edge_target;
+  // TODO visualize new edges/nodes or all?
+  for (const auto& edge : pose_graph_.GetNewEdges()) {
+    edge_target = nullptr;
+    switch (edge.type) {
+    case pose_graph_msgs::PoseGraphEdge::ODOM:
+      edge_target = &odometry_edges;
+      break;
+    case pose_graph_msgs::PoseGraphEdge::LOOPCLOSE:
+      edge_target = &loop_edges;
+      break;
+    case pose_graph_msgs::PoseGraphEdge::ARTIFACT:
+      edge_target = &artifact_edges;
+      break;
+    case pose_graph_msgs::PoseGraphEdge::UWB_RANGE:
+    case pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN:
+      edge_target = &uwb_edges;
+      break;
+    }
+    // TODO - look at how to handle Priors - a small edge - 1 m down in z
+    if (edge_target) {
+      edge_target->points.push_back(GetPositionMsg(edge.key_from));
+      edge_target->points.push_back(GetPositionMsg(edge.key_to));
+    }
+  }
+
   // Publish odometry edges.
   if (odometry_edge_pub_.getNumSubscribers() > 0) {
     ROS_INFO("Odometry Edges");
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 0;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 1.0;
-    m.color.g = 0.0;
-    m.color.b = 0.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < odometry_edges_.size(); ++ii) {
-      const auto key1 = odometry_edges_[ii].first;
-      const auto key2 = odometry_edges_[ii].second;
-
-      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
-      m.points.push_back(GetPositionMsg(key2, keyed_poses_));
-    }
-    odometry_edge_pub_.publish(m);
+    odometry_edges.header.frame_id = pose_graph_.fixed_frame_id;
+    odometry_edges.ns = pose_graph_.fixed_frame_id;
+    odometry_edges.id = 0;
+    odometry_edges.action = visualization_msgs::Marker::ADD;
+    odometry_edges.type = visualization_msgs::Marker::LINE_LIST;
+    odometry_edges.color.r = 1.0;
+    odometry_edges.color.g = 0.0;
+    odometry_edges.color.b = 0.0;
+    odometry_edges.color.a = 0.8;
+    odometry_edges.scale.x = 0.02;
+    odometry_edge_pub_.publish(odometry_edges);
   }
 
   // Publish loop closure edges.
   if (loop_edge_pub_.getNumSubscribers() > 0) {
-    // ROS_INFO("Loop Edges");
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 1;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 0.2;
-    m.color.b = 1.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < loop_edges_.size(); ++ii) {
-      const auto key1 = loop_edges_[ii].first;
-      const auto key2 = loop_edges_[ii].second;
-
-      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
-      m.points.push_back(GetPositionMsg(key2, keyed_poses_));
-    }
-    loop_edge_pub_.publish(m);
+    ROS_INFO("Loop Edges");
+    loop_edges.header.frame_id = pose_graph_.fixed_frame_id;
+    loop_edges.ns = pose_graph_.fixed_frame_id;
+    loop_edges.id = 1;
+    loop_edges.action = visualization_msgs::Marker::ADD;
+    loop_edges.type = visualization_msgs::Marker::LINE_LIST;
+    loop_edges.color.r = 0.0;
+    loop_edges.color.g = 0.2;
+    loop_edges.color.b = 1.0;
+    loop_edges.color.a = 0.8;
+    loop_edges.scale.x = 0.02;
+    loop_edge_pub_.publish(loop_edges);
   }
 
   // Publish artifact edges.
   if (artifact_edge_pub_.getNumSubscribers() > 0) {
     ROS_INFO("Artifact Edges");
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 2;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 0.2;
-    m.color.g = 1.0;
-    m.color.b = 0.0;
-    m.color.a = 0.6;
-    m.scale.x = 0.02;
-
-    for (size_t ii = 0; ii < artifact_edges_.size(); ++ii) {
-      const auto key1 = artifact_edges_[ii].first;
-      const auto key2 = artifact_edges_[ii].second;
-
-      if (keyed_artifact_poses_.find(key2) == keyed_artifact_poses_.end()) {
-        ROS_WARN("Artifact key doesn't exist when trying to add edge");
-        continue;
-      }
-
-      ROS_INFO_STREAM("Artifact edge key 1 is "
-                      << gtsam::DefaultKeyFormatter(key1) << " to "
-                      << gtsam::DefaultKeyFormatter(key2));
-
-      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
-      ROS_INFO("Have key 1");
-
-      m.points.push_back(GetPositionMsg(key2, keyed_artifact_poses_));
-      ROS_INFO("Have key 2");
-    }
-    artifact_edge_pub_.publish(m);
+    artifact_edges.header.frame_id = pose_graph_.fixed_frame_id;
+    artifact_edges.ns = pose_graph_.fixed_frame_id;
+    artifact_edges.id = 2;
+    artifact_edges.action = visualization_msgs::Marker::ADD;
+    artifact_edges.type = visualization_msgs::Marker::LINE_LIST;
+    artifact_edges.color.r = 0.2;
+    artifact_edges.color.g = 1.0;
+    artifact_edges.color.b = 0.0;
+    artifact_edges.color.a = 0.6;
+    artifact_edges.scale.x = 0.02;
+    artifact_edge_pub_.publish(artifact_edges);
   }
 
   // Publish UWB edges.
   if (uwb_edge_pub_.getNumSubscribers() > 0) {
     ROS_INFO("UWB Edges");
     visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 3;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::LINE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 1.0;
-    m.color.b = 0.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.02;
+    uwb_edges.header.frame_id = pose_graph_.fixed_frame_id;
+    uwb_edges.ns = pose_graph_.fixed_frame_id;
+    uwb_edges.id = 3;
+    uwb_edges.action = visualization_msgs::Marker::ADD;
+    uwb_edges.type = visualization_msgs::Marker::LINE_LIST;
+    uwb_edges.color.r = 0.0;
+    uwb_edges.color.g = 1.0;
+    uwb_edges.color.b = 0.0;
+    uwb_edges.color.a = 0.8;
+    uwb_edges.scale.x = 0.02;
+    uwb_edge_pub_.publish(uwb_edges);
+  }
 
-    for (size_t ii = 0; ii < uwb_edges_range_.size(); ++ii) {
-      const auto key1 = uwb_edges_range_[ii].first;
-      const auto key2 = uwb_edges_range_[ii].second;
+  visualization_msgs::Marker generic_nodes;
+  visualization_msgs::Marker uwb_nodes;
 
-      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
-      m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));
-      ROS_INFO("PGV sends UWB edge %u", ii);
+  // Store keys for generic (non-UWB, non-artifact) nodes for text markers
+  std::set<gtsam::Symbol> pose_keys;
+
+  for (const auto& node : pose_graph_.GetNewNodes()) {
+    tf::Pose pose;
+    tf::poseMsgToTF(node.pose, pose);
+
+    gtsam::Symbol sym_key(gtsam::Key(node.key));
+
+    if (sym_key.chr() == 'u') {
+      // UWB
+      uwb_nodes.points.push_back(GetPositionMsg(node.key));
+      continue;
     }
-    for (size_t ii = 0; ii < uwb_edges_between_.size(); ++ii) {
-      const auto key1 = uwb_edges_between_[ii].first;
-      const auto key2 = uwb_edges_between_[ii].second;
 
-      m.points.push_back(GetPositionMsg(key1, keyed_poses_));
-      m.points.push_back(GetPositionMsg(key2, keyed_uwb_poses_));
-      ROS_INFO("PGV sends UWB edge %u", ii);
+    if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' ||
+        sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q') {
+      // handle artifacts separately (below)
+      continue;
     }
-    uwb_edge_pub_.publish(m);
+
+    // Fill pose nodes (representing the robot position)
+    generic_nodes.points.push_back(GetPositionMsg(node.key));
+    pose_keys.insert(sym_key);
   }
 
   // Publish nodes in the pose graph.
   if (graph_node_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 4;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::SPHERE_LIST;
-    m.color.r = 0.3;
-    m.color.g = 0.0;
-    m.color.b = 1.0;
-    m.color.a = 0.8;
-    m.scale.x = 0.1;
-    m.scale.y = 0.1;
-    m.scale.z = 0.1;
-
-    for (const auto& keyedPose : keyed_poses_) {
-      m.points.push_back(GetPositionMsg(keyedPose.first, keyed_poses_));
-    }
-    graph_node_pub_.publish(m);
+    generic_nodes.header.frame_id = pose_graph_.fixed_frame_id;
+    generic_nodes.ns = pose_graph_.fixed_frame_id;
+    generic_nodes.id = 4;
+    generic_nodes.action = visualization_msgs::Marker::ADD;
+    generic_nodes.type = visualization_msgs::Marker::SPHERE_LIST;
+    generic_nodes.color.r = 0.3;
+    generic_nodes.color.g = 0.0;
+    generic_nodes.color.b = 1.0;
+    generic_nodes.color.a = 0.8;
+    generic_nodes.scale.x = 0.1;
+    generic_nodes.scale.y = 0.1;
+    generic_nodes.scale.z = 0.1;
+    graph_node_pub_.publish(generic_nodes);
   }
 
-  // Publish node IDs in the pose graph.
+  // Publish UWB nodes.
+  if (uwb_node_pub_.getNumSubscribers() > 0) {
+    uwb_nodes.header.frame_id = pose_graph_.fixed_frame_id;
+    uwb_nodes.ns = pose_graph_.fixed_frame_id;
+    uwb_nodes.id = 6;
+    uwb_nodes.action = visualization_msgs::Marker::ADD;
+    uwb_nodes.type = visualization_msgs::Marker::CUBE_LIST;
+    uwb_nodes.color.r = 0.0;
+    uwb_nodes.color.g = 1.0;
+    uwb_nodes.color.b = 0.0;
+    uwb_nodes.color.a = 0.4;
+    uwb_nodes.scale.x = 0.5;
+    uwb_nodes.scale.y = 0.5;
+    uwb_nodes.scale.z = 0.5;
+    uwb_node_pub_.publish(uwb_nodes);
+  }
+
+  // Publish text markers for node IDs in the pose graph.
   if (graph_node_id_pub_.getNumSubscribers() > 0) {
     visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
+    m.header.frame_id = pose_graph_.fixed_frame_id;
+    m.ns = pose_graph_.fixed_frame_id;
 
     m.action = visualization_msgs::Marker::ADD;
     m.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
@@ -756,11 +606,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
     int id_base = 100;
     int counter = 0;
-    for (const auto& keyedPose : keyed_poses_) {
-      tf::poseTFToMsg(keyedPose.second, m.pose);
+    for (const auto& key : pose_keys) {
+      m.pose = utils::GtsamToRosMsg(pose_graph_.GetPose(key));
       // Display text for the node
-      m.text = std::to_string(keyedPose.first);
-      m.id = id_base + keyedPose.first;
+      m.text = std::to_string(key);
+      m.id = id_base + key;
       graph_node_id_pub_.publish(m);
     }
   }
@@ -768,8 +618,8 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Publish keyframe nodes in the pose graph.
   if (keyframe_node_pub_.getNumSubscribers() > 0) {
     visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
+    m.header.frame_id = pose_graph_.fixed_frame_id;
+    m.ns = pose_graph_.fixed_frame_id;
     m.id = 4;
     m.action = visualization_msgs::Marker::ADD;
     m.type = visualization_msgs::Marker::SPHERE_LIST;
@@ -781,8 +631,8 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     m.scale.y = 0.25;
     m.scale.z = 0.25;
 
-    for (const auto& keyedScan : keyed_scans_) {
-      m.points.push_back(GetPositionMsg(keyedScan.first, keyed_poses_));
+    for (const auto& keyed_scan : pose_graph_.keyed_scans) {
+      m.points.push_back(GetPositionMsg(keyed_scan.first));
     }
     keyframe_node_pub_.publish(m);
   }
@@ -809,48 +659,26 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     closure_area_pub_.publish(m);
   }
 
-  // Publish UWB nodes.
-  if (uwb_node_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = fixed_frame_id_;
-    m.ns = fixed_frame_id_;
-    m.id = 6;
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::CUBE_LIST;
-    m.color.r = 0.0;
-    m.color.g = 1.0;
-    m.color.b = 0.0;
-    m.color.a = 0.4;
-    m.scale.x = 0.5;
-    m.scale.y = 0.5;
-    m.scale.z = 0.5;
-
-    for (const auto& keyedPose : keyed_uwb_poses_) {
-      m.points.push_back(GetPositionMsg(keyedPose.first, keyed_uwb_poses_));
-    }
-    uwb_node_pub_.publish(m);
-  }
-
   // Publish Artifacts
   if (artifact_marker_pub_.getNumSubscribers() > 0 ||
       artifact_id_marker_pub_.getNumSubscribers() > 0) {
     visualization_msgs::Marker m, m_id;
-    m.header.frame_id = fixed_frame_id_;
+    m.header.frame_id = pose_graph_.fixed_frame_id;
     m_id.header.frame_id = m.header.frame_id;
     m.ns = "artifact";
     m_id.ns = "artifact_id";
     // ROS_INFO("Publishing artifacts!");
-    for (const auto& keyedPose : keyed_artifact_poses_) {
-      ROS_INFO_STREAM("Iterator first is: " << keyedPose.first);
+    // TODO - use the pose from the pose-graph for the artifacts
+    for (const auto& entry : artifact_key2id_hash_) {
       m.header.stamp = ros::Time::now();
       m_id.header.stamp = ros::Time::now();
 
       // get the gtsam key
-      gtsam::Key key(keyedPose.first);
+      gtsam::Key key(entry.first);
       m.id = key;
       m_id.id = m.id;
 
-      ROS_INFO_STREAM("Artifact key (raw) is: " << keyedPose.first);
+      ROS_INFO_STREAM("Artifact key (raw) is: " << entry.second);
       ROS_INFO_STREAM("Artifact key is " << key);
       ROS_INFO_STREAM("Artifact hash key is "
                       << gtsam::DefaultKeyFormatter(key));
@@ -866,11 +694,10 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       ROS_INFO_STREAM("Artifact key to publish is "
                       << gtsam::DefaultKeyFormatter(key));
 
-      ROS_INFO_STREAM(
-          "ID from key for the artifact is: " << artifact_key2id_hash_[key]);
+      ROS_INFO_STREAM("ID from key for the artifact is: " << entry.second);
 
       // Get the artifact information
-      ArtifactInfo art = artifacts_[artifact_key2id_hash_[key]];
+      ArtifactInfo art = artifacts_[entry.second];
 
       // Populate the artifact marker
       VisualizeSingleArtifact(m, art);
@@ -885,10 +712,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Interactive markers.
   if (publish_interactive_markers_) {
     ROS_INFO("Pose Graph Nodes");
-    for (const auto& keyed_pose : keyframe_poses_) {
-      gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.first);
+    for (const auto& keyed_pose :
+         pose_graph_.GetNewValues()) { // TODO - just generic nodes
+      gtsam::Symbol key_id = gtsam::Symbol(keyed_pose.key);
       std::string robot_id = std::string(key_id);
-      MakeMenuMarker(keyed_pose.second, robot_id);
+      MakeMenuMarker(pose_graph_.GetPose(keyed_pose.key), robot_id);
     }
     if (server != nullptr) {
       server->applyChanges();

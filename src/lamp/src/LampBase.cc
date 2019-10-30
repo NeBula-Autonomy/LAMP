@@ -175,18 +175,7 @@ void LampBase::LaserLoopClosureCallback(
 // Generic addition of loop closure information to the graph
 void LampBase::AddLoopClosureToGraph(
     const pose_graph_msgs::PoseGraphConstPtr msg) {
-  // Add to nfg
-  gtsam::NonlinearFactorGraph new_factors;
-  gtsam::Values blank_values;
-  utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
-  pose_graph_.nfg.add(new_factors);
-
-  // Add the factors to the pose_graph - loop through in case of multiple loop
-  // closures
-  for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
-    // Add to tracked edges
-    pose_graph_.TrackFactor(edge);
-  }
+  pose_graph_.UpdateFromMsg(msg);
 
   // Set flag to optimize
   b_run_optimization_ = true;
@@ -235,7 +224,7 @@ bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
 
   // Iterate over poses in the graph, transforming their corresponding laser
   // scans into world frame and appending them to the output.
-  for (const auto& keyed_pose : pose_graph_.values) {
+  for (const auto& keyed_pose : pose_graph_.GetValues()) {
     const gtsam::Symbol key = keyed_pose.key;
 
     PointCloud::Ptr scan_world(new PointCloud);
@@ -267,7 +256,7 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   }
 
   // Check that the key exists
-  if (!pose_graph_.values.exists(key)) {
+  if (!pose_graph_.HasKey(key)) {
     ROS_WARN(
         "Key %u does not exist in values_ in GetTransformedPointCloudWorld",
         gtsam::DefaultKeyFormatter(key));
