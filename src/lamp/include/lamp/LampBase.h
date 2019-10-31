@@ -166,6 +166,7 @@ protected:
   bool b_has_new_scan_;
   bool b_run_optimization_;
   bool b_use_fixed_covariances_;
+  bool b_repub_values_after_optimization_;
 
   // Frames.
   std::string base_frame_id_;

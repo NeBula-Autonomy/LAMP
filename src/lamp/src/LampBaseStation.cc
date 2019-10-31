@@ -17,7 +17,11 @@ namespace gu = geometry_utils;
 // Constructor (if there is override)
 LampBaseStation::LampBaseStation(): 
         zero_noise_(0.0001),
-        b_published_initial_node_(false) {}
+        b_published_initial_node_(false) {
+
+  // On base station LAMP, republish values after optimization
+  b_repub_values_after_optimization_ = true;
+}
 
 //Destructor
 LampBaseStation::~LampBaseStation() {}

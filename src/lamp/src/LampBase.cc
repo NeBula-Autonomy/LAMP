@@ -25,11 +25,14 @@ using gtsam::Vector3;
 
 // Constructor
 LampBase::LampBase()
-  : update_rate_(10), b_use_fixed_covariances_(false) {
+  : update_rate_(10), 
+  b_use_fixed_covariances_(false),
+  b_repub_values_after_optimization_(false) {
   // any other things on construction
 
   // set up mapping function to get internal ID given gtsam::Symbol
   pose_graph_.symbol_id_map = boost::bind(&LampBase::MapSymbolToId, this, _1);
+
 }
 
 // Destructor
@@ -147,6 +150,11 @@ void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg
 
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
+
+  if (b_repub_values_after_optimization_) {
+    ROS_INFO("Republishing all values on incremental pose graph");
+    pose_graph_.AddAllValuesToNew();
+  }
 }
 
 void LampBase::UpdateArtifactPositions(){};
