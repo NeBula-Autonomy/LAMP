@@ -50,5 +50,13 @@ FactorData* UwbHandler::GetData() {
 
 
 void UwbHandler::UwbFactorCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
-
+    ROS_INFO("UwbHandler received UWB range factors from UwbFrontend");
+    for (const auto& edge : msg->edges) {
+        UwbFactor factor;
+        factor.key_from     = edge.key_from;
+        factor.key_to       = edge.key_to;
+        factor.range        = edge.range;
+        factor.range_error  = edge.range_error;
+        uwb_data_.factors.emplace_back(factor);
+    }
 }

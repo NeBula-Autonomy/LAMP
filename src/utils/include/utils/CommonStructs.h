@@ -289,6 +289,8 @@ struct ImuFactor {
 };
 
 struct UwbFactor {
+  gtsam::Symbol key_from;
+  gtsam::Symbol key_to;
   double range;
   double range_error;
 };
