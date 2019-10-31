@@ -318,14 +318,21 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   if (point_cloud_buffer_.size() == 0)
     return false;
 
+
   // Search to get the lower-bound - the first entry that is not less than the
   // input timestamp
   auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
   auto time2 = itrTime->first;
+  double time_diff;
 
   // If this gives the start of the buffer, then take that point cloud
   if (itrTime == point_cloud_buffer_.begin()) {
     *msg = itrTime->second;
+    time_diff = itrTime->first - stamp.toSec();
+    if (time_diff > keyed_scan_time_diff_limit_){
+      ROS_WARN("Time diff between point cloud and node larger than 0.1. Using earliest scan in buffer [GetKeyedScanAtTime]");
+      ROS_INFO_STREAM("time diff is: " << time_diff << ". [GetKeyedScanAtTime]");
+    }
     return true;
   }
 
@@ -334,11 +341,13 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   if (itrTime == point_cloud_buffer_.end()) {
     itrTime--;
     *msg = itrTime->second;
-    if (stamp.toSec() - itrTime->first > ts_threshold_){
-      ROS_WARN("Timestamp past the end of the point cloud buffer [GetKeyedScan]");
+    time_diff = stamp.toSec() - itrTime->first;
+    if (time_diff > keyed_scan_time_diff_limit_){
+      ROS_WARN("Time diff between point cloud and node larger than 0.1. Using latest scan in buffer [GetKeyedScanAtTime]");
       ROS_INFO_STREAM("input time is " << stamp.toSec()
                                       << "s, and latest time is "
-                                      << itrTime->first << " s [GetKeyedScan]");
+                                      << itrTime->first << " s"
+                                      << " diff is " << time_diff << ". [GetKeyedScanAtTime]");
     }
     return true;
   }
@@ -347,7 +356,6 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   // stamp, time2)
   double time1 = std::prev(itrTime, 1)->first;
 
-  double time_diff;
 
   // If closer to time2, then use that
   if (time2 - stamp.toSec() < stamp.toSec() - time1) {
