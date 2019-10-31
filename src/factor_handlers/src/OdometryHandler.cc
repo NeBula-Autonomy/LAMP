@@ -24,6 +24,9 @@ OdometryHandler::OdometryHandler()
     max_buffer_size_(6000),
     min_buffer_size_(3000)
     {
+      b_odom_value_initialized_.lidar = false;
+      b_odom_value_initialized_.visual = false;
+      b_odom_value_initialized_.wheel = false;
       InitializePoseCovStampedMsgValue(lidar_odom_value_at_key_);
       InitializePoseCovStampedMsgValue(visual_odom_value_at_key_);
       InitializePoseCovStampedMsgValue(wheel_odom_value_at_key_);
@@ -93,10 +96,16 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 // --------------------------------------------------------------------------------------------
 
 void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
-  
+
+  if (b_odom_value_initialized_.lidar == false) {
+    InitializeOdomValueAtKey(msg, LIDAR_ODOM_BUFFER_ID);
+  }
+
+  // TODO: Should be cleaned up after performance assessment of buffer management
   // If buffer size exceeds limit, clear the buffer, keeping "min_buffer_size_" of data
   if (CheckBufferSize<double, PoseCovStamped>(lidar_odometry_buffer_)>max_buffer_size_){
-    ClearOdometryBuffer(lidar_odometry_buffer_, LIDAR_ODOM_BUFFER_ID);
+    // ClearOdometryBuffer(lidar_odometry_buffer_, LIDAR_ODOM_BUFFER_ID);
+    lidar_odometry_buffer_.erase(lidar_odometry_buffer_.begin());
   }
   // Insert message in buffer 
   if (!InsertMsgInBuffer(msg, lidar_odometry_buffer_)) {
@@ -106,10 +115,15 @@ void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
 }
 
 void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
-  
+
+  if (b_odom_value_initialized_.visual == false) {
+    InitializeOdomValueAtKey(msg, VISUAL_ODOM_BUFFER_ID);
+  }
+
   // If buffer size exceeds limit, clear the buffer, keeping "min_buffer_size_" of data
   if (CheckBufferSize<double, PoseCovStamped>(visual_odometry_buffer_)>max_buffer_size_){
-    ClearOdometryBuffer(visual_odometry_buffer_, VISUAL_ODOM_BUFFER_ID);
+    // ClearOdometryBuffer(visual_odometry_buffer_, VISUAL_ODOM_BUFFER_ID);
+    visual_odometry_buffer_.erase(visual_odometry_buffer_.begin());
   }
   // Insert message in buffer
   if (!InsertMsgInBuffer(msg, visual_odometry_buffer_)) {
@@ -120,9 +134,14 @@ void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
 
 void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {
 
+  if (b_odom_value_initialized_.wheel == false) {
+    InitializeOdomValueAtKey(msg, WHEEL_ODOM_BUFFER_ID);
+  }
+
   // If buffer size exceeds limit, clear the buffer, keeping "min_buffer_size_" of data
   if (CheckBufferSize<double, PoseCovStamped>(wheel_odometry_buffer_)>max_buffer_size_){
-    ClearOdometryBuffer(wheel_odometry_buffer_, WHEEL_ODOM_BUFFER_ID);
+    // ClearOdometryBuffer(wheel_odometry_buffer_, WHEEL_ODOM_BUFFER_ID);
+    wheel_odometry_buffer_.erase(wheel_odometry_buffer_.begin());
   }
   // Insert message in buffer
   if (!InsertMsgInBuffer(msg, wheel_odometry_buffer_)) {
@@ -440,6 +459,33 @@ void OdometryHandler::ResetFactorData() {
   factors_.type = "odom";
   factors_.factors.clear();
 }
+
+
+void OdometryHandler::InitializeOdomValueAtKey(const Odometry::ConstPtr& msg, const unsigned int odom_buffer_id) {
+    PoseCovStamped odom_value_at_key;
+    odom_value_at_key.pose = msg->pose;
+    switch (odom_buffer_id) {
+      case LIDAR_ODOM_BUFFER_ID:
+        lidar_odom_value_at_key_ = odom_value_at_key;
+        b_odom_value_initialized_.lidar = true;
+        ROS_INFO("Initialize lidar odometry value at key"); 
+        break;
+      case VISUAL_ODOM_BUFFER_ID:
+        visual_odom_value_at_key_ = odom_value_at_key;
+        b_odom_value_initialized_.visual = true;
+        ROS_INFO("Initialize visual odometry value at key");
+        break;
+      case WHEEL_ODOM_BUFFER_ID:
+        wheel_odom_value_at_key_ = odom_value_at_key;
+        b_odom_value_initialized_.wheel = true;
+        ROS_INFO("Initialize wheel odometry value at key");
+        break;
+      default:
+        ROS_ERROR("Invalid odometry buffer id in OdometryHandler::InitializeOdomValueAtKey");
+        break;
+    }
+}
+
 
 // Clear the buffer, keeping "min_buffer_size_" of data
 void OdometryHandler::ClearOdometryBuffer(OdomPoseBuffer& odom_buffer, const unsigned int odom_buffer_id) {

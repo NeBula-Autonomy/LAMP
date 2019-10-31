@@ -729,7 +729,8 @@ TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
   system("rosparam set ts_threshold 0.6");
   oh.Initialize(nh);
   // Create an output
-  GtsamPosCov myOutput;
+  GtsamPosCov myOutput_1;
+  GtsamPosCov myOutput_2;
   nav_msgs::Odometry msg_first_odom;
   nav_msgs::Odometry msg_second_odom;
   nav_msgs::Odometry msg_third_odom;
@@ -746,15 +747,27 @@ TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
   nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
       new nav_msgs::Odometry(msg_third_odom));
   // Call lidar callback
+  // The 1st message will be stored into lidar_odom_value_at_key_.
+  // This stored value is used when the first time query is out of range.
   LidarOdometryCallback(msg_first_odomPtr);
   LidarOdometryCallback(msg_second_odomPtr);
   LidarOdometryCallback(msg_third_odomPtr);
+  // Corner case 1 (Both queries are out of range)
   ros::Time query1, query2;
   query1.fromSec(0.0);
-  query2.fromSec(1.07);
-  myOutput = GetFusedOdomDeltaBetweenTimes(query1, query2);
-  auto pose_expected = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(2, 0, 0));
-  EXPECT_TRUE((myOutput.pose).equals(pose_expected));
+  query2.fromSec(2.0);
+  myOutput_1 = GetFusedOdomDeltaBetweenTimes(query1, query2);
+  auto pose_expected_1 = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(2, 0, 0));
+  EXPECT_FALSE(myOutput_1.b_has_value);
+  // Corner case 2 (One query is out of range (ex) A robot stacks and stay at the same position for a while.)
+  // query3 refers to the value of "lidar_odom_value_at_key_" because it's out of range
+  // query4 refers to the value associated with the time stamp t2 (=1.05)
+  ros::Time query3, query4;
+  query3.fromSec(0.0);
+  query4.fromSec(1.07);
+  myOutput_2 = GetFusedOdomDeltaBetweenTimes(query3, query4);
+  auto pose_expected_2 = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1, 0, 0));
+  EXPECT_TRUE((myOutput_2.pose).equals(pose_expected_2));
 }
 
 TEST_F(OdometryHandlerTest, TestGetCovariance) {

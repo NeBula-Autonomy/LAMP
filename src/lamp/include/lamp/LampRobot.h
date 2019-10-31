@@ -28,10 +28,10 @@ public:
   // Override base class functions where needed
   virtual bool Initialize(const ros::NodeHandle& n);
 
-  gtsam::Symbol GetInitialKey() {
+  inline gtsam::Symbol GetInitialKey() const {
     return pose_graph_.initial_key;
   };
-  gtsam::Symbol GetCurrentKey() {
+  inline gtsam::Symbol GetCurrentKey() const {
     return pose_graph_.key;
   };
 
