@@ -134,6 +134,7 @@ protected:
   // New pose graph values from optimizer
   virtual void
   OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
+  virtual void MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
   // Set artifact positions
   virtual void UpdateArtifactPositions();

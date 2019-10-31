@@ -115,6 +115,22 @@ void LampBase::OptimizerUpdateCallback(
     n.pose.position.z << ")");
   }
 
+  // Merge the optimizer result into the internal pose graph
+  // Note that the edges should not have changed (only values)
+  MergeOptimizedGraph(msg);
+
+  // Publish the pose graph and update the map 
+  PublishPoseGraph();
+
+  // Update the map (also publishes)
+  ReGenerateMapPointCloud();
+
+  // TODO - check that this works as it is defined in the LampRobot class
+  UpdateArtifactPositions();
+}
+
+void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+  
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
@@ -131,17 +147,6 @@ void LampBase::OptimizerUpdateCallback(
 
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
-
-  // Note that the edges should not have changed (only values)
-
-  // Publish the pose graph and update the map 
-  PublishPoseGraph();
-
-  // Update the map (also publishes)
-  ReGenerateMapPointCloud();
-
-  // TODO - check that this works as it is defined in the LampRobot class
-  UpdateArtifactPositions();
 }
 
 void LampBase::UpdateArtifactPositions(){};
