@@ -290,6 +290,11 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
     return false;
   }
 
+  if (!uwb_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the uwb handler.", name_.c_str());
+    return false;
+  }
+
   return true; 
 }
 
@@ -302,6 +307,7 @@ bool LampRobot::CheckHandlers() {
   // bool b_have_loop_closure;
   bool b_have_new_artifacts;
   bool b_have_new_april_tags;
+  bool b_have_new_uwb;
 
   // Check the odom for adding new poses
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
@@ -312,6 +318,7 @@ bool LampRobot::CheckHandlers() {
   // Check for april tags
   b_have_new_april_tags = ProcessAprilTagData(april_tag_handler_.GetData());
   // TODO - determine what a true and false return means here
+  b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
   return true;
 }
 
@@ -770,6 +777,18 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
 
   ROS_INFO("Successfully complete ProcessAprilTagData call with an April Tag");
 
+  return true;
+}
+
+/*!
+  \brief  Wrapper for the uwb class interactions
+  Creates factors from the uwb output
+  \param   data - the output data struct from the UwbHandler class
+  \warning ...
+  \author Nobuhiro Funabiki
+  \date Oct 2019
+*/
+bool LampRobot::ProcessUwbData(FactorData* data) {
   return true;
 }
 

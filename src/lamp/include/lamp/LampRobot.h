@@ -72,6 +72,9 @@ private:
     bool ProcessArtifactData(FactorData* data);
     // Process the april tag factors if any available    
     bool ProcessAprilTagData(FactorData* data);
+    // Process the uwb factors if any available
+    bool ProcessUwbData(FactorData*, data);
+
     bool InitializeGraph(gtsam::Pose3& pose, 
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // void ProcessUWBData(FactorData data);
@@ -92,6 +95,7 @@ private:
     OdometryHandler odometry_handler_; 
     ArtifactHandler artifact_handler_;
     AprilTagHandler april_tag_handler_;
+    UwbHandler      uwb_handler_;
     // Manual LC
     // IMU
     // TS

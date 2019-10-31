@@ -35,6 +35,12 @@ bool UwbHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 
+FactorData* UwbHandler::GetData() {
+    UwbData* output = new UwbData(factors_);
+    return output;
+}
+
+
 void UwbHandler::UwbFactorCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
 
 }

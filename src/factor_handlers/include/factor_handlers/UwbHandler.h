@@ -16,6 +16,7 @@ class UwbHandler : public LampDataHandlerBase {
         ~UwbHandler();
 
         bool Initialize (const ros::NodeHandle& n);
+        FactorData* GetData();
     
     private:
         
@@ -25,6 +26,9 @@ class UwbHandler : public LampDataHandlerBase {
         // ROS subscribers
         ros::Subscriber uwb_factor_sub_;
         void UwbFactorCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
+
+        // Factor data
+        UwbData factors_;
 
         // The node's name.
         std::string name_;
