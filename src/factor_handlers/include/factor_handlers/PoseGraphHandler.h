@@ -41,6 +41,9 @@ class PoseGraphHandler : public LampDataHandlerBase {
     void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
     void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
 
+    // Publishers
+    ros::Publisher keyed_scan_pub_;
+
     // The node's name.
     std::string name_;
 

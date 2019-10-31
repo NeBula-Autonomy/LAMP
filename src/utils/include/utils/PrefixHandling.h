@@ -15,8 +15,12 @@
 
 namespace utils {
 
+  // Base station
+  const std::string LAMP_BASE_PREFIX = "base";
   const gtsam::Symbol LAMP_BASE_INITIAL_KEY('z', 0);
+  const gtsam::Symbol GTSAM_ERROR_SYMBOL('x', 9999);
 
+  // UWB
   const char UWB_PREFIX = 'u';
 
   // Define prefixes for ALL VALID ROBOTS in this file
@@ -88,6 +92,23 @@ namespace utils {
     return ARTIFACT_PREFIXES.at(robot);
   }
 
+  // For a given node namespace (e.g. /husky1/lamp_pgo), returns the parameter namespace that should be used ("base" or "robot")
+  inline std::string GetParamNamespace(std::string ns) {
+    
+    if (ns.find("base") != std::string::npos) {
+      return "base";
+    }
+
+    for (auto pair : ROBOT_PREFIXES) {
+      if (ns.find(pair.first) != std::string::npos) {
+        return "robot";
+      }
+    }
+
+    ROS_ERROR_STREAM("Namespace not recognized as base station or robot");
+    return "";
+  }  
+
   // ---------------------------------------------------------
   //                    Get full vectors
   // ---------------------------------------------------------
@@ -116,7 +137,6 @@ namespace utils {
     output.push_back(UWB_PREFIX);
     return output;
   }
-
 
 } // namespace utils
 

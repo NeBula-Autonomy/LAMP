@@ -41,15 +41,9 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // Parse parameters
   // Optimizer backend
-  ROS_INFO_STREAM("PGO PROCESS NAMESPACE: " << n.getNamespace());
-  std::string full_namespace = n.getNamespace();
-  if (full_namespace.find("base_station") != std::string::npos) {
-    param_ns_ = "base";
-  }
-  else {
-    param_ns_ = "robot";
-  }
-  ROS_INFO_STREAM("Chosen namespace: " << param_ns_);
+  ROS_INFO_STREAM("PGO NODE NAMESPACE: " << n.getNamespace());
+  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+  ROS_INFO_STREAM("Parameter namespace: " << param_ns_);
 
   bool b_use_outlier_rejection;
   if (!pu::Get(param_ns_ + "/b_use_outlier_rejection", b_use_outlier_rejection))

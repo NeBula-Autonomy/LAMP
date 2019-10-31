@@ -1,11 +1,12 @@
 #include "utils/CommonStructs.h"
+#include "utils/PrefixHandling.h"
 
 double PoseGraph::time_threshold = 1.0;
 
 gtsam::Symbol PoseGraph::GetKeyAtTime(const ros::Time& stamp) const {
   if (stamp_to_odom_key.find(stamp.toSec()) == stamp_to_odom_key.end()) {
     ROS_ERROR("No key exists at given time");
-    return gtsam::Symbol();
+    return utils::GTSAM_ERROR_SYMBOL;
   }
 
   return stamp_to_odom_key.at(stamp.toSec());
@@ -15,7 +16,7 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
   // If there are no keys, throw an error
   if (stamp_to_odom_key.size() == 0) {
     ROS_ERROR("Cannot get closest key - no keys are stored");
-    return gtsam::Symbol();
+    return utils::GTSAM_ERROR_SYMBOL;
   }
 
   // Output key
@@ -62,7 +63,7 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
     ROS_INFO_STREAM("Difference is "
                     << std::abs(stamp.toSec() - t_closest)
                     << ", allowable max is: " << time_threshold);
-    key_out = gtsam::Symbol();
+    key_out = utils::GTSAM_ERROR_SYMBOL;
   }
 
   return key_out;

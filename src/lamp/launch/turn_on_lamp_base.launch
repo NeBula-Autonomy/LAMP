@@ -18,7 +18,6 @@
     <node pkg="lamp"
           name="lamp"
           type="lamp_base_station_node"
-          launch-prefix="bash -c 'sleep 1; $0 $@' "
           output="screen">
 
       <!-- Topics -->
@@ -36,6 +35,10 @@
 
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
+
+      <!-- Factor handlers -->
+      <rosparam file="$(find factor_handlers)/config/manual_lc_parameters.yaml" subst_value="true"/>
+
 
     </node>
 
@@ -57,5 +60,10 @@
     </node>
 
   </group>
+
+  <!-- Loop Closure  -->
+  <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
+    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+  </include>
 
 </launch>
