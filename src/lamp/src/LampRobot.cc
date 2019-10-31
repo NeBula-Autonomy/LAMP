@@ -33,7 +33,9 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampRobot::LampRobot() {}
+LampRobot::LampRobot() {
+  b_run_optimization_ = false;
+}
 
 // Destructor
 LampRobot::~LampRobot() {}
