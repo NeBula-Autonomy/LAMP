@@ -10,6 +10,8 @@
 
 #include "utils/CommonStructs.h"
 
+
+
 namespace {
 std::string absPath(const std::string& relPath) {
   return boost::filesystem::canonical(boost::filesystem::path(relPath))
@@ -105,10 +107,10 @@ bool PoseGraph::Save(const std::string& zipFilename, PGOSolver& solver) const {
     pcl::io::savePCDFile(pcd_filename, *entry.second, true);
     writeFileToZip(zipFile, pcd_filename);
 
-    ROS_INFO("Saved point cloud %d/%d.", i + 1, (int)keyed_scans.size());
+    ROS_INFO("Saved point cloud %i/%lu.", i + 1, keyed_scans.size());
     keys_file << pcd_filename << ",";
     if (!values_.exists(entry.first)) {
-      ROS_WARN("Key,  %u, does not exist in Save", entry.first);
+      ROS_WARN("Key,  %lu, does not exist in Save", entry.first);
       return false;
     }
     keys_file << keyed_stamps.at(entry.first).toNSec() << "\n";
@@ -282,8 +284,7 @@ bool PoseGraph::Load(const std::string& zipFilename, PGOSolver& solver) {
   solver.template loadGraph<gtsam::Pose3>(
       nfg_,
       values_,
-      gtsam::PriorFactor<gtsam::Pose3>(
-          key0, GetPose(key0), covariance));
+      gtsam::PriorFactor<gtsam::Pose3>(key0, GetPose(key0), covariance));
 
   ROS_INFO_STREAM("Updated graph from " << graphFilename);
 

@@ -5,8 +5,8 @@
 
 #include <gtest/gtest.h>
 
-#include "lamp/LampRobot.h"
 #include "lamp/LampBaseStation.h"
+#include "lamp/LampRobot.h"
 
 class TestLampRobot : public ::testing::Test {
 public:
@@ -35,9 +35,9 @@ public:
     system("rosparam load $(rospack find "
            "factor_handlers)/config/odom_parameters.yaml");
     system("rosparam load $(rospack find "
-             "factor_handlers)/config/april_parameters.yaml");
+           "factor_handlers)/config/april_parameters.yaml");
     system("rosparam load $(rospack find "
-            "factor_handlers)/config/imu_parameters.yaml");           
+           "factor_handlers)/config/imu_parameters.yaml");
 
     // Create data in the point cloud
     int n_points = 2;
@@ -75,17 +75,23 @@ public:
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type) {
     return lr.SetFixedNoiseModels(type);
   }
-  void TrackEdges(gtsam::Symbol key_from,
-                  gtsam::Symbol key_to,
-                  int type,
-                  gtsam::Pose3 pose,
-                  gtsam::SharedNoiseModel covariance) {
-    lr.graph().TrackFactor(key_from, key_to, type, pose, covariance);
-  }
-  void TrackPriors(gtsam::Symbol key,
+  void TrackFactor(gtsam::Symbol key_from,
+                   gtsam::Symbol key_to,
+                   int type,
                    gtsam::Pose3 pose,
                    gtsam::SharedNoiseModel covariance) {
+    lr.graph().TrackFactor(key_from, key_to, type, pose, covariance);
+  }
+  void TrackPrior(gtsam::Symbol key,
+                  gtsam::Pose3 pose,
+                  gtsam::SharedNoiseModel covariance) {
     lr.graph().TrackPrior(key, pose, covariance);
+  }
+  void TrackNode(const ros::Time& stamp,
+                 gtsam::Symbol key,
+                 gtsam::Pose3 pose,
+                 gtsam::SharedNoiseModel covariance) {
+    lr.graph().TrackNode(stamp, key, pose, covariance);
   }
 
   // Access functions
@@ -219,15 +225,20 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
 }
 
 /**
- * Call ProcessArtifacts with this new artifact. New artifact added 
- *                                                  |-----------------------------------------------------|                                    Graph loop closure
- * a0       a1                          l1         a2                      l1       a3                l1  V                                    Node symbols
- * Odom     Odom                     Artifact      Odom                 Artifact    Odom              Artifact position                        Type of measurement
- * g(0,0,0) g(2,0,0)    g(2.4,0,0)   r(9.7,0,0)    g(4,0,0)  g(4.4,0,0) r(7.8,0,0)  g(6,0,0)          g(12.1,0,0)                              global(g)/relative(r) position
- *o--------->o------------|------------------------->o------------------------------>o---------------------------------                        Graph odom
- * -|--------|------------|------------|------------|-------------|---------|--------|--------------------|--------------                      1D line
- * 0.05     0.1         0.109        0.11          0.15         0.159      0.16     2.0                                                        Time
- */ 
+ * Call ProcessArtifacts with this new artifact. New artifact added
+ *                                                  |-----------------------------------------------------|
+ *Graph loop closure a0       a1                          l1         a2 l1 a3 l1
+ *V                                    Node symbols Odom     Odom Artifact Odom
+ *Artifact    Odom              Artifact position                        Type of
+ *measurement g(0,0,0) g(2,0,0)    g(2.4,0,0)   r(9.7,0,0)    g(4,0,0)
+ *g(4.4,0,0) r(7.8,0,0)  g(6,0,0)          g(12.1,0,0) global(g)/relative(r)
+ *position
+ *o--------->o------------|------------------------->o------------------------------>o---------------------------------
+ *Graph odom
+ * -|--------|------------|------------|------------|-------------|---------|--------|--------------------|--------------
+ *1D line 0.05     0.1         0.109        0.11          0.15         0.159
+ *0.16     2.0                                                        Time
+ */
 // CAUSING TESTING ISSUES TODO
 // TEST_F(TestLampRobot, TestProcessArtifactData) {
 //   // Construct the new Artifact data
@@ -253,16 +264,16 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
 
 //   // Add to values
 //   AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a',0));
-//   InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(), 
+//   InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(),
 //                                           gtsam::Point3 (0, 0, 0)));
 //   AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a',1));
-//   InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(), 
+//   InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(),
 //                                           gtsam::Point3 (2.0, 0, 0)));
 //   AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a',2));
-//   InsertValues(gtsam::Symbol('a',2), gtsam::Pose3(gtsam::Rot3(), 
+//   InsertValues(gtsam::Symbol('a',2), gtsam::Pose3(gtsam::Rot3(),
 //                                           gtsam::Point3 (4.0, 0, 0)));
 //   AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a',3));
-//   InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(), 
+//   InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(),
 //                                           gtsam::Point3 (6.0, 0, 0)));
 
 //   AddKeyedStamp(gtsam::Symbol('a',0), ros::Time(0.05));
@@ -331,7 +342,7 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
 //   EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
 //   // Check the position of the artifact
 //   EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
-  
+
 //   // New message at 0.159 (not gets added to pose graph)
 //   l1_value.header.stamp = ros::Time(0.159);
 //   l1_value.pose.pose.position.x = 4.4;
@@ -360,24 +371,26 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
 //   // Check the loop closure factor
 //   gtsam::NonlinearFactorGraph graph = GetNfg();
 //   std::vector<gtsam::Symbol> other_keys;
-  
+
 //   for (auto factor:graph){
 //     if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
 //       if (factor->keys()[0] == gtsam::Symbol('l',1)){
 //         other_keys.push_back(factor->keys()[1]);
 //       } else {
-//         other_keys.push_back(factor->keys()[0]);        
+//         other_keys.push_back(factor->keys()[0]);
 //       }
 //     }
 //   }
 //   // Check if a1 is present in a factor with l1
-//   EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',1)) != other_keys.end());
+//   EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',1))
+//   != other_keys.end());
 
-//   // Check if a2 is present in a factor with l1  
-//   EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2)) != other_keys.end());
+//   // Check if a2 is present in a factor with l1
+//   EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2))
+//   != other_keys.end());
 // }
 
-// // Check Process April tag data. 
+// // Check Process April tag data.
 // TEST_F(TestLampRobot, TestProcessAprilTagData) {
 
 // }
@@ -535,6 +548,20 @@ TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.5)));
 }
 
+TEST_F(TestLampRobot, TestDuplicateFactors) {
+  static const gtsam::SharedNoiseModel& noise =
+      gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+
+  TrackFactor(0lu, 1lu, 5, gtsam::Pose3(), noise);
+  TrackFactor(0lu, 2lu, 5, gtsam::Pose3(), noise);
+  TrackFactor(0lu, 1lu, 5, gtsam::Pose3(), noise);
+  TrackFactor(1lu, 1lu, 5, gtsam::Pose3(), noise);
+  TrackFactor(2lu, 1lu, 5, gtsam::Pose3(), noise);
+  TrackFactor(1lu, 1lu, 3, gtsam::Pose3(), noise);
+
+  EXPECT_EQ(GetEdges().size(), 4);
+}
+
 // THIS TEST CAUSES ISSUES TODO
 // TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 //   ros::Time::init();
@@ -552,27 +579,29 @@ TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
 //                gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
 //                             gtsam::Point3(420.0, 69.0, 0.0)));
 //   InsertValues(gtsam::Symbol('a', 101),
-//                gtsam::Pose3(gtsam::Rot3(sqrt(0.3), sqrt(0.3), sqrt(0.4), 0.0),
+//                gtsam::Pose3(gtsam::Rot3(sqrt(0.3), sqrt(0.3), sqrt(0.4),
+//                0.0),
 //                             gtsam::Point3(10.0, -1.0, 1000.0)));
 //   InsertValues(
 //       gtsam::Symbol('m', 0),
-//       gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(500.0, 433.5, -2.5)));
+//       gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(500.0, 433.5,
+//       -2.5)));
 
 //   // Test edges
-//   TrackEdges(gtsam::Symbol('a', 55),
+//   TrackFactor(gtsam::Symbol('a', 55),
 //              gtsam::Symbol('a', 56),
 //              pose_graph_msgs::PoseGraphEdge::ODOM,
-//              gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, 0, 0.1)),
-//              noise);
-//   TrackEdges(gtsam::Symbol('a', 32),
+//              gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, 0,
+//              0.1)), noise);
+//   TrackFactor(gtsam::Symbol('a', 32),
 //              gtsam::Symbol('m', 0),
 //              pose_graph_msgs::PoseGraphEdge::ARTIFACT,
-//              gtsam::Pose3(gtsam::Rot3(0, 0, 1, 0), gtsam::Point3(0, 0.9, 21.1)),
-//              noise);
+//              gtsam::Pose3(gtsam::Rot3(0, 0, 1, 0), gtsam::Point3(0,
+//              0.9, 21.1)), noise);
 
 //   // Test priors
 //   AddKeyedStamp(gtsam::Symbol('a', 50), ros::Time(67589467.0));
-//   TrackPriors(
+//   TrackPrior(
 //       gtsam::Symbol('a', 50),
 //       gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, -2.2, 0.03)),
 //       noise);

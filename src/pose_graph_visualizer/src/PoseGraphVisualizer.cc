@@ -224,7 +224,7 @@ void PoseGraphVisualizer::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
   const gtsam::Key key = msg->key;
   if (pose_graph_.HasScan(key)) {
-    ROS_ERROR("%s: Key %u already has a laser scan.", name_.c_str(), key);
+    ROS_ERROR("%s: Key %lu already has a laser scan.", name_.c_str(), key);
     return;
   }
 
@@ -282,10 +282,10 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
 }
 
 bool PoseGraphVisualizer::HighlightEdge(gtsam::Key key1, gtsam::Key key2) {
-  ROS_INFO("Highlighting factor between %i and %i.", key1, key2);
+  ROS_INFO("Highlighting factor between %lu and %lu.", key1, key2);
 
   if (!pose_graph_.HasKey(key1) || !pose_graph_.HasKey(key2)) {
-    ROS_WARN("Key %i or %i does not exist.", key1, key2);
+    ROS_WARN("Key %lu or %lu does not exist.", key1, key2);
     return false;
   }
 
@@ -312,10 +312,10 @@ bool PoseGraphVisualizer::HighlightEdge(gtsam::Key key1, gtsam::Key key2) {
 }
 
 bool PoseGraphVisualizer::HighlightNode(gtsam::Key key) {
-  ROS_INFO("Highlighting node %i.", key);
+  ROS_INFO("Highlighting node %lu.", key);
 
   if (!pose_graph_.HasKey(key)) {
-    ROS_WARN("Key %i does not exist.", key);
+    ROS_WARN("Key %lu does not exist.", key);
     return false;
   }
 
