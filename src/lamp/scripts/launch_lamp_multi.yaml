@@ -20,7 +20,6 @@ windows:
     - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
     - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=husky2
     - sleep 1; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch    
-    # - sleep 3; rosparam set /use_sim_time true; roslaunch loop_closure laser_loop_closure.launch robot_namespace:=$ROBOT_NAME
     - sleep 5; rosbag play -l -r1.0 -s90 $LOG_PATH/*.bag --prefix=/$ROBOT_NAME --clock
     - sleep 5; rosbag play -l -r1.0 -s90 $LOG_PATH/*.bag --prefix=/husky2 
     - sleep 2; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME
