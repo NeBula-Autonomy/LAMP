@@ -13,6 +13,7 @@
 #include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/OdometryHandler.h>
+#include <factor_handlers/UwbHandler.h>
 
 // Services
 
@@ -73,7 +74,7 @@ private:
     // Process the april tag factors if any available    
     bool ProcessAprilTagData(FactorData* data);
     // Process the uwb factors if any available
-    bool ProcessUwbData(FactorData*, data);
+    bool ProcessUwbData(FactorData* data);
 
     bool InitializeGraph(gtsam::Pose3& pose, 
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
