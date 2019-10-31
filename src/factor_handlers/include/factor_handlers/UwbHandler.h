@@ -28,7 +28,7 @@ class UwbHandler : public LampDataHandlerBase {
         void UwbFactorCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
 
         // Factor data
-        UwbData factors_;
+        UwbData uwb_data_;
 
         // The node's name.
         std::string name_;
