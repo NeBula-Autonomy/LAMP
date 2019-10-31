@@ -572,6 +572,9 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
               temp_transform)) {
         ROS_ERROR("Can't convert artifact from global to relative");
         b_has_new_factor_ = false;
+        // Clean Artifact handler so that these set of
+        // factors are removed from history
+        artifact_handler_.CleanFailedFactors(false);
         return false;
       }
     } else {
@@ -588,6 +591,9 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
       ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE ARTIFACTS!!");
       b_has_new_factor_ = false;
+      // Clean Artifact handler so that these set of
+      // factors are removed from history
+      artifact_handler_.CleanFailedFactors(false);
       return false;
     }
 
@@ -637,6 +643,8 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
 
   ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
 
+  // Clean up for next iteration
+  artifact_handler_.CleanFailedFactors(true);
   return true;
 }
 
