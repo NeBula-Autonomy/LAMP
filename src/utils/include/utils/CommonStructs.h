@@ -259,6 +259,9 @@ struct AprilTagFactor {
 struct OdometryFactor {
   std::pair<ros::Time, ros::Time> stamps;
 
+  pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud;
+  bool b_has_point_cloud;
+
   gtsam::Pose3 transform;
   gtsam::SharedNoiseModel covariance;
 };

@@ -267,12 +267,33 @@ FactorData* OdometryHandler::GetData() {
 
   GtsamPosCov fused_odom_for_factor;
 
+  PointCloud::Ptr new_scan(new PointCloud);
+  OdometryFactor new_odom;
+
   if (CalculatePoseDelta(fused_odom_) > translation_threshold_) {
     // ROS_INFO("Adding a new node");
+    // Adding a new factor 
+
     // Get the most recent lidar timestamp
     ros::Time t2;
-    t2.fromSec(lidar_odometry_buffer_.rbegin()->first);
-    // GetClosestLidarTime(ros::Time::now(), t2); TODO: Check how we're computing t2
+    ros::Time t_odom;
+    t_odom.fromSec(lidar_odometry_buffer_.rbegin()->first);
+
+    // Get keyed scan from closest time to latest odom
+    if (!GetKeyedScanAtTime(t_odom, new_scan)){
+      // Failed to get close enough point cloud
+      ROS_WARN("Could not get Point Cloud close to odom time");
+      // Set false having point clouds
+      t2 = t_odom;
+      new_odom.b_has_point_cloud = false;
+    } else {
+      // Take the time from the point cloud 
+      t2.fromNSec(new_scan->header.stamp * 1e3);
+
+      // Fill in the keyed scan for the odom factor
+      new_odom.b_has_point_cloud = true;
+      new_odom.point_cloud = new_scan;
+    }
 
     // Get the updated fused odom between the two lidar-linked timestamps
     fused_odom_for_factor =
@@ -288,7 +309,6 @@ FactorData* OdometryHandler::GetData() {
         true; // TODO: Do this only if Fusion Logic output exceeds threshold
 
     // Make the new factor data
-    OdometryFactor new_odom;
     new_odom.transform = fused_odom_for_factor.pose;
     new_odom.covariance = fused_odom_for_factor.covariance;
     new_odom.stamps = TimeStampedPair(query_timestamp_first_, t2);
@@ -318,14 +338,21 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   if (point_cloud_buffer_.size() == 0)
     return false;
 
+
   // Search to get the lower-bound - the first entry that is not less than the
   // input timestamp
   auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
   auto time2 = itrTime->first;
+  double time_diff;
 
   // If this gives the start of the buffer, then take that point cloud
   if (itrTime == point_cloud_buffer_.begin()) {
     *msg = itrTime->second;
+    time_diff = itrTime->first - stamp.toSec();
+    if (time_diff > keyed_scan_time_diff_limit_){
+      ROS_WARN("Time diff between point cloud and node larger than 0.1. Using earliest scan in buffer [GetKeyedScanAtTime]");
+      ROS_INFO_STREAM("time diff is: " << time_diff << ". [GetKeyedScanAtTime]");
+    }
     return true;
   }
 
@@ -334,11 +361,13 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   if (itrTime == point_cloud_buffer_.end()) {
     itrTime--;
     *msg = itrTime->second;
-    if (stamp.toSec() - itrTime->first > ts_threshold_){
-      ROS_WARN("Timestamp past the end of the point cloud buffer [GetKeyedScan]");
+    time_diff = stamp.toSec() - itrTime->first;
+    if (time_diff > keyed_scan_time_diff_limit_){
+      ROS_WARN("Time diff between point cloud and node larger than 0.1. Using latest scan in buffer [GetKeyedScanAtTime]");
       ROS_INFO_STREAM("input time is " << stamp.toSec()
                                       << "s, and latest time is "
-                                      << itrTime->first << " s [GetKeyedScan]");
+                                      << itrTime->first << " s"
+                                      << " diff is " << time_diff << ". [GetKeyedScanAtTime]");
     }
     return true;
   }
@@ -347,7 +376,6 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   // stamp, time2)
   double time1 = std::prev(itrTime, 1)->first;
 
-  double time_diff;
 
   // If closer to time2, then use that
   if (time2 - stamp.toSec() < stamp.toSec() - time1) {
@@ -369,10 +397,11 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
       keyed_scan_time_diff_limit_) { // TODO make this threshold a parameter
     ROS_WARN("Time difference between request and latest point cloud is too "
              "large, returning no point cloud");
-    ROS_INFO_STREAM("Time difference is " << keyed_scan_time_diff_limit_
-                                          << "s");
+    ROS_INFO_STREAM("Time difference is " << time_diff << " s which is more than limit: " << keyed_scan_time_diff_limit_ << "s");
     return false;
   }
+
+  ROS_INFO_STREAM("Time difference between query and point cloud is " << time_diff << "s. [OdometryHandler::GetKeyedScanAtTime]");
 
   // Return true - have a point cloud for the timestamp
   return true;
