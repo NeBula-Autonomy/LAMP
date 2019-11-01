@@ -102,6 +102,15 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("time_threshold", pose_graph_.time_threshold))
     return false;
+  // Load filtering parameters.
+  if (!pu::Get("filtering/grid_filter", params_.grid_filter)) return false;
+  if (!pu::Get("filtering/grid_res", params_.grid_res)) return false;
+  if (!pu::Get("filtering/random_filter", params_.random_filter)) return false;
+  if (!pu::Get("filtering/decimate_percentage", params_.decimate_percentage))
+    return false;
+  // Cap to [0.0, 1.0].
+  params_.decimate_percentage =
+      std::min(1.0, std::max(0.0, params_.decimate_percentage));
 
   // TODO - bring in other parameter
 
@@ -454,14 +463,35 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
 
     if (odom_factor.b_has_point_cloud) {
       // Store the keyed scan and add it to the map
-      // TODO : filter before adding
-      pose_graph_.InsertKeyedScan(current_key, odom_factor.point_cloud);
+      
+      // Copy input scan.
+       PointCloud::Ptr new_scan;
+       *new_scan = *(odom_factor.point_cloud);
+      
+      // // TODO: Make this a tunable parameter
+      const int n_points = static_cast<int>((1.0 - params_.decimate_percentage) *
+                                              new_scan->size());
+
+      // // Apply random downsampling to the keyed scan
+      pcl::RandomSample<pcl::PointXYZ> random_filter;
+      random_filter.setSample(n_points);
+      random_filter.setInputCloud(new_scan);
+      random_filter.filter(*new_scan);
+
+      // Apply voxel grid filter to the keyed scan
+      pcl::VoxelGrid<pcl::PointXYZ> grid;
+      grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
+      grid.setInputCloud(new_scan);
+      grid.filter(*new_scan);
+      
+      pose_graph_.InsertKeyedScan(current_key, new_scan);
+
       AddTransformedPointCloudToMap(current_key);
 
       // publish keyed scan
       pose_graph_msgs::KeyedScan keyed_scan_msg;
       keyed_scan_msg.key = current_key;
-      pcl::toROSMsg(*odom_factor.point_cloud, keyed_scan_msg.scan);
+      pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
       keyed_scan_pub_.publish(keyed_scan_msg);
     }
   }
