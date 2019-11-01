@@ -10,14 +10,9 @@
 
 class TestLampRobot : public ::testing::Test {
 public:
-  pcl::PointCloud<pcl::PointXYZ>::Ptr data;
-  typedef std::vector<EdgeMessage> EdgeMessages;
-  typedef std::vector<NodeMessage> NodeMessages;
-  // Use sets of edges/nodes to avoid duplicates.
-  typedef std::set<EdgeMessage, decltype(&EdgeMessageComparator)> EdgeSet;
-  typedef std::set<NodeMessage, decltype(&NodeMessageComparator)> NodeSet;
+  PointCloud::Ptr data;
 
-  TestLampRobot() : data(new pcl::PointCloud<pcl::PointXYZ>(2, 2)) {
+  TestLampRobot() : data(new PointCloud(2, 2)) {
     // Load params
     system("rosparam load $(rospack find "
            "lamp)/config/precision_parameters.yaml");
@@ -80,7 +75,11 @@ public:
                    int type,
                    gtsam::Pose3 pose,
                    gtsam::SharedNoiseModel covariance) {
+    std::cout << "Tracking factor between " << key_from << " and " << key_to
+              << std::endl;
     lr.graph().TrackFactor(key_from, key_to, type, pose, covariance);
+    std::cout << "Tracked factor between " << key_from << " and " << key_to
+              << std::endl;
   }
   void TrackPrior(gtsam::Symbol key,
                   gtsam::Pose3 pose,
@@ -164,11 +163,14 @@ public:
   const EdgeSet& GetEdges() const {
     return lr.graph().GetEdges();
   }
+  const NodeSet& GetNodes() const {
+    return lr.graph().GetNodes();
+  }
   const EdgeSet& GetPriors() const {
     return lr.graph().GetPriors();
   }
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr GetMapPC() {
+  PointCloud::Ptr GetMapPC() {
     return lr.mapper_.GetMapData();
   }
   // Other utilities
@@ -408,7 +410,7 @@ TEST_F(TestLampRobot, SetInitialKey) {
   std::string key_string = std::string(key_gtsam);
   // std::string key_string = gtsam::DefaultKeyFormatter(key_gtsam);
 
-  ROS_INFO_STREAM("Initial key is" << key_string);
+  std::cout << "Initial key is" << key_string << std::endl;
 
   EXPECT_EQ(std::string("a0"), key_string);
 }
@@ -559,7 +561,35 @@ TEST_F(TestLampRobot, TestDuplicateFactors) {
   TrackFactor(2lu, 1lu, 5, gtsam::Pose3(), noise);
   TrackFactor(1lu, 1lu, 3, gtsam::Pose3(), noise);
 
-  EXPECT_EQ(GetEdges().size(), 4);
+  EXPECT_EQ(GetEdges().size(), 5lu);
+}
+
+TEST_F(TestLampRobot, TestDuplicateNodes) {
+  ros::Time::init();
+  static const gtsam::SharedNoiseModel& noise =
+      gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+
+  TrackNode(ros::Time(10.0), gtsam::Symbol('a', 2), gtsam::Pose3(), noise);
+  TrackNode(ros::Time(20.0), gtsam::Symbol('b', 2), gtsam::Pose3(), noise);
+  TrackNode(ros::Time(30.0), gtsam::Symbol('a', 2), gtsam::Pose3(), noise);
+  TrackNode(ros::Time(40.0), gtsam::Symbol('a', 1), gtsam::Pose3(), noise);
+  TrackNode(ros::Time(50.0), gtsam::Symbol('b', 2), gtsam::Pose3(), noise);
+
+  EXPECT_EQ(GetNodes().size(), 3lu);
+}
+
+TEST_F(TestLampRobot, TestDuplicatePriors) {
+  ros::Time::init();
+  static const gtsam::SharedNoiseModel& noise =
+      gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+
+  TrackPrior(gtsam::Symbol('a', 2), gtsam::Pose3(), noise);
+  TrackPrior(gtsam::Symbol('b', 2), gtsam::Pose3(), noise);
+  TrackPrior(gtsam::Symbol('a', 2), gtsam::Pose3(), noise);
+  TrackPrior(gtsam::Symbol('a', 1), gtsam::Pose3(), noise);
+  TrackPrior(gtsam::Symbol('b', 2), gtsam::Pose3(), noise);
+
+  EXPECT_EQ(GetPriors().size(), 3lu);
 }
 
 // THIS TEST CAUSES ISSUES TODO
@@ -614,7 +644,7 @@ TEST_F(TestLampRobot, TestDuplicateFactors) {
 //     x = n.pose.position.x;
 //     y = n.pose.position.y;
 //     z = n.pose.position.z;
-//     ROS_INFO_STREAM("Node: (" << x << ", " << y << ", " << z << ")");
+//     std::cout << ("Node: (" << x << ", " << y << ", " << z << ")");
 //   }
 
 //   // Node a100 - check all information
@@ -829,7 +859,7 @@ TEST_F(TestLampRobot, TestPointCloudTransform) {
   ReGenerateMapPointCloud();
 
   // Output
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();
+  PointCloud::Ptr pc_out = GetMapPC();
 
   // Transform the main point cloud
   Eigen::Affine3f transform = Eigen::Affine3f::Identity();
@@ -866,7 +896,7 @@ TEST_F(TestLampRobot, TestPointCloudTransformSingle) {
   AddTransformedPointCloudToMap(key);
 
   // Output
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out = GetMapPC();
+  PointCloud::Ptr pc_out = GetMapPC();
 
   // Transform the main point cloud
   Eigen::Affine3f transform = Eigen::Affine3f::Identity();

@@ -99,9 +99,16 @@ bool PoseGraph::TrackNode(const NodeMessage& msg) {
   if (nodes_.find(msg) == nodes_.end()) {
     nodes_.insert(msg);
     nodes_new_.insert(msg);
-    values_.insert(key, utils::MessageToPose(msg));
-    values_new_.insert(key, utils::MessageToPose(msg));
-    keyed_stamps[key] = msg.header.stamp;
+    const auto pose = utils::MessageToPose(msg);
+    if (values_.exists(msg.key))
+      values_.update(msg.key, pose);
+    else
+      values_.insert(msg.key, pose);
+    if (values_new_.exists(msg.key))
+      values_new_.update(msg.key, pose);
+    else
+      values_new_.insert(msg.key, pose);
+    keyed_stamps[msg.key] = msg.header.stamp;
     return true;
   }
   return false;
@@ -181,9 +188,8 @@ void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
     }
     if (!values_new_.tryInsert(v.key, v.value).second) {
       values_new_.update(v.key, v.value);
-    }    
+    }
   }
-  
 }
 
 void PoseGraph::AddNewFactors(const gtsam::NonlinearFactorGraph& nfg) {
