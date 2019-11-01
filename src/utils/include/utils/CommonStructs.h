@@ -206,6 +206,9 @@ public:
 
   // Incremental update from pose graph message.
   void UpdateFromMsg(const GraphMsgPtr& msg);
+  
+  // Update all values_new_ so the incremental publisher republishes the whole graph 
+  void AddAllValuesToNew();
 
   inline void ClearIncrementalMessages() {
     edges_new_.clear();

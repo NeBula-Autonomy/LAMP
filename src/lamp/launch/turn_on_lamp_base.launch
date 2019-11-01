@@ -56,14 +56,10 @@
 
       <!-- Topics -->
       <remap from="~lamp/pose_graph" to="lamp_base/pose_graph"/>
-
     </node>
 
+    <!-- Loop Closure  -->
+    <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
+
   </group>
-
-  <!-- Loop Closure  -->
-  <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
-    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-  </include>
-
 </launch>

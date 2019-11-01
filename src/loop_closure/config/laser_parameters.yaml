@@ -4,9 +4,6 @@
 
 robot: 
 
-  # Turn laser loop closures on or off
-  b_check_for_loop_closures: false
-
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
   icp_initialization_method: 1
 
@@ -55,9 +52,6 @@ robot:
 #############################################
 
 base: 
-
-  # Turn laser loop closures on or off
-  b_check_for_loop_closures: false
 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
   icp_initialization_method: 1
