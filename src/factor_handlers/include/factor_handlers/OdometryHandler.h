@@ -20,6 +20,7 @@ typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
 typedef std::map<double, PoseCovStamped> OdomPoseBuffer;
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+typedef std::map<double, PointCloud> PointCloudBuffer; 
 
 typedef struct {
   bool b_has_value;
@@ -61,6 +62,7 @@ public:
   bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose);
   bool GetOdomDeltaLatestTime(ros::Time& t_now, GtsamPosCov& delta_pose);
   bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg);
+  void ClearPreviousPointCloudScans(const PointCloudBuffer::iterator& itrTime);
   GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
                                             const ros::Time t2);
 
@@ -88,7 +90,7 @@ protected:
   OdomPoseBuffer wheel_odometry_buffer_; 
       
   // Point Cloud Storage (Time stamp and point cloud)
-  std::map<double, PointCloud> point_cloud_buffer_;
+  PointCloudBuffer point_cloud_buffer_;
 
   // Utilities
   void InitializePoseCovStampedMsgValue(PoseCovStamped& msg);
@@ -134,6 +136,7 @@ protected:
   double keyed_scan_time_diff_limit_;
   double pc_buffer_size_limit_;
   double translation_threshold_;
+  bool b_debug_pointcloud_buffer_;
 
   // Fusion logic
   bool b_is_first_query_;

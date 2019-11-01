@@ -16,11 +16,11 @@ public:
 
     tolerance_ = 1e-5;
 
-    double t1 = 1.00;
-    double t2 = 1.05;
-    double t3 = 1.10;
-    double t4 = 1.15;
-    double t5 = 1.20;
+    t1 = 1.00;
+    t2 = 1.05;
+    t3 = 1.10;
+    t4 = 1.15;
+    t5 = 1.20; 
 
     t1_ros.fromSec(t1);
     t2_ros.fromSec(t2);
@@ -146,6 +146,14 @@ protected:
   bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
     return oh.GetKeyedScanAtTime(stamp, msg);
   }
+  void ClearPreviousPointCloudScans(const PointCloudBuffer::iterator& itrTime) {
+    return oh.ClearPreviousPointCloudScans(itrTime);
+  }
+
+  PointCloudBuffer *GetPointCloudBuffer() {
+    PointCloudBuffer *ptr = &oh.point_cloud_buffer_;
+    return ptr;
+  }
 
   // Create three messages
   PoseCovStamped msg_first;
@@ -159,6 +167,12 @@ protected:
   ros::Time t3_ros;
   ros::Time t4_ros;
   ros::Time t5_ros;
+
+  double t1; 
+  double t2;
+  double t3;
+  double t4; 
+  double t5;
 
 private:
 };
@@ -858,7 +872,48 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   ASSERT_TRUE(result);
 }
 
+TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {
+  ros::NodeHandle nh("~");
+  oh.Initialize(nh);
+
+  // Message creation
+  sensor_msgs::PointCloud2 msg1;
+  msg1.header.stamp = t1_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
+      new sensor_msgs::PointCloud2(msg1));
+
+  sensor_msgs::PointCloud2 msg2;
+  msg2.header.stamp = t2_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
+      new sensor_msgs::PointCloud2(msg2));
+
+  sensor_msgs::PointCloud2 msg3;
+  msg3.header.stamp = t3_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
+      new sensor_msgs::PointCloud2(msg3));
+  
+  // Test first scenario (if)
+  PointCloudCallback(pc_ptr1);
+  auto ptr_buffer_1 = GetPointCloudBuffer();
+  ASSERT_EQ(ptr_buffer_1->size(), 1);
+  auto itrTime_1 = ptr_buffer_1->begin();
+  ClearPreviousPointCloudScans(itrTime_1);
+  ASSERT_EQ(ptr_buffer_1->size(), 0);
+
+  // Test second scenario (else)
+  PointCloudCallback(pc_ptr1);
+  PointCloudCallback(pc_ptr2);
+  PointCloudCallback(pc_ptr3);
+  auto ptr_buffer_2 = GetPointCloudBuffer();
+  ASSERT_EQ(ptr_buffer_2->size(), 3);
+  auto itrTime_2 = ptr_buffer_2->lower_bound(t2);
+  ClearPreviousPointCloudScans(itrTime_2);
+  ASSERT_EQ(ptr_buffer_2->size(), 1);
+  ASSERT_EQ((ptr_buffer_2->rbegin())->first, t3);
+}
+
 /* TEST Utilities */
+
 /* TEST ToGtsam */
 TEST_F(OdometryHandlerTest, TestToGtsam) {
   ros::NodeHandle nh("~");

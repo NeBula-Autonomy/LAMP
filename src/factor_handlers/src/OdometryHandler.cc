@@ -22,6 +22,7 @@ OdometryHandler::OdometryHandler()
     query_timestamp_first_(0),
     b_is_first_query_(true), 
     max_buffer_size_(6000),
+    b_debug_pointcloud_buffer_(false),
     min_buffer_size_(3000)
     {
       b_odom_value_initialized_.lidar = false;
@@ -65,6 +66,8 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
 
   // Timestamp threshold used in GetPoseAtTime method to return true to the caller
   if (!pu::Get("ts_threshold", ts_threshold_)) return false;
+
+  if (!pu::Get("b_debug_pointcloud_buffer", b_debug_pointcloud_buffer_)) return false;
   
   // Specify a maximum and minimum buffer size to store history of Odometric data stream 
   if (!pu::Get("max_buffer_size", max_buffer_size_)) return false;
@@ -311,62 +314,58 @@ FactorData* OdometryHandler::GetData() {
 
 bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
                                          PointCloud::Ptr& msg) {
-  // TODO: This function should be impletented as a template function in the
-  // base class
-  // TODO: For example, template <typename TYPE> GetKeyedValueAtTime(ros::Time&
-  // stamp, TYPE& msg) Return false if there are not point clouds in the buffer
+
   if (point_cloud_buffer_.size() == 0)
     return false;
 
-  // Search to get the lower-bound - the first entry that is not less than the
-  // input timestamp
+  // Search for lower-bound (first entry that is not less than the input timestamp)
   auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
   auto time2 = itrTime->first;
 
   // If this gives the start of the buffer, then take that point cloud
   if (itrTime == point_cloud_buffer_.begin()) {
     *msg = itrTime->second;
+    ClearPreviousPointCloudScans(itrTime);
     return true;
   }
 
-  // Check if it is past the end of the buffer - if so, then take the last point
-  // cloud
+  // Check if it is past the end of the buffer - if so, take the last point cloud
   if (itrTime == point_cloud_buffer_.end()) {
     itrTime--;
     *msg = itrTime->second;
     if (stamp.toSec() - itrTime->first > ts_threshold_){
-      ROS_WARN("Timestamp past the end of the point cloud buffer [GetKeyedScan]");
-      ROS_INFO_STREAM("input time is " << stamp.toSec()
-                                      << "s, and latest time is "
-                                      << itrTime->first << " s [GetKeyedScan]");
+      if (b_debug_pointcloud_buffer_) {
+        ROS_WARN("Timestamp past the end of the point cloud buffer [GetKeyedScan]");
+        ROS_INFO_STREAM("input time is " << stamp.toSec()
+                                        << "s, and latest time is "
+                                        << itrTime->first << " s [GetKeyedScan]");
+      }
     }
+    ClearPreviousPointCloudScans(itrTime); 
     return true;
   }
 
-  // Otherwise = step back by 1 to get the time before the input time (time1,
-  // stamp, time2)
+  // Otherwise, step back by 1 to get the time before the input time (t1, stamp, t2)
   double time1 = std::prev(itrTime, 1)->first;
-
+    
   double time_diff;
+
+  PointCloudBuffer::iterator itrTimeReturned;
 
   // If closer to time2, then use that
   if (time2 - stamp.toSec() < stamp.toSec() - time1) {
     *msg = itrTime->second;
-
     time_diff = time2 - stamp.toSec();
+    itrTimeReturned = itrTime;
   } else {
     // Otherwise use time1
     *msg = std::prev(itrTime, 1)->second;
-
     time_diff = stamp.toSec() - time1;
+    itrTimeReturned = std::prev(itrTime);
   }
 
-  // Clear the point cloud buffer
-  point_cloud_buffer_.clear();
-
   // Check if the time difference is too large
-  if (time_diff >
-      keyed_scan_time_diff_limit_) { // TODO make this threshold a parameter
+  if (time_diff > keyed_scan_time_diff_limit_) { // TODO make this threshold a parameter
     ROS_WARN("Time difference between request and latest point cloud is too "
              "large, returning no point cloud");
     ROS_INFO_STREAM("Time difference is " << keyed_scan_time_diff_limit_
@@ -375,7 +374,19 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   }
 
   // Return true - have a point cloud for the timestamp
+  ClearPreviousPointCloudScans(itrTimeReturned);
+  
   return true;
+}
+
+void OdometryHandler::ClearPreviousPointCloudScans(const PointCloudBuffer::iterator& itrTime) {
+  auto itrBegin = point_cloud_buffer_.begin();
+  if (itrTime==itrBegin){
+    point_cloud_buffer_.erase(itrBegin);
+  }
+  else{
+    point_cloud_buffer_.erase(itrBegin, std::next(itrTime));
+  }  
 }
 
 // Utilities
