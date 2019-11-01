@@ -99,14 +99,8 @@
       </include>
     </group>
 
-  </group>
+    <!-- Loop Closure  -->
+    <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
 
-  <!-- Loop Closure  -->
-  <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
-    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-  </include>
-
-  
-
-
+  </group> 
 </launch>

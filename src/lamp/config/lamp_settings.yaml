@@ -13,3 +13,20 @@ b_artifacts_in_global: true
 
 # Threshold for time to be matched 
 time_threshold: 10.0
+
+
+#######################################
+# Robot LAMP settings
+#######################################
+robot: 
+
+  # Turn laser loop closures on or off
+  b_find_laser_loop_closures: true
+
+
+#######################################
+# Base station LAMP settings
+#######################################
+base: 
+  # Turn laser loop closures on or off
+  b_find_laser_loop_closures: false

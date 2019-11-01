@@ -25,6 +25,13 @@ LaserLoopClosure::~LaserLoopClosure() {}
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
+  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+
+  // If laser loop closures are off, exit without setting up publishers or subscribers
+  if (!pu::Get(param_ns_ + "/b_find_laser_loop_closures", b_check_for_loop_closures_))
+    return false;
+  if (!b_check_for_loop_closures_)
+    return true;
 
   // Subscribers
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
@@ -36,10 +43,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 
   // Parameters
   double distance_to_skip_recent_poses;
-  param_ns_ = utils::GetParamNamespace(n.getNamespace());
   // Load loop closing parameters.
-  if (!pu::Get(param_ns_ + "/b_check_for_loop_closures", b_check_for_loop_closures_))
-    return false;
   if (!pu::Get(param_ns_ + "/translation_threshold_nodes", translation_threshold_nodes_))
     return false;
   if (!pu::Get(param_ns_ + "/proximity_threshold", proximity_threshold_))

@@ -22,7 +22,7 @@ windows:
   layout: tiled
   panes:
     - roscore
-    - sleep 1; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME   
+    - sleep 2; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME   
     - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /base_station/map # base station
     - sleep 2; rosparam set /use_sim_time true;rosrun rviz rviz
 
