@@ -76,37 +76,38 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
 // LAMP Interface
 // --------------------------------------------------------------------------------
 
-FactorData* ImuHandler::GetData(){
-    ROS_INFO("ImuHandler - GetData");
-    ImuData* factors_output = new ImuData(factors_);   
-    factors_output->b_has_data = false; 
-
-    if (CheckBufferSize()==0) {
-        ROS_WARN("Buffers are empty, returning no data");
-        return factors_output;
-    }
-
-    ImuQuaternion imu_quaternion;
-    ros::Time query_stamp_ros;
-    query_stamp_ros.fromSec(query_stamp_);
+std::shared_ptr<FactorData> ImuHandler::GetData(){
+  ROS_INFO("ImuHandler - GetData");
+  std::shared_ptr<ImuData> factors_output = std::make_shared<ImuData>(factors_);
     
-    if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
-        ROS_INFO("Successfully extracted data from buffer");
-        Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
-        ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
+  factors_output->b_has_data = false; 
 
-        factors_output->b_has_data = true; 
-        factors_output->type = "imu";        
-        factors_output->factors.push_back(new_factor);
+  if (CheckBufferSize()==0) {
+      ROS_WARN("Buffers are empty, returning no data");
+      return factors_output;
+  }
 
-        ResetFactorData();
-    }
+  ImuQuaternion imu_quaternion;
+  ros::Time query_stamp_ros;
+  query_stamp_ros.fromSec(query_stamp_);
 
-    else {
-        factors_output->b_has_data = false; 
-    }
+  if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
+      ROS_INFO("Successfully extracted data from buffer");
+      Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
+      ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
 
-    return factors_output; 
+      factors_output->b_has_data = true; 
+      factors_output->type = "imu";        
+      factors_output->factors.push_back(new_factor);
+
+      ResetFactorData();
+  }
+
+  else {
+      factors_output->b_has_data = false; 
+  }
+
+  return factors_output; 
 }
 
 // Buffers

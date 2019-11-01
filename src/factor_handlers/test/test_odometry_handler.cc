@@ -109,7 +109,7 @@ protected:
     return oh.GetOdomDeltaLatestTime(t_latest, delta_pose);
   }
     
-  FactorData* GetData() {
+  virtual std::shared_ptr<FactorData> GetData() {
     return oh.GetData();
   }
   void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
@@ -694,7 +694,7 @@ TEST_F(OdometryHandlerTest, TestGetData) {
   bool result = GetOdomDeltaLatestTime(query1, myOutput);
   EXPECT_TRUE(result);
 
-  OdomData* factor = dynamic_cast<OdomData*>(GetData());
+  std::shared_ptr<OdomData> factor = std::dynamic_pointer_cast<OdomData>(GetData());
   EXPECT_TRUE(factor->b_has_data);
   
   OdometryFactor odom_factor = factor->factors[0];
