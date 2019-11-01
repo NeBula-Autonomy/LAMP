@@ -7,7 +7,7 @@
 #
 # Create a manual loop closure using e.g.
 #
-#   mlc a30 a5
+#   mlc base1 a30 a5
 
 
 import sys
@@ -28,11 +28,12 @@ def GetGtsamSymbol(symb):
     return symbol_map[chr] + ind
 
 
-key_from = sys.argv[1]
-key_to = sys.argv[2]
+base = sys.argv[1]
+key_from = sys.argv[2]
+key_to = sys.argv[3]
 
 string = """
-rostopic pub /base_station/manual_loop_closure pose_graph_msgs/PoseGraph "header:
+rostopic pub /{}/manual_loop_closure pose_graph_msgs/PoseGraph "header:
   seq: 0
   stamp: {{secs: 0, nsecs: 0}}
   frame_id: ''
@@ -51,7 +52,7 @@ edges:
   range: 0.0
   range_error: 0.0
 priors: []"
-""".format(GetGtsamSymbol(key_from), GetGtsamSymbol(key_to))
+""".format(base, GetGtsamSymbol(key_from), GetGtsamSymbol(key_to))
 
 print(string)
 os.system(string)
