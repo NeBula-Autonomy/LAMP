@@ -198,8 +198,8 @@ bool LampRobot::SetInitialPosition() {
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
   // if (pose_graph_.prefix.at(0) != 'a') { // offset for debugging
-  //   init_x = 2.0, init_y = -2.0, init_z = 0.0;
-  //   init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
+  //   init_x = 0.0, init_y = 0.0, init_z = 0.0;
+  //   init_qx = 0.0, init_qy = 0.0, init_qz = sqrt(0.01), init_qw = sqrt(0.99);
   // }
   bool b_have_fiducial = true;
   if (!pu::Get("fiducial_calibration/position/x", init_x))
