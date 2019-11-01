@@ -14,6 +14,10 @@
 #include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/OdometryHandler.h>
 
+#include <pcl_ros/point_cloud.h>
+#include <pcl/filters/filter.h>
+#include <pcl/filters/random_sample.h>
+#include <pcl/filters/voxel_grid.h>
 // Services
 
 // Class Definition
@@ -107,6 +111,20 @@ private:
 
   // Test class fixtures
   friend class TestLampRobot;
+
+  struct Parameters {
+    // Apply a voxel grid filter.
+    bool grid_filter;
+
+    // Resolution of voxel grid filter.
+    double grid_res;
+
+    // Apply a random downsampling filter.
+    bool random_filter;
+
+    // Percentage of points to discard. Must be between 0.0 and 1.0;
+    double decimate_percentage;
+  } params_;
 };
 
 #endif
