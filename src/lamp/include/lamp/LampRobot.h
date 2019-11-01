@@ -71,11 +71,11 @@ private:
   // Overwrite base classs functions where needed
 
     // Factor Hanlder Wrappers
-    bool ProcessOdomData(FactorData* data);
+    bool ProcessOdomData(std::shared_ptr<FactorData> data);
     // Process the artifact factors if any available
-    bool ProcessArtifactData(FactorData* data);
+    bool ProcessArtifactData(std::shared_ptr<FactorData> data);
     // Process the april tag factors if any available    
-    bool ProcessAprilTagData(FactorData* data);
+    bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
     bool InitializeGraph(gtsam::Pose3& pose, 
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // void ProcessUWBData(FactorData data);

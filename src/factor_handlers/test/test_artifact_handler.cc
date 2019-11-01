@@ -21,7 +21,7 @@ class TestArtifactHandler : public ::testing::Test{
       art_handle.UpdateGlobalPosition(artifact_key, global_position);
     };
     ArtifactData& GetArtifactData() {return art_handle.artifact_data_;};
-    FactorData* GetData() {return art_handle.GetData();};
+    std::shared_ptr<FactorData> GetData() {return art_handle.GetData();};
     bool ArtifactCallback(core_msgs::Artifact msg) {art_handle.ArtifactCallback(msg);};
     std::unordered_map<long unsigned int, ArtifactInfo> GetKeyInfoMap() {return art_handle.artifact_key2info_hash_;};
     std::unordered_map<std::string, gtsam::Symbol> GetStringKeyMap() {return art_handle.artifact_id2key_hash;};
@@ -126,7 +126,7 @@ TEST_F(TestArtifactHandler, GetData)
   artifact_data.factors.push_back(artifact);
 
   // Get the data and check if we get the data back
-  ArtifactData* stored_data = dynamic_cast<ArtifactData*>(GetData());
+  std::shared_ptr<ArtifactData> stored_data = std::dynamic_pointer_cast<ArtifactData>(GetData());
   ArtifactFactor artifact_factor = stored_data->factors[0];
 
   // Check the data
@@ -212,7 +212,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Trigger the callback
   ArtifactCallback(msg);
   // Get the data
-  ArtifactData* internal_data = dynamic_cast<ArtifactData*>(GetData());
+  std::shared_ptr<ArtifactData> internal_data = std::dynamic_pointer_cast<ArtifactData>(GetData());
   artifact_factor = internal_data->factors[1];
   // Check data
   EXPECT_EQ(stored_data.type, "artifact");

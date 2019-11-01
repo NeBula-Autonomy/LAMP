@@ -30,7 +30,8 @@
       <remap from="~pcld" to="velodyne_points/transformed"/>
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
       <remap from="~lio_odom" to="lo_frontend/odometry"/>
-      <!--remap from="~lio_odom" to="hero/lion/odom"/-->
+      <!-- <remap from="~lio_odom" to="hero/lion/odom"/> -->
+      <!-- <remap from="~lio_odom" to="hero/odometry"/> -->
       <remap from="~optimized_values" to="lamp_pgo/optimized_values"/>
 
       <remap from="~artifact" to="~artifact_global" />
@@ -99,14 +100,8 @@
       </include>
     </group>
 
-  </group>
+    <!-- Loop Closure  -->
+    <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
 
-  <!-- Loop Closure  -->
-  <include file="$(find loop_closure)/launch/laser_loop_closure.launch">
-    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-  </include>
-
-  
-
-
+  </group> 
 </launch>
