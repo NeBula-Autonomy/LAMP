@@ -452,16 +452,16 @@ bool LampRobot::ProcessOdomData(FactorData* data) {
     pose_graph_.AddNewValues(new_values);
     new_values.clear();
 
-    if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
+    if (odom_factor.b_has_point_cloud) {
       // Store the keyed scan and add it to the map
       // TODO : filter before adding
-      pose_graph_.InsertKeyedScan(current_key, new_scan);
+      pose_graph_.InsertKeyedScan(current_key, odom_factor.point_cloud);
       AddTransformedPointCloudToMap(current_key);
 
       // publish keyed scan
       pose_graph_msgs::KeyedScan keyed_scan_msg;
       keyed_scan_msg.key = current_key;
-      pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
+      pcl::toROSMsg(*odom_factor.point_cloud, keyed_scan_msg.scan);
       keyed_scan_pub_.publish(keyed_scan_msg);
     }
   }
@@ -478,17 +478,17 @@ void LampRobot::UpdateAndPublishOdom() {
   Pose3 last_pose = pose_graph_.LastPose();
 
   // Get the delta from the last pose to now
-  ros::Time stamp = ros::Time::now();
+  ros::Time stamp;// = ros::Time::now();
   GtsamPosCov delta_pose_cov;
-  if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
+  // if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
     // Had a bad odom return - try latest time from odometry_handler
     if (!odometry_handler_.GetOdomDeltaLatestTime(stamp, delta_pose_cov)) {
       ROS_WARN("No good velocity output yet");
       // TODO - work out what the best thing is to do in this scenario
       return;
     }
-    ROS_INFO("Got good result from getting delta at the latest time");
-  }
+    // ROS_INFO("Got good result from getting delta at the latest time");
+  // }
 
   // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp,
   // delta_pose);
