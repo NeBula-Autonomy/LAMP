@@ -366,9 +366,6 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   // Otherwise, step back by 1 to get the time before the input time (t1, stamp, t2)
   double time1 = std::prev(itrTime, 1)->first;
 
-  double time_diff;
-
-
   PointCloudBuffer::iterator itrTimeReturned;
 
   // If closer to time2, then use that
