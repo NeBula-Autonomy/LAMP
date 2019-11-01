@@ -22,7 +22,7 @@ class ManualLoopClosureHandler : public LampDataHandlerBase {
     virtual ~ManualLoopClosureHandler();
 
     virtual bool Initialize(const ros::NodeHandle& n);
-    virtual FactorData* GetData();
+    virtual std::shared_ptr<FactorData> GetData();
 
   protected:
 

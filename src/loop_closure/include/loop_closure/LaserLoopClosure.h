@@ -45,6 +45,12 @@ private:
                         gtsam::Matrix66* covariance,
                         double& fitness_score);
 
+  pose_graph_msgs::PoseGraphEdge CreateLoopClosureEdge(
+          gtsam::Symbol key1, 
+          gtsam::Symbol key2,
+          geometry_utils::Transform3& delta, 
+          gtsam::Matrix66& covariance);
+
 private:
   ros::Subscriber keyed_scans_sub_;
 

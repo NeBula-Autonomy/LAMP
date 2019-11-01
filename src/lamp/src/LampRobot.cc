@@ -198,8 +198,8 @@ bool LampRobot::SetInitialPosition() {
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
   // if (pose_graph_.prefix.at(0) != 'a') { // offset for debugging
-  //   init_x = 2.0, init_y = -2.0, init_z = 0.0;
-  //   init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
+  //   init_x = 0.0, init_y = 0.0, init_z = 0.0;
+  //   init_qx = 0.0, init_qy = 0.0, init_qz = sqrt(0.01), init_qw = sqrt(0.99);
   // }
   bool b_have_fiducial = true;
   if (!pu::Get("fiducial_calibration/position/x", init_x))
@@ -386,9 +386,9 @@ void LampRobot::UpdateArtifactPositions() {
   \author Benjamin Morrell
   \date 01 Oct 2019
 */
-bool LampRobot::ProcessOdomData(FactorData* data) {
+bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
   // Extract odom data
-  OdomData* odom_data = dynamic_cast<OdomData*>(data);
+  std::shared_ptr<OdomData> odom_data = std::dynamic_pointer_cast<OdomData>(data);
 
   // Check if there are new factors
   if (!odom_data->b_has_data) {
@@ -452,16 +452,16 @@ bool LampRobot::ProcessOdomData(FactorData* data) {
     pose_graph_.AddNewValues(new_values);
     new_values.clear();
 
-    if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
+    if (odom_factor.b_has_point_cloud) {
       // Store the keyed scan and add it to the map
       // TODO : filter before adding
-      pose_graph_.InsertKeyedScan(current_key, new_scan);
+      pose_graph_.InsertKeyedScan(current_key, odom_factor.point_cloud);
       AddTransformedPointCloudToMap(current_key);
 
       // publish keyed scan
       pose_graph_msgs::KeyedScan keyed_scan_msg;
       keyed_scan_msg.key = current_key;
-      pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
+      pcl::toROSMsg(*odom_factor.point_cloud, keyed_scan_msg.scan);
       keyed_scan_pub_.publish(keyed_scan_msg);
     }
   }
@@ -478,17 +478,17 @@ void LampRobot::UpdateAndPublishOdom() {
   Pose3 last_pose = pose_graph_.LastPose();
 
   // Get the delta from the last pose to now
-  ros::Time stamp = ros::Time::now();
+  ros::Time stamp;// = ros::Time::now();
   GtsamPosCov delta_pose_cov;
-  if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
+  // if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
     // Had a bad odom return - try latest time from odometry_handler
     if (!odometry_handler_.GetOdomDeltaLatestTime(stamp, delta_pose_cov)) {
       ROS_WARN("No good velocity output yet");
       // TODO - work out what the best thing is to do in this scenario
       return;
     }
-    ROS_INFO("Got good result from getting delta at the latest time");
-  }
+    // ROS_INFO("Got good result from getting delta at the latest time");
+  // }
 
   // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp,
   // delta_pose);
@@ -531,9 +531,9 @@ void LampRobot::UpdateAndPublishOdom() {
   \author Abhishek Thakur
   \date 08 Oct 2019
 */
-bool LampRobot::ProcessArtifactData(FactorData* data) {
+bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
   // Extract artifact data
-  ArtifactData* artifact_data = dynamic_cast<ArtifactData*>(data);
+  std::shared_ptr<ArtifactData> artifact_data = std::dynamic_pointer_cast<ArtifactData>(data);
 
   // Check if there are new factors
   if (!artifact_data->b_has_data) {
@@ -650,10 +650,10 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
   \author Abhishek Thakur
   \date Oct 2019
 */
-bool LampRobot::ProcessAprilTagData(FactorData* data){
+bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
 
     // Extract artifact data
-  AprilTagData* april_tag_data = dynamic_cast<AprilTagData*>(data);
+  std::shared_ptr<AprilTagData> april_tag_data = std::dynamic_pointer_cast<AprilTagData>(data);
 
   // Check if there are new factors 
   if (!april_tag_data->b_has_data) {
