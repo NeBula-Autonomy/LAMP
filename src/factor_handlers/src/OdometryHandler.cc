@@ -255,9 +255,9 @@ bool OdometryHandler::GetOdomDeltaLatestTime(ros::Time& t_latest,
   return GetOdomDelta(t_latest, delta_pose);
 }
 
-FactorData* OdometryHandler::GetData() {
+std::shared_ptr<FactorData> OdometryHandler::GetData() {
   // Main interface with lamp for getting factor information
-  OdomData* output_data = new OdomData(factors_);
+  std::shared_ptr<OdomData> output_data = std::make_shared<OdomData>(factors_);
   output_data->b_has_data = false;
 
   if (!CheckOdomSize()) {

@@ -386,9 +386,9 @@ void LampRobot::UpdateArtifactPositions() {
   \author Benjamin Morrell
   \date 01 Oct 2019
 */
-bool LampRobot::ProcessOdomData(FactorData* data) {
+bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
   // Extract odom data
-  OdomData* odom_data = dynamic_cast<OdomData*>(data);
+  std::shared_ptr<OdomData> odom_data = std::dynamic_pointer_cast<OdomData>(data);
 
   // Check if there are new factors
   if (!odom_data->b_has_data) {
@@ -531,9 +531,9 @@ void LampRobot::UpdateAndPublishOdom() {
   \author Abhishek Thakur
   \date 08 Oct 2019
 */
-bool LampRobot::ProcessArtifactData(FactorData* data) {
+bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
   // Extract artifact data
-  ArtifactData* artifact_data = dynamic_cast<ArtifactData*>(data);
+  std::shared_ptr<ArtifactData> artifact_data = std::dynamic_pointer_cast<ArtifactData>(data);
 
   // Check if there are new factors
   if (!artifact_data->b_has_data) {
@@ -650,10 +650,10 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
   \author Abhishek Thakur
   \date Oct 2019
 */
-bool LampRobot::ProcessAprilTagData(FactorData* data){
+bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
 
     // Extract artifact data
-  AprilTagData* april_tag_data = dynamic_cast<AprilTagData*>(data);
+  std::shared_ptr<AprilTagData> april_tag_data = std::dynamic_pointer_cast<AprilTagData>(data);
 
   // Check if there are new factors 
   if (!april_tag_data->b_has_data) {
