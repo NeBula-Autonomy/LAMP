@@ -908,7 +908,7 @@ TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {
   ASSERT_EQ(ptr_buffer_2->size(), 3);
   auto itrTime_2 = ptr_buffer_2->lower_bound(t2);
   ClearPreviousPointCloudScans(itrTime_2);
-  ASSERT_EQ(ptr_buffer_2->size(), 1);
+  ASSERT_EQ(ptr_buffer_2->size(), 2);
   ASSERT_EQ((ptr_buffer_2->rbegin())->first, t3);
 }
 
