@@ -465,8 +465,8 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
       // Store the keyed scan and add it to the map
       
       // Copy input scan.
-       PointCloud::Ptr new_scan;
-       *new_scan = *(odom_factor.point_cloud);
+      PointCloud::Ptr new_scan;
+      new_scan = odom_factor.point_cloud;
       
       // // TODO: Make this a tunable parameter
       const int n_points = static_cast<int>((1.0 - params_.decimate_percentage) *
