@@ -97,8 +97,6 @@ bool PoseGraph::TrackNode(const Node& node) {
 
 bool PoseGraph::TrackNode(const NodeMessage& msg) {
   if (nodes_.find(msg) == nodes_.end()) {
-    nodes_.insert(msg);
-    nodes_new_.insert(msg);
     const auto pose = utils::MessageToPose(msg);
     if (values_.exists(msg.key))
       values_.update(msg.key, pose);
@@ -109,6 +107,12 @@ bool PoseGraph::TrackNode(const NodeMessage& msg) {
     else
       values_new_.insert(msg.key, pose);
     keyed_stamps[msg.key] = msg.header.stamp;
+    // make copy to modify ID
+    NodeMessage m = msg;
+    if (m.ID.empty() && !symbol_id_map.empty())
+      m.ID = symbol_id_map(msg.key);
+    nodes_.insert(m);
+    nodes_new_.insert(m);
     return true;
   }
   return false;

@@ -75,11 +75,7 @@ struct EdgeMessageComparator {
 // Implements strictly-less-than operator for node messages.
 struct NodeMessageComparator {
   bool operator()(const NodeMessage& lhs, const NodeMessage& rhs) const {
-    return (lhs.key < rhs.key);
-    //   return true;
-    // if (lhs.key > rhs.key)
-    //   return false;
-    // return lhs.header.frame_id < rhs.header.frame_id;
+    return lhs.key < rhs.key;
   }
 };
 
@@ -317,6 +313,18 @@ public:
     return priors_new_;
   }
 
+  // Retrieves node at the given key, returns nullptr otherwise.
+  // Returns const ptr because std::set only has const_iterators.
+  const NodeMessage* FindNode(gtsam::Key key) const;
+
+  // Retrieves edge connecting the given keys, returns nullptr otherwise.
+  // Returns const ptr because std::set only has const_iterators.
+  const EdgeMessage* FindEdge(gtsam::Key key_from, gtsam::Key key_to) const;
+
+  // Retrieves prior of the given key, returns nullptr otherwise.
+  // Returns const ptr because std::set only has const_iterators.
+  const EdgeMessage* FindPrior(gtsam::Key key) const;
+
 private:
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
@@ -334,8 +342,7 @@ private:
 
   // Convert incremental pose graph with given values, edges and priors to
   // message.
-  GraphMsgPtr ToMsg_(const gtsam::Values& values,
-                     const EdgeSet& edges,
+  GraphMsgPtr ToMsg_(const EdgeSet& edges,
                      const NodeSet& nodes,
                      const EdgeSet& priors) const;
 };

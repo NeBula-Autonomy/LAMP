@@ -68,3 +68,31 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp,
 
   return key_out;
 }
+
+const NodeMessage* PoseGraph::FindNode(gtsam::Key key) const {
+  for (const auto& node : nodes_) {
+    if (node.key == key) {
+      return &node;
+    }
+  }
+  return nullptr;
+}
+
+const EdgeMessage* PoseGraph::FindEdge(gtsam::Key key_from,
+                                       gtsam::Key key_to) const {
+  for (const auto& edge : edges_) {
+    if (edge.key_from == key_from && edge.key_to == key_to) {
+      return &edge;
+    }
+  }
+  return nullptr;
+}
+
+const EdgeMessage* PoseGraph::FindPrior(gtsam::Key key) const {
+  for (const auto& edge : priors_) {
+    if (edge.key_from == key) {
+      return &edge;
+    }
+  }
+  return nullptr;
+}

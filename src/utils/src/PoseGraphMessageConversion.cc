@@ -9,15 +9,14 @@ namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 GraphMsgPtr PoseGraph::ToMsg() const {
-  return ToMsg_(values_, edges_, nodes_, priors_);
+  return ToMsg_(edges_, nodes_, priors_);
 }
 
 GraphMsgPtr PoseGraph::ToIncrementalMsg() const {
-  return ToMsg_(values_new_, edges_new_, nodes_new_, priors_new_);
+  return ToMsg_(edges_new_, nodes_new_, priors_new_);
 }
 
-GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
-                              const EdgeSet& edges,
+GraphMsgPtr PoseGraph::ToMsg_(const EdgeSet& edges,
                               const NodeSet& nodes,
                               const EdgeSet& priors) const {
   // Create the Pose Graph Message
@@ -32,43 +31,13 @@ GraphMsgPtr PoseGraph::ToMsg_(const gtsam::Values& values,
                     << ") while converting pose graph to message.");
   }
 
-  // Get Values
-  // Converts the internal values
-  for (const auto& keyed_pose : values) {
-    gu::Transform3 t = utils::ToGu(GetPose(keyed_pose.key));
-
-    gtsam::Symbol sym_key = gtsam::Symbol(keyed_pose.key);
-
-    // Populate the message with the pose's data.
-    NodeMessage node;
-    node.key = keyed_pose.key;
-    node.header.frame_id = fixed_frame_id;
-    node.pose = gr::ToRosPose(t);
-
-    // Get timestamp
-    // Note keyed_stamps are for all nodes TODO: check this is followed
-    // TODO: check if time stamps are necessary
-    if (HasStamp(keyed_pose.key))
-      node.header.stamp = keyed_stamps.at(keyed_pose.key);
-    else {
-      ROS_DEBUG_STREAM("No time stamp for key " << keyed_pose.key);
-    }
-
-    // Get the IDs (see LampBase::MapSymbolToId for example
-    // implementation).
-    if (!symbol_id_map.empty())
-      node.ID = symbol_id_map(sym_key);
-
-    // TODO: How to get covariance from node?
-    // utils::UpdateCovariance(node, keyed_pose.covariance);
-
-    // Add to the vector of nodes
-    msg->nodes.push_back(node);
-  }
+  msg->nodes.reserve(nodes.size());
+  for (const auto& node : nodes)
+    msg->nodes.emplace_back(node);
 
   // Add the factors  // TODO: check integration of this tracking with all
   // handlers
-  msg->edges.resize(edges.size() + priors.size());
+  msg->edges.reserve(edges.size() + priors.size());
   for (const auto& edge : edges)
     msg->edges.emplace_back(edge);
   for (const auto& prior : priors)

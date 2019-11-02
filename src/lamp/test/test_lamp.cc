@@ -107,7 +107,9 @@ public:
     lr.graph().prefix = c;
   }
   void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) {
-    lr.graph().GetValues().insert(key, pose);
+    static const gtsam::SharedNoiseModel& noise =
+        gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+    lr.graph().TrackNode(ros::Time::now(), key, pose, noise);
   }
 
   void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg) {
@@ -168,6 +170,22 @@ public:
   }
   const EdgeSet& GetPriors() const {
     return lr.graph().GetPriors();
+  }
+  const EdgeSet& GetNewEdges() const {
+    return lr.graph().GetNewEdges();
+  }
+  const NodeSet& GetNewNodes() const {
+    return lr.graph().GetNewNodes();
+  }
+  const EdgeSet& GetNewPriors() const {
+    return lr.graph().GetNewPriors();
+  }
+
+  gtsam::Pose3 GetPose(gtsam::Key key) const {
+    return lr.graph().GetPose(key);
+  }
+  const EdgeMessage* FindEdge(gtsam::Key key_from, gtsam::Key key_to) const {
+    return lr.graph().FindEdge(key_from, key_to);
   }
 
   PointCloud::Ptr GetMapPC() {
@@ -592,136 +610,162 @@ TEST_F(TestLampRobot, TestDuplicatePriors) {
   EXPECT_EQ(GetPriors().size(), 3lu);
 }
 
-// THIS TEST CAUSES ISSUES TODO
-// TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
-//   ros::Time::init();
+TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
+  ros::Time::init();
 
-//   // NOTE: this test does not use a full valid graph
+  // NOTE: this test does not use a full valid graph
 
-//   // Set up the robot prefix for odom nodes
-//   SetPrefix('a');
+  // Set up the robot prefix for odom nodes
+  SetPrefix('a');
 
-//   static const gtsam::SharedNoiseModel& noise =
-//       gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+  // Initialize some keys and poses that are used for nodes, edges and priors.
 
-//   // Test values
-//   InsertValues(gtsam::Symbol('a', 100),
-//                gtsam::Pose3(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
-//                             gtsam::Point3(420.0, 69.0, 0.0)));
-//   InsertValues(gtsam::Symbol('a', 101),
-//                gtsam::Pose3(gtsam::Rot3(sqrt(0.3), sqrt(0.3), sqrt(0.4),
-//                0.0),
-//                             gtsam::Point3(10.0, -1.0, 1000.0)));
-//   InsertValues(
-//       gtsam::Symbol('m', 0),
-//       gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(500.0, 433.5,
-//       -2.5)));
+  const gtsam::Symbol key0('a', 100);
+  const gtsam::Symbol key1('a', 101);
+  const gtsam::Symbol key2('m', 0);
 
-//   // Test edges
-//   TrackFactor(gtsam::Symbol('a', 55),
-//              gtsam::Symbol('a', 56),
-//              pose_graph_msgs::PoseGraphEdge::ODOM,
-//              gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, 0,
-//              0.1)), noise);
-//   TrackFactor(gtsam::Symbol('a', 32),
-//              gtsam::Symbol('m', 0),
-//              pose_graph_msgs::PoseGraphEdge::ARTIFACT,
-//              gtsam::Pose3(gtsam::Rot3(0, 0, 1, 0), gtsam::Point3(0,
-//              0.9, 21.1)), noise);
+  gtsam::Pose3 tf0(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
+                   gtsam::Point3(420.0, 69.0, 0.0));
+  gtsam::Pose3 tf1(gtsam::Rot3(sqrt(0.3), sqrt(0.3), sqrt(0.4), 0.0),
+                   gtsam::Point3(10.0, -1.0, 1000.0));
+  gtsam::Pose3 tf2(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(500.0, 433.5, -2.5));
 
-//   // Test priors
-//   AddKeyedStamp(gtsam::Symbol('a', 50), ros::Time(67589467.0));
-//   TrackPrior(
-//       gtsam::Symbol('a', 50),
-//       gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1.0, -2.2, 0.03)),
-//       noise);
+  static const gtsam::SharedNoiseModel& noise =
+      gtsam::noiseModel::Isotropic::Variance(6, 0.1);
 
-//   // Convert pose-graph to message
-//   pose_graph_msgs::PoseGraphConstPtr g = lr.graph().ToMsg();
+  // Test values
+  InsertValues(key0, tf0);
+  InsertValues(key1, tf1);
+  InsertValues(key2, tf2);
 
-//   float x, y, z;
-//   for (auto n : g->nodes) {
-//     x = n.pose.position.x;
-//     y = n.pose.position.y;
-//     z = n.pose.position.z;
-//     std::cout << ("Node: (" << x << ", " << y << ", " << z << ")");
-//   }
+  // Test edges
+  TrackFactor(key0, key1, pose_graph_msgs::PoseGraphEdge::ODOM, tf2, noise);
+  TrackFactor(key2, key0, pose_graph_msgs::PoseGraphEdge::ARTIFACT, tf1, noise);
 
-//   // Node a100 - check all information
-//   pose_graph_msgs::PoseGraphNode n = g->nodes[0];
-//   EXPECT_EQ("odom_node", n.ID);
-//   EXPECT_EQ(gtsam::Symbol('a', 100), n.key);
-//   EXPECT_NEAR(420.0, n.pose.position.x, tolerance_);
-//   EXPECT_NEAR(69.0, n.pose.position.y, tolerance_);
-//   EXPECT_NEAR(0.0, n.pose.position.z, tolerance_);
-//   EXPECT_NEAR(sqrt(0.5), n.pose.orientation.w, tolerance_);
-//   EXPECT_NEAR(0.0, n.pose.orientation.x, tolerance_);
-//   EXPECT_NEAR(0.0, n.pose.orientation.y, tolerance_);
-//   EXPECT_NEAR(sqrt(0.5), n.pose.orientation.z, tolerance_);
+  // Test priors
+  AddKeyedStamp(key0, ros::Time(67589467.0));
+  TrackPrior(key0, tf0, noise);
 
-//   // Node a101 - check all information
-//   n = g->nodes[1];
-//   EXPECT_EQ("odom_node", n.ID);
-//   EXPECT_EQ(gtsam::Symbol('a', 101), n.key);
-//   EXPECT_NEAR(10.0, n.pose.position.x, tolerance_);
-//   EXPECT_NEAR(-1.0, n.pose.position.y, tolerance_);
-//   EXPECT_NEAR(1000.0, n.pose.position.z, tolerance_);
-//   EXPECT_NEAR(sqrt(0.3), n.pose.orientation.w, tolerance_);
-//   EXPECT_NEAR(sqrt(0.3), n.pose.orientation.x, tolerance_);
-//   EXPECT_NEAR(sqrt(0.4), n.pose.orientation.y, tolerance_);
-//   EXPECT_NEAR(0.0, n.pose.orientation.z, tolerance_);
+  float x, y, z;
+  for (const auto& n : GetNodes()) {
+    x = n.pose.position.x;
+    y = n.pose.position.y;
+    z = n.pose.position.z;
+    std::cout << "\toriginal node " << n.key << ": (" << x << ", " << y << ", "
+              << z << ")\n";
+  }
+  for (const auto& e : GetEdges()) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\toriginal edge from " << e.key_from << " to " << e.key_to
+              << ": (" << x << ", " << y << ", " << z << ")\n";
+  }
+  for (const auto& e : GetPriors()) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\toriginal prior " << e.key_from << ": (" << x << ", " << y
+              << ", " << z << ")\n";
+  }
 
-//   // Node m0 - check all information
-//   n = g->nodes[2];
-//   EXPECT_EQ("Artifact", n.ID);
-//   EXPECT_EQ(gtsam::Symbol('m', 0), n.key);
-//   EXPECT_NEAR(500.0, n.pose.position.x, tolerance_);
-//   EXPECT_NEAR(433.5, n.pose.position.y, tolerance_);
-//   EXPECT_NEAR(-2.5, n.pose.position.z, tolerance_);
-//   EXPECT_NEAR(1.0, n.pose.orientation.w, tolerance_);
-//   EXPECT_NEAR(0.0, n.pose.orientation.x, tolerance_);
-//   EXPECT_NEAR(0.0, n.pose.orientation.y, tolerance_);
-//   EXPECT_NEAR(0.0, n.pose.orientation.z, tolerance_);
+  std::cout << "Converting graph to message.\n";
 
-//   // Odom edge (TODO: test the covariance)
-//   pose_graph_msgs::PoseGraphEdge e = g->edges[0];
-//   EXPECT_EQ(e.type, pose_graph_msgs::PoseGraphEdge::ODOM);
-//   EXPECT_EQ(e.key_from, gtsam::Symbol('a', 55));
-//   EXPECT_EQ(e.key_to, gtsam::Symbol('a', 56));
-//   EXPECT_NEAR(1.0, e.pose.position.x, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.position.y, tolerance_);
-//   EXPECT_NEAR(0.1, e.pose.position.z, tolerance_);
-//   EXPECT_NEAR(1.0, e.pose.orientation.w, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.x, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.y, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.z, tolerance_);
+  // Convert pose-graph to message
+  pose_graph_msgs::PoseGraphConstPtr g = lr.graph().ToMsg();
 
-//   // Artifact edge (TODO: test the covariance)
-//   e = g->edges[1];
-//   EXPECT_EQ(e.type, pose_graph_msgs::PoseGraphEdge::ARTIFACT);
-//   EXPECT_EQ(e.key_from, gtsam::Symbol('a', 32));
-//   EXPECT_EQ(e.key_to, gtsam::Symbol('m', 0));
-//   EXPECT_NEAR(0.0, e.pose.position.x, tolerance_);
-//   EXPECT_NEAR(0.9, e.pose.position.y, tolerance_);
-//   EXPECT_NEAR(21.1, e.pose.position.z, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.w, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.x, tolerance_);
-//   EXPECT_NEAR(1.0, e.pose.orientation.y, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.z, tolerance_);
+  for (const auto& n : g->nodes) {
+    x = n.pose.position.x;
+    y = n.pose.position.y;
+    z = n.pose.position.z;
+    std::cout << "\tmsg node " << n.key << ": (" << x << ", " << y << ", " << z
+              << ")\n";
+  }
 
-//   // Prior factor (TODO: test the covariance)
-//   e = g->edges[2];
-//   EXPECT_EQ(e.type, pose_graph_msgs::PoseGraphEdge::PRIOR);
-//   EXPECT_EQ(e.key_from, gtsam::Symbol('a', 50));
-//   EXPECT_EQ(e.key_to, gtsam::Symbol('a', 50));
-//   EXPECT_NEAR(1.0, e.pose.position.x, tolerance_);
-//   EXPECT_NEAR(-2.2, e.pose.position.y, tolerance_);
-//   EXPECT_NEAR(0.03, e.pose.position.z, tolerance_);
-//   EXPECT_NEAR(1.0, e.pose.orientation.w, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.x, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.y, tolerance_);
-//   EXPECT_NEAR(0.0, e.pose.orientation.z, tolerance_);
-// }
+  for (const auto& e : g->edges) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\tmsg edge from " << e.key_from << " to " << e.key_to << ": ("
+              << x << ", " << y << ", " << z << ")\n";
+  }
+
+  // Compare message sizes
+  EXPECT_EQ(3, g->nodes.size());
+  // 2 factors plus 1 prior
+  EXPECT_EQ(3, g->edges.size());
+
+  // Convert message back to PoseGraph struct
+  std::cout << "Converting message to graph.\n";
+  PoseGraph graph;
+  graph.UpdateFromMsg(g);
+  for (const auto& n : graph.GetNodes()) {
+    x = n.pose.position.x;
+    y = n.pose.position.y;
+    z = n.pose.position.z;
+    std::cout << "\tconverted node " << n.key << ": (" << x << ", " << y << ", "
+              << z << ")\n";
+  }
+  for (const auto& e : graph.GetEdges()) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\tconverted edge from " << e.key_from << " to " << e.key_to
+              << ": (" << x << ", " << y << ", " << z << ")\n";
+  }
+  for (const auto& e : graph.GetPriors()) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\tconverted prior " << e.key_from << ": (" << x << ", " << y
+              << ", " << z << ")\n";
+  }
+
+  // Node a100 - check all information
+  gtsam::Pose3 pose0 = graph.GetPose(key0);
+  gtsam::Pose3 actual0 = GetPose(key0);
+  std::cout << "Pose0:   " << pose0 << std::endl;
+  std::cout << "Actual0: " << actual0 << std::endl;
+  EXPECT_EQ(pose0.equals(actual0, tolerance_), true);
+
+  // Node a101 - check all information
+  gtsam::Pose3 pose1 = graph.GetPose(key1);
+  gtsam::Pose3 actual1 = GetPose(key1);
+  std::cout << "Pose1:   " << pose1 << std::endl;
+  std::cout << "Actual1: " << actual1 << std::endl;
+  EXPECT_EQ(pose1.equals(actual1, tolerance_), true);
+
+  // Node m0 - check all information
+  gtsam::Pose3 pose2 = graph.GetPose(key2);
+  gtsam::Pose3 actual2 = GetPose(key2);
+  std::cout << "Pose2:   " << pose2 << std::endl;
+  std::cout << "Actual2: " << actual2 << std::endl;
+  EXPECT_EQ(pose2.equals(actual2, tolerance_), true);
+
+  // Odom edge
+  const auto* edge0 = graph.FindEdge(key0, key1);
+  auto edge0_tf = utils::MessageToPose(*edge0);
+  auto edge0_noise = utils::MessageToCovariance(*edge0);
+  EXPECT_EQ(edge0->type, pose_graph_msgs::PoseGraphEdge::ODOM);
+  EXPECT_EQ(edge0_tf.equals(tf2, tolerance_), true);
+  EXPECT_EQ(edge0_noise->equals(*noise, tolerance_), true);
+
+  // Artifact edge
+  const auto* edge1 = graph.FindEdge(key2, key0);
+  auto edge1_tf = utils::MessageToPose(*edge1);
+  auto edge1_noise = utils::MessageToCovariance(*edge1);
+  EXPECT_EQ(edge1->type, pose_graph_msgs::PoseGraphEdge::ARTIFACT);
+  EXPECT_EQ(edge1_tf.equals(tf1, tolerance_), true);
+  EXPECT_EQ(edge1_noise->equals(*noise, tolerance_), true);
+
+  // Prior factor
+  const auto* prior = graph.FindPrior(key0);
+  auto prior_tf = utils::MessageToPose(*prior);
+  auto prior_noise = utils::MessageToCovariance(*prior);
+  EXPECT_EQ(prior->type, pose_graph_msgs::PoseGraphEdge::PRIOR);
+  EXPECT_EQ(prior_tf.equals(tf0, tolerance_), true);
+  EXPECT_EQ(prior_noise->equals(*noise, tolerance_), true);
+}
 
 // TODO - work out how to pass around SharedNoiseModels
 TEST_F(TestLampRobot, TestSetFixedCovariancesOdom) {
