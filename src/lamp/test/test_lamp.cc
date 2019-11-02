@@ -260,160 +260,160 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
  *0.16     2.0                                                        Time
  */
 // CAUSING TESTING ISSUES TODO
-// TEST_F(TestLampRobot, TestProcessArtifactData) {
-//   // Construct the new Artifact data
-//   ArtifactData* new_data = new ArtifactData();
-//   new_data->b_has_data = true;
-//   new_data->type = "artifact";
+TEST_F(TestLampRobot, TestProcessArtifactData) {
+  // Construct the new Artifact data
+  ArtifactData* new_data = new ArtifactData();
+  new_data->b_has_data = true;
+  new_data->type = "artifact";
 
-//   ArtifactFactor new_factor;
-//   new_factor.key = gtsam::Symbol('l', 1);
-//   new_factor.position = gtsam::Point3(9.7, 0, 0);
-//   gtsam::Vector6 sig;
-//   sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
-//   gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
-//   new_factor.covariance = noise;
-//   new_factor.stamp = ros::Time(0.11);
+  ArtifactFactor new_factor;
+  new_factor.key = gtsam::Symbol('l', 1);
+  new_factor.position = gtsam::Point3(9.7, 0, 0);
+  gtsam::Vector6 sig;
+  sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
+  new_factor.covariance = noise;
+  new_factor.stamp = ros::Time(0.11);
 
-//   // Add the new factor
-//   new_data->factors.push_back(new_factor);
+  // Add the new factor
+  new_data->factors.push_back(new_factor);
 
-//   // Set the global flag
-//   setArtifactInGlobal(false);
-//   setFixedCovariance(false);
+  // Set the global flag
+  setArtifactInGlobal(false);
+  setFixedCovariance(false);
 
-//   // Add to values
-//   AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a',0));
-//   InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(),
-//                                           gtsam::Point3 (0, 0, 0)));
-//   AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a',1));
-//   InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(),
-//                                           gtsam::Point3 (2.0, 0, 0)));
-//   AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a',2));
-//   InsertValues(gtsam::Symbol('a',2), gtsam::Pose3(gtsam::Rot3(),
-//                                           gtsam::Point3 (4.0, 0, 0)));
-//   AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a',3));
-//   InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(),
-//                                           gtsam::Point3 (6.0, 0, 0)));
+  // Add to values
+  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a', 0));
+  InsertValues(gtsam::Symbol('a', 0),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a', 1));
+  InsertValues(gtsam::Symbol('a', 1),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a', 2));
+  InsertValues(gtsam::Symbol('a', 2),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a', 3));
+  InsertValues(gtsam::Symbol('a', 3),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(6.0, 0, 0)));
 
-//   AddKeyedStamp(gtsam::Symbol('a',0), ros::Time(0.05));
-//   AddKeyedStamp(gtsam::Symbol('a',1), ros::Time(0.1));
-//   AddKeyedStamp(gtsam::Symbol('a',2), ros::Time(0.15));
-//   AddKeyedStamp(gtsam::Symbol('a',3), ros::Time(0.2));
+  AddKeyedStamp(gtsam::Symbol('a', 0), ros::Time(0.05));
+  AddKeyedStamp(gtsam::Symbol('a', 1), ros::Time(0.1));
+  AddKeyedStamp(gtsam::Symbol('a', 2), ros::Time(0.15));
+  AddKeyedStamp(gtsam::Symbol('a', 3), ros::Time(0.2));
 
-//   // Construct the odometry message for a0 (the nearest key)
-//   nav_msgs::Odometry a0_value;
-//   a0_value.header.stamp = ros::Time(0.05);
-//   geometry_msgs::PoseWithCovariance msg_pose;
-//   a0_value.pose = msg_pose;
-//   nav_msgs::Odometry::ConstPtr a0_odom(new nav_msgs::Odometry(a0_value));
+  // Construct the odometry message for a0 (the nearest key)
+  nav_msgs::Odometry a0_value;
+  a0_value.header.stamp = ros::Time(0.05);
+  geometry_msgs::PoseWithCovariance msg_pose;
+  a0_value.pose = msg_pose;
+  nav_msgs::Odometry::ConstPtr a0_odom(new nav_msgs::Odometry(a0_value));
 
-//   // Call Lidar callback
-//   LidarCallback(a0_odom);
+  // Call Lidar callback
+  LidarCallback(a0_odom);
 
-//   // New message at 0.1
-//   nav_msgs::Odometry l1_value;
-//   l1_value.header.stamp = ros::Time(0.1);
-//   l1_value.pose.pose.position.x = 2.0;
-//   l1_value.pose.pose.orientation.w = 1.0;
+  // New message at 0.1
+  nav_msgs::Odometry l1_value;
+  l1_value.header.stamp = ros::Time(0.1);
+  l1_value.pose.pose.position.x = 2.0;
+  l1_value.pose.pose.orientation.w = 1.0;
 
-//   nav_msgs::Odometry::ConstPtr a1_odom(new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a1_odom(new nav_msgs::Odometry(l1_value));
 
-//   // Call Lidar callback
-//   LidarCallback(a1_odom);
+  // Call Lidar callback
+  LidarCallback(a1_odom);
 
-//   // New message at 0.109 (not gets added to pose graph)
-//   l1_value.header.stamp = ros::Time(0.109);
-//   l1_value.pose.pose.position.x = 2.4;
-//   l1_value.pose.pose.orientation.w = 1.0;
+  // New message at 0.109 (not gets added to pose graph)
+  l1_value.header.stamp = ros::Time(0.109);
+  l1_value.pose.pose.position.x = 2.4;
+  l1_value.pose.pose.orientation.w = 1.0;
 
-//   nav_msgs::Odometry::ConstPtr a1l1_odom(
-//       new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a1l1_odom(new nav_msgs::Odometry(l1_value));
 
-//   // Call Lidar callback
-//   LidarCallback(a1l1_odom);
+  // Call Lidar callback
+  LidarCallback(a1l1_odom);
 
-//   // New message at 0.15
-//   l1_value.header.stamp = ros::Time(0.15);
-//   l1_value.pose.pose.position.x = 4.0;
-//   l1_value.pose.pose.orientation.w = 1.0;
+  // New message at 0.15
+  l1_value.header.stamp = ros::Time(0.15);
+  l1_value.pose.pose.position.x = 4.0;
+  l1_value.pose.pose.orientation.w = 1.0;
 
-//   nav_msgs::Odometry::ConstPtr a2_odom(new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a2_odom(new nav_msgs::Odometry(l1_value));
 
-//   // Call Lidar callback
-//   LidarCallback(a2_odom);
+  // Call Lidar callback
+  LidarCallback(a2_odom);
 
-//   // New message at 0.2
-//   l1_value.header.stamp = ros::Time(0.2);
-//   l1_value.pose.pose.position.x = 6.0;
-//   l1_value.pose.pose.orientation.w = 1.0;
+  // New message at 0.2
+  l1_value.header.stamp = ros::Time(0.2);
+  l1_value.pose.pose.position.x = 6.0;
+  l1_value.pose.pose.orientation.w = 1.0;
 
-//   nav_msgs::Odometry::ConstPtr a3_odom(new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a3_odom(new nav_msgs::Odometry(l1_value));
 
-//   // Call Lidar callback
-//   LidarCallback(a3_odom);
+  // Call Lidar callback
+  LidarCallback(a3_odom);
 
-//   // Call the ProcessArtifactData. Adding a new artifact
-//   ProcessArtifacts(new_data);
+  // Call the ProcessArtifactData. Adding a new artifact
+  ProcessArtifacts(new_data);
 
-//   // As this is a new artifact optimization should be false
-//   EXPECT_FALSE(GetOptFlag());
-//   // Check if l1 is added to values
-//   EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
-//   // Check the position of the artifact
-//   EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
+  // As this is a new artifact optimization should be false
+  EXPECT_FALSE(GetOptFlag());
+  // Check if l1 is added to values
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
+  // Check the position of the artifact
+  EXPECT_EQ(GetPose(gtsam::Symbol('l', 1)).translation(),
+            gtsam::Point3(12.1, 0, 0));
 
-//   // New message at 0.159 (not gets added to pose graph)
-//   l1_value.header.stamp = ros::Time(0.159);
-//   l1_value.pose.pose.position.x = 4.4;
-//   l1_value.pose.pose.orientation.w = 1.0;
+  // New message at 0.159 (not gets added to pose graph)
+  l1_value.header.stamp = ros::Time(0.159);
+  l1_value.pose.pose.position.x = 4.4;
+  l1_value.pose.pose.orientation.w = 1.0;
 
-//   nav_msgs::Odometry::ConstPtr a2l1_odom(
-//       new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a2l1_odom(new nav_msgs::Odometry(l1_value));
 
-//   // Call Lidar callback
-//   LidarCallback(a2l1_odom);
+  // Call Lidar callback
+  LidarCallback(a2l1_odom);
 
-//   // Change time and send the message again
-//   new_data->b_has_data = true;
-//   new_data->factors[0].stamp = ros::Time(0.16);
-//   new_data->factors[0].position = gtsam::Point3 (7.8, 0, 0);
+  // Change time and send the message again
+  new_data->b_has_data = true;
+  new_data->factors[0].stamp = ros::Time(0.16);
+  new_data->factors[0].position = gtsam::Point3(7.8, 0, 0);
 
-//   // Call the ProcessArtifactData. Adding an old artifact
-//   ProcessArtifacts(new_data);
+  // Call the ProcessArtifactData. Adding an old artifact
+  ProcessArtifacts(new_data);
 
-//   // As this is a new artifact optimization should be false
-//   EXPECT_TRUE(GetOptFlag());
-//   // Check if l1 is added to values
-//   EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
-//   // Check the position of the artifact
-//   EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
-//   // Check the loop closure factor
-//   gtsam::NonlinearFactorGraph graph = GetNfg();
-//   std::vector<gtsam::Symbol> other_keys;
+  // As this is a new artifact optimization should be false
+  EXPECT_TRUE(GetOptFlag());
+  // Check if l1 is added to values
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
+  // Check the position of the artifact
+  EXPECT_EQ(GetPose(gtsam::Symbol('l', 1)).translation(),
+            gtsam::Point3(12.1, 0, 0));
+  // Check the loop closure factor
+  gtsam::NonlinearFactorGraph graph = GetNfg();
+  std::vector<gtsam::Symbol> other_keys;
 
-//   for (auto factor:graph){
-//     if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
-//       if (factor->keys()[0] == gtsam::Symbol('l',1)){
-//         other_keys.push_back(factor->keys()[1]);
-//       } else {
-//         other_keys.push_back(factor->keys()[0]);
-//       }
-//     }
-//   }
-//   // Check if a1 is present in a factor with l1
-//   EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',1))
-//   != other_keys.end());
+  for (auto factor : graph) {
+    if (factor->find(gtsam::Symbol('l', 1)) != factor->end()) {
+      if (factor->keys()[0] == gtsam::Symbol('l', 1)) {
+        other_keys.push_back(factor->keys()[1]);
+      } else {
+        other_keys.push_back(factor->keys()[0]);
+      }
+    }
+  }
+  // Check if a1 is present in a factor with l1
+  EXPECT_TRUE(find(other_keys.begin(),
+                   other_keys.end(),
+                   gtsam::Symbol('a', 1)) != other_keys.end());
 
-//   // Check if a2 is present in a factor with l1
-//   EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2))
-//   != other_keys.end());
-// }
+  // Check if a2 is present in a factor with l1
+  EXPECT_TRUE(find(other_keys.begin(),
+                   other_keys.end(),
+                   gtsam::Symbol('a', 2)) != other_keys.end());
+}
 
-// // Check Process April tag data.
-// TEST_F(TestLampRobot, TestProcessAprilTagData) {
-
-// }
+// Check Process April tag data.
+TEST_F(TestLampRobot, TestProcessAprilTagData) {}
 
 TEST_F(TestLampRobot, SetInitialKey) {
   // Set string
