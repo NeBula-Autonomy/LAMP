@@ -876,12 +876,11 @@ TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {
   ros::NodeHandle nh("~");
   oh.Initialize(nh);
 
-  // Message creation
   sensor_msgs::PointCloud2 msg1;
   msg1.header.stamp = t1_ros;
   sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
       new sensor_msgs::PointCloud2(msg1));
-
+      
   sensor_msgs::PointCloud2 msg2;
   msg2.header.stamp = t2_ros;
   sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
@@ -892,15 +891,6 @@ TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {
   sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
       new sensor_msgs::PointCloud2(msg3));
   
-  // Test first scenario (if)
-  PointCloudCallback(pc_ptr1);
-  auto ptr_buffer_1 = GetPointCloudBuffer();
-  ASSERT_EQ(ptr_buffer_1->size(), 1);
-  auto itrTime_1 = ptr_buffer_1->begin();
-  ClearPreviousPointCloudScans(itrTime_1);
-  ASSERT_EQ(ptr_buffer_1->size(), 0);
-
-  // Test second scenario (else)
   PointCloudCallback(pc_ptr1);
   PointCloudCallback(pc_ptr2);
   PointCloudCallback(pc_ptr3);

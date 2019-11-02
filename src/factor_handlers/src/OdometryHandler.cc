@@ -337,7 +337,6 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
   // If this gives the start of the buffer, then take that point cloud
   if (itrTime == point_cloud_buffer_.begin()) {
     *msg = itrTime->second;
-    ClearPreviousPointCloudScans(itrTime);
     time_diff = itrTime->first - stamp.toSec();
     if (time_diff > keyed_scan_time_diff_limit_){
       ROS_WARN("Time diff between point cloud and node larger than 0.1. Using earliest scan in buffer [GetKeyedScanAtTime]");
@@ -375,7 +374,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
     itrTimeReturned = itrTime;
   } else {
     // Otherwise use time1
-    *msg = std::prev(itrTime, 1)->second;
+    *msg = std::prev(itrTime)->second;
     time_diff = stamp.toSec() - time1;
     itrTimeReturned = std::prev(itrTime);
   }
@@ -398,12 +397,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
 
 void OdometryHandler::ClearPreviousPointCloudScans(const PointCloudBuffer::iterator& itrTime) {
   auto itrBegin = point_cloud_buffer_.begin();
-  if (itrTime==itrBegin){
-    point_cloud_buffer_.erase(itrBegin);
-  }
-  else{
-    point_cloud_buffer_.erase(itrBegin, itrTime);
-  }  
+  point_cloud_buffer_.erase(itrBegin, itrTime);
 }
 
 // Utilities
