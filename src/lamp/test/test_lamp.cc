@@ -519,7 +519,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 */
 TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // Construct the new April tag data
-  std::shared_ptr<AprilTagData> new_data (new AprilTagData());
+  std::shared_ptr<AprilTagData> new_data = std::make_shared<AprilTagData>();
   new_data->b_has_data = true;
   new_data->type = "april";
 
@@ -766,7 +766,7 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
 
 TEST_F(TestLampRobot, NonSequentialKeys) {
   // Construct the new Artifact data
-  std::shared_ptr<ArtifactData> new_data (new ArtifactData());
+  std::shared_ptr<ArtifactData> new_data = std::make_shared<ArtifactData>();
   new_data->b_has_data = true;
   new_data->type = "artifact";
 
