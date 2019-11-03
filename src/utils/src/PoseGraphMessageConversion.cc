@@ -205,17 +205,16 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
 }
 
 void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
-  // gtsam::NonlinearFactorGraph new_factors;
-  // gtsam::Values blank_values;
-  // utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
-  // nfg_.add(new_factors);
-
   for (const auto& edge : msg->edges) {
     TrackFactor(edge);
   }
   for (const auto& node : msg->nodes) {
     TrackNode(node);
   }
+}
+
+void PoseGraph::AddAllValuesToNew() {
+  values_new_ = values_;
 }
 
 EdgeMessage Factor::ToMsg() const {

@@ -96,9 +96,9 @@ void ManualLoopClosureHandler::ResetFactorData() {
 }
 
 
-FactorData* ManualLoopClosureHandler::GetData() {
+std::shared_ptr<FactorData> ManualLoopClosureHandler::GetData() {
 
-  LoopClosureData* output_data = new LoopClosureData(factors_);
+  std::shared_ptr<LoopClosureData> output_data = std::make_shared<LoopClosureData>(factors_);
   ResetFactorData();
 
   return output_data;

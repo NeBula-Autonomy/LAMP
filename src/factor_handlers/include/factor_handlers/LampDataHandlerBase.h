@@ -47,7 +47,7 @@ class LampDataHandlerBase {
     ~LampDataHandlerBase();
 
     virtual bool Initialize(const ros::NodeHandle& n);
-    virtual FactorData* GetData() = 0;
+    virtual std::shared_ptr<FactorData> GetData() = 0;
 
 
   protected:

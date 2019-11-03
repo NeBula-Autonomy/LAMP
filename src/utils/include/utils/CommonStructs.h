@@ -272,6 +272,9 @@ public:
 
   // Incremental update from pose graph message.
   void UpdateFromMsg(const GraphMsgPtr& msg);
+  
+  // Update all values_new_ so the incremental publisher republishes the whole graph 
+  void AddAllValuesToNew();
 
   inline void ClearIncrementalMessages() {
     edges_new_.clear();
@@ -368,6 +371,9 @@ struct AprilTagFactor {
 
 struct OdometryFactor {
   std::pair<ros::Time, ros::Time> stamps;
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud;
+  bool b_has_point_cloud;
 
   gtsam::Pose3 transform;
   gtsam::SharedNoiseModel covariance;

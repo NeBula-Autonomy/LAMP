@@ -58,8 +58,8 @@ class LampBaseStation : public LampBase {
     std::vector<std::string> robot_names_;
 
     // Factor handler wrappers
-    bool ProcessPoseGraphData(FactorData* data);
-    bool ProcessManualLoopClosureData(FactorData* data);
+    bool ProcessPoseGraphData(std::shared_ptr<FactorData> data);
+    bool ProcessManualLoopClosureData(std::shared_ptr<FactorData> data);
 
     // Data handler classes
     PoseGraphHandler pose_graph_handler_;

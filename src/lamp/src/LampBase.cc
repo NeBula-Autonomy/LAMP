@@ -24,11 +24,15 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampBase::LampBase() : update_rate_(10), b_use_fixed_covariances_(false) {
+LampBase::LampBase()
+  : update_rate_(10), 
+  b_use_fixed_covariances_(false),
+  b_repub_values_after_optimization_(false) {
   // any other things on construction
 
   // set up mapping function to get internal ID given gtsam::Symbol
   pose_graph_.symbol_id_map = boost::bind(&LampBase::MapSymbolToId, this, _1);
+
 }
 
 // Destructor
@@ -114,6 +118,22 @@ void LampBase::OptimizerUpdateCallback(
                     << ", " << n.pose.position.z << ")");
   }
 
+  // Merge the optimizer result into the internal pose graph
+  // Note that the edges should not have changed (only values)
+  MergeOptimizedGraph(msg);
+
+  // Publish the pose graph and update the map 
+  PublishPoseGraph();
+
+  // Update the map (also publishes)
+  ReGenerateMapPointCloud();
+
+  // TODO - check that this works as it is defined in the LampRobot class
+  UpdateArtifactPositions();
+}
+
+void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+  
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
@@ -131,16 +151,10 @@ void LampBase::OptimizerUpdateCallback(
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
 
-  // Note that the edges should not have changed (only values)
-
-  // Publish the pose graph and update the map
-  PublishPoseGraph();
-
-  // Update the map (also publishes)
-  ReGenerateMapPointCloud();
-
-  // TODO - check that this works as it is defined in the LampRobot class
-  UpdateArtifactPositions();
+  if (b_repub_values_after_optimization_) {
+    ROS_INFO("Republishing all values on incremental pose graph");
+    pose_graph_.AddAllValuesToNew();
+  }
 }
 
 void LampBase::UpdateArtifactPositions(){};
