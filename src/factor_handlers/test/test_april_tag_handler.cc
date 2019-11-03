@@ -195,6 +195,27 @@ TEST_F(TestAprilTagHandler, Initialize) {
   EXPECT_TRUE(Initialize());
 }
 
+TEST_F(TestAprilTagHandler, IsPgoIntialized) {
+  // PGO initialized should be false
+  EXPECT_FALSE(getInitialize());
+
+  // Trigger the callback
+  AprilTagCallback(msg);
+  
+  // Get the data
+  AprilTagData* stored_data = dynamic_cast<AprilTagData*>(GetData());
+  EXPECT_FALSE(stored_data->b_has_data);
+
+  // Initialize Artifacts
+  setInitialize();
+  EXPECT_TRUE(getInitialize());
+
+  // Trigger the callback
+  AprilTagCallback(msg);
+  stored_data = dynamic_cast<AprilTagData*>(GetData());
+  EXPECT_TRUE(stored_data->b_has_data);
+}
+
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);
