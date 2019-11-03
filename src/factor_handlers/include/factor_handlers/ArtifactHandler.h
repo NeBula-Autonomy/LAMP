@@ -186,6 +186,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     
     // Test class
     friend class TestArtifactHandler;
+    friend class TestLampRobot;
 };
 
 #endif // !ARTIFACT_HANDLER_H

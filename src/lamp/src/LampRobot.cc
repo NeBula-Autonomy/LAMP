@@ -707,6 +707,9 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
             temp_transform)) {
         ROS_ERROR("Can't convert April tag from global to relative");
         b_has_new_factor_ = false;
+
+        // Clean all the new factors 
+        april_tag_handler_.CleanFailedFactors(false);
         return false;
       }
     } else {
@@ -723,6 +726,10 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
       ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE APRIL TAG!!");
       b_has_new_factor_ = false;
+
+      // Clean all the new factors 
+      april_tag_handler_.CleanFailedFactors(false);
+      
       return false;
     }
 
@@ -777,6 +784,9 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
   pose_graph_.AddNewValues(new_values);
 
   ROS_INFO("Successfully complete ProcessAprilTagData call with an April Tag");
+
+  // Clean the new keys 
+  april_tag_handler_.CleanFailedFactors(true);
 
   return true;
 }

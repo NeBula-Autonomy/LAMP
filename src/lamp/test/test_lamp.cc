@@ -140,6 +140,34 @@ public:
     return lr.april_tag_handler_.GetArtifactKey2InfoHash();
   }
 
+  std::unordered_map<long unsigned int, ArtifactInfo>& GetArtifactInfoHash() {
+    return lr.artifact_handler_.GetArtifactKey2InfoHash();
+  }
+
+  std::unordered_map<std::string, gtsam::Symbol> &GetIdKeyHash() {
+    return lr.artifact_handler_.artifact_id2key_hash;
+  }
+
+  std::vector<gtsam::Symbol> &GetNewKeys() {
+    return lr.artifact_handler_.new_keys_;
+  }
+
+  int GetLargestArtifactId() {
+    return lr.artifact_handler_.largest_artifact_id_;
+  }
+
+  std::unordered_map<std::string, gtsam::Symbol> &GetAprilIdKeyHash() {
+    return lr.april_tag_handler_.artifact_id2key_hash;
+  }
+
+  std::vector<gtsam::Symbol> &GetAprilNewKeys() {
+    return lr.april_tag_handler_.new_keys_;
+  }
+
+  int GetAprilLargestArtifactId() {
+    return lr.april_tag_handler_.largest_artifact_id_;
+  }
+
   void ConvertGlobalToRelative(const ros::Time stamp,
                                const gtsam::Pose3 pose_global,
                                gtsam::Pose3& pose_relative) {
@@ -326,8 +354,50 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Call Lidar callback
   LidarCallback(a3_odom);
 
+  // Construct Artifact Info
+  ArtifactInfo temp_info;
+  temp_info.id = "artifact";
+  temp_info.num_updates = 1;
+  temp_info.global_position = gtsam::Point3(9.7, 0, 0);
+
+  // Add the factor in InfoHash
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
+  info_map[new_factor.key] = temp_info;
+
+  // Add to idkey hash
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
+  key_hash["artifact"] = new_factor.key;
+
+  // Check if the artifact is in the Info Hash
+  info_map = GetArtifactInfoHash();
+  EXPECT_EQ(info_map.size(), 1);
+
+  // Check if the artifact is in the Key Hash
+  key_hash = GetIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 1);
+
+  // Add to new keys
+  std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
+  temp_keys.push_back(new_factor.key);
+
+  // Check if the new_keys is inserted
+  temp_keys = GetNewKeys();
+  EXPECT_EQ(temp_keys.size(), 1);
+
   // Call the ProcessArtifactData. Adding a new artifact
   ProcessArtifacts(new_data);
+
+  // Check if the artifact is still in the Info Hash
+  info_map = GetArtifactInfoHash();
+  EXPECT_EQ(info_map.size(), 1);
+
+  // Check if the artifact is still in the Key Hash
+  key_hash = GetIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 1);
+
+  // Check if the new_keys is cleared
+  temp_keys = GetNewKeys();
+  EXPECT_EQ(temp_keys.size(), 0);
 
   // As this is a new artifact optimization should be false
   EXPECT_FALSE(GetOptFlag());
@@ -379,6 +449,55 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 
   // Check if a2 is present in a factor with l1  
   EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2)) != other_keys.end());
+
+  // Add a new failed factor
+  new_data->factors.clear();
+  new_data->b_has_data = true;
+  new_data->type = "survivor";
+  new_factor.key = gtsam::Symbol('l', 2);
+  new_factor.position = gtsam::Point3(0.9, 0, 0);
+  new_factor.covariance = noise;
+  // Time greater than threshold
+  new_factor.stamp = ros::Time(20.15);
+
+  // Add the new factor
+  new_data->factors.push_back(new_factor);
+
+  // Construct Artifact Info
+  temp_info.id = "survivor";
+  temp_info.num_updates = 1;
+  temp_info.global_position = gtsam::Point3(0.9, 0, 0);
+
+  // Add the factor in InfoHash
+  info_map = GetArtifactInfoHash();
+  info_map[new_factor.key] = temp_info;
+
+  // Add to idkey hash
+  key_hash = GetIdKeyHash();
+  key_hash["survivor"] = new_factor.key;
+
+  // Add to new keys
+  temp_keys = GetNewKeys();
+  temp_keys.push_back(new_factor.key);  
+
+  // Call Process Artifacts should fail
+  ProcessArtifacts(new_data);
+
+  // Check if the artifact is still in the Info Hash
+  info_map = GetArtifactInfoHash();
+  EXPECT_EQ(info_map.size(), 1);
+
+  // Check if the artifact is still in the Key Hash
+  key_hash = GetIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 1);
+
+  // Check if the new_keys is cleared
+  temp_keys = GetNewKeys();
+  EXPECT_EQ(temp_keys.size(), 0);
+
+  // Check the largest artifact id
+  int largest_id = GetLargestArtifactId();
+  EXPECT_EQ(largest_id, 2);
 }
 
 /** Check Process April tag data. 
@@ -394,6 +513,9 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
  *o--------->o------------|------------------------->o------------------------------>o-----------------------------------------------------                       Graph odom
  * -|--------|------------|------------|------------|-------------|---------|--------|--------------------|---------------------------|----                       1D line
  * 0.05     0.1         0.109        0.11          0.15         0.159      0.16     2.0                                                                           Time
+ * QUESTION: Check if global flag needs to be turned on in case of april.
+ * TODO: Reflect the new non-sequential unit test in the above graph for both Artifact and april tag handler
+ * TODO: I dont think that the position in these new non sequential factor matters. Check it once. 
 */
 TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // Construct the new April tag data
@@ -497,6 +619,26 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // Check if l1 is added to values
   EXPECT_FALSE(GetValues().exists(gtsam::Symbol('l',1)));
 
+  // Add to idkey hash
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetAprilIdKeyHash();
+  key_hash["distal"] = new_factor.key;
+
+  // Check if the artifact is in the Info Hash
+  info_hash = GetInfoHash();
+  EXPECT_EQ(info_hash.size(), 1);
+
+  // Check if the artifact is in the Key Hash
+  key_hash = GetAprilIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 1);
+
+  // Add to new keys
+  std::vector<gtsam::Symbol>& temp_keys = GetAprilNewKeys();
+  temp_keys.push_back(new_factor.key);
+
+  // Check if the new_keys is inserted
+  temp_keys = GetAprilNewKeys();
+  EXPECT_EQ(temp_keys.size(), 1);
+
   // Call the ProcessAprilTagData. Adding a new April Tag
   ProcessAprilTags(new_data);
 
@@ -570,6 +712,166 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
     }
   }
   EXPECT_EQ(count, 3);
+
+  // Add a new failed factor
+  new_data->factors.clear();
+  new_data->b_has_data = true;
+  new_data->type = "april";
+  new_factor.key = gtsam::Symbol('l', 2);
+  new_factor.position = gtsam::Point3(0.9, 0, 0);
+  new_factor.covariance = noise;
+  // Time greater than threshold
+  new_factor.stamp = ros::Time(20.15);
+
+  // Add the new factor
+  new_data->factors.push_back(new_factor);
+
+  // Construct Artifact Info
+  ArtifactInfo temp_info;
+  temp_info.id = "calib";
+  temp_info.num_updates = 1;
+  temp_info.global_position = gtsam::Point3(0.9, 0, 0);
+
+  // Add the factor in InfoHash
+  info_hash = GetInfoHash();
+  info_hash[new_factor.key] = temp_info;
+
+  // Add to idkey hash
+  key_hash = GetAprilIdKeyHash();
+  key_hash["calib"] = new_factor.key;
+
+  // Add to new keys
+  temp_keys = GetAprilNewKeys();
+  temp_keys.push_back(new_factor.key);  
+
+  // Call Process Artifacts should fail
+  ProcessAprilTags(new_data);
+
+  // Check if the artifact is still in the Info Hash
+  info_hash = GetInfoHash();
+  EXPECT_EQ(info_hash.size(), 1);
+
+  // Check if the artifact is still in the Key Hash
+  key_hash = GetAprilIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 1);
+
+  // Check if the new_keys is cleared
+  temp_keys = GetAprilNewKeys();
+  EXPECT_EQ(temp_keys.size(), 0);
+
+  // Check the largest artifact id
+  int largest_id = GetAprilLargestArtifactId();
+  EXPECT_EQ(largest_id, 2);
+}
+
+TEST_F(TestLampRobot, NonSequentialKeys) {
+  // Construct the new Artifact data
+  ArtifactData* new_data = new ArtifactData();
+  new_data->b_has_data = true;
+  new_data->type = "artifact";
+
+  ArtifactFactor new_factor;
+  new_factor.key = gtsam::Symbol('l', 1);
+  new_factor.position = gtsam::Point3(9.7, 0, 0);
+  gtsam::Vector6 sig;
+  sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
+  new_factor.covariance = noise;
+  new_factor.stamp = ros::Time(0.11);
+
+  // Add the new factor
+  new_data->factors.push_back(new_factor);
+
+  // Construct Artifact Info
+  ArtifactInfo temp_info;
+  temp_info.id = "artifact";
+  temp_info.num_updates = 1;
+  temp_info.global_position = gtsam::Point3(9.7, 0, 0);
+
+  // Add the factor in InfoHash
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
+  info_map[new_factor.key] = temp_info;
+
+  // Add to idkey hash
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
+  key_hash["artifact"] = new_factor.key;
+
+  // Add to new keys
+  std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
+  temp_keys.push_back(new_factor.key);
+
+  // Check if the artifact is still in the Info Hash
+  info_map = GetArtifactInfoHash();
+  EXPECT_EQ(info_map.size(), 1);
+
+  // Check if the artifact is still in the Key Hash
+  key_hash = GetIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 1);
+
+  // Check if the new_keys is cleared
+  temp_keys = GetNewKeys();
+  EXPECT_EQ(temp_keys.size(), 1);
+
+  // Set the global flag
+  setArtifactInGlobal(true);
+  setFixedCovariance(false);
+
+  // Call the ProcessArtifactData. Adding a new artifact
+  ProcessArtifacts(new_data);
+
+  // Check if the artifact is still in the Info Hash
+  info_map = GetArtifactInfoHash();
+  EXPECT_EQ(info_map.size(), 0);
+
+  // Check if the artifact is still in the Key Hash
+  key_hash = GetIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 0);
+
+  // Check if the new_keys is cleared
+  temp_keys = GetNewKeys();
+  EXPECT_EQ(temp_keys.size(), 0);
+
+  // Turn off global flag
+  setArtifactInGlobal(false);
+
+  // Add the factor in InfoHash
+  info_map = GetArtifactInfoHash();
+  info_map[new_factor.key] = temp_info;
+
+  // Add to idkey hash
+  key_hash = GetIdKeyHash();
+  key_hash["artifact"] = new_factor.key;
+
+  // Add to new keys
+  temp_keys = GetNewKeys();
+  temp_keys.push_back(new_factor.key);
+
+  // Check if the artifact is still in the Info Hash
+  info_map = GetArtifactInfoHash();
+  EXPECT_EQ(info_map.size(), 1);
+
+  // Check if the artifact is still in the Key Hash
+  key_hash = GetIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 1);
+
+  // Check if the new_keys is cleared
+  temp_keys = GetNewKeys();
+  EXPECT_EQ(temp_keys.size(), 1);
+
+  // Call the ProcessArtifactData. Adding a new artifact
+  ProcessArtifacts(new_data);
+
+  // Check if the artifact is still in the Info Hash
+  info_map = GetArtifactInfoHash();
+  EXPECT_EQ(info_map.size(), 0);
+
+  // Check if the artifact is still in the Key Hash
+  key_hash = GetIdKeyHash();
+  EXPECT_EQ(key_hash.size(), 0);
+
+  // Check if the new_keys is cleared
+  temp_keys = GetNewKeys();
+  EXPECT_EQ(temp_keys.size(), 0);
 }
 
 TEST_F(TestLampRobot, SetInitialKey) {
