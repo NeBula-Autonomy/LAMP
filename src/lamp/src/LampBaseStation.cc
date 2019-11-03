@@ -17,7 +17,11 @@ namespace gu = geometry_utils;
 // Constructor (if there is override)
 LampBaseStation::LampBaseStation(): 
         zero_noise_(0.0001),
-        b_published_initial_node_(false) {}
+        b_published_initial_node_(false) {
+
+  // On base station LAMP, republish values after optimization
+  b_repub_values_after_optimization_ = true;
+}
 
 //Destructor
 LampBaseStation::~LampBaseStation() {}
@@ -198,11 +202,11 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Publish anything that is needed 
 }
 
-bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
+bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   // ROS_INFO_STREAM("In ProcessPoseGraphData");
 
   // Extract pose graph data
-  PoseGraphData* pose_graph_data = dynamic_cast<PoseGraphData*>(data);
+  std::shared_ptr<PoseGraphData> pose_graph_data = std::dynamic_pointer_cast<PoseGraphData>(data);
 
   // Check if there are new pose graphs
   if (!pose_graph_data->b_has_data) {
@@ -343,10 +347,10 @@ void LampBaseStation::ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n) {
   PublishPoseGraph();
 }
 
-bool LampBaseStation::ProcessManualLoopClosureData(FactorData* data) {
+bool LampBaseStation::ProcessManualLoopClosureData(std::shared_ptr<FactorData> data) {
 
   // Extract loop closure data
-  LoopClosureData* manual_loop_closure_data = dynamic_cast<LoopClosureData*>(data);
+  std::shared_ptr<LoopClosureData> manual_loop_closure_data = std::dynamic_pointer_cast<LoopClosureData>(data);
 
   if (!manual_loop_closure_data->b_has_data) {
     return false;

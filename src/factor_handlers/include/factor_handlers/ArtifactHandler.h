@@ -54,7 +54,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
-    virtual FactorData* GetData();
+    virtual std::shared_ptr<FactorData> GetData();
 
     /*! \brief  Get the artifact_key2info_hash_
      * Returns  artifact_key2info_hash_

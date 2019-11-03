@@ -2,7 +2,7 @@
 translation_threshold: 1.0
 
 # Point cloud storing parameters
-keyed_scan_time_diff_limit: 0.5
+keyed_scan_time_diff_limit: 0.1
 pc_buffer_size_limit: 10
 
 # Timestamp threshold 
@@ -10,4 +10,6 @@ ts_threshold: 5.0
 
 # Buffer size limits
 max_buffer_size: 6000
-min_buffer_size: 3000
+
+# Debugging message for point cloud buffer handling
+b_debug_pointcloud_buffer: false

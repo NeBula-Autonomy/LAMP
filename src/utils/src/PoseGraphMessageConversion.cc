@@ -220,11 +220,12 @@ void PoseGraph::UpdateFromMsg(const GraphMsgPtr& msg) {
   utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
   nfg.add(new_factors);
 
-  // Update all values - also update all values_new_ so the incremental publisher
-  // Republishes the whole graph 
+  // Update all values
   values = blank_values; 
-  values_new_ = values;
+}
 
+void PoseGraph::AddAllValuesToNew() {
+  values_new_ = values;
 }
 
 EdgeMessage Factor::ToMsg() const {

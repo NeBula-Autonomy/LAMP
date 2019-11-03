@@ -99,10 +99,10 @@ bool PoseGraphHandler::CreatePublishers(const ros::NodeHandle& n) {
   return true;
 }
 
-FactorData* PoseGraphHandler::GetData() {
+std::shared_ptr<FactorData> PoseGraphHandler::GetData() {
 
   // Main interface with lamp for getting new pose graphs
-  PoseGraphData* output_data = new PoseGraphData(data_);
+  std::shared_ptr<PoseGraphData> output_data = std::make_shared<PoseGraphData>(data_);
 
   // Clear the stored data
   ResetGraphData();

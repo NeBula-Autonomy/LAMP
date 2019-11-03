@@ -25,6 +25,13 @@ LaserLoopClosure::~LaserLoopClosure() {}
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
+  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+
+  // If laser loop closures are off, exit without setting up publishers or subscribers
+  if (!pu::Get(param_ns_ + "/b_find_laser_loop_closures", b_check_for_loop_closures_))
+    return false;
+  if (!b_check_for_loop_closures_)
+    return true;
 
   // Subscribers
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
@@ -36,10 +43,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 
   // Parameters
   double distance_to_skip_recent_poses;
-  param_ns_ = utils::GetParamNamespace(n.getNamespace());
   // Load loop closing parameters.
-  if (!pu::Get(param_ns_ + "/b_check_for_loop_closures", b_check_for_loop_closures_))
-    return false;
   if (!pu::Get(param_ns_ + "/translation_threshold_nodes", translation_threshold_nodes_))
     return false;
   if (!pu::Get(param_ns_ + "/proximity_threshold", proximity_threshold_))
@@ -115,6 +119,7 @@ bool LaserLoopClosure::FindLoopClosures(
     // Get pose for the other key.
     const gtsam::Pose3 pose2 = keyed_poses_.at(other_key);
     const gtsam::Pose3 difference = pose1.between(pose2);
+    
     if (difference.translation().norm() < proximity_threshold_) {
       const PointCloud::ConstPtr scan2 = keyed_scans_[other_key];
 
@@ -130,28 +135,39 @@ bool LaserLoopClosure::FindLoopClosures(
         ROS_INFO_STREAM("Closed loop between "
                         << gtsam::DefaultKeyFormatter(new_key) << " and "
                         << gtsam::DefaultKeyFormatter(other_key));
+
         closed_loop = true;
-        last_closure_key_ = new_key;
-        // Send an message notifying any subscribers that we found a loop
-        // closure and having the keys of the loop edge.
-        pose_graph_msgs::PoseGraphEdge edge;
-        edge.key_from = new_key;
-        edge.key_to = other_key;
-        edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
-        edge.pose = gr::ToRosPose(delta);
-        // convert matrix covariance to vector
-        for (size_t i = 0; i < 6; ++i) {
-          for (size_t j = 0; j < 6; ++j) {
-            edge.covariance[6 * i + j] = covariance(i, j);
-          }
-        }
-        // push back to vector
+        pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(new_key, other_key, delta, covariance);
+
         loop_closure_edges->push_back(edge);
       }
     }
-  } // end of for loop
+  } 
 
   return closed_loop;
+}
+
+pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
+        gtsam::Symbol key1, 
+        gtsam::Symbol key2,
+        geometry_utils::Transform3& delta, 
+        gtsam::Matrix66& covariance) {
+  last_closure_key_ = key1;
+  // Send an message notifying any subscribers that we found a loop
+  // closure and having the keys of the loop edge.
+  pose_graph_msgs::PoseGraphEdge edge;
+  edge.key_from = key1;
+  edge.key_to = key2;
+  edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+  edge.pose = gr::ToRosPose(delta);
+  // convert matrix covariance to vector
+  for (size_t i = 0; i < 6; ++i) {
+    for (size_t j = 0; j < 6; ++j) {
+      edge.covariance[6 * i + j] = covariance(i, j);
+    }
+  }
+  // push back to vector
+  return edge;
 }
 
 bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,

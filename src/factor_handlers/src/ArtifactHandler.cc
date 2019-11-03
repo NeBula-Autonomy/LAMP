@@ -174,9 +174,10 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
  * Returns  Factors
  * TODO: IN case of AprilTag this would spit out ArtifactData which is wrong
  */
-FactorData* ArtifactHandler::GetData() {
+std::shared_ptr<FactorData> ArtifactHandler::GetData() {
   // Create a temporary copy to return
-  FactorData* temp_artifact_data_ = new ArtifactData(artifact_data_);
+  std::shared_ptr<ArtifactData> temp_artifact_data_ = std::make_shared<ArtifactData>(artifact_data_);
+
 
   // Clear artifact data
   ClearArtifactData();

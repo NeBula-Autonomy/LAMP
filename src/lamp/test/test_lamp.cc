@@ -128,7 +128,7 @@ public:
     lr.b_use_fixed_covariances_ = value;
   }
 
-  void ProcessArtifacts(FactorData* data) {
+  void ProcessArtifacts(std::shared_ptr<FactorData> data) {
     lr.ProcessArtifactData(data);
   }
 
@@ -263,7 +263,7 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
  */ 
 TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Construct the new Artifact data
-  ArtifactData* new_data = new ArtifactData();
+  std::shared_ptr<ArtifactData> new_data = std::make_shared<ArtifactData>();
   new_data->b_has_data = true;
   new_data->type = "artifact";
 
