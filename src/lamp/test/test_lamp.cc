@@ -128,7 +128,7 @@ public:
     lr.b_use_fixed_covariances_ = value;
   }
 
-  void ProcessArtifacts(FactorData* data) {
+  void ProcessArtifacts(std::shared_ptr<FactorData> data) {
     lr.ProcessArtifactData(data);
   }
 
@@ -235,7 +235,7 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
  */ 
 TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Construct the new Artifact data
-  ArtifactData* new_data = new ArtifactData();
+  std::shared_ptr<ArtifactData> new_data = std::make_shared<ArtifactData>();
   new_data->b_has_data = true;
   new_data->type = "artifact";
 
@@ -653,20 +653,20 @@ TEST_F(TestLampRobot, GetKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(2.0)));
 
   // Mismatches
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.0000001)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.4990001)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.9999999)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.5009999)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.9999000)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.0000001)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.4990001)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.9999999)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.5009999)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.9999000)));
 }
 
 TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
   ros::Time::init();
   SetTimeThreshold(0.001);
 
-  // Expect empty keys from invalid inputs
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(0.0)));
-  EXPECT_EQ(gtsam::Symbol(), GetKeyAtTime(ros::Time(1.0)));
+  // Expect error keys from invalid inputs
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.0)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.0)));
 }
 
 TEST_F(TestLampRobot, GetClosestKeyAtTime) {
@@ -709,8 +709,8 @@ TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
 
   // Check single key
   AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
-  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(500.0)));
-  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(0.0)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(500.0)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(0.0)));
 
   // Add more keys
   AddStampToOdomKey(ros::Time(50.0), gtsam::Symbol('a', 1));
@@ -721,7 +721,7 @@ TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
   // Exact matches
   // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); //
   // TODO - fix this
-  EXPECT_EQ(gtsam::Symbol(), GetClosestKeyAtTime(ros::Time(55.0)));
+  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(55.0)));
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.5)));
 }
 
@@ -876,6 +876,28 @@ TEST_F(TestLampRobot, TestSetFixedCovariancesOdom) {
 
   EXPECT_NEAR(sigma_out[0], attitude_sigma, tolerance_);
   EXPECT_NEAR(sigma_out[3], position_sigma, tolerance_);
+}
+
+// TODO - work out how to pass around SharedNoiseModels
+TEST_F(TestLampRobot, TestSetFixedPrecisionsArtifacts) {
+  double rot_precision;
+  double trans_precision;
+
+  ros::NodeHandle nh, pnh("~");
+
+  lr.Initialize(nh);
+
+  ros::param::get("artifact_rot_precision", rot_precision);
+  ros::param::get("artifact_trans_precision", trans_precision);
+
+  // Set the paramters
+  gtsam::Vector precision_out =
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Diagonal>(
+          SetFixedNoiseModels("artifact"))
+          ->precisions();
+
+  EXPECT_NEAR(precision_out[0], rot_precision, tolerance_);
+  EXPECT_NEAR(precision_out[3], trans_precision, tolerance_);
 }
 
 TEST_F(TestLampRobot, TestSetFixedCovariancesLoopClosure) {

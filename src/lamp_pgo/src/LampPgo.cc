@@ -41,15 +41,9 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // Parse parameters
   // Optimizer backend
-  ROS_INFO_STREAM("PGO PROCESS NAMESPACE: " << n.getNamespace());
-  std::string full_namespace = n.getNamespace();
-  if (full_namespace.find("base_station") != std::string::npos) {
-    param_ns_ = "base";
-  }
-  else {
-    param_ns_ = "robot";
-  }
-  ROS_INFO_STREAM("Chosen namespace: " << param_ns_);
+  ROS_INFO_STREAM("PGO NODE NAMESPACE: " << n.getNamespace());
+  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+  ROS_INFO_STREAM("Parameter namespace: " << param_ns_);
 
   bool b_use_outlier_rejection;
   if (!pu::Get(param_ns_ + "/b_use_outlier_rejection", b_use_outlier_rejection))
@@ -68,10 +62,8 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
         KimeraRPGO::Verbosity::VERBOSE); // set no outlier rejection
   }
 
-  // TODO - have a better way of handling special symbols...
-  std::vector<char> special_symbs{
-      'l', 'm', 'n', 'o', 'p', 'q', 'u'}; // for artifacts
-  rpgo_params_.specialSymbols = special_symbs;
+  // Artifact or UWB keys (l, m, n, ... + u)
+  rpgo_params_.specialSymbols = utils::GetAllSpecialSymbols();
 
   // set solver
   int solver_num;
@@ -108,6 +100,7 @@ void LampPgo::InputCallback(
   // Extract new values
   // TODO - use the merger here? In case the state of the graph here is
   // different from the lamp node Will that ever be the case?
+
   gtsam::KeyVector key_list = all_values.keys();
   for (size_t i = 0; i < key_list.size(); i++) {
     if (!values_.exists(key_list[i])) {
@@ -117,18 +110,16 @@ void LampPgo::InputCallback(
 
   // Extract the new factors
   for (size_t i = 0; i < all_factors.size(); i++) {
-    if (std::find(nfg_.begin(), nfg_.end(), all_factors[i]) == nfg_.end()) {
+    bool factor_exists = false;
+    for (size_t j = 0; j < nfg_.size(); j++) {
+      if (nfg_[j]->keys() == all_factors[i]->keys()) {
+        factor_exists = true;
+        break;
+      }
+    }
+    if (!factor_exists) {
       // this factor does not exist before
       new_factors.add(all_factors[i]);
-    }
-  }
-
-  // Also add values that are present in the factors only
-  for (auto k : all_factors.keys()) {
-    ROS_INFO_STREAM("Checking for key " << gtsam::DefaultKeyFormatter(k));
-    if (!new_values.exists(k) && !values_.exists(k)) {
-      ROS_INFO_STREAM("---------EXTRA NODE " << gtsam::DefaultKeyFormatter(k));
-      new_values.insert(k, gtsam::Pose3());
     }
   }
 
@@ -138,12 +129,16 @@ void LampPgo::InputCallback(
   }
   ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
 
+  // new_factors.print("new factors");
+
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
 
   // Extract the optimized values
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  // nfg_.print("nfg");
 
   ROS_INFO_STREAM("PGO stored values of size " << values_.size());
   ROS_INFO_STREAM("PGO stored nfg of size " << nfg_.size());

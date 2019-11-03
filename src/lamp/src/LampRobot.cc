@@ -33,7 +33,9 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampRobot::LampRobot() : is_artifact_initialized(false) {}
+LampRobot::LampRobot() : is_artifact_initialized(false) {
+  b_run_optimization_ = false;
+}
 
 // Destructor
 LampRobot::~LampRobot() {}
@@ -59,6 +61,12 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
+  // Init Handlers
+  if (!InitializeHandlers(n)) {
+    ROS_ERROR("%s: Failed to initialize handlers.", name_.c_str());
+    return false;
+  }
+
   // Register Callbacks
   if (!RegisterCallbacks(n)) {
     ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
@@ -68,12 +76,6 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
   // Publishers
   if (!CreatePublishers(n)) {
     ROS_ERROR("%s: Failed to create publishers.", name_.c_str());
-    return false;
-  }
-
-  // Init Handlers
-  if (!InitializeHandlers(n)) {
-    ROS_ERROR("%s: Failed to initialize handlers.", name_.c_str());
     return false;
   }
 
@@ -100,6 +102,15 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("time_threshold", pose_graph_.time_threshold))
     return false;
+  // Load filtering parameters.
+  if (!pu::Get("filtering/grid_filter", params_.grid_filter)) return false;
+  if (!pu::Get("filtering/grid_res", params_.grid_res)) return false;
+  if (!pu::Get("filtering/random_filter", params_.random_filter)) return false;
+  if (!pu::Get("filtering/decimate_percentage", params_.decimate_percentage))
+    return false;
+  // Cap to [0.0, 1.0].
+  params_.decimate_percentage =
+      std::min(1.0, std::max(0.0, params_.decimate_percentage));
 
   // TODO - bring in other parameter
 
@@ -196,8 +207,8 @@ bool LampRobot::SetInitialPosition() {
   double init_x = 0.0, init_y = 0.0, init_z = 0.0;
   double init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
   // if (pose_graph_.prefix.at(0) != 'a') { // offset for debugging
-  //   init_x = 2.0, init_y = -2.0, init_z = 0.0;
-  //   init_qx = 0.0, init_qy = 0.0, init_qz = 0.0, init_qw = 1.0;
+  //   init_x = 0.0, init_y = 0.0, init_z = 0.0;
+  //   init_qx = 0.0, init_qy = 0.0, init_qz = sqrt(0.01), init_qw = sqrt(0.99);
   // }
   bool b_have_fiducial = true;
   if (!pu::Get("fiducial_calibration/position/x", init_x))
@@ -266,6 +277,7 @@ bool LampRobot::SetInitialPosition() {
 
 bool LampRobot::InitializeGraph(
     gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
+  ROS_INFO("Initializing pose graph [LampRobot]");
   pose_graph_.Initialize(initial_key_, pose, covariance);
 
   return true;
@@ -390,9 +402,9 @@ void LampRobot::UpdateArtifactPositions() {
   \author Benjamin Morrell
   \date 01 Oct 2019
 */
-bool LampRobot::ProcessOdomData(FactorData* data) {
+bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
   // Extract odom data
-  OdomData* odom_data = dynamic_cast<OdomData*>(data);
+  std::shared_ptr<OdomData> odom_data = std::dynamic_pointer_cast<OdomData>(data);
 
   // Check if there are new factors
   if (!odom_data->b_has_data) {
@@ -456,10 +468,31 @@ bool LampRobot::ProcessOdomData(FactorData* data) {
     pose_graph_.AddNewValues(new_values);
     new_values.clear();
 
-    if (odometry_handler_.GetKeyedScanAtTime(times.second, new_scan)) {
+    if (odom_factor.b_has_point_cloud) {
       // Store the keyed scan and add it to the map
-      // TODO : filter before adding
+      
+      // Copy input scan.
+      PointCloud::Ptr new_scan;
+      new_scan = odom_factor.point_cloud;
+      
+      // // TODO: Make this a tunable parameter
+      const int n_points = static_cast<int>((1.0 - params_.decimate_percentage) *
+                                              new_scan->size());
+
+      // // Apply random downsampling to the keyed scan
+      pcl::RandomSample<pcl::PointXYZ> random_filter;
+      random_filter.setSample(n_points);
+      random_filter.setInputCloud(new_scan);
+      random_filter.filter(*new_scan);
+
+      // Apply voxel grid filter to the keyed scan
+      pcl::VoxelGrid<pcl::PointXYZ> grid;
+      grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
+      grid.setInputCloud(new_scan);
+      grid.filter(*new_scan);
+      
       pose_graph_.InsertKeyedScan(current_key, new_scan);
+
       AddTransformedPointCloudToMap(current_key);
 
       // publish keyed scan
@@ -482,17 +515,17 @@ void LampRobot::UpdateAndPublishOdom() {
   Pose3 last_pose = pose_graph_.LastPose();
 
   // Get the delta from the last pose to now
-  ros::Time stamp = ros::Time::now();
+  ros::Time stamp;// = ros::Time::now();
   GtsamPosCov delta_pose_cov;
-  if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
+  // if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
     // Had a bad odom return - try latest time from odometry_handler
     if (!odometry_handler_.GetOdomDeltaLatestTime(stamp, delta_pose_cov)) {
       ROS_WARN("No good velocity output yet");
       // TODO - work out what the best thing is to do in this scenario
       return;
     }
-    ROS_INFO("Got good result from getting delta at the latest time");
-  }
+    // ROS_INFO("Got good result from getting delta at the latest time");
+  // }
 
   // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp,
   // delta_pose);
@@ -535,9 +568,9 @@ void LampRobot::UpdateAndPublishOdom() {
   \author Abhishek Thakur
   \date 08 Oct 2019
 */
-bool LampRobot::ProcessArtifactData(FactorData* data) {
+bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
   // Extract artifact data
-  ArtifactData* artifact_data = dynamic_cast<ArtifactData*>(data);
+  std::shared_ptr<ArtifactData> artifact_data = std::dynamic_pointer_cast<ArtifactData>(data);
 
   // Check if there are new factors
   if (!artifact_data->b_has_data) {
@@ -590,7 +623,7 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
 
-    if (pose_key == gtsam::Symbol()) {
+    if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
       ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE ARTIFACTS!!");
       b_has_new_factor_ = false;
@@ -654,10 +687,10 @@ bool LampRobot::ProcessArtifactData(FactorData* data) {
   \author Abhishek Thakur
   \date Oct 2019
 */
-bool LampRobot::ProcessAprilTagData(FactorData* data){
+bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
 
     // Extract artifact data
-  AprilTagData* april_tag_data = dynamic_cast<AprilTagData*>(data);
+  std::shared_ptr<AprilTagData> april_tag_data = std::dynamic_pointer_cast<AprilTagData>(data);
 
   // Check if there are new factors 
   if (!april_tag_data->b_has_data) {
@@ -715,7 +748,7 @@ bool LampRobot::ProcessAprilTagData(FactorData* data){
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
 
-    if (pose_key == gtsam::Symbol()) {
+    if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
       ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE APRIL TAG!!");
       b_has_new_factor_ = false;
@@ -797,7 +830,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   // Get the key from:
   key_from = pose_graph_.GetClosestKeyAtTime(stamp);
 
-  if (key_from == gtsam::Symbol()) {
+  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR("Measurement is from a time out of range. Rejecting");
     return;
   }
@@ -813,7 +846,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   if (!delta_pose_cov.b_has_value) {
     ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
               "WELL HANDLED YET-----------");
-    key_from = gtsam::Symbol();
+    key_from = utils::GTSAM_ERROR_SYMBOL;
     return;
   }
 
@@ -836,7 +869,7 @@ bool LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
   // Get the closes node in the pose-graph
   gtsam::Symbol key_from = pose_graph_.GetClosestKeyAtTime(stamp);
 
-  if (key_from == gtsam::Symbol()) {
+  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR(
         "Key from artifact key_from is outside of range - can't link artifact");
     return false;

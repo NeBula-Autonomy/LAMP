@@ -53,7 +53,7 @@ class TestAprilTagHandler : public ::testing::Test{
       apt_handle.AprilTagCallback(msg);
     }
 
-    FactorData* GetData() {
+    virtual std::shared_ptr<FactorData> GetData() {
       return apt_handle.GetData();
     }
 
@@ -94,7 +94,7 @@ TEST_F(TestAprilTagHandler, AprilTagCallback) {
   AprilTagCallback(msg);
 
   // Check the results 
-  AprilTagData* new_data = dynamic_cast<AprilTagData*>(GetData());
+  std::shared_ptr<AprilTagData> new_data = std::dynamic_pointer_cast<AprilTagData>(GetData());
 
   // Is the data new
   EXPECT_TRUE(new_data->b_has_data);

@@ -22,7 +22,7 @@ class PoseGraphHandler : public LampDataHandlerBase {
     virtual ~PoseGraphHandler();
 
     virtual bool Initialize(const ros::NodeHandle& n, std::vector<std::string> robot_names);
-    virtual FactorData* GetData();
+    virtual std::shared_ptr<FactorData> GetData();
 
   protected:
 
@@ -40,6 +40,9 @@ class PoseGraphHandler : public LampDataHandlerBase {
     // Input callbacks
     void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
     void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
+
+    // Publishers
+    ros::Publisher keyed_scan_pub_;
 
     // The node's name.
     std::string name_;

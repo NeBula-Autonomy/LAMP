@@ -14,6 +14,10 @@
 #include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/OdometryHandler.h>
 
+#include <pcl_ros/point_cloud.h>
+#include <pcl/filters/filter.h>
+#include <pcl/filters/random_sample.h>
+#include <pcl/filters/voxel_grid.h>
 // Services
 
 // Class Definition
@@ -69,11 +73,11 @@ private:
   // Overwrite base classs functions where needed
 
     // Factor Hanlder Wrappers
-    bool ProcessOdomData(FactorData* data);
+    bool ProcessOdomData(std::shared_ptr<FactorData> data);
     // Process the artifact factors if any available
-    bool ProcessArtifactData(FactorData* data);
+    bool ProcessArtifactData(std::shared_ptr<FactorData> data);
     // Process the april tag factors if any available    
-    bool ProcessAprilTagData(FactorData* data);
+    bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
     bool InitializeGraph(gtsam::Pose3& pose, 
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // void ProcessUWBData(FactorData data);
@@ -109,6 +113,20 @@ private:
 
   // Test class fixtures
   friend class TestLampRobot;
+
+  struct Parameters {
+    // Apply a voxel grid filter.
+    bool grid_filter;
+
+    // Resolution of voxel grid filter.
+    double grid_res;
+
+    // Apply a random downsampling filter.
+    bool random_filter;
+
+    // Percentage of points to discard. Must be between 0.0 and 1.0;
+    double decimate_percentage;
+  } params_;
 };
 
 #endif

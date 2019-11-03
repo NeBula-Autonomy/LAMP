@@ -19,6 +19,8 @@ Loop closure base class
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>
 
+#include <utils/PrefixHandling.h>
+
 class LoopClosure {
 public:
   LoopClosure(const ros::NodeHandle& n);
@@ -43,5 +45,11 @@ protected:
 
   void PublishLoopClosures(
       const std::vector<pose_graph_msgs::PoseGraphEdge> edges) const;
+
+  // Parameter namespace ("robot" or "base")
+  std::string param_ns_;
+
+  // Whether or not to look for loop closures (set independently in each base class)
+  bool b_check_for_loop_closures_;
 };
 #endif // LOOP_CLOSURE_BASE_H_
