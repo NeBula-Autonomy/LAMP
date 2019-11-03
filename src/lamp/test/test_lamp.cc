@@ -132,7 +132,7 @@ public:
     lr.ProcessArtifactData(data);
   }
 
-  void ProcessAprilTags(FactorData* data) {
+  void ProcessAprilTags(std::shared_ptr<FactorData> data) {
     lr.ProcessAprilTagData(data);
   }
 
@@ -519,7 +519,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 */
 TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // Construct the new April tag data
-  AprilTagData* new_data = new AprilTagData();
+  std::shared_ptr<AprilTagData> new_data (new AprilTagData());
   new_data->b_has_data = true;
   new_data->type = "april";
 
@@ -766,7 +766,7 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
 
 TEST_F(TestLampRobot, NonSequentialKeys) {
   // Construct the new Artifact data
-  ArtifactData* new_data = new ArtifactData();
+  std::shared_ptr<ArtifactData> new_data (new ArtifactData());
   new_data->b_has_data = true;
   new_data->type = "artifact";
 
