@@ -203,7 +203,7 @@ TEST_F(TestAprilTagHandler, IsPgoIntialized) {
   AprilTagCallback(msg);
   
   // Get the data
-  AprilTagData* stored_data = dynamic_cast<AprilTagData*>(GetData());
+  std::shared_ptr<AprilTagData> stored_data = std::dynamic_pointer_cast<AprilTagData>(GetData());
   EXPECT_FALSE(stored_data->b_has_data);
 
   // Initialize Artifacts
@@ -212,7 +212,7 @@ TEST_F(TestAprilTagHandler, IsPgoIntialized) {
 
   // Trigger the callback
   AprilTagCallback(msg);
-  stored_data = dynamic_cast<AprilTagData*>(GetData());
+  stored_data = std::dynamic_pointer_cast<AprilTagData>(GetData());
   EXPECT_TRUE(stored_data->b_has_data);
 }
 

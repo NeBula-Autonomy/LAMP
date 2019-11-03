@@ -237,8 +237,6 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   KeyInfoMap = GetKeyInfoMap();
   // Is the data in ArtifactInfo correct
   EXPECT_EQ(KeyInfoMap.size(), 1);
-  // Delete data
-  delete internal_data;
 
   // TODO: Why two vector elements
   // Construct a new message
@@ -253,7 +251,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Trigger the callback
   ArtifactCallback(msg);
   // Get the data
-  internal_data = dynamic_cast<ArtifactData*>(GetData());
+  internal_data = std::dynamic_pointer_cast<ArtifactData>(GetData());
   artifact_factor = internal_data->factors[0];
   // Check data
   EXPECT_EQ(stored_data.type, "artifact");
