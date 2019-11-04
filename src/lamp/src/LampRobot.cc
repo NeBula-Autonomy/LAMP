@@ -819,6 +819,30 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
   \date Oct 2019
 */
 bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
+  std::shared_ptr<UwbData> uwb_data = std::dynamic_pointer_cast<UwbData>(data);
+  if (!uwb_data->b_has_data) return false;
+  // New Factors to be added
+  NonlinearFactorGraph new_factors;
+  // New Values to be added
+  Values new_values;
+  Pose3 global_uwb_pose;
+
+  for (auto factor : uwb_data->factors) {
+    auto odom_key = factor.key_from;
+    auto uwb_key = factor.key_to;
+    // Check if it is a new uwb id or not
+    if (!pose_graph_.values.exists(uwb_key)) {
+      new_values.insert(uwb_key, global_uwb_pose);
+    }
+    auto range = factor.range;
+    gtsam::noiseModel::Base::shared_ptr range_error 
+      = gtsam::noiseModel::Isotropic::Sigma(1, factor.range_error);
+    new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
+      odom_key, uwb_key, range, range_error));
+  }
+  // add factor to buffer to send to pgo
+  pose_graph_.nfg.add(new_factors);
+  pose_graph_.AddNewValues(new_values);
   return true;
 }
 
