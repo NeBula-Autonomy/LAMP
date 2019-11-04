@@ -818,7 +818,7 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
   \author Nobuhiro Funabiki
   \date Oct 2019
 */
-bool LampRobot::ProcessUwbData(FactorData* data) {
+bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   return true;
 }
 

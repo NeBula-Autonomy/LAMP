@@ -75,18 +75,12 @@ private:
     bool ProcessOdomData(std::shared_ptr<FactorData> data);
     // Process the artifact factors if any available
     bool ProcessArtifactData(std::shared_ptr<FactorData> data);
-    // Process the april tag factors if any available    
-<<<<<<< HEAD
-    bool ProcessAprilTagData(FactorData* data);
     // Process the uwb factors if any available
-    bool ProcessUwbData(FactorData* data);
+    bool ProcessUwbData(std::shared_ptr<FactorData> data);
 
-=======
     bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
->>>>>>> release/2.1-oct-milestone
     bool InitializeGraph(gtsam::Pose3& pose, 
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-    // void ProcessUWBData(FactorData data);
     // Example use:
     // ProcessArtifactData(artifact_handler_.GetData());
 

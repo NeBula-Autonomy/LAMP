@@ -35,17 +35,16 @@ bool UwbHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 
-FactorData* UwbHandler::GetData() {
-    // UwbData* output = new UwbData(uwb_data_);
-    UwbData* output = &uwb_data_;
+std::shared_ptr<FactorData> UwbHandler::GetData() {
+    std::shared_ptr<UwbData> data_ptr = std::make_shared<UwbData>(uwb_data_);
     if (uwb_data_.factors.size() != 0) {
-        output->b_has_data = true;
+        data_ptr->b_has_data = true;
     }
     else {
-        output->b_has_data = false;
+        data_ptr->b_has_data = false;
     }
     // delete output;
-    return output;
+    return data_ptr;
 }
 
 
