@@ -110,6 +110,24 @@ namespace utils {
   }  
 
   // ---------------------------------------------------------
+  //                    Key comparison functions
+  // ---------------------------------------------------------
+
+  // Checks if two keys come from the same robot
+  inline bool IsKeyFromSameRobot(gtsam::Symbol key1, gtsam::Symbol key2) {
+    if (!utils::IsRobotPrefix(key1.chr())) {
+      ROS_ERROR_STREAM(gtsam::DefaultKeyFormatter(key1) << " is not a valid robot key.");
+      return false;
+    }
+    else if (!utils::IsRobotPrefix(key2.chr())) {
+      ROS_ERROR_STREAM(gtsam::DefaultKeyFormatter(key2) << " is not a valid robot key.");
+      return false;
+    }
+
+    return key1.chr() == key2.chr();
+  }
+
+  // ---------------------------------------------------------
   //                    Get full vectors
   // ---------------------------------------------------------
 
