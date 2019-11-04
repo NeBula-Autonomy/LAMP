@@ -25,7 +25,7 @@ class AprilTagHandler : public ArtifactHandler {
     /*! \brief Gives the factors to be added and clears to start afresh.
      * Returns New factor data
      */
-    virtual FactorData* GetData();
+    virtual std::shared_ptr<FactorData> GetData();
 
     protected:
 
