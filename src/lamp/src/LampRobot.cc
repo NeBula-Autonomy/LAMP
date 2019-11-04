@@ -843,6 +843,7 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   // add factor to buffer to send to pgo
   pose_graph_.nfg.add(new_factors);
   pose_graph_.AddNewValues(new_values);
+  uwb_handler_.ResetFactorData();
   return true;
 }
 

@@ -24,6 +24,7 @@ bool UwbHandler::Initialize (const ros::NodeHandle& n) {
 }
 
 bool UwbHandler::LoadParameters(const ros::NodeHandle& n) {
+    ResetFactorData();
     return true;
 }
 

@@ -17,6 +17,7 @@ class UwbHandler : public LampDataHandlerBase {
 
         bool Initialize (const ros::NodeHandle& n);
         std::shared_ptr<FactorData> GetData();
+        void ResetFactorData();
     
     private:
         
