@@ -22,7 +22,7 @@ class PoseGraphHandler : public LampDataHandlerBase {
     virtual ~PoseGraphHandler();
 
     virtual bool Initialize(const ros::NodeHandle& n, std::vector<std::string> robot_names);
-    virtual FactorData* GetData();
+    virtual std::shared_ptr<FactorData> GetData();
 
   protected:
 

@@ -16,11 +16,11 @@ public:
 
     tolerance_ = 1e-5;
 
-    double t1 = 1.00;
-    double t2 = 1.05;
-    double t3 = 1.10;
-    double t4 = 1.15;
-    double t5 = 1.20;
+    t1 = 1.00;
+    t2 = 1.05;
+    t3 = 1.10;
+    t4 = 1.15;
+    t5 = 1.20; 
 
     t1_ros.fromSec(t1);
     t2_ros.fromSec(t2);
@@ -109,7 +109,7 @@ protected:
     return oh.GetOdomDeltaLatestTime(t_latest, delta_pose);
   }
     
-  FactorData* GetData() {
+  virtual std::shared_ptr<FactorData> GetData() {
     return oh.GetData();
   }
   void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
@@ -146,6 +146,14 @@ protected:
   bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
     return oh.GetKeyedScanAtTime(stamp, msg);
   }
+  void ClearPreviousPointCloudScans(const PointCloudBuffer::iterator& itrTime) {
+    return oh.ClearPreviousPointCloudScans(itrTime);
+  }
+
+  PointCloudBuffer *GetPointCloudBuffer() {
+    PointCloudBuffer *ptr = &oh.point_cloud_buffer_;
+    return ptr;
+  }
 
   // Create three messages
   PoseCovStamped msg_first;
@@ -159,6 +167,12 @@ protected:
   ros::Time t3_ros;
   ros::Time t4_ros;
   ros::Time t5_ros;
+
+  double t1; 
+  double t2;
+  double t3;
+  double t4; 
+  double t5;
 
 private:
 };
@@ -680,7 +694,7 @@ TEST_F(OdometryHandlerTest, TestGetData) {
   bool result = GetOdomDeltaLatestTime(query1, myOutput);
   EXPECT_TRUE(result);
 
-  OdomData* factor = dynamic_cast<OdomData*>(GetData());
+  std::shared_ptr<OdomData> factor = std::dynamic_pointer_cast<OdomData>(GetData());
   EXPECT_TRUE(factor->b_has_data);
   
   OdometryFactor odom_factor = factor->factors[0];
@@ -858,7 +872,38 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   ASSERT_TRUE(result);
 }
 
+TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {
+  ros::NodeHandle nh("~");
+  oh.Initialize(nh);
+
+  sensor_msgs::PointCloud2 msg1;
+  msg1.header.stamp = t1_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
+      new sensor_msgs::PointCloud2(msg1));
+      
+  sensor_msgs::PointCloud2 msg2;
+  msg2.header.stamp = t2_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
+      new sensor_msgs::PointCloud2(msg2));
+
+  sensor_msgs::PointCloud2 msg3;
+  msg3.header.stamp = t3_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
+      new sensor_msgs::PointCloud2(msg3));
+  
+  PointCloudCallback(pc_ptr1);
+  PointCloudCallback(pc_ptr2);
+  PointCloudCallback(pc_ptr3);
+  auto ptr_buffer_2 = GetPointCloudBuffer();
+  ASSERT_EQ(ptr_buffer_2->size(), 3);
+  auto itrTime_2 = ptr_buffer_2->lower_bound(t2);
+  ClearPreviousPointCloudScans(itrTime_2);
+  ASSERT_EQ(ptr_buffer_2->size(), 2);
+  ASSERT_EQ((ptr_buffer_2->rbegin())->first, t3);
+}
+
 /* TEST Utilities */
+
 /* TEST ToGtsam */
 TEST_F(OdometryHandlerTest, TestToGtsam) {
   ros::NodeHandle nh("~");
