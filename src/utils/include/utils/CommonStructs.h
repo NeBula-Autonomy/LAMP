@@ -295,6 +295,7 @@ struct ImuFactor {
 };
 
 struct UwbFactor {
+  ros::Time stamp;
   gtsam::Symbol key_from;
   gtsam::Symbol key_to;
   double range;

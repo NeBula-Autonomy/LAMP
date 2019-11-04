@@ -827,12 +827,18 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   Values new_values;
   Pose3 global_uwb_pose;
 
+  ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
+  ROS_INFO_STREAM("Number of UWB factors to be added : " << uwb_data->factors.size());
+
   for (auto factor : uwb_data->factors) {
     auto odom_key = factor.key_from;
-    auto uwb_key = factor.key_to;
+    auto uwb_key = gtsam::Symbol('u', factor.key_to);
     // Check if it is a new uwb id or not
-    if (!pose_graph_.values.exists(uwb_key)) {
+    if (!pose_graph_.values.exists(uwb_key) && !new_values.exists(uwb_key)) {
+      // Insert it into the values
       new_values.insert(uwb_key, global_uwb_pose);
+      // Add it into the keyed stamps
+      pose_graph_.InsertKeyedStamp(uwb_key, factor.stamp);
     }
     auto range = factor.range;
     gtsam::noiseModel::Base::shared_ptr range_error 
