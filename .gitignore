@@ -1,52 +1,11 @@
-# ROS files and directories
-external/build
-external/devel
-external/src
-external/build_isolated
-external/devel_isolated
-external/install_isolated
-internal/build
-internal/devel
-internal/build_isolated
-internal/devel_isolated
-internal/install_isolated
-internal/.catkin_tools
-#internal/src
-*.catkin_workspace
+/build/
 
-# Swap files
-*.swp
-*.swo
-*~
+% Ignore VS code settings
+.vscode
 
-# Glog log files
-*.log*
-*.INFO
+% Ignore Mac stuff
+.DS_Store
 
-# OSX dir files
-.DS_store
-
-# Compiled object files
-*.slo
-*.lo
-*.o
-
-# Compiled dynamic and static libraries
-*.so
-*.dylib
-*.la
-*.a
-
-# Video files
+% Ignore media files
+*.png
 *.mp4
-*.MOV
-*.mov
-
-# CSV files
-*.csv
-
-# pyc filees 
-*.pyc
-
-# VS code
-*.vscode

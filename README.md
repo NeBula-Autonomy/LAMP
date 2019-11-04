@@ -1,214 +1,93 @@
-![LAMP-logo](https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_blam/raw/master/BLAM-logo.png)
+Kimera-RPGO
+======================================
+This is a repository for robust backend optimization. It is still a work in progress. Many features are still under developing and changing on a daily basis.
 
+## Dependencies
 
-## Build Instructions
-Build this package in a catkin workspace 
+*[GTSAM](https://github.com/borglab/gtsam)*
+(Note that the BUILD_WITH_MARCH_NATIVE flag caused some problems on some machines. )
+
+Clone GTSAM to your preferred location:
 ```bash
-mkdir -p catkin_ws/src
-cd catkin_ws
-catkin config --extend /opt/ros/kinetic
+git clone git@github.com:borglab/gtsam.git
 ```
 
-### Dependencies
-This package requires the core_messages package to be build:
-```bash
-cd ~/catkin_ws/src
-git clone https://gitlab.robotics.caltech.edu/rollocopter/core/core_messages.git
-catkin build pose_graph_msgs
-```
-
-This package requires `minizip` to be available globally. It can be installed from the package manager via:
-```bash
-apt install libminizip-dev
-```
-
-This package also requires [RobustPGO](https://github.com/MIT-SPARK/RobustPGO), specifically the `LAMP` branch. 
-```bash
-git clone https://github.com/MIT-SPARK/RobustPGO.git
-cd RobustPGO
-git checkout LAMP
-mkdir build 
-cd build
-cmake ..
-sudo make install
-```
-
-***BLAM!*** relies on system installations of the following packages:
-
-* [ROS](http://wiki.ros.org/ROS/Installation)
-* [GTSAM](https://collab.cc.gatech.edu/borg/gtsam)
-
-We recommend:
-Clone GTSAM in your *home* folder and checkout the feature branch:   
-```bash
-cd
-git clone -b feature/improvementsIncrementalFilter --single-branch https://bitbucket.org/gtborg/gtsam
-```
-Checkout a specific commit to solve a build issue:
-```bash
-cd gtsam
-git checkout c827d4cd6b11f78f3d2d9d52b335ac562a2757fc
-```
 Build
 ```bash
-cd gtsam 
+cd gtsam
 mkdir build
 cd build
 cmake .. -DGTSAM_POSE3_EXPMAP=ON -DGTSAM_ROT3_EXPMAP=ON
-$ optional: sudo make check # (this would fail because of the EXMAP args)
 sudo make install
 ```
-**Note:** 
-The reason why we need EXPMAP is for the correct calculation of Jacobians. 
-Enabling this and the `#define SLOW_BUT_CORRECT_BETWEENFACTOR` in LaserLoopCLosure.h are both important. Otherwise the default are some identity approximations for rotations, which works for some cases but fails for cases with manual loop closures, or artifacts. 
-
-`OLD ADVICE ON BLAM`:
-
-GTSAM in particular should be installed from source using the latest version of the develop branch from https://bitbucket.org/gtborg/gtsam. GTSAM relies on Boost, an incorrect version of which will interfere with some of ROS' packages if ROS is not upgraded to at least Indigo. ROS Indigo, in turn, relies on Ubuntu 14.04.
-
-
-### Building BLAM
-This repository contains the checked-out repositories that were installed via rosinstall in the original ***BLAM!*** repository.
-With these changes, the following commands build the entire ***BLAM!*** stack:
-```bash
-cd ~/catkin_ws/src
-git clone https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_blam.git
-catkin build blam_slam
-catkin build point_cloud_visualizer
-catkin build blam_example
-```
-
-The following significant changes were made to the build process:
-* Projects using PCL are now including `${PCL_LIBRARIES}` in their respective `CMakeLists.txt`.
-* All `CMakelists.text` are set to build in Release
-
-
-
-## Run Instructions
-***BLAM!*** is written in C++ with some Python interface elements, wrapped by
-Robot Operating System ([ROS](http://ros.org)). Input LiDAR data should be
-provided to the `/velodyne_points` topic using message type `sensor_msgs::PointCloud2`.
-
-To run, use (replacing "husky" with the robot name)
-
-```bash
-roslaunch blam_example exec_online.launch robot_namespace:=husky
-```
-
-When running with a bagfile, the lidar data should be on `/husky/velodyne_points` when the `robot_namespace` is `husky`.
-
-To remap the bagfile, run
-
-```bash
-rosbag play bagfile.bag --prefix husky
-```
-
-Also, when running on a bagfile, a static transform publisher is needed, to take place of the robot description:
-
-```bash
-static_transform_publisher 0 0 0 0 0 0 1 /husky/base_link /velodyne
-```
-
-In addition, a static transform publisher is needed to take place of the tf from world to blam:
-
-```bash
-static_transform_publisher 0 0 0 0 0 0 /husky/blam /world
-```
-**Note:** 
-If you are using the ``run_blam.sh`` script, there is no need to run the static transform publisher from `/world` to `/husky/blam` as this is already captured in the script.
-
-To visualize in RViz, use the husky rviz file:
-```bash
-rviz -d {filepath}/localizer_blam/internal/src/blam_example/rviz/lidar_slam_husky.rviz
-```
-
-Alternatively, just run the tmux script (after modifying the parameters at the top of the file):
-```bash
-./run_blam.sh
-```
-
-## (Optional) Running TBB and MKL:
-Follow these steps for downloading MKL package:
-
-Downloading the GnuPG key first and add it to the keyring:
-```
-cd /tmp
-wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
-apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
-sh -c 'echo deb https://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'
-```
-
-After this step for avoiding any error update your repository once more.
-```
-apt-get update
-```
-
-And then:
-```
-apt-get install intel-mkl-64bit-2018.2-046
-```
-This is the 64-bit of the MKL.
-
 **Note:**
-MKL package at least requires 500MB packages. If you are running out of space, it is not required to risk it.
+The reason why we need EXPMAP is for the correct calculation of Jacobians.
+Enabling this and the `#define SLOW_BUT_CORRECT_BETWEENFACTOR` in LaserLoopCLosure.h are both important. Otherwise the default are some identity approximations for rotations, which works for some cases but fails for cases with manual loop closures, or artifacts. Note that `sudo make check` will partially fail because some unittests assume the EXPMAP flags to be off.
 
-
-
-For the purpose of enabling the TBB package follow these commands:
-```
-sudo apt-get install libtbb-dev
-```
-
-and then
-
-```
-cd ~/ws/gtsam/cmake
-```
-
-Add these two commands to the CMakeLists.txt of gtsam and then rebuild your gtsam.
-```
-FindMKL.cmake
-FindTBB.cmake 
-```
-
-**Note:** By applying both the packages, there are still crashes you will be seeing. It is provided by the developer that these two packages are still under the development.
-
-**Note:** There are not consistancy in TBB package. %70 cases used the MKL and TBB and perfectly working with enhancement in lowering the computation. There are cases of software crashing.
-
-
-# OLD
-To run in online mode (e.g. by replaying a bag file from another terminal or
-using a real-time sensor stream), use
-
+## Build
 ```bash
-roslaunch blam_example test_online.launch
+git clone git@github.com:MIT-SPARK/Kimera-RPGO.git
+cd Kimera-RPGO
+mkdir build
+cd build
+cmake ..
+make
 ```
 
-An existing pose graph zip-file generated by the `save_graph` service (as documented in the [loop_closure_tools](https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_blam/tree/feature/save_graph/internal/src/loop_closure_tools) module) can be restored by providing the filename as command-line argument:
+## Usage
+This repository can be used as an optimization backend. A sample setup looks something like below. The default solver is LM.
+```cpp
+// Set up
+// set up KimeraRPGO solver
+RobustSolverParams params;
+params.setPcm3DParams(0.0, 10.0, Verbosity::QUIET);
+// Verbosity levels are QUIET, UPDATE, and, VERBOSE in order of increasing number of messages (the default is UPDATE)
+// For 2D params.setPcm2DParams(0.0, 10.0); Have been tested
 
-```bash
-roslaunch blam_example test_online.launch load_pose_graph_file:=pose_graph.zip
+// To use GaussNewton instead of LM: params.solver = Solver::GN;
+
+std::unique_ptr<RobustSolver> pgo = KimeraRPGO::make_unique<RobustSolver>(params);
+//...
+//...
+
+// Run
+pgo->update(new_factor, new_values);
+```
+This can also be used as a standalone experimental tool. A read g2o function can be found in examples.
+```
+# for 2D:
+./RpgoReadG2o 2d <g2o-file> <odom-check-threshold> <pcm-threshold> <optional:folder-to-save-g2o> <optional:v to toggle verbosity>
+
+# for 3D
+./RpgoReadG2o 3d <g2o-file> <odom-check-threshold> <pcm-threshold> <optional:folder-to-save-g2o> <optional:v to toggle verbosity>
 ```
 
-To run in offline mode, i.e. by loading a bagfile and processing its data as
-fast as possible, set the bagfile name and scan topic in
-`blam_example/launch/test_offline.launch`, and use
+Example, do `./RpgoReadG2o 3d /home/user/Desktop/in.g2o 1.0 1.0 /home/user/Desktop/out/ v`
 
-```bash
-roslaunch blam_example test_offline.launch
+## Example
+```cpp
+// set up KimeraRPGO solver
+RobustSolverParams params;
+params.setPcm3DParams(<translation_threshold>, <rotation_threshold>);
+std::vector<char> special_symbs{'l', 'u'}; // for landmarks
+params.specialSymbols = special_symbs;
+
+std::unique_ptr<RobustSolver> pgo = KimeraRPGO::make_unique<RobustSolver>(params); // initiate pgo solver
+
+// When using it normally
+pgo->update(new_factor, new_values);
+
+// load a graph (assuming pgo has been reset)
+pgo->loadGraph(nfg, values, prior_factor);
+pgo->loadGraph(nfg, values, key0); // can just load the first key
+
+// add a graph (ex. already have graph or robot a and adding graph of robot b)
+pgo->addGraph(nfg, values, between_factor);
+
+
+/////// To not use outlier rejection, set up like
+RobustSolverParams params;
+params.setNoRejection();
+
+std::unique_ptr<RobustSolver> pgo = KimeraRPGO::make_unique<RobustSolver>(params); // initiate pgo solver
 ```
-
-An example .rviz configuration file is provided under
-`blam_example/rviz/lidar_slam.rviz`.
-
-## Unit tests
-To compile and run unit tests:
-```bash
-roscore & catkin build --catkin-make-args run_tests
-``` 
-
-To view the results of a package:
-```bash
-catkin_test_results build/<package_name>
-``` 
-Results for unit tests of packages are stored in the build/<package_name>/test_results folder.

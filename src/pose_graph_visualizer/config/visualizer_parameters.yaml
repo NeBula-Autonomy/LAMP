@@ -1,4 +1,0 @@
-# When searching through old poses for loop closures, only consider old poses
-# that are within this distance of the current pose.
-# (for visualisation only)
-proximity_threshold: 5
