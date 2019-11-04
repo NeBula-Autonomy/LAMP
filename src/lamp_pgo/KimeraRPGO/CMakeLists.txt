@@ -1,4 +1,4 @@
-# cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required (VERSION 3.5)
 project(KimeraRPGO VERSION 1.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
