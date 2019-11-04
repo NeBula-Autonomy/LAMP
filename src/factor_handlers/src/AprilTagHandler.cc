@@ -163,9 +163,9 @@ gtsam::Pose3 AprilTagHandler::GetGroundTruthData(const gtsam::Symbol april_tag_k
 /*! \brief Gives the factors to be added and clears to start afresh.
  *  \return New factor data
  */
-FactorData* AprilTagHandler::GetData() {
+std::shared_ptr<FactorData> AprilTagHandler::GetData() {
   // Create a temporary copy to return
-  FactorData* data_ptr = new AprilTagData(artifact_data_);
+  std::shared_ptr<AprilTagData> data_ptr = std::make_shared<AprilTagData>(artifact_data_);
 
   // Clear artifact data
   ClearArtifactData();
