@@ -30,7 +30,7 @@ bool UwbHandler::LoadParameters(const ros::NodeHandle& n) {
 bool UwbHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     ros::NodeHandle nl(n);
     // Subscriber
-    uwb_factor_sub_ = nl.subscribe("uwb_factor", 10, &UwbHandler::UwbFactorCallback, this);
+    uwb_factor_sub_ = nl.subscribe("uwb_factors", 10, &UwbHandler::UwbFactorCallback, this);
     return true;
 }
 
