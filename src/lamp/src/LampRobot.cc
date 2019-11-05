@@ -845,7 +845,15 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       = gtsam::noiseModel::Isotropic::Sigma(1, factor.range_error);
     new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
       odom_key, uwb_key, range, range_error));
+    // Track the edges that have been added
+    Factor uwb_factor;
+    uwb_factor.key_from = odom_key;
+    uwb_factor.key_to = uwb_key;
+    uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
+    pose_graph_.TrackFactor(uwb_factor);
   }
+  // Run optimization
+  b_run_optimization_ = true;
   // add factor to buffer to send to pgo
   pose_graph_.nfg.add(new_factors);
   pose_graph_.AddNewValues(new_values);
