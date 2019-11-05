@@ -1,0 +1,65 @@
+<launch>
+  <arg name="robot_namespace" default="base_station"/>
+
+ 
+  <group ns="$(arg robot_namespace)">
+        
+    <!-- Pose graph optimizer -->
+    <node pkg="lamp_pgo"
+          name="lamp_pgo"
+          type="lamp_pgo_node"
+          output="screen">
+      <remap from="~pose_graph_to_optimize" to="lamp/pose_graph_to_optimize" />
+      <!-- Config - TODO move the proximity_threshold param elsewhere -->
+      <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/> 
+    </node>
+
+    <!-- Base station LAMP -->
+    <node pkg="lamp"
+          name="lamp"
+          type="lamp_base_station_node"
+          output="screen">
+
+      <!-- Topics -->
+      <remap from="~manual_lc" to="manual_loop_closure"/>
+      <remap from="~optimized_values" to="lamp_pgo/optimized_values"/>
+
+      <!-- Robots -->
+      <rosparam file="$(find lamp)/config/robot_names.yaml" subst_value="true"/>
+
+      <!-- Rates -->
+      <rosparam file="$(find lamp)/config/lamp_rates.yaml"/>
+
+      <!-- Frames -->
+      <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>
+
+      <!-- Point cloud mapper -->
+      <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
+
+      <!-- Factor handlers -->
+      <rosparam file="$(find factor_handlers)/config/manual_lc_parameters.yaml" subst_value="true"/>
+
+
+    </node>
+
+    <!-- Pose graph visualization -->
+    <node pkg="pose_graph_visualizer"
+          name="pose_graph_visualizer"
+          type="pose_graph_visualizer_node"
+          output="screen">
+      <!-- LAMP settings -->
+      <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
+      <!-- Frames -->
+      <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>      
+      <!-- Config - TODO move the proximity_threshold param elsewhere -->
+      <rosparam file="$(find pose_graph_visualizer)/config/visualizer_parameters.yaml" subst_value="true"/>      
+
+      <!-- Topics -->
+      <remap from="~lamp/pose_graph" to="lamp_base/pose_graph"/>
+    </node>
+
+    <!-- Loop Closure  -->
+    <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
+
+  </group>
+</launch>

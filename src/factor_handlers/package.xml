@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<package>
+  <name>factor_handlers</name>
+  <version>0.0.0</version>
+  <description>The factor_handlers package</description>
+
+  <author email="benjamin.morrell@jpl.nasa.gov">Benjamin Morrell</author>
+  <maintainer email="benjamin.morrell@jpl.nasa.gov">Benjamin Morrell</maintainer>
+
+  <license>GPLv2</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>rosbag</build_depend>
+  <build_depend>utils</build_depend>
+  <build_depend>geometry_utils</build_depend>
+  <build_depend>parameter_utils</build_depend>
+  <build_depend>pcl_ros</build_depend>
+  <build_depend>pcl_conversions</build_depend>
+  <build_depend>core_msgs</build_depend>
+  <build_depend>uwb_msgs</build_depend>
+  <build_depend>mesh_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>tf_conversions</build_depend>
+  <build_depend>eigen_conversions</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>rosbag</run_depend>
+  <run_depend>utils</run_depend>
+  <run_depend>geometry_utils</run_depend>
+  <run_depend>parameter_utils</run_depend>
+  <run_depend>pcl_ros</run_depend>
+  <run_depend>pcl_conversions</run_depend>
+  <run_depend>core_msgs</run_depend>
+  <run_depend>uwb_msgs</run_depend>
+  <run_depend>mesh_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>nav_msgs</run_depend>
+  <run_depend>eigen_conversions</run_depend>
+
+  <test_depend>rostest</test_depend>
+  <test_depend>rosunit</test_depend>  
+</package>

@@ -1,0 +1,27 @@
+session_name: husky_refactor
+
+# before_script: "~/sim_/scripts/cleanup.sh"
+
+# Default environment variables; Overwrite from command line
+environment:
+  LOG_PATH: /home/costar/bags/ParkingLot/husky2_2019-10-11-16-57-00_parking_t7/rosbag/
+  ROBOT_NAME: husky2
+
+options:
+  default-command: /bin/bash
+
+windows:
+- window_name: lamp
+  focus: true
+  layout: tiled
+  panes:
+    - roscore
+    - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
+    - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$ROBOT_NAME
+    - sleep 4; rosparam set /use_sim_time true; roslaunch loop_closure laser_loop_closure.launch robot_namespace:=$ROBOT_NAME
+    # sleep 2; rosbag play -r0.5 -s90 $LOG_PATH/*.bag --prefix=/$ROBOT_NAME --clock
+    - sleep 3; rosbag play -r 1 -s 200 $LOG_PATH/*.bag --clock 
+    - sleep 3; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME
+    - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /$ROBOT_NAME/velodyne /$ROBOT_NAME/base_link # only for Eagle mine
+    - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$ROBOT_NAME/map # only for Eagle mine
+    - sleep 3; rosparam set /use_sim_time true;rosrun rviz rviz
