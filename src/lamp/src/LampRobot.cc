@@ -825,7 +825,7 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   NonlinearFactorGraph new_factors;
   // New Values to be added
   Values new_values;
-  Pose3 global_uwb_pose;
+  Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
 
   ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
   ROS_INFO_STREAM("Number of UWB factors to be added : " << uwb_data->factors.size());
@@ -846,10 +846,13 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
       odom_key, uwb_key, range, range_error));
     // Track the edges that have been added
-    Factor uwb_factor;
+    // Factor uwb_factor;
+    EdgeMessage uwb_factor;
     uwb_factor.key_from = odom_key;
     uwb_factor.key_to = uwb_key;
     uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
+    uwb_factor.range = range;
+    uwb_factor.range_error = factor.range_error;
     pose_graph_.TrackFactor(uwb_factor);
   }
   // Run optimization
