@@ -114,10 +114,10 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                          dynamic_cast<LampBase*>(this));
 
   // Uncomment when needed for debugging
-  // debug_sub_ = nl.subscribe("debug",
-  //                           1,
-  //                           &LampBaseStation::DebugCallback,
-  //                           this);
+  debug_sub_ = nl.subscribe("debug",
+                            1,
+                            &LampBaseStation::DebugCallback,
+                            this);
 
   return true; 
 }
@@ -389,5 +389,14 @@ bool LampBaseStation::CheckHandlers() {
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {
   ROS_INFO_STREAM("Debug message received");
   ROS_INFO_STREAM(msg.data);
+
+  if (msg.data == "freeze") {
+    ROS_INFO_STREAM("Publishing frozen map");
+    mapper_.PublishMapFrozen();
+  }
+
+  else {
+    ROS_WARN_STREAM("Debug message not recognized");
+  }
 
 }
