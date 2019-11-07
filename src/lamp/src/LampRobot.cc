@@ -836,6 +836,7 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     // Check if it is a new uwb id or not
     if (!pose_graph_.values.exists(uwb_key) && !new_values.exists(uwb_key)) {
       // Insert it into the values
+      global_uwb_pose = pose_graph_.GetPose(odom_key);
       new_values.insert(uwb_key, global_uwb_pose);
       // Add it into the keyed stamps
       pose_graph_.InsertKeyedStamp(uwb_key, factor.stamp);
@@ -846,7 +847,6 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
       odom_key, uwb_key, range, range_error));
     // Track the edges that have been added
-    // Factor uwb_factor;
     EdgeMessage uwb_factor;
     uwb_factor.key_from = odom_key;
     uwb_factor.key_to = uwb_key;
