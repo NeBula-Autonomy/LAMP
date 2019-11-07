@@ -24,6 +24,34 @@ struct ArtifactInfo {
     : id(art_id), num_updates(0), global_position(gtsam::Point3()) {}
 };
 
+struct ArtifactGroundTruth {
+  std::string uuid;                       // identifier
+  std::string type;                       // backpack, drill, etc.
+  gtsam::Point3 position;                 // Global pose of the artifact
+
+  ArtifactGroundTruth() : uuid(""), type(""), position(gtsam::Point3()) {}
+
+  ArtifactGroundTruth(std::string data) {
+        // Used to split string around spaces. 
+    std::istringstream ss(data); 
+    std::vector<std::string> words;
+  
+    // Traverse through all words 
+    do { 
+        // Read a word 
+        std::string word; 
+        ss >> word; 
+        words.push_back(word);
+    
+        // While there is more to read 
+    } while (ss); 
+
+    uuid = words[0];
+    type = words[1];
+    position = gtsam::Point3(std::stod(words[2]), std::stod(words[3]), std::stod(words[4]));
+  }
+};
+
 /*! \brief  Handles artifact messages. Takes artifact data from the artifact
  message -
           - Timestamp of the artifact message to help decide where to add the

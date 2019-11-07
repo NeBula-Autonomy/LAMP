@@ -386,13 +386,41 @@ bool LampBaseStation::CheckHandlers() {
   return true;
 }
 
-void LampBaseStation::DebugCallback(const std_msgs::String msg) {
-  ROS_INFO_STREAM("Debug message received");
-  ROS_INFO_STREAM(msg.data);
+bool LampBaseStation::ProcessArtifactGT() {
 
+  // Read from file
+  if (!pu::Get("artifacts_GT", artifact_GT_strings_)) {
+    ROS_ERROR("%s: No artifact ground truth data provided.", name_.c_str());
+    return false;
+  }
+  else {
+    for (auto s : artifact_GT_strings_) {
+      ROS_INFO_STREAM("New artifact ground truth");
+      artifact_GT_.push_back(ArtifactGroundTruth(s));
+
+
+      ROS_INFO_STREAM("\t" << artifact_GT_.back().uuid);
+      ROS_INFO_STREAM("\t" << artifact_GT_.back().type);
+      ROS_INFO_STREAM("\t" << artifact_GT_.back().position.x() << ", "<< artifact_GT_.back().position.y() << ", "<< artifact_GT_.back().position.z());
+
+    }
+  }
+
+}
+
+void LampBaseStation::DebugCallback(const std_msgs::String msg) {
+  ROS_INFO_STREAM("Debug message received: " << msg.data);
+
+  // Freeze the current point cloud map on the visualizer
   if (msg.data == "freeze") {
     ROS_INFO_STREAM("Publishing frozen map");
     mapper_.PublishMapFrozen();
+  }
+
+  // Read in artifact ground truth data
+  else if (msg.data == "artifact_GT") {
+    ROS_INFO_STREAM("Processing artifact ground truth data");
+    ProcessArtifactGT();
   }
 
   else {

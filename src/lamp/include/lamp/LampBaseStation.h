@@ -11,6 +11,7 @@
 
 #include <factor_handlers/ManualLoopClosureHandler.h>
 #include <factor_handlers/PoseGraphHandler.h>
+#include <factor_handlers/ArtifactHandler.h>
 #include <std_msgs/String.h>
 
 
@@ -56,6 +57,11 @@ class LampBaseStation : public LampBase {
 
     // Robots that the base station subscribes to
     std::vector<std::string> robot_names_;
+
+    // Artifact ground truthing
+    bool ProcessArtifactGT();
+    std::vector<std::string> artifact_GT_strings_;
+    std::vector<ArtifactGroundTruth> artifact_GT_;
 
     // Factor handler wrappers
     bool ProcessPoseGraphData(std::shared_ptr<FactorData> data);
