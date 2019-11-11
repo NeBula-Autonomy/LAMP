@@ -393,19 +393,35 @@ bool LampBaseStation::ProcessArtifactGT() {
     ROS_ERROR("%s: No artifact ground truth data provided.", name_.c_str());
     return false;
   }
-  else {
-    for (auto s : artifact_GT_strings_) {
-      ROS_INFO_STREAM("New artifact ground truth");
-      artifact_GT_.push_back(ArtifactGroundTruth(s));
 
+  for (auto s : artifact_GT_strings_) {
+    ROS_INFO_STREAM("New artifact ground truth");
+    artifact_GT_.push_back(ArtifactGroundTruth(s));
 
-      ROS_INFO_STREAM("\t" << artifact_GT_.back().uuid);
-      ROS_INFO_STREAM("\t" << artifact_GT_.back().type);
-      ROS_INFO_STREAM("\t" << artifact_GT_.back().position.x() << ", "<< artifact_GT_.back().position.y() << ", "<< artifact_GT_.back().position.z());
-
-    }
+    ROS_INFO_STREAM("\t" << gtsam::DefaultKeyFormatter(artifact_GT_.back().key));
+    ROS_INFO_STREAM("\t" << artifact_GT_.back().type);
+    ROS_INFO_STREAM("\t" << artifact_GT_.back().position.x() << ", "<< artifact_GT_.back().position.y() << ", "<< artifact_GT_.back().position.z());
   }
 
+  for (auto a : artifact_GT_) {
+
+    if (!pose_graph_.HasTime(a.key)) {
+      ROS_WARN_STREAM("Unable to add artifact ground truth for key " << gtsam::DefaultKeyFormatter(a.key));
+      continue;
+    }
+
+    // Add the prior
+    pose_graph_.TrackNode(ros::Time::now(), 
+                      a.key, 
+                      gtsam::Pose3(gtsam::Rot3(), a.position), 
+                      gtsam::SharedNoiseModel()); // TODO: ADD COVARIANCE
+
+
+    // Trigger optimisation 
+    b_has_new_factor_ = true; 
+  }
+
+  return true;
 }
 
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {

@@ -1,5 +1,5 @@
 # Ground truth data for each artifact
 #       'UUID x y z'
 artifacts_GT: 
-  - 'hjksf9sd87fs8dfdf78dsf687fgoq02m backpack 10.0 2.0 2.0'
-  - '34d5fg6f5dgd8fgb5rj5hb4j5dasd6hg drill 15.0 12.0 -2.1'
+  - 'm3 backpack 10.0 2.0 2.0'
+  - 'q843908 drill 15.0 12.0 -2.1'

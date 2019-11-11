@@ -6,6 +6,7 @@
 #include "utils/CommonStructs.h"
 #include <core_msgs/Artifact.h>
 #include <tf2_ros/transform_listener.h>
+#include <utils/PrefixHandling.h>
 
 // Base class
 #include "LampDataHandlerBase.h"
@@ -25,11 +26,11 @@ struct ArtifactInfo {
 };
 
 struct ArtifactGroundTruth {
-  std::string uuid;                       // identifier
+  gtsam::Symbol key;                      // identifier
   std::string type;                       // backpack, drill, etc.
   gtsam::Point3 position;                 // Global pose of the artifact
 
-  ArtifactGroundTruth() : uuid(""), type(""), position(gtsam::Point3()) {}
+  ArtifactGroundTruth() : key(utils::GTSAM_ERROR_SYMBOL), type(""), position(gtsam::Point3()) {}
 
   ArtifactGroundTruth(std::string data) {
         // Used to split string around spaces. 
@@ -46,7 +47,7 @@ struct ArtifactGroundTruth {
         // While there is more to read 
     } while (ss); 
 
-    uuid = words[0];
+    key = gtsam::Symbol(words[0][0], std::stol(words[0].substr(1)));
     type = words[1];
     position = gtsam::Point3(std::stod(words[2]), std::stod(words[3]), std::stod(words[4]));
   }
@@ -151,6 +152,12 @@ class ArtifactHandler : public LampDataHandlerBase {
      * Returns  gtsam::SharedNoiseModel
      */
     gtsam::SharedNoiseModel ExtractCovariance(const boost::array<float, 9> covariance) const;
+
+
+    /*! \brief  Gets the artifact gtsam key for the given UUID
+     * Returns  gtsam::Symbol
+     */
+    gtsam::Symbol GetKeyFromID(std::string id);
 
     /*! \brief  Clear artifact data
      * Returns  Void
