@@ -386,7 +386,7 @@ bool LampBaseStation::ProcessArtifactGT() {
 
   for (auto a : artifact_GT_) {
 
-    if (!pose_graph_.HasTime(a.key)) {
+    if (!pose_graph_.HasKey(a.key)) {
       ROS_WARN_STREAM("Unable to add artifact ground truth for key " << gtsam::DefaultKeyFormatter(a.key));
       continue;
     }
