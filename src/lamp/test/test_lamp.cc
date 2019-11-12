@@ -132,6 +132,14 @@ public:
     lr.ProcessArtifactData(data);
   }
 
+  void ProcessAprilTags(std::shared_ptr<FactorData>data) {
+    lr.ProcessAprilTagData(data);
+  }
+
+  std::unordered_map<long unsigned int, ArtifactInfo>& GetInfoHash() {
+    return lr.april_tag_handler_.GetArtifactKey2InfoHash();
+  }
+
   void ConvertGlobalToRelative(const ros::Time stamp,
                                const gtsam::Pose3 pose_global,
                                gtsam::Pose3& pose_relative) {
@@ -373,9 +381,195 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2)) != other_keys.end());
 }
 
-// Check Process April tag data. 
+/** Check Process April tag data. 
+ * Same as Artifacts unit test. The two main purpose here is 
+ *      Optimization is done for new april as well
+ *      Prior is added when the april is new
+ *  Call ProcessAprilTags with April tags. New April tag added. 
+ * Second message for same april arrives and only between factor added  
+ *                                                  |-----------------------------------------------------|                                                       Graph loop closure
+ * a0       a1                          l1         a2                      l1       a3                l1  V                                                       Node symbols
+ * Odom     Odom                     April         Odom                 April       Odom              April measured position    April ground position            Type of measurement
+ * g(0,0,0) g(2,0,0)    g(2.4,0,0)   r(9.7,0,0)    g(4,0,0)  g(4.4,0,0) r(7.8,0,0)  g(6,0,0)          g(12.1,0,0)                g(12.2,0,0)                      global(g)/relative(r) position
+ *o--------->o------------|------------------------->o------------------------------>o-----------------------------------------------------                       Graph odom
+ * -|--------|------------|------------|------------|-------------|---------|--------|--------------------|---------------------------|----                       1D line
+ * 0.05     0.1         0.109        0.11          0.15         0.159      0.16     2.0                                                                           Time
+*/
 TEST_F(TestLampRobot, TestProcessAprilTagData) {
+  // Construct the new April tag data
+  std::shared_ptr<AprilTagData> new_data = std::make_shared<AprilTagData>();
+  new_data->b_has_data = true;
+  new_data->type = "april";
 
+  AprilTagFactor new_factor;
+  new_factor.key = gtsam::Symbol('l', 1);
+  new_factor.position = gtsam::Point3(9.7, 0, 0);
+  gtsam::Vector6 sig;
+  sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
+  new_factor.covariance = noise;
+  new_factor.stamp = ros::Time(0.11);
+
+  // Add the new factor
+  new_data->factors.push_back(new_factor);
+
+  // Set the global flag
+  setArtifactInGlobal(false);
+  setFixedCovariance(false);
+
+  // Add ground truth value for April Tag l1
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_hash = GetInfoHash();
+  info_hash[gtsam::Symbol('l',1)].id = "distal";
+  info_hash[gtsam::Symbol('l',1)].num_updates = 1;
+  info_hash[gtsam::Symbol('l',1)].global_position = gtsam::Point3(12.2,0.0,0.0);
+
+  // Add to values
+  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a',0));
+  InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a',1));
+  InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (2.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a',2));
+  InsertValues(gtsam::Symbol('a',2), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (4.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a',3));
+  InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(), 
+                                          gtsam::Point3 (6.0, 0, 0)));
+
+  AddKeyedStamp(gtsam::Symbol('a',0), ros::Time(0.05));
+  AddKeyedStamp(gtsam::Symbol('a',1), ros::Time(0.1));
+  AddKeyedStamp(gtsam::Symbol('a',2), ros::Time(0.15));
+  AddKeyedStamp(gtsam::Symbol('a',3), ros::Time(0.2));
+
+  // Construct the odometry message for a0 (the nearest key)
+  nav_msgs::Odometry a0_value;
+  a0_value.header.stamp = ros::Time(0.05);
+  geometry_msgs::PoseWithCovariance msg_pose;
+  a0_value.pose = msg_pose;
+  nav_msgs::Odometry::ConstPtr a0_odom(new nav_msgs::Odometry(a0_value));
+
+  // Call Lidar callback
+  LidarCallback(a0_odom);
+
+  // New message at 0.1
+  nav_msgs::Odometry l1_value;
+  l1_value.header.stamp = ros::Time(0.1);
+  l1_value.pose.pose.position.x = 2.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a1_odom(new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a1_odom);
+
+  // New message at 0.109 (not gets added to pose graph)
+  l1_value.header.stamp = ros::Time(0.109);
+  l1_value.pose.pose.position.x = 2.4;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a1l1_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a1l1_odom);
+
+  // New message at 0.15
+  l1_value.header.stamp = ros::Time(0.15);
+  l1_value.pose.pose.position.x = 4.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a2_odom(new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a2_odom);
+
+  // New message at 0.2
+  l1_value.header.stamp = ros::Time(0.2);
+  l1_value.pose.pose.position.x = 6.0;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a3_odom(new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a3_odom);
+
+  // Check if l1 is added to values
+  EXPECT_FALSE(GetValues().exists(gtsam::Symbol('l',1)));
+
+  // Call the ProcessAprilTagData. Adding a new April Tag
+  ProcessAprilTags(new_data);
+
+  // April tags always lead to optimization
+  EXPECT_TRUE(GetOptFlag());
+  // Check if l1 is added to values
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
+  // Check the position of the April Tag
+  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
+  // Check the graph for prior
+  gtsam::NonlinearFactorGraph graph = GetNfg();
+
+  // Number of factors for l1 (One should be prior and one between factor)
+  int count = 0;
+  for (auto factor:graph){
+    if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
+      count = count + 1;
+    }
+  }
+  EXPECT_EQ(count, 2);
+
+  // New message at 0.159 (not gets added to pose graph)
+  l1_value.header.stamp = ros::Time(0.159);
+  l1_value.pose.pose.position.x = 4.4;
+  l1_value.pose.pose.orientation.w = 1.0;
+
+  nav_msgs::Odometry::ConstPtr a2l1_odom(
+      new nav_msgs::Odometry(l1_value));
+
+  // Call Lidar callback
+  LidarCallback(a2l1_odom);
+
+  // Change time and send the message again
+  new_data->b_has_data = true;
+  new_data->factors[0].stamp = ros::Time(0.16);
+  new_data->factors[0].position = gtsam::Point3 (7.8, 0, 0);
+
+  // Call the ProcessAprilTagData. Adding an old April Tag
+  ProcessAprilTags(new_data);
+
+  // April tags always optimize
+  EXPECT_TRUE(GetOptFlag());
+  // Check if l1 is added to values
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
+  // Check the position of the April Tag
+  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
+  // Check the loop closure factor
+  graph = GetNfg();
+  std::vector<gtsam::Symbol> other_keys;
+  
+  for (auto factor:graph){
+    if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
+      if (factor->keys()[0] == gtsam::Symbol('l',1)){
+        other_keys.push_back(factor->keys()[1]);
+      } else {
+        other_keys.push_back(factor->keys()[0]);        
+      }
+    }
+  }
+  // Check if a1 is present in a factor with l1
+  EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',1)) != other_keys.end());
+
+  // Check if a2 is present in a factor with l1  
+  EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2)) != other_keys.end());
+
+  // Number of factors for l1 (One should be prior and two between factors)
+  count = 0;
+  for (auto factor:graph){
+    if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
+      count = count + 1;
+    }
+  }
+  EXPECT_EQ(count, 3);
 }
 
 TEST_F(TestLampRobot, SetInitialKey) {

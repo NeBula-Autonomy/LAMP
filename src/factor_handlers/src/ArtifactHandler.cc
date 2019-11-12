@@ -3,7 +3,9 @@
 
 // Constructor
 ArtifactHandler::ArtifactHandler()
-  : largest_artifact_id_(0), use_artifact_loop_closure_(false) {}
+  : largest_artifact_id_(0), 
+    use_artifact_loop_closure_(false),
+    is_pgo_initialized(false) {}
 
 /*! \brief Initialize parameters and callbacks.
  * n - Nodehandle
@@ -107,6 +109,12 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Subscribe to artifact messages, include in pose graph, publish global
   // position Artifact information
   PrintArtifactInputMessage(msg);
+
+  // Process artifact only is pose graph is initialized
+  if (!is_pgo_initialized) {
+    ROS_INFO("Rejecting Artifacts as pose graph not initialized.");
+    return;
+  }
 
   // Check for NaNs and reject
   if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) ||
@@ -328,7 +336,7 @@ ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) cons
   gtsam::Matrix33 cov;
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
-      cov(i, j) = covariance[3 * i + j];
+      cov(i, j) = static_cast<double>(covariance[3 * i + j]);
   
   // Convert covariance to gtsam
   gtsam::SharedGaussian noise_cov = gtsam::noiseModel::Gaussian::Covariance(cov);

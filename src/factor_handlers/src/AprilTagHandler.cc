@@ -22,11 +22,7 @@ bool AprilTagHandler::Initialize(const ros::NodeHandle& n){
     ROS_ERROR("%s: Failed to load April Tag parameters.", name_.c_str());
     return false;
   }
-  // Need to change this
-  // TODO: need to check this. RegisterCallbacks is not a
-  // virtual function so this takes artifact one. But
-  // now artifact one would call April or artifacts
-  // RegisterOnlineCallback
+  
   if (!RegisterCallbacks(n, false)) {
     ROS_ERROR("%s: Failed to register April Tag callback.", name_.c_str());
     return false;
@@ -40,6 +36,8 @@ bool AprilTagHandler::Initialize(const ros::NodeHandle& n){
  * Returns bool
  */
 bool AprilTagHandler::LoadParameters(const ros::NodeHandle& n) {
+  // Can call base LoadParameters here for global and lc if artifact prefix can be constant in artifacts as well
+  // ArtifactHandler::LoadParameters(n);
   if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
     return false;
   if (!pu::Get("use_artifact_loop_closure", use_artifact_loop_closure_)) return false;
