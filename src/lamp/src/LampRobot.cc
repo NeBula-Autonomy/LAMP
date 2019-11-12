@@ -609,6 +609,9 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
               temp_transform)) {
         ROS_ERROR("Can't convert artifact from global to relative");
         b_has_new_factor_ = false;
+        // Clean Artifact handler so that these set of
+        // factors are removed from history
+        artifact_handler_.CleanFailedFactors(false);
         return false;
       }
     } else {
@@ -625,6 +628,9 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE ARTIFACTS!!");
       b_has_new_factor_ = false;
+      // Clean Artifact handler so that these set of
+      // factors are removed from history
+      artifact_handler_.CleanFailedFactors(false);
       return false;
     }
 
@@ -674,6 +680,8 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
 
   ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
 
+  // Clean up for next iteration
+  artifact_handler_.CleanFailedFactors(true);
   return true;
 }
 
@@ -734,6 +742,9 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
             temp_transform)) {
         ROS_ERROR("Can't convert April tag from global to relative");
         b_has_new_factor_ = false;
+
+        // Clean all the new factors 
+        april_tag_handler_.CleanFailedFactors(false);
         return false;
       }
     } else {
@@ -750,6 +761,10 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
       ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE APRIL TAG!!");
       b_has_new_factor_ = false;
+
+      // Clean all the new factors 
+      april_tag_handler_.CleanFailedFactors(false);
+      
       return false;
     }
 
@@ -804,6 +819,9 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
   pose_graph_.AddNewValues(new_values);
 
   ROS_INFO("Successfully complete ProcessAprilTagData call with an April Tag");
+
+  // Clean the new keys 
+  april_tag_handler_.CleanFailedFactors(true);
 
   return true;
 }
