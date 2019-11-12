@@ -1,4 +1,4 @@
-![LAMP-logo](https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_blam/raw/master/BLAM-logo.png)
+![LAMP-logo](https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_lamp/raw/master/LAMP-logo.png)
 
 
 ## Build Instructions
@@ -6,15 +6,22 @@ Build this package in a catkin workspace
 ```bash
 mkdir -p catkin_ws/src
 cd catkin_ws
-catkin config --extend /opt/ros/kinetic
+catkin config --extend /opt/ros/melodic
 ```
 
 ### Dependencies
-This package requires the core_messages package to be build:
+This package requires the core_messages package to be built:
 ```bash
 cd ~/catkin_ws/src
 git clone https://gitlab.robotics.caltech.edu/rollocopter/core/core_messages.git
 catkin build pose_graph_msgs
+```
+
+And the lo_frontend package:
+```bash
+cd ~/catkin_ws/src
+git clone https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_lo_frontend.git
+catkin build lo_frontend
 ```
 
 This package requires `minizip` to be available globally. It can be installed from the package manager via:
@@ -22,18 +29,7 @@ This package requires `minizip` to be available globally. It can be installed fr
 apt install libminizip-dev
 ```
 
-This package also requires [RobustPGO](https://github.com/MIT-SPARK/RobustPGO), specifically the `LAMP` branch. 
-```bash
-git clone https://github.com/MIT-SPARK/RobustPGO.git
-cd RobustPGO
-git checkout LAMP
-mkdir build 
-cd build
-cmake ..
-sudo make install
-```
-
-***BLAM!*** relies on system installations of the following packages:
+***LAMP*** also relies on system installations of the following packages:
 
 * [ROS](http://wiki.ros.org/ROS/Installation)
 * [GTSAM](https://collab.cc.gatech.edu/borg/gtsam)
@@ -42,42 +38,34 @@ We recommend:
 Clone GTSAM in your *home* folder and checkout the feature branch:   
 ```bash
 cd
-git clone -b feature/improvementsIncrementalFilter --single-branch https://bitbucket.org/gtborg/gtsam
+git clone https://bitbucket.org/gtborg/gtsam
 ```
-Checkout a specific commit to solve a build issue:
-```bash
-cd gtsam
-git checkout c827d4cd6b11f78f3d2d9d52b335ac562a2757fc
-```
+
 Build
 ```bash
 cd gtsam 
 mkdir build
 cd build
 cmake .. -DGTSAM_POSE3_EXPMAP=ON -DGTSAM_ROT3_EXPMAP=ON
-$ optional: sudo make check # (this would fail because of the EXMAP args)
+$ optional: sudo make 
 sudo make install
 ```
+
 **Note:** 
 The reason why we need EXPMAP is for the correct calculation of Jacobians. 
 Enabling this and the `#define SLOW_BUT_CORRECT_BETWEENFACTOR` in LaserLoopCLosure.h are both important. Otherwise the default are some identity approximations for rotations, which works for some cases but fails for cases with manual loop closures, or artifacts. 
 
-`OLD ADVICE ON BLAM`:
 
-GTSAM in particular should be installed from source using the latest version of the develop branch from https://bitbucket.org/gtborg/gtsam. GTSAM relies on Boost, an incorrect version of which will interfere with some of ROS' packages if ROS is not upgraded to at least Indigo. ROS Indigo, in turn, relies on Ubuntu 14.04.
+### Normal Building
+When developing, the dependencies should be appropriately set up to simply build `lamp` to build all the required packages. 
 
-
-### Building BLAM
-This repository contains the checked-out repositories that were installed via rosinstall in the original ***BLAM!*** repository.
-With these changes, the following commands build the entire ***BLAM!*** stack:
 ```bash
 cd ~/catkin_ws/src
-git clone https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_blam.git
-catkin build blam_slam
-catkin build point_cloud_visualizer
-catkin build blam_example
+catkin build lamp
 ```
 
+
+**Note for PCL:**
 The following significant changes were made to the build process:
 * Projects using PCL are now including `${PCL_LIBRARIES}` in their respective `CMakeLists.txt`.
 * All `CMakelists.text` are set to build in Release
@@ -85,47 +73,49 @@ The following significant changes were made to the build process:
 
 
 ## Run Instructions
-***BLAM!*** is written in C++ with some Python interface elements, wrapped by
-Robot Operating System ([ROS](http://ros.org)). Input LiDAR data should be
-provided to the `/velodyne_points` topic using message type `sensor_msgs::PointCloud2`.
-
-To run, use (replacing "husky" with the robot name)
+***LAMP*** is written in C++ with some Python interface elements, wrapped by the Robot Operating System ([ROS](http://ros.org)). LAMP by itself is a backend that is flexible to a range of odometry inputs. For running with Lidar, the standard setup is outlined in the `src/lamp/scripts/launch_lamp.yaml` file, which is a [tmuxp]() load script. Run this with:
 
 ```bash
-roslaunch blam_example exec_online.launch robot_namespace:=husky
+tmuxp load $(rospack find lamp)/scripts/launch_lamp.yaml
 ```
 
-When running with a bagfile, the lidar data should be on `/husky/velodyne_points` when the `robot_namespace` is `husky`.
+Note that this includes static transform publishers and bagfile playing (edit to point to the appropriate bagfile). 
 
-To remap the bagfile, run
+This will open a tmux terminal with all processes running (optionally start a roscore beforehand).
+
+Otherwise, run the following nodes in different terminals, replacing `husky` with the appropriate robot name (affects transforms and topic names).
 
 ```bash
-rosbag play bagfile.bag --prefix husky
+roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME
 ```
-
-Also, when running on a bagfile, a static transform publisher is needed, to take place of the robot description:
+This launches the lidar odometry front-end
 
 ```bash
-static_transform_publisher 0 0 0 0 0 0 1 /husky/base_link /velodyne
+roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
 ```
+This starts the ***LAMP*** robot version
 
-In addition, a static transform publisher is needed to take place of the tf from world to blam:
-
+For visualization on rviz, launch:
 ```bash
-static_transform_publisher 0 0 0 0 0 0 /husky/blam /world
-```
-**Note:** 
-If you are using the ``run_blam.sh`` script, there is no need to run the static transform publisher from `/world` to `/husky/blam` as this is already captured in the script.
-
-To visualize in RViz, use the husky rviz file:
-```bash
-rviz -d {filepath}/localizer_blam/internal/src/blam_example/rviz/lidar_slam_husky.rviz
+roslaunch lamp turn_on_robot_viz.launch robot_namespace:=$ROBOT_NAME
 ```
 
-Alternatively, just run the tmux script (after modifying the parameters at the top of the file):
+For running the base station (needed for visualization), launch
 ```bash
-./run_blam.sh
+roslaunch lamp turn_on_lamp_base.launch
 ```
+
+### Multi-robot testing 
+WIP: See script coming here:
+```bash
+tmuxp load $(rospack find lamp)/scripts/launch_lamp.yaml
+```
+
+
+### Data Inputs
+In the standard case, lidar inout is expected provided to the `/$(ROBOT_NAME)/velodyne_points` topic using message type `sensor_msgs::PointCloud2`.
+
+
 
 ## (Optional) Running TBB and MKL:
 Follow these steps for downloading MKL package:
@@ -176,35 +166,11 @@ FindTBB.cmake
 **Note:** There are not consistancy in TBB package. %70 cases used the MKL and TBB and perfectly working with enhancement in lowering the computation. There are cases of software crashing.
 
 
-# OLD
-To run in online mode (e.g. by replaying a bag file from another terminal or
-using a real-time sensor stream), use
-
-```bash
-roslaunch blam_example test_online.launch
-```
-
-An existing pose graph zip-file generated by the `save_graph` service (as documented in the [loop_closure_tools](https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_blam/tree/feature/save_graph/internal/src/loop_closure_tools) module) can be restored by providing the filename as command-line argument:
-
-```bash
-roslaunch blam_example test_online.launch load_pose_graph_file:=pose_graph.zip
-```
-
-To run in offline mode, i.e. by loading a bagfile and processing its data as
-fast as possible, set the bagfile name and scan topic in
-`blam_example/launch/test_offline.launch`, and use
-
-```bash
-roslaunch blam_example test_offline.launch
-```
-
-An example .rviz configuration file is provided under
-`blam_example/rviz/lidar_slam.rviz`.
 
 ## Unit tests
 To compile and run unit tests:
 ```bash
-roscore & catkin build --catkin-make-args run_tests
+roscore & catkin build run_tests
 ``` 
 
 To view the results of a package:

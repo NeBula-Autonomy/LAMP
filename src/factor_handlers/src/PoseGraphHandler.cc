@@ -29,6 +29,11 @@ bool PoseGraphHandler::Initialize(const ros::NodeHandle& n, std::vector<std::str
     return false;
   }
 
+  if (!CreatePublishers(n)) {
+    ROS_ERROR("%s: Failed to create publishers.", name_.c_str());
+    return false;
+  }
+
   return true;
 }
 
@@ -85,10 +90,19 @@ bool PoseGraphHandler::RegisterCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
-FactorData* PoseGraphHandler::GetData() {
+bool PoseGraphHandler::CreatePublishers(const ros::NodeHandle& n) {
+  // Create a local nodehandle to manage callback subscriptions.
+  ros::NodeHandle nl(n);
+
+  // Keyed scans are republished at the base station as soon as they are received
+  keyed_scan_pub_ = nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+  return true;
+}
+
+std::shared_ptr<FactorData> PoseGraphHandler::GetData() {
 
   // Main interface with lamp for getting new pose graphs
-  PoseGraphData* output_data = new PoseGraphData(data_);
+  std::shared_ptr<PoseGraphData> output_data = std::make_shared<PoseGraphData>(data_);
 
   // Clear the stored data
   ResetGraphData();
@@ -113,4 +127,7 @@ void PoseGraphHandler::KeyedScanCallback(const pose_graph_msgs::KeyedScan::Const
 
   data_.b_has_data = true;
   data_.scans.push_back(msg);
+
+  // Republish from base station
+  keyed_scan_pub_.publish(msg);
 }

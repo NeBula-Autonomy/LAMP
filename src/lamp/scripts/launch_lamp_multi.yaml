@@ -1,0 +1,51 @@
+session_name: husky_refactor
+
+# before_script: "~/sim_/scripts/cleanup.sh"
+
+# Default environment variables; Overwrite from command line
+environment:
+
+  ROBOT1_NAME: husky1
+  ROBOT2_NAME: husky2
+  BASE_NAME: base1
+
+  LOG_PATH1: /home/costar/data/EagleMineStandard
+  LOG_PATH2: /home/costar/data/EagleMineStandard
+
+options:
+  default-command: /bin/bash
+
+# Launch config for two robot testing
+windows:
+- window_name: base /base_station/map
+  focus: true
+  layout: tiled
+  panes:
+    - roscore
+    - sleep 2; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME   
+    - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /base_station/map # base station
+    - sleep 2; rosparam set /use_sim_time true;rosrun rviz rviz
+    - sleep 5; rosbag play -l -r1.0 -s90 $LOG_PATH1/*.bag --prefix=/$ROBOT1_NAME --clock
+    - sleep 5; rosbag play -l -r1.0 -s90 $LOG_PATH2/*.bag --prefix=/$ROBOT2_NAME 
+    - sleep 1 && tmux select-window -t 0
+
+- window_name: robot1
+  layout: tiled
+  panes:
+    - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT1_NAME
+    - sleep 2; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT1_NAME
+    - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /velodyne /$ROBOT1_NAME/base_link # only for Eagle mine
+    - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$ROBOT1_NAME/map # only for Eagle mine
+
+- window_name: robot2
+  layout: tiled
+  panes:
+    - sleep 4; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT2_NAME
+    - sleep 2; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT2_NAME
+    - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /velodyne /$ROBOT2_NAME/base_link # only for Eagle mine
+    - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$ROBOT2_NAME/map # only for Eagle mine
+
+
+
+
+

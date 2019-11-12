@@ -2,7 +2,13 @@
 #include "factor_handlers/ManualLoopClosureHandler.h"
 
 // Constructor
-ManualLoopClosureHandler::ManualLoopClosureHandler() { }
+ManualLoopClosureHandler::ManualLoopClosureHandler() {
+
+  // Initialise the noise model
+  gtsam::Vector6 zero;
+  zero << 0, 0, 0, 0, 0, 0;
+  noise_ = gtsam::noiseModel::Diagonal::Sigmas(zero);  
+ }
 
 // Destructor
 ManualLoopClosureHandler::~ManualLoopClosureHandler() { }
@@ -30,6 +36,18 @@ bool ManualLoopClosureHandler::Initialize(const ros::NodeHandle& n){
 
 bool ManualLoopClosureHandler::LoadParameters(const ros::NodeHandle& n) {
 
+  // Manual LC precisions
+  if (!pu::Get("manual_lc_rot_precision", manual_lc_rot_precision_))
+    return false;
+  if (!pu::Get("manual_lc_trans_precision", manual_lc_trans_precision_))
+    return false;
+
+  // Load the manual LC noise model
+  gtsam::Vector6 noise_vec;
+  noise_vec.head<3>().setConstant(manual_lc_rot_precision_);
+  noise_vec.tail<3>().setConstant(manual_lc_trans_precision_);
+  noise_ = gtsam::noiseModel::Diagonal::Precisions(noise_vec);
+
   return true; 
 }
 
@@ -45,6 +63,11 @@ bool ManualLoopClosureHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void ManualLoopClosureHandler::ManualLoopClosureCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
 
+  // Exit if no new data
+  if (!msg->edges.size()) {
+    return;
+  }
+
   // Convert the message to factor data
   for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
 
@@ -56,11 +79,14 @@ void ManualLoopClosureHandler::ManualLoopClosureCallback(const pose_graph_msgs::
     new_factor.stamp = msg->header.stamp;
 
     // TODO handle covariances
+    new_factor.covariance = noise_;
 
     // Add the new factor
     factors_.factors.push_back(new_factor);
   }
 
+  // Record that new data was stored
+  factors_.b_has_data = true;
 }
 
 void ManualLoopClosureHandler::ResetFactorData() {
@@ -70,10 +96,9 @@ void ManualLoopClosureHandler::ResetFactorData() {
 }
 
 
-FactorData* ManualLoopClosureHandler::GetData() {
+std::shared_ptr<FactorData> ManualLoopClosureHandler::GetData() {
 
-  LoopClosureData* output_data = new LoopClosureData(factors_);
-
+  std::shared_ptr<LoopClosureData> output_data = std::make_shared<LoopClosureData>(factors_);
   ResetFactorData();
 
   return output_data;

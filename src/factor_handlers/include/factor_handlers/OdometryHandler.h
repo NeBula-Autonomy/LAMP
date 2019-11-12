@@ -20,12 +20,19 @@ typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
 typedef std::map<double, PoseCovStamped> OdomPoseBuffer;
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+typedef std::map<double, PointCloud> PointCloudBuffer; 
 
 typedef struct {
   bool b_has_value;
   gtsam::Pose3 pose;
   gtsam::SharedNoiseModel covariance;
 } GtsamPosCov;
+
+typedef struct {
+  bool lidar;
+  bool visual;
+  bool wheel;
+} OdomValueAtKeyInitializedStatus;
 
 typedef std::pair<GtsamPosCov, GtsamPosCov> GtsamPosCovPair;
 
@@ -43,7 +50,7 @@ public:
 
   // Constructors and Destructors
   OdometryHandler();
-  ~OdometryHandler();  
+  ~OdometryHandler(); 
 
   // Public methods
   bool Initialize (const ros::NodeHandle& n);
@@ -51,10 +58,11 @@ public:
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
   // LAMP Interface 
-  FactorData* GetData();
+  std::shared_ptr<FactorData> GetData();
   bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose);
   bool GetOdomDeltaLatestTime(ros::Time& t_now, GtsamPosCov& delta_pose);
   bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg);
+  void ClearPreviousPointCloudScans(const PointCloudBuffer::iterator& itrTime);
   GtsamPosCov GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
                                             const ros::Time t2);
 
@@ -82,15 +90,16 @@ protected:
   OdomPoseBuffer wheel_odometry_buffer_; 
       
   // Point Cloud Storage (Time stamp and point cloud)
-  std::map<double, PointCloud> point_cloud_buffer_;
+  PointCloudBuffer point_cloud_buffer_;
 
-  // Utilities 
+  // Utilities
+  void InitializePoseCovStampedMsgValue(PoseCovStamped& msg);
   template <typename T1, typename T2>
   int CheckBufferSize(const std::map<T1, T2>& x){
       return x.size();
   }
 
-  void ClearOdometryBuffer(OdomPoseBuffer& odom_buffer, const unsigned int odom_buffer_id);
+  void InitializeOdomValueAtKey(const Odometry::ConstPtr& msg, const unsigned int odom_buffer_id);
 
   bool CheckOdomSize();
   bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg,
@@ -126,6 +135,7 @@ protected:
   double keyed_scan_time_diff_limit_;
   double pc_buffer_size_limit_;
   double translation_threshold_;
+  bool b_debug_pointcloud_buffer_;
 
   // Fusion logic
   bool b_is_first_query_;
@@ -136,12 +146,21 @@ protected:
   // Factor data
   OdomData factors_;
 
-  // Corner case handling
+  /*
+  Corner case handling
+
+    - Specify a maximum buffer size to store history 
+      of Odometric data stream  
+    
+    - Store individual odometric values in protected class members 
+      whenever a new key is created
+      
+  */ 
+  OdomValueAtKeyInitializedStatus b_odom_value_initialized_;
   int max_buffer_size_; 
-  int min_buffer_size_;
   PoseCovStamped lidar_odom_value_at_key_; 
   PoseCovStamped visual_odom_value_at_key_; 
-  PoseCovStamped wheel_odom_value_at_key_;   
+  PoseCovStamped wheel_odom_value_at_key_;
 
 private:
 

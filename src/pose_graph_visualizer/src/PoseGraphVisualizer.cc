@@ -36,7 +36,7 @@ geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(
   // ROS_INFO("In getPositionMsg");
   if (poses.find(key) == poses.end()) {
     // ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
-    ROS_ERROR("PGV: Key %c%d does not exist in GetPositionMsg", gtsam::Symbol(key).chr(), gtsam::Symbol(key).index());
+    ROS_ERROR("PGV: Key %s does not exist in GetPositionMsg", gtsam::DefaultKeyFormatter(key));
   }
   return tfpoint2msg(poses.at(key).getOrigin());
 }
@@ -624,7 +624,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
   // Publish loop closure edges.
   if (loop_edge_pub_.getNumSubscribers() > 0) {
-    ROS_INFO("Loop Edges");
+    // ROS_INFO("Loop Edges");
     visualization_msgs::Marker m;
     m.header.frame_id = fixed_frame_id_;
     m.ns = fixed_frame_id_;

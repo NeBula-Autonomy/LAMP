@@ -134,6 +134,7 @@ protected:
   // New pose graph values from optimizer
   virtual void
   OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
+  virtual void MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
   // Set artifact positions
   virtual void UpdateArtifactPositions();
@@ -162,8 +163,10 @@ protected:
 
   // Booleans
   bool b_has_new_factor_;
+  bool b_has_new_scan_;
   bool b_run_optimization_;
   bool b_use_fixed_covariances_;
+  bool b_repub_values_after_optimization_;
 
   // Frames.
   std::string base_frame_id_;
