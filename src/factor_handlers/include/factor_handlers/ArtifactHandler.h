@@ -76,6 +76,11 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     void CleanFailedFactors(const bool success);
 
+    /*! \brief Set if PGO is initialized
+     * Returns  Void
+     */
+    inline bool SetPgoInitialized(const bool value) {is_pgo_initialized = value;}
+
     protected:
     /*! \brief Load artifact parameters. 
      * n - Nodehandle
@@ -154,7 +159,9 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Mapping between a artifact id and the node where it is present in the pose graph
     std::unordered_map<std::string, gtsam::Symbol> artifact_id2key_hash;
 
-    
+    // Is pose graph initialized
+    bool is_pgo_initialized;
+
     // Parameters
     bool b_artifacts_in_global_;
     int largest_artifact_id_; 
