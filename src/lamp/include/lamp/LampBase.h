@@ -190,6 +190,8 @@ protected:
   double fiducial_trans_precision_;
   double fiducial_rot_precision_;
   double point_estimate_precision_;
+  double artifact_gt_rot_precision_;
+  double artifact_gt_trans_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
 

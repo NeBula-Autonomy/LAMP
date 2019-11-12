@@ -414,7 +414,7 @@ bool LampBaseStation::ProcessArtifactGT() {
     pose_graph_.TrackNode(ros::Time::now(), 
                       a.key, 
                       gtsam::Pose3(gtsam::Rot3(), a.position), 
-                      gtsam::SharedNoiseModel()); // TODO: ADD COVARIANCE
+                      SetFixedNoiseModels("artifact_gt"));
 
 
     // Trigger optimisation 
