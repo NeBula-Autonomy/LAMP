@@ -33,7 +33,7 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampRobot::LampRobot() {
+LampRobot::LampRobot() : is_artifact_initialized(false) {
   b_run_optimization_ = false;
 }
 
@@ -315,6 +315,13 @@ bool LampRobot::CheckHandlers() {
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
+  // Set the initialized flag in artifacts and april to start
+  // receiving messages.
+  if ((pose_graph_.values.size() > 0) && (!is_artifact_initialized)) {
+    is_artifact_initialized = true;
+    artifact_handler_.SetPgoInitialized(true);
+    april_tag_handler_.SetPgoInitialized(true);
+  }
   // Check for artifacts
   b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
   // Check for april tags
