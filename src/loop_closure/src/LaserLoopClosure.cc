@@ -110,6 +110,12 @@ bool LaserLoopClosure::FindLoopClosures(
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
 
+    // Skip poses with no keyed scans.
+    if (!keyed_scans_.count(other_key)) {
+      continue;
+    }
+
+
     // Check for single robot loop closures
     if (utils::IsKeyFromSameRobot(new_key, other_key)) {
       closed_loop |= CheckForLoopClosure(new_key, other_key, loop_closure_edges);
