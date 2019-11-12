@@ -184,6 +184,7 @@ bool PoseGraph::TrackPrior(gtsam::Symbol key,
   return TrackPrior(prior.ToMsg());
 }
 
+// DEPRECATED!!
 void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
   // Main values variable
   for (auto v : new_values) {
@@ -196,6 +197,7 @@ void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
   }
 }
 
+// DEPRECATED!!
 void PoseGraph::AddNewFactors(const gtsam::NonlinearFactorGraph& nfg) {
   nfg_.add(nfg);
 }

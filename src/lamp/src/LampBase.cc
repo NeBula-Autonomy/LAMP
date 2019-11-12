@@ -26,6 +26,7 @@ using gtsam::Vector3;
 // Constructor
 LampBase::LampBase()
   : update_rate_(10), 
+  zero_noise_(0.0001),  
   b_use_fixed_covariances_(false),
   b_repub_values_after_optimization_(false) {
   // any other things on construction
@@ -85,6 +86,10 @@ bool LampBase::SetFactorPrecisions() {
   precisions.head<3>().setConstant(artifact_rot_precision_);
   precisions.tail<3>().setConstant(artifact_trans_precision_);
   artifact_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
+
+  // gtsam::Vector6 noise;
+  // noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
+  // zero_covariance_ = gtsam::noiseModel::Diagonal::Sigmas(noise);
 
   return true;
 }

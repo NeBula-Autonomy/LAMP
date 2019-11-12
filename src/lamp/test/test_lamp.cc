@@ -719,7 +719,7 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // Check if l1 is added to values
   EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
   // Check the position of the April Tag
-  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
+  EXPECT_EQ(GetPose(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
   // Check the loop closure factor
   graph = GetNfg();
   std::vector<gtsam::Symbol> other_keys;

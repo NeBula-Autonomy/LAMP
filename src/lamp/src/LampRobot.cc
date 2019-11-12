@@ -317,7 +317,7 @@ bool LampRobot::CheckHandlers() {
   // Check all handlers
   // Set the initialized flag in artifacts and april to start
   // receiving messages.
-  if ((pose_graph_.values.size() > 0) && (!is_artifact_initialized)) {
+  if ((pose_graph_.GetValues().size() > 0) && (!is_artifact_initialized)) {
     is_artifact_initialized = true;
     artifact_handler_.SetPgoInitialized(true);
     april_tag_handler_.SetPgoInitialized(true);
@@ -413,12 +413,6 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
   // Record new factor being added - need to publish pose graph
   b_has_new_factor_ = true;
 
-  // factors to add
-  NonlinearFactorGraph new_factors;
-
-  // Values to add
-  Values new_values;
-
   // process data for each new factor
   for (auto odom_factor : odom_data->factors) {
     ROS_INFO("Adding new odom factor to pose graph");
@@ -443,13 +437,11 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     // TODO - use this for other handlers: Symbol prev_key =
     // GetKeyAtTime(times.first);
 
-    // create the factor
-    new_factors.add(
-        BetweenFactor<Pose3>(prev_key, current_key, transform, covariance));
-
     // Compute the new value
     Pose3 last_pose = pose_graph_.GetPose(prev_key);
-    new_values.insert(current_key, last_pose.compose(transform));
+
+    // Add values to graph so have it for adding map TODO - use unit covariance
+    pose_graph_.TrackNode(times.second, current_key, last_pose.compose(transform), covariance);
 
     // add  node/keyframe to keyed stamps
     pose_graph_.InsertKeyedStamp(current_key, times.second);
@@ -461,10 +453,6 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
 
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
-
-    // Add values to graph so have it for adding map
-    pose_graph_.AddNewValues(new_values);
-    new_values.clear();
 
     if (odom_factor.b_has_point_cloud) {
       // Store the keyed scan and add it to the map
@@ -500,9 +488,6 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
       keyed_scan_pub_.publish(keyed_scan_msg);
     }
   }
-
-  // Add factors and values to the graph
-  pose_graph_.AddNewFactors(new_factors);
 
   return true;
 }
@@ -586,12 +571,6 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
   gtsam::Symbol pose_key;
   gtsam::Symbol cur_artifact_key;
 
-  // New Factors to be added
-  NonlinearFactorGraph new_factors;
-
-  // New Values to be added
-  Values new_values;
-
   // process data for each new factor
   for (auto artifact : artifact_data->factors) {
     // Get the time
@@ -643,17 +622,12 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       covariance = SetFixedNoiseModels("artifact");
     }
 
-    // create and add the factor
-    new_factors.add(gtsam::BetweenFactor<Pose3>(
-        pose_key, cur_artifact_key, transform, covariance));
-    ROS_INFO("Added artifact to pose graph factors in lamp");
-
     // Check if it is a new artifact or not
     if (!pose_graph_.HasKey(cur_artifact_key)) {
       ROS_INFO("Have a new artifact in LAMP");
 
-      // Insert into the values
-      new_values.insert(cur_artifact_key, global_pose);
+      // Insert into the values TODO - add unit covariance
+      pose_graph_.TrackNode(timestamp, cur_artifact_key, global_pose, covariance);
 
       // Add keyed stamps
       pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
@@ -669,14 +643,12 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       b_run_optimization_ = true;
     }
 
-    // Track the edges that have been added
+    // Add and track the edges that have been added
     int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
     pose_graph_.TrackFactor(
         pose_key, cur_artifact_key, type, transform, covariance);
+    ROS_INFO("Added artifact to pose graph factors in lamp");
   }
-  // add factor to buffer to send to pgo
-  pose_graph_.AddNewFactors(new_factors);
-  pose_graph_.AddNewValues(new_values);
 
   ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
 
@@ -713,12 +685,6 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
   ros::Time timestamp;
   gtsam::Symbol pose_key;
   gtsam::Symbol cur_april_tag_key;
-
-  // New Factors to be added
-  NonlinearFactorGraph new_factors;
-
-  // New Values to be added
-  Values new_values;
 
   // process data for each new factor
   for (auto april_tag : april_tag_data->factors) {  
@@ -777,31 +743,23 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
       covariance = SetFixedNoiseModels("april");
     }
 
-    // create and add the factor
-    new_factors.add(gtsam::BetweenFactor<Pose3>(pose_key, 
-                                                cur_april_tag_key, 
-                                                transform, 
-                                                covariance));
-    ROS_INFO("Added April Tag to pose graph factors in lamp");
-
-
     // Check if it is a new april tag or not
     if (!pose_graph_.HasKey(cur_april_tag_key)) {
       ROS_INFO("Have a new April Tag in LAMP");
 
-      // Insert into the values
-      new_values.insert(cur_april_tag_key, global_pose);
+      // Insert into the values. TODO - use correct covariance
+      pose_graph_.TrackNode(timestamp,cur_april_tag_key, global_pose, covariance);
 
       // Add keyed stamps
       pose_graph_.InsertKeyedStamp(cur_april_tag_key, timestamp);
 
-
       // Get the noise in ground truth data
       gtsam::SharedNoiseModel noise = SetFixedNoiseModels("april");
 
-      // Add prior factor if its a new april tag.
+      // Add and track the prior factor if its a new april tag.
       ROS_INFO("Adding prior factor for April Tag");      
-      new_factors.add(gtsam::PriorFactor<gtsam::Pose3>(cur_april_tag_key, ground_truth, noise));
+      int type = pose_graph_msgs::PoseGraphEdge::PRIOR;
+      pose_graph_.TrackFactor(cur_april_tag_key, cur_april_tag_key, type, ground_truth, noise);
     } else {
       // Second sighting of an april tag - we have a loop closure
       ROS_INFO_STREAM("April tag re-sighted with key: "
@@ -810,13 +768,11 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
     // Since a factor is added in any case new or seen, run optimization
     b_run_optimization_ = true;
 
-    // Track the edges that have been added
+    // Add and track the edges that have been added
     int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
     pose_graph_.TrackFactor(pose_key, cur_april_tag_key, type, transform, covariance);
+    ROS_INFO("Added April Tag to pose graph factors in lamp");
   }
-  // add factor to buffer to send to pgo
-  pose_graph_.AddNewFactors(new_factors);
-  pose_graph_.AddNewValues(new_values);
 
   ROS_INFO("Successfully complete ProcessAprilTagData call with an April Tag");
 
