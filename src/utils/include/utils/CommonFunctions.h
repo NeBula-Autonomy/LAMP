@@ -33,18 +33,30 @@ namespace gr = gu::ros;
 namespace utils {
 
 // Pose graph msg to gtsam conversion
+// TODO remove this function, use PoseGraph functions instead.
 void PoseGraphMsgToGtsam(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg,
                          gtsam::NonlinearFactorGraph* graph_nfg,
                          gtsam::Values* graph_vals);
 
-// Convert edge message to gtsam pose
-gtsam::Pose3 EdgeMessageToPose(const pose_graph_msgs::PoseGraphEdge& msg_edge);
+// Convert edge/node message to gtsam pose
+template <typename MessageT>
+gtsam::Pose3 MessageToPose(const MessageT& msg) {
+  gtsam::Point3 delta_translation(
+      msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
+  gtsam::Rot3 delta_orientation(
+      gtsam::Rot3::quaternion(msg.pose.orientation.w,
+                              msg.pose.orientation.x,
+                              msg.pose.orientation.y,
+                              msg.pose.orientation.z));
+  gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
+
+  return delta;
+}
 
 // Extract the covariance (as Gaussian Covariance in Shared Noise Model) from
 // edge or node message
 template <typename MessageT>
-Gaussian::shared_ptr
-MessageToCovariance(const MessageT& msg) {
+Gaussian::shared_ptr MessageToCovariance(const MessageT& msg) {
   // TODO: unit test
   gtsam::Matrix66 covariance;
   for (size_t i = 0; i < msg.covariance.size(); i++) {
@@ -84,8 +96,8 @@ void UpdateCovariance(MessageT& msg, const gtsam::SharedNoiseModel& noise) {
 }
 
 // Convert gtsam data types to a ros message
-geometry_msgs::PoseWithCovariance GtsamToRosMsg(const gtsam::Pose3& pose,
-                                                const gtsam::Matrix66& covariance);
+geometry_msgs::PoseWithCovariance
+GtsamToRosMsg(const gtsam::Pose3& pose, const gtsam::Matrix66& covariance);
 
 geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose);
 
@@ -98,7 +110,7 @@ GtsamToRosMsg(gtsam::Symbol key_from,
 
 pose_graph_msgs::PoseGraphNode
 GtsamToRosMsg(ros::Time stamp,
-const std::string& fixed_frame_id,
+              const std::string& fixed_frame_id,
               gtsam::Symbol key,
               const gtsam::Pose3& pose,
               const gtsam::SharedNoiseModel& covariance);

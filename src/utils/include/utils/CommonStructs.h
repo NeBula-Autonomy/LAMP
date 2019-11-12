@@ -24,8 +24,8 @@
 #include <gtsam/slam/InitializePose3.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/KeyedScan.h>
+#include <pose_graph_msgs/PoseGraph.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
@@ -56,6 +56,32 @@ typedef pose_graph_msgs::PoseGraph::ConstPtr GraphMsgPtr;
 
 typedef std::vector<EdgeMessage> EdgeMessages;
 typedef std::vector<NodeMessage> NodeMessages;
+
+// Implements strictly-less-than operator for edge messages.
+struct EdgeMessageComparator {
+  bool operator()(const EdgeMessage& lhs, const EdgeMessage& rhs) const {
+    if (lhs.key_from < rhs.key_from)
+      return true;
+    if (lhs.key_from > rhs.key_from)
+      return false;
+    if (lhs.key_to < rhs.key_to)
+      return true;
+    if (lhs.key_to > rhs.key_to)
+      return false;
+    return lhs.type < rhs.type;
+  }
+};
+
+// Implements strictly-less-than operator for node messages.
+struct NodeMessageComparator {
+  bool operator()(const NodeMessage& lhs, const NodeMessage& rhs) const {
+    return lhs.key < rhs.key;
+  }
+};
+
+// Use sets of edges/nodes to avoid duplicates.
+typedef std::set<EdgeMessage, EdgeMessageComparator> EdgeSet;
+typedef std::set<NodeMessage, NodeMessageComparator> NodeSet;
 
 // Typedef for stored point clouds.
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -102,13 +128,32 @@ struct Node {
        const gtsam::Pose3& pose,
        const gtsam::SharedNoiseModel& covariance,
        PoseGraph* graph = nullptr);
+  Node() : stamp(ros::Time::now()) {}
 };
 
 // Pose graph structure storing values, factors and meta data.
 class PoseGraph {
 public:
-  gtsam::Values values;
-  gtsam::NonlinearFactorGraph nfg;
+  const gtsam::Values& GetValues() const {
+    return values_;
+  }
+  const gtsam::Values& GetNewValues() const {
+    return values_new_;
+  }
+  const gtsam::NonlinearFactorGraph& GetNfg() const {
+    return nfg_;
+  }
+
+  // Modifiable references to pose graph data structures.
+  gtsam::Values& GetValues() {
+    return values_;
+  }
+  gtsam::Values& GetNewValues() {
+    return values_new_;
+  }
+  gtsam::NonlinearFactorGraph& GetNfg() {
+    return nfg_;
+  }
 
   // Function that maps gtsam::Symbol to std::string (internal identifier for
   // node messages).
@@ -125,8 +170,11 @@ public:
   void InsertKeyedStamp(gtsam::Symbol key, const ros::Time& stamp);
   void InsertStampedOdomKey(double seconds, gtsam::Symbol key);
 
+  inline bool HasKey(gtsam::Symbol key) const {
+    return values_.exists(key);
+  }
   // Check if given key has a registered time stamp.
-  inline bool HasTime(gtsam::Symbol key) const {
+  inline bool HasStamp(gtsam::Symbol key) const {
     return keyed_stamps.find(key) != keyed_stamps.end();
   }
   inline bool HasScan(gtsam::Symbol key) const {
@@ -140,40 +188,55 @@ public:
   gtsam::Symbol initial_key{0};
 
   // Current key
-  gtsam::Symbol key;
+  gtsam::Symbol key{0};
 
   gtsam::Vector6 initial_noise{gtsam::Vector6::Zero()};
 
   inline gtsam::Pose3 LastPose() const {
-    return values.at<gtsam::Pose3>(key - 1);
+    return values_.at<gtsam::Pose3>(key - 1);
   }
   inline gtsam::Pose3 GetPose(gtsam::Symbol key) const {
-    return values.at<gtsam::Pose3>(key);
+    return values_.at<gtsam::Pose3>(key);
   }
 
   void Initialize(gtsam::Symbol initial_key,
                   const gtsam::Pose3& pose,
                   const Diagonal::shared_ptr& covariance);
 
-  void TrackFactor(const Factor& factor);
-  void TrackFactor(const EdgeMessage& msg);
-  void TrackFactor(gtsam::Symbol key_from,
+  // Tracks edge (factor) without updating nfg. Returns true if new factor is
+  // added.
+  bool TrackFactor(const Factor& factor);
+  bool TrackFactor(const EdgeMessage& msg);
+  bool TrackFactor(gtsam::Symbol key_from,
                    gtsam::Symbol key_to,
                    int type,
                    const gtsam::Pose3& transform,
                    const gtsam::SharedNoiseModel& covariance);
-  void TrackNode(const Node& node);
-  void TrackNode(const NodeMessage& msg);
-  void TrackNode(const ros::Time& stamp,
+
+  // Tracks nodes and updates values. Returns true if new node is added.
+  // Updates the internal keyed_stamp map for this key.
+  bool TrackNode(const Node& node);
+  bool TrackNode(const NodeMessage& msg);
+  bool TrackNode(const ros::Time& stamp,
                  gtsam::Symbol key,
                  const gtsam::Pose3& pose,
                  const gtsam::SharedNoiseModel& covariance);
 
-  // Assume that only one edge can exist of the same type 
-  // between the same two keys
-  std::set<std::tuple<gtsam::Symbol, gtsam::Symbol, int> > tracked_edges_;
+  // Tracks priors (one-sided edges). Returns true if new prior is added.
+  // Does NOT update the internal keyed_stamp map for this key.
+  bool TrackPrior(const Factor& prior);
+  bool TrackPrior(const Node& prior);
+  bool TrackPrior(const EdgeMessage& msg);
+  bool TrackPrior(gtsam::Symbol key,
+                  const gtsam::Pose3& pose,
+                  const gtsam::SharedNoiseModel& covariance);
 
+  // Adds gtsam::Values to internal values and values_new without updating node
+  // messages.
   void AddNewValues(const gtsam::Values& new_values);
+  // Adds factors to internal nfg without updating edge messages.
+  void AddNewFactors(const gtsam::NonlinearFactorGraph& nfg);
+
   inline void ClearNewValues() {
     values_new_.clear();
   }
@@ -183,7 +246,10 @@ public:
   static double time_threshold;
   // Convert timestamps to gtsam keys.
   gtsam::Symbol GetKeyAtTime(const ros::Time& stamp) const;
-  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp) const;
+  // Returns symbol of closest node to given time stamp or the last symbol if
+  // check_threshold, empty symbol otherwise.
+  gtsam::Symbol GetClosestKeyAtTime(const ros::Time& stamp,
+                                    bool check_threshold = true) const;
   inline static bool IsTimeWithinThreshold(double time,
                                            const ros::Time& target) {
     return std::abs(time - target.toSec()) <= time_threshold;
@@ -212,32 +278,76 @@ public:
 
   inline void ClearIncrementalMessages() {
     edges_new_.clear();
+    nodes_new_.clear();
     priors_new_.clear();
     values_new_.clear();
   }
 
-  inline const EdgeMessages& GetEdges() const {
+  // Clears entire pose graph (values, factors, meta data)
+  inline void Reset() {
+    ClearIncrementalMessages();
+    edges_.clear();
+    nodes_.clear();
+    priors_.clear();
+    values_.clear();
+    nfg_ = gtsam::NonlinearFactorGraph();
+    keyed_scans.clear();
+    keyed_stamps.clear();
+    stamp_to_odom_key.clear();
+  }
+
+  inline const EdgeSet& GetEdges() const {
     return edges_;
   }
-  inline const NodeMessages& GetPriors() const {
+  inline const NodeSet& GetNodes() const {
+    return nodes_;
+  }
+  inline const EdgeSet& GetPriors() const {
     return priors_;
   }
 
+  inline const EdgeSet& GetNewEdges() const {
+    return edges_new_;
+  }
+  inline const NodeSet& GetNewNodes() const {
+    return nodes_new_;
+  }
+  inline const EdgeSet& GetNewPriors() const {
+    return priors_new_;
+  }
+
+  // Retrieves node at the given key, returns nullptr otherwise.
+  // Returns const ptr because std::set only has const_iterators.
+  const NodeMessage* FindNode(gtsam::Key key) const;
+
+  // Retrieves edge connecting the given keys, returns nullptr otherwise.
+  // Returns const ptr because std::set only has const_iterators.
+  const EdgeMessage* FindEdge(gtsam::Key key_from, gtsam::Key key_to) const;
+
+  // Retrieves prior of the given key, returns nullptr otherwise.
+  // Returns const ptr because std::set only has const_iterators.
+  const EdgeMessage* FindPrior(gtsam::Key key) const;
+
 private:
-  // Cached messages for edges and priors to reduce publishing overhead.
-  EdgeMessages edges_;
-  NodeMessages priors_;
+  gtsam::Values values_;
+  gtsam::NonlinearFactorGraph nfg_;
+
+  // Cached messages for edges, nodes and priors to reduce publishing overhead.
+  EdgeSet edges_;
+  NodeSet nodes_;
+  EdgeSet priors_;
 
   // Variables for tracking the new features only
   gtsam::Values values_new_;
-  EdgeMessages edges_new_;
-  NodeMessages priors_new_;
+  EdgeSet edges_new_;
+  NodeSet nodes_new_;
+  EdgeSet priors_new_;
 
   // Convert incremental pose graph with given values, edges and priors to
   // message.
-  GraphMsgPtr ToMsg_(const gtsam::Values& values,
-                     const EdgeMessages& edges,
-                     const NodeMessages& priors) const;
+  GraphMsgPtr ToMsg_(const EdgeSet& edges,
+                     const NodeSet& nodes,
+                     const EdgeSet& priors) const;
 };
 
 // ---------------------------------------------------------
@@ -299,7 +409,7 @@ struct ImuFactor {
 // Base factor data class
 class FactorData {
 public:
-  FactorData() : b_has_data(false) {};
+  FactorData() : b_has_data(false){};
   virtual ~FactorData(){};
 
   bool b_has_data;  // False if there is no data
@@ -340,24 +450,20 @@ public:
 };
 
 class PoseGraphData : public FactorData {
+public:
+  PoseGraphData(){};
+  virtual ~PoseGraphData(){};
 
-  public: 
-
-    PoseGraphData() { };
-    virtual ~PoseGraphData() { };
-
-    std::vector<pose_graph_msgs::PoseGraph::ConstPtr> graphs;
-    std::vector<pose_graph_msgs::KeyedScan::ConstPtr> scans;
+  std::vector<pose_graph_msgs::PoseGraph::ConstPtr> graphs;
+  std::vector<pose_graph_msgs::KeyedScan::ConstPtr> scans;
 };
 
-
 class AprilTagData : public FactorData {
-  public: 
+public:
+  AprilTagData(){};
+  virtual ~AprilTagData(){};
 
-    AprilTagData() { };
-    virtual ~AprilTagData() { };
-
-    std::vector<AprilTagFactor> factors;
+  std::vector<AprilTagFactor> factors;
 };
 #endif
 

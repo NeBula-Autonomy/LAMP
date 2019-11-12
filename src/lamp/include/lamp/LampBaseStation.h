@@ -76,9 +76,6 @@ class LampBaseStation : public LampBase {
   private:
     // Overwrite base classs functions where needed
 
-    double zero_noise_;
-
-
     // Data Handler classes
     ManualLoopClosureHandler manual_loop_closure_handler_; 
 
