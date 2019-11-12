@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   interactive_markers
   message_generation
+  utils
 )
 
 add_service_files(FILES HighlightEdge.srv HighlightNode.srv)
@@ -77,6 +78,7 @@ target_link_libraries(${PROJECT_NAME}
   ${PCL_LIBRARIES}
   gtsam
   ${Boost_LIBRARIES}
+  minizip
 )
 add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
@@ -87,5 +89,6 @@ target_link_libraries(${PROJECT_NAME}_node
   ${PCL_LIBRARIES}
   gtsam
   ${Boost_LIBRARIES}
+  minizip
 )
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS})

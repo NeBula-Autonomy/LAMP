@@ -3,7 +3,9 @@
 
 // Constructor
 ArtifactHandler::ArtifactHandler()
-  : largest_artifact_id_(0), use_artifact_loop_closure_(false) {}
+  : largest_artifact_id_(0), 
+    use_artifact_loop_closure_(false),
+    is_pgo_initialized(false) {}
 
 /*! \brief Initialize parameters and callbacks.
  * n - Nodehandle
@@ -41,7 +43,7 @@ bool ArtifactHandler::LoadParameters(const ros::NodeHandle& n) {
   unsigned char artifact_prefix_converter[1];
   if (!pu::Get("artifact_prefix", artifact_prefix)) {
     b_initialized_artifact_prefix_from_launchfile = false;
-    ROS_ERROR("Could not find node ID assosiated with robot_namespace");
+    ROS_ERROR("Could not find node ID assosiated with robot_namespace [Artifact Handler]");
   }
 
   if (b_initialized_artifact_prefix_from_launchfile) {
@@ -108,6 +110,12 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // position Artifact information
   PrintArtifactInputMessage(msg);
 
+  // Process artifact only is pose graph is initialized
+  if (!is_pgo_initialized) {
+    ROS_INFO("Rejecting Artifacts as pose graph not initialized.");
+    return;
+  }
+
   // Check for NaNs and reject
   if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) ||
       std::isnan(msg.point.point.z)) {
@@ -150,6 +158,9 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
     // update hash
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
+    
+    // Add key to new_keys_
+    new_keys_.push_back(cur_artifact_key);
   }
   // Generate gtsam pose
   const gtsam::Pose3 relative_pose = gtsam::Pose3(gtsam::Rot3(), 
@@ -338,7 +349,7 @@ ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) cons
   gtsam::Matrix33 cov;
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
-      cov(i, j) = covariance[3 * i + j];
+      cov(i, j) = static_cast<double>(covariance[3 * i + j]);
   
   // Convert covariance to gtsam
   gtsam::SharedGaussian noise_cov = gtsam::noiseModel::Gaussian::Covariance(cov);
@@ -405,4 +416,32 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
     artifact_key2info_hash_[artifact_key].num_updates += 1;
     artifact_key2info_hash_[artifact_key].msg = msg;
   }
+}
+
+/*! \brief Revert Maps and Artifact ID number upon failure in adding to pose graph.
+ * Returns Void
+ */
+void ArtifactHandler::CleanFailedFactors(const bool success) {
+  int min_key = INT_MAX;
+  // If the ProcessArtifactData failed remove history
+  if (!success) {
+    for (auto key : new_keys_) {
+      // Get the artifact id
+      std::string artifact_id = artifact_key2info_hash_[key].id;
+
+      // Remove from artifact_key2info_hash_
+      artifact_key2info_hash_.erase(key);
+
+      // Remove from artifact_id2key_hash
+      artifact_id2key_hash.erase(artifact_id);
+
+      // Find the minimum key
+      if (min_key > key.index()) {
+        min_key = key.index();
+      }
+    }
+    largest_artifact_id_ = min_key;
+  }
+  // Clear keys in success as well as failure
+  new_keys_.clear();
 }
