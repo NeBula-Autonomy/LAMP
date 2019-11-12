@@ -60,9 +60,6 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
     ROS_ERROR("%s: Failed to initialize handlers.", name_.c_str());
     return false;
   }
-
-  // Init graph
-  InitializeGraph();
 }
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
@@ -157,22 +154,6 @@ bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
   return true; 
 }
 
-bool LampBaseStation::InitializeGraph() {
-
-  gtsam::Pose3 pose = gtsam::Pose3(gtsam::Rot3(1,0,0,0), 
-                                   gtsam::Point3(0,0,0));
-
-  gtsam::Vector6 noise;
-  noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
-  gtsam::noiseModel::Diagonal::shared_ptr covariance(
-      gtsam::noiseModel::Diagonal::Sigmas(noise));
-
-  pose_graph_.Initialize(utils::LAMP_BASE_INITIAL_KEY, pose, covariance);
-
-  return true;
-}
-
-
 void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Check the handlers
@@ -221,19 +202,6 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
   gtsam::Values new_values;
-
-  // First check for initial nodes
-  for (auto g : pose_graph_data->graphs) {
-    for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
-
-      // First node from this robot - add factor connecting to origin
-      if (utils::IsRobotPrefix(gtsam::Symbol(n.key).chr()) &&!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
-
-        ProcessFirstRobotNode(n);
-        continue; // Each robot pose graph can only have one initial node
-      }
-    }
-  }
 
   for (auto g : pose_graph_data->graphs) {
 
@@ -315,36 +283,6 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   }
 
   return true; 
-}
-
-void LampBaseStation::ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n) {
-
-  // If this is the first node from ANY robot, send the z0 node to the optimizer first
-  if (!b_published_initial_node_) {
-    PublishPoseGraphForOptimizer();
-    b_published_initial_node_ = true;
-  }
-
-  pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
-
-  gtsam::Values new_values;
-  gtsam::Vector6 noise;
-  noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
-  gtsam::noiseModel::Diagonal::shared_ptr covariance(
-      gtsam::noiseModel::Diagonal::Sigmas(noise));
-
-  ROS_INFO_STREAM("Tracking initial factor-----------------------");
-  pose_graph_.TrackFactor(utils::LAMP_BASE_INITIAL_KEY, 
-                  n.key, 
-                  pose_graph_msgs::PoseGraphEdge::ODOM, 
-                  utils::ToGtsam(n.pose), 
-                  covariance);
-
-  new_values.insert(n.key, utils::ToGtsam(n.pose));
-  pose_graph_.AddNewValues(new_values);
-  PublishPoseGraphForOptimizer();
-
-  PublishPoseGraph();
 }
 
 bool LampBaseStation::ProcessManualLoopClosureData(std::shared_ptr<FactorData> data) {

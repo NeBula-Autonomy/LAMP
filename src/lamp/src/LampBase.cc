@@ -413,11 +413,6 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
     // Odom or key frame
     return "odom_node";
   } 
-
-  else if (utils::LAMP_BASE_INITIAL_KEY == key) {
-    // Base station root node
-    return "odom_node"; // TODO - add new type for this?
-  }
   
   else if (key.chr() == 'u') {
     // UWB

@@ -45,9 +45,6 @@ class LampBaseStation : public LampBase {
     // retrieve data from all handlers
     virtual bool CheckHandlers(); // - inside timed callback
 
-    // Initialize the base station pose graph
-    virtual bool InitializeGraph();
-
     // Main update timer callback
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
@@ -63,9 +60,6 @@ class LampBaseStation : public LampBase {
 
     // Data handler classes
     PoseGraphHandler pose_graph_handler_;
-
-    // Handle first node from a robot (a0, b0, etc.)
-    void ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n);
 
     // Subscribers
     ros::Subscriber debug_sub_;
