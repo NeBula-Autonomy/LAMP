@@ -82,6 +82,13 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("rate/update_rate", update_rate_))
     return false;
 
+  // Fixed precisions
+  // TODO - eventually remove the need to use this
+  if (!SetFactorPrecisions()) {
+    ROS_ERROR("SetFactorPrecisions failed");
+    return false;
+  }
+
   // Initialize frame IDs
   pose_graph_.fixed_frame_id = "world";
 
@@ -392,10 +399,9 @@ bool LampBaseStation::ProcessArtifactGT() {
     }
 
     // Add the prior
-    pose_graph_.TrackNode(ros::Time::now(), 
-                      a.key, 
-                      gtsam::Pose3(gtsam::Rot3(), a.position), 
-                      SetFixedNoiseModels("artifact_gt"));
+    pose_graph_.TrackPrior(a.key, 
+                           gtsam::Pose3(gtsam::Rot3(),a.position), 
+                           SetFixedNoiseModels("odom"));
 
 
     // Trigger optimisation 
@@ -415,7 +421,7 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
   }
 
   // Read in artifact ground truth data
-  else if (msg.data == "artifact_GT") {
+  else if (msg.data == "artifact_gt") {
     ROS_INFO_STREAM("Processing artifact ground truth data");
     ProcessArtifactGT();
   }
