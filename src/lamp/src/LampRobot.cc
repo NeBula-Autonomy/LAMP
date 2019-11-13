@@ -813,7 +813,8 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     auto odom_key = factor.key_from;
     auto uwb_key = gtsam::Symbol('u', factor.key_to);
     // Check if it is a new uwb id or not
-    if (!pose_graph_.values.exists(uwb_key) && !new_values.exists(uwb_key)) {
+    auto values = pose_graph_.GetValues();
+    if (!values.exists(uwb_key) && !new_values.exists(uwb_key)) {
       // Insert it into the values
       global_uwb_pose = pose_graph_.GetPose(odom_key);
       new_values.insert(uwb_key, global_uwb_pose);
@@ -832,12 +833,11 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
     uwb_factor.range = range;
     uwb_factor.range_error = factor.range_error;
+    // add new factors to buffer to send to pgo
     pose_graph_.TrackFactor(uwb_factor);
   }
-  // Run optimization
   b_run_optimization_ = true;
-  // add factor to buffer to send to pgo
-  pose_graph_.nfg.add(new_factors);
+  // add new values to buffer to send to pgo
   pose_graph_.AddNewValues(new_values);
   uwb_handler_.ResetFactorData();
   return true;
