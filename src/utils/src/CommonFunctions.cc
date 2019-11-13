@@ -32,20 +32,6 @@ namespace gu = geometry_utils;
 
 namespace utils {
 
-gtsam::Pose3 EdgeMessageToPose(const pose_graph_msgs::PoseGraphEdge& msg_edge) {
-  gtsam::Point3 delta_translation(msg_edge.pose.position.x,
-                                  msg_edge.pose.position.y,
-                                  msg_edge.pose.position.z);
-  gtsam::Rot3 delta_orientation(
-      gtsam::Rot3::quaternion(msg_edge.pose.orientation.w,
-                              msg_edge.pose.orientation.x,
-                              msg_edge.pose.orientation.y,
-                              msg_edge.pose.orientation.z));
-  gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
-
-  return delta;
-}
-
 pose_graph_msgs::PoseGraphEdge
 GtsamToRosMsg(gtsam::Symbol key_from,
               gtsam::Symbol key_to,

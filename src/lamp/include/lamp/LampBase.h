@@ -130,6 +130,9 @@ protected:
   gtsam::SharedNoiseModel laser_lc_noise_;
   gtsam::SharedNoiseModel odom_noise_;
   gtsam::SharedNoiseModel artifact_noise_;
+  // Zero noise param
+  gtsam::noiseModel::Diagonal::shared_ptr zero_covariance_;
+
 
   // New pose graph values from optimizer
   virtual void
@@ -141,7 +144,6 @@ protected:
 
   // Pose graph structure storing values, factors and meta data.
   PoseGraph pose_graph_;
-  gtsam::Symbol initial_key_{0};
 
   // Function used for retrieving internal identifier given gtsam::Symbol.
   virtual std::string MapSymbolToId(gtsam::Symbol key) const;
@@ -193,8 +195,12 @@ protected:
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
 
+  
+  double zero_noise_;
+
 private:
   // Anything just in the base class
+
 };
 
 #endif

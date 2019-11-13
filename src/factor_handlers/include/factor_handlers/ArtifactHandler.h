@@ -2,6 +2,9 @@
 #define ARTIFACT_HANDLER_H
 
 // Includes
+// Limits
+#include<bits/stdc++.h>
+
 // For common datastructures
 #include "utils/CommonStructs.h"
 #include <core_msgs/Artifact.h>
@@ -67,6 +70,16 @@ class ArtifactHandler : public LampDataHandlerBase {
      * Returns  Void
      */
     void PublishArtifacts(const gtsam::Symbol artifact_key ,const gtsam::Pose3 global_pose);
+
+    /*! \brief Revert Maps and Artifact ID number upon failure in adding to pose graph.
+     * Returns Void
+     */
+    void CleanFailedFactors(const bool success);
+
+    /*! \brief Set if PGO is initialized
+     * Returns  Void
+     */
+    inline bool SetPgoInitialized(const bool value) {is_pgo_initialized = value;}
 
     protected:
     /*! \brief Load artifact parameters. 
@@ -144,10 +157,11 @@ class ArtifactHandler : public LampDataHandlerBase {
     std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
 
     // Mapping between a artifact id and the node where it is present in the pose graph
-    // TODO: Make keys as symbols gtsam.
     std::unordered_map<std::string, gtsam::Symbol> artifact_id2key_hash;
 
-    
+    // Is pose graph initialized
+    bool is_pgo_initialized;
+
     // Parameters
     bool b_artifacts_in_global_;
     int largest_artifact_id_; 
@@ -168,6 +182,10 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Artifact prefix
     unsigned char artifact_prefix_;
     
+    // New artifact keys. This is kept so that if the ProcessArtifactData fails, I can 
+    // revert the Maps and Id no to the previous state.
+    std::vector<gtsam::Symbol> new_keys_;
+
     private:
 
     // Artifact output data
@@ -175,6 +193,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     
     // Test class
     friend class TestArtifactHandler;
+    friend class TestLampRobot;
 };
 
 #endif // !ARTIFACT_HANDLER_H

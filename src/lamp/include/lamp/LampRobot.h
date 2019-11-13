@@ -33,10 +33,10 @@ public:
   // Override base class functions where needed
   virtual bool Initialize(const ros::NodeHandle& n);
 
-  gtsam::Symbol GetInitialKey() {
-    return initial_key_;
+  inline gtsam::Symbol GetInitialKey() const {
+    return pose_graph_.initial_key;
   };
-  gtsam::Symbol GetCurrentKey() {
+  inline gtsam::Symbol GetCurrentKey() const {
     return pose_graph_.key;
   };
 
@@ -68,6 +68,8 @@ protected:
   // Publishers
   ros::Publisher pose_pub_;
 
+  // Flag for artifact initialization
+  bool is_artifact_initialized;
 private:
   // Overwrite base classs functions where needed
 
