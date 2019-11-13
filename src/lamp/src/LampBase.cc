@@ -64,7 +64,10 @@ bool LampBase::SetFactorPrecisions() {
     return false;
   if (!pu::Get("point_estimate_precision", point_estimate_precision_))
     return false;
-
+  if (!pu::Get("artifact_gt_rot_precision", artifact_gt_rot_precision_))
+    return false;
+  if (!pu::Get("artifact_gt_trans_precision", artifact_gt_trans_precision_))
+    return false;
   if (!pu::Get("fiducial_trans_precision", fiducial_trans_precision_))
     return false;
   if (!pu::Get("fiducial_rot_precision", fiducial_rot_precision_))
@@ -155,6 +158,13 @@ void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg
 
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
+
+  ROS_INFO_STREAM("Pose graph after update: ");
+  for (auto n : pose_graph_.GetNodes()) {
+    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
+                    << "(" << n.pose.position.x << ", " << n.pose.position.y
+                    << ", " << n.pose.position.z << ")");
+  }
 
   if (b_repub_values_after_optimization_) {
     ROS_INFO("Republishing all values on incremental pose graph");
@@ -392,6 +402,12 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
     precisions.tail<3>().setConstant(fiducial_trans_precision_);
     noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
   } else if (type == "total_station") {
+
+  } else if (type == "artifact_gt") {
+    gtsam::Vector6 precisions;
+    precisions.head<3>().setConstant(artifact_gt_rot_precision_);
+    precisions.tail<3>().setConstant(artifact_gt_trans_precision_);
+    noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
   } else {
     ROS_ERROR("Incorrect input into SetFixedNoiseModels - invalid type");
     throw std::invalid_argument("set fixed noise models");
