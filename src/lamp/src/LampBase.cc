@@ -159,6 +159,13 @@ void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
 
+  ROS_INFO_STREAM("Pose graph after update: ");
+  for (auto n : pose_graph_.GetNodes()) {
+    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
+                    << "(" << n.pose.position.x << ", " << n.pose.position.y
+                    << ", " << n.pose.position.z << ")");
+  }
+
   if (b_repub_values_after_optimization_) {
     ROS_INFO("Republishing all values on incremental pose graph");
     pose_graph_.AddAllValuesToNew();

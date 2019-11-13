@@ -85,6 +85,8 @@ class LampBaseStation : public LampBase {
     // Data Handler classes
     ManualLoopClosureHandler manual_loop_closure_handler_; 
 
+    // Test class fixtures
+    friend class TestLampBase;
 };
 
 
