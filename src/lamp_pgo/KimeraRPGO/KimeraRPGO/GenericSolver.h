@@ -12,6 +12,7 @@ author: Yun Chang, Luca Carlone
 #define SLOW_BUT_CORRECT_BETWEENFACTOR
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/nonlinear/ISAM2.h>
 
 #include "KimeraRPGO/SolverParams.h"
 #include "KimeraRPGO/logger.h"

@@ -26,6 +26,7 @@ using gtsam::Vector3;
 // Constructor
 LampBase::LampBase()
   : update_rate_(10), 
+  zero_noise_(0.0001),  
   b_use_fixed_covariances_(false),
   b_repub_values_after_optimization_(false) {
   // any other things on construction
@@ -86,6 +87,10 @@ bool LampBase::SetFactorPrecisions() {
   precisions.tail<3>().setConstant(artifact_trans_precision_);
   artifact_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
 
+  // gtsam::Vector6 noise;
+  // noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
+  // zero_covariance_ = gtsam::noiseModel::Diagonal::Sigmas(noise);
+
   return true;
 }
 
@@ -109,13 +114,13 @@ bool LampBase::CheckHandlers() {
 void LampBase::OptimizerUpdateCallback(
     const pose_graph_msgs::PoseGraphConstPtr& msg) {
   ROS_INFO_STREAM("Received new pose graph from optimizer - merging now "
-                  "--------------------------------------------------");
+                  "-----------------------------------------------------");
 
   ROS_INFO_STREAM("New pose graph nodes: ");
   for (auto n : msg->nodes) {
-    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key) << "(" <<
-    n.pose.position.x << ", " << n.pose.position.y << ", " << 
-    n.pose.position.z << ")");
+    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
+                    << "(" << n.pose.position.x << ", " << n.pose.position.y
+                    << ", " << n.pose.position.z << ")");
   }
 
   // Merge the optimizer result into the internal pose graph
@@ -188,18 +193,7 @@ void LampBase::LaserLoopClosureCallback(
 // Generic addition of loop closure information to the graph
 void LampBase::AddLoopClosureToGraph(
     const pose_graph_msgs::PoseGraphConstPtr msg) {
-  // Add to nfg
-  gtsam::NonlinearFactorGraph new_factors;
-  gtsam::Values blank_values;
-  utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
-  pose_graph_.nfg.add(new_factors);
-
-  // Add the factors to the pose_graph - loop through in case of multiple loop
-  // closures
-  for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
-    // Add to tracked edges
-    pose_graph_.TrackFactor(edge);
-  }
+  pose_graph_.UpdateFromMsg(msg);
 
   // Set flag to optimize
   b_run_optimization_ = true;
@@ -220,7 +214,6 @@ LampBase::ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
 //------------------------------------------------------------------------------------------
 // Map generation functions
 //------------------------------------------------------------------------------------------
-
 
 bool LampBase::ReGenerateMapPointCloud() {
   // Reset the map
@@ -248,7 +241,7 @@ bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
 
   // Iterate over poses in the graph, transforming their corresponding laser
   // scans into world frame and appending them to the output.
-  for (const auto& keyed_pose : pose_graph_.values) {
+  for (const auto& keyed_pose : pose_graph_.GetValues()) {
     const gtsam::Symbol key = keyed_pose.key;
 
     PointCloud::Ptr scan_world(new PointCloud);
@@ -280,10 +273,9 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   }
 
   // Check that the key exists
-  if (!pose_graph_.values.exists(key)) {
-    ROS_WARN(
-        "Key %u does not exist in values_ in GetTransformedPointCloudWorld",
-        gtsam::DefaultKeyFormatter(key));
+  if (!pose_graph_.HasKey(key)) {
+    ROS_WARN("Key %s does not exist in values in GetTransformedPointCloudWorld",
+             gtsam::DefaultKeyFormatter(key).c_str());
     return false;
   }
 
@@ -296,7 +288,8 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
 
   // ROS_INFO_STREAM("Points size is: " << points->points.size()
-  //                                    << ", in GetTransformedPointCloudWorld");
+  //                                    << ", in
+  //                                    GetTransformedPointCloudWorld");
 }
 
 // For adding one scan to the map
@@ -327,7 +320,9 @@ bool LampBase::PublishPoseGraph() {
     // TODO - change interface to just take a flag? Then do the clear in there?
     // - no want to make sure it is published
 
-    ROS_INFO_STREAM("Publishing incremental graph with " << g_inc->nodes.size() << " nodes and " << g_inc->edges.size() << " edges");
+    ROS_INFO_STREAM("Publishing incremental graph with "
+                    << g_inc->nodes.size() << " nodes and "
+                    << g_inc->edges.size() << " edges");
     // Publish
     pose_graph_incremental_pub_.publish(*g_inc);
 
@@ -342,8 +337,9 @@ bool LampBase::PublishPoseGraph() {
 
     // Publish
     pose_graph_pub_.publish(*g_full);
-    ROS_INFO_STREAM("Publishing full graph with " << g_full->nodes.size() << " nodes and "
-     << g_full->edges.size() << " edges");
+    ROS_INFO_STREAM("Publishing full graph with "
+                    << g_full->nodes.size() << " nodes and "
+                    << g_full->edges.size() << " edges");
   }
 
   return true;
@@ -355,7 +351,9 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   // Convert master pose-graph to messages
   pose_graph_msgs::PoseGraphConstPtr g = pose_graph_.ToMsg();
 
-  ROS_INFO_STREAM("Publishing pose graph for optimizer with " << g->nodes.size() << " nodes and "  << g->edges.size() << " edges");
+  ROS_INFO_STREAM("Publishing pose graph for optimizer with "
+                  << g->nodes.size() << " nodes and " << g->edges.size()
+                  << " edges");
   for (auto v : g->nodes) {
     ROS_INFO_STREAM("Key : " << gtsam::DefaultKeyFormatter(v.key));
   }
@@ -407,8 +405,8 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   if (pose_graph_.HasScan(key)) {
     // Key frame, note in the ID
     return "key_frame";
-  } 
-  
+  }
+
   else if (utils::IsRobotPrefix(key.chr())) {
     // Odom or key frame
     return "odom_node";
@@ -419,8 +417,8 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
     // return uwd_handler_.GetUWBID(key); // TODO
     return "UWB"; // TEMPORARY
 
-  } 
-  
+  }
+
   else {
     // Artifact
     // return artifact_handler_.GetArtifactID(key);// TODO

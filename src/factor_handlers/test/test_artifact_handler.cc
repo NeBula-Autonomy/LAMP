@@ -2,7 +2,7 @@
  *  @brief Testing the Lamp Robot class
  *
  */
-
+ 
 #include <gtest/gtest.h>
 
 #include "factor_handlers/ArtifactHandler.h"
@@ -30,6 +30,8 @@ class TestArtifactHandler : public ::testing::Test{
     void AddArtifact(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Point3 position, const gtsam::SharedNoiseModel noise) {art_handle.AddArtifactData(artifact_key, time_stamp, position, noise);};
     Eigen::Vector3d ComputeTrans(const core_msgs::Artifact& msg) {return art_handle.ComputeTransform(msg);};
     void ClearData() {art_handle.ClearArtifactData();};
+    void setInitialize() {art_handle.SetPgoInitialized(true);};
+    bool getInitialize() {return art_handle.is_pgo_initialized;};
 };
 
 TEST_F(TestArtifactHandler, ArtifactInfoInitialize) {
@@ -54,7 +56,6 @@ TEST_F(TestArtifactHandler, RegisterCallbacks) {
   ASSERT_TRUE(RegisterCallbacks());
 }
 
-// TODO Something wrong in this. The artifact_key is missing something
 TEST_F(TestArtifactHandler, UpdateGlobalPosition) {
   // Key is 1
   gtsam::Symbol artifact_key = 1;
@@ -168,6 +169,7 @@ TEST_F(TestArtifactHandler, AddArtifactData) {
 TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Construct the message
   core_msgs::Artifact msg;
+  msg.header.stamp = ros::Time(0.0);
   msg.parent_id = "distal";
   msg.confidence = 0.9;
   msg.id = "distal";
@@ -175,6 +177,8 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   msg.point.point.y = 0.3;
   msg.point.point.z = 0.5;
   msg.label = "backpack";
+  setInitialize();
+
   // Trigger the callback
   ArtifactCallback(msg);
   // Get the data
@@ -184,7 +188,6 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   std::cout << "retrieved artifact, position " << artifact_factor.position.x() << ", " << artifact_factor.position.y() << std::endl;
   std::cout << "vector: " << artifact_factor.position.vector();
   // Check if data is flowing correctly
-  // TODO Check next line
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(artifact_factor.key.index(), 0);
@@ -203,6 +206,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   
   // Construct a new message
   msg.parent_id = "distal";
+  msg.header.stamp = ros::Time(1.0);
   msg.confidence = 0.8;
   msg.id = "distal";
   msg.point.point.x = 0.3;
@@ -218,7 +222,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(artifact_factor.key.index(), 0);
-  EXPECT_EQ(artifact_factor.stamp, ros::Time(0.0));
+  EXPECT_EQ(artifact_factor.stamp, ros::Time(1.0));
   EXPECT_EQ(artifact_factor.position.x(), 0.3);
   EXPECT_EQ(artifact_factor.position.y(), 0.3);
   EXPECT_EQ(artifact_factor.position.z(), 0.3);
@@ -233,6 +237,80 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   KeyInfoMap = GetKeyInfoMap();
   // Is the data in ArtifactInfo correct
   EXPECT_EQ(KeyInfoMap.size(), 1);
+
+  // TODO: Why two vector elements
+  // Construct a new message
+  msg.parent_id = "artifact";
+  msg.header.stamp = ros::Time(2.0);
+  msg.confidence = 0.4;
+  msg.id = "artifact";
+  msg.point.point.x = 0.5;
+  msg.point.point.y = 0.1;
+  msg.point.point.z = 0.2;
+  msg.label = "backpack";
+  // Trigger the callback
+  ArtifactCallback(msg);
+  // Get the data
+  internal_data = std::dynamic_pointer_cast<ArtifactData>(GetData());
+  artifact_factor = internal_data->factors[0];
+  // Check data
+  EXPECT_EQ(stored_data.type, "artifact");
+  ASSERT_TRUE(stored_data.b_has_data);
+  EXPECT_EQ(artifact_factor.key.index(), 1);
+  EXPECT_EQ(artifact_factor.stamp, ros::Time(2.0));
+  EXPECT_EQ(artifact_factor.position.x(), 0.5);
+  EXPECT_EQ(artifact_factor.position.y(), 0.1);
+  EXPECT_EQ(artifact_factor.position.z(), 0.2);
+
+  // Update the global position
+  global_position = gtsam::Point3(0.5, 0.3, 0.1);
+  UpdateGlobalPosition(artifact_factor.key, global_position);
+  // Get the Key Node
+  StringKeyMap = GetStringKeyMap();
+  // Is the data in ArtifactInfo correct
+  EXPECT_EQ(StringKeyMap.size(), 2);
+  EXPECT_EQ(StringKeyMap["artifact"].index(), 1);
+  EXPECT_EQ(StringKeyMap["artifact"].chr(), 'A');
+
+  // Get the ArtifactInfo
+  KeyInfoMap = GetKeyInfoMap();
+  // Is the data in ArtifactInfo correct
+  EXPECT_EQ(KeyInfoMap.size(), 2);
+  EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].num_updates, 1);
+  EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].global_position, gtsam::Point3(0.5,0.3,0.1));
+  EXPECT_EQ(KeyInfoMap[gtsam::Symbol('A',1)].id, "artifact");    
+}
+
+TEST_F(TestArtifactHandler, IsPgoIntialized) {
+  // Construct the message
+  core_msgs::Artifact msg;
+  msg.header.stamp = ros::Time(0.0);
+  msg.parent_id = "distal";
+  msg.confidence = 0.9;
+  msg.id = "distal";
+  msg.point.point.x = 0.9;
+  msg.point.point.y = 0.3;
+  msg.point.point.z = 0.5;
+  msg.label = "backpack";
+  
+  // PGO initialized should be false
+  EXPECT_FALSE(getInitialize());
+
+  // Trigger the callback
+  ArtifactCallback(msg);
+  
+  // Get the data
+  ArtifactData stored_data = GetArtifactData();
+  EXPECT_FALSE(stored_data.b_has_data);
+
+  // Initialize Artifacts
+  setInitialize();
+  EXPECT_TRUE(getInitialize());
+
+  // Trigger the callback
+  ArtifactCallback(msg);
+  stored_data = GetArtifactData();
+  EXPECT_TRUE(stored_data.b_has_data);
 }
 
 int main(int argc, char** argv) {

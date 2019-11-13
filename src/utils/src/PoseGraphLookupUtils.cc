@@ -8,13 +8,13 @@ gtsam::Symbol PoseGraph::GetKeyAtTime(const ros::Time& stamp) const {
     ROS_ERROR("No key exists at given time");
     return utils::GTSAM_ERROR_SYMBOL;
   }
-
   return stamp_to_odom_key.at(stamp.toSec());
 }
 
-gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
+gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp,
+                                             bool check_threshold) const {
   // If there are no keys, throw an error
-  if (stamp_to_odom_key.size() == 0) {
+  if (stamp_to_odom_key.empty()) {
     ROS_ERROR("Cannot get closest key - no keys are stored");
     return utils::GTSAM_ERROR_SYMBOL;
   }
@@ -55,8 +55,8 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
     }
   }
 
-  // Check thresholds
-  if (std::abs(t_closest - stamp.toSec()) > time_threshold) {
+  // Check threshold
+  if (check_threshold && std::abs(t_closest - stamp.toSec()) > time_threshold) {
     ROS_ERROR("Delta between queried time and closest time in graph too large");
     ROS_INFO_STREAM("Time queried is: " << stamp.toSec()
                                         << ", closest time is: " << t_closest);
@@ -67,4 +67,32 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
   }
 
   return key_out;
+}
+
+const NodeMessage* PoseGraph::FindNode(gtsam::Key key) const {
+  for (const auto& node : nodes_) {
+    if (node.key == key) {
+      return &node;
+    }
+  }
+  return nullptr;
+}
+
+const EdgeMessage* PoseGraph::FindEdge(gtsam::Key key_from,
+                                       gtsam::Key key_to) const {
+  for (const auto& edge : edges_) {
+    if (edge.key_from == key_from && edge.key_to == key_to) {
+      return &edge;
+    }
+  }
+  return nullptr;
+}
+
+const EdgeMessage* PoseGraph::FindPrior(gtsam::Key key) const {
+  for (const auto& edge : priors_) {
+    if (edge.key_from == key) {
+      return &edge;
+    }
+  }
+  return nullptr;
 }

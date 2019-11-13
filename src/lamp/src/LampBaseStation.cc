@@ -16,7 +16,6 @@ namespace gu = geometry_utils;
 
 // Constructor (if there is override)
 LampBaseStation::LampBaseStation(): 
-        zero_noise_(0.0001),
         b_published_initial_node_(false) {
 
   // On base station LAMP, republish values after optimization
@@ -208,30 +207,17 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     // Register new data - this will cause pose graph to publish
     b_has_new_factor_ = true;
 
+    // Track nodes
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
       ROS_INFO_STREAM("Received node with key " << gtsam::Symbol(n.key).chr() << gtsam::Symbol(n.key).index());
       pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
 
-      // Add new value to graph
-      if (!pose_graph_.values.exists(n.key)) {
-        // Add the new values to the graph
-        new_values.insert(n.key, utils::ToGtsam(n.pose));
+      gtsam::Vector6 noise;
+      noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
+      gtsam::noiseModel::Diagonal::shared_ptr zero_covar(gtsam::noiseModel::Diagonal::Sigmas(noise));
 
-      }
-
-      // Update existing value in graph
-      else {
-        if (new_values.exists(n.key)) {
-          new_values.update(n.key, utils::ToGtsam(n.pose));
-        }
-        else {
-          new_values.insert(n.key, utils::ToGtsam(n.pose));
-        }
-      }
+      pose_graph_.TrackNode(n.header.stamp, n.key, utils::ToGtsam(n.pose), zero_covar);
     }
-
-    pose_graph_.AddNewValues(new_values);
-    new_values.clear();
 
     // Track edges
     for (pose_graph_msgs::PoseGraphEdge e : g->edges) {
@@ -239,7 +225,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
                               e.key_to, 
                               e.type, 
                               utils::ToGtsam(e.pose), 
-                              utils::ToGtsam(e.covariance));
+                               utils::ToGtsam(e.covariance));
 
       // Check for new loop closure edges
       if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
@@ -247,22 +233,21 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
       }
-
     }
 
-    // Track priors
-    for (pose_graph_msgs::PoseGraphNode p : g->priors) {
+    // // Track priors
+    // for (pose_graph_msgs::PoseGraphNode p : g->priors) {
 
-      // Ignore the prior attached to the first node
-      if (gtsam::Symbol(p.key).index() == 0) {
-        continue;
-      }
+    //   // Ignore the prior attached to the first node
+    //   if (gtsam::Symbol(p.key).index() == 0) {
+    //     continue;
+    //   }
 
-      pose_graph_.TrackNode(p.header.stamp, 
-                            p.key, 
-                            utils::ToGtsam(p.pose), 
-                            utils::ToGtsam(p.covariance));
-    }
+    //   pose_graph_.TrackNode(p.header.stamp, 
+    //                         p.key, 
+    //                         utils::ToGtsam(p.pose), 
+    //                         utils::ToGtsam(p.covariance));
+    // }
 
     ROS_INFO_STREAM("Added new pose graph");
   }
