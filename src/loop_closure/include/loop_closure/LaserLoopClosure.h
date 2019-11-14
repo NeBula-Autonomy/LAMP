@@ -35,6 +35,11 @@ private:
       gtsam::Key new_key,
       std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
 
+  bool CheckForLoopClosure(
+          gtsam::Symbol key1,
+          gtsam::Symbol key2,
+          std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
+
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 
   bool PerformAlignment(const PointCloud::ConstPtr& scan1,

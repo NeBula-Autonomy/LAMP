@@ -11,6 +11,7 @@
 
 #include <factor_handlers/ManualLoopClosureHandler.h>
 #include <factor_handlers/PoseGraphHandler.h>
+#include <factor_handlers/ArtifactHandler.h>
 #include <std_msgs/String.h>
 
 
@@ -45,9 +46,6 @@ class LampBaseStation : public LampBase {
     // retrieve data from all handlers
     virtual bool CheckHandlers(); // - inside timed callback
 
-    // Initialize the base station pose graph
-    virtual bool InitializeGraph();
-
     // Main update timer callback
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
@@ -57,15 +55,17 @@ class LampBaseStation : public LampBase {
     // Robots that the base station subscribes to
     std::vector<std::string> robot_names_;
 
+    // Artifact ground truthing
+    bool ProcessArtifactGT();
+    std::vector<std::string> artifact_GT_strings_;
+    std::vector<ArtifactGroundTruth> artifact_GT_;
+
     // Factor handler wrappers
     bool ProcessPoseGraphData(std::shared_ptr<FactorData> data);
     bool ProcessManualLoopClosureData(std::shared_ptr<FactorData> data);
 
     // Data handler classes
     PoseGraphHandler pose_graph_handler_;
-
-    // Handle first node from a robot (a0, b0, etc.)
-    void ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n);
 
     // Subscribers
     ros::Subscriber debug_sub_;
@@ -79,6 +79,8 @@ class LampBaseStation : public LampBase {
     // Data Handler classes
     ManualLoopClosureHandler manual_loop_closure_handler_; 
 
+    // Test class fixtures
+    friend class TestLampBase;
 };
 
 

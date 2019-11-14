@@ -86,6 +86,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 bool LaserLoopClosure::FindLoopClosures(
     gtsam::Key new_key,
     std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
+
   // Look for loop closures for the latest received key
   // Don't check for loop closures against poses that are missing scans.
   if (!keyed_scans_.count(new_key)) {
@@ -103,70 +104,111 @@ bool LaserLoopClosure::FindLoopClosures(
   const gtsam::Pose3 pose1 = keyed_poses_.at(new_key);
   const PointCloud::ConstPtr scan1 = keyed_scans_.at(new_key);
 
+  // Set to true if we find a loop closure (single or inter robot)
   bool closed_loop = false;
 
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
 
-    // Don't self-check.
-    if (other_key == new_key)
+    // Skip poses with no keyed scans.
+    if (!keyed_scans_.count(other_key)) {
       continue;
+    }
 
-    // Don't compare against poses that were recently collected.
-    if (std::llabs(new_key - other_key) < skip_recent_poses_)
-      continue;
 
-    // Get pose for the other key.
-    const gtsam::Pose3 pose2 = keyed_poses_.at(other_key);
-    const gtsam::Pose3 difference = pose1.between(pose2);
-    
-    if (difference.translation().norm() < proximity_threshold_) {
-      const PointCloud::ConstPtr scan2 = keyed_scans_[other_key];
+    // Check for single robot loop closures
+    if (utils::IsKeyFromSameRobot(new_key, other_key)) {
+      closed_loop |= CheckForLoopClosure(new_key, other_key, loop_closure_edges);
+    }
 
-      gu::Transform3 delta;  // (Using BetweenFactor)
-      gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
-
-      double fitness_score; // retrieve ICP fitness score if matched
-      ROS_INFO_STREAM("Performing alignment between "
-                      << gtsam::DefaultKeyFormatter(new_key) << " and "
-                      << gtsam::DefaultKeyFormatter(other_key));
-      if (PerformAlignment(
-              scan1, scan2, pose1, pose2, &delta, &covariance, fitness_score)) {
-        ROS_INFO_STREAM("Closed loop between "
-                        << gtsam::DefaultKeyFormatter(new_key) << " and "
-                        << gtsam::DefaultKeyFormatter(other_key));
-
-        closed_loop = true;
-        pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(new_key, other_key, delta, covariance);
-
-        loop_closure_edges->push_back(edge);
-      }
+    // Check for inter robot loop closures
+    else {
+      // closed_loop |= CheckForInterRobotLoopClosure();
     }
   } 
 
   return closed_loop;
 }
 
+bool LaserLoopClosure::CheckForLoopClosure(
+        gtsam::Symbol key1,
+        gtsam::Symbol key2,
+        std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
+
+  if (!utils::IsKeyFromSameRobot(key1, key2)) {
+    ROS_ERROR_STREAM("Checking for single robot loop closures on different robots");
+    return false;
+  }
+
+  // Don't self-check.
+  if (key1 == key2)
+    return false;
+
+  // Don't compare against poses that were recently collected.
+  if (std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
+    return false;
+
+  // Get pose and scan for each key.
+  const gtsam::Pose3 pose1 = keyed_poses_.at(key1);
+  const PointCloud::ConstPtr scan1 = keyed_scans_.at(key1);
+
+  const gtsam::Pose3 pose2 = keyed_poses_.at(key2);
+  const gtsam::Pose3 difference = pose1.between(pose2);
+  
+  if (difference.translation().norm() < proximity_threshold_) {
+    const PointCloud::ConstPtr scan2 = keyed_scans_[key2];
+
+    gu::Transform3 delta;  // (Using BetweenFactor)
+    gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
+
+    double fitness_score; // retrieve ICP fitness score if matched
+
+    ROS_INFO_STREAM("Performing alignment between "
+                    << gtsam::DefaultKeyFormatter(key1) << " and "
+                    << gtsam::DefaultKeyFormatter(key2));
+
+    // Perform ICP
+    if (PerformAlignment(
+            scan1, scan2, pose1, pose2, &delta, &covariance, fitness_score)) {
+      ROS_INFO_STREAM("Closed loop between "
+                      << gtsam::DefaultKeyFormatter(key1) << " and "
+                      << gtsam::DefaultKeyFormatter(key2));
+
+      // Add the edgeq
+      pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(key1, key2, delta, covariance);
+      loop_closure_edges->push_back(edge);
+
+      return true;
+    }
+  }  
+
+  return false;
+}
+
+
 pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
         gtsam::Symbol key1, 
         gtsam::Symbol key2,
         geometry_utils::Transform3& delta, 
         gtsam::Matrix66& covariance) {
+
+  // Store last time a new loop closure was added
   last_closure_key_ = key1;
-  // Send an message notifying any subscribers that we found a loop
-  // closure and having the keys of the loop edge.
+
+  // Create the new loop closure edge
   pose_graph_msgs::PoseGraphEdge edge;
   edge.key_from = key1;
   edge.key_to = key2;
   edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
   edge.pose = gr::ToRosPose(delta);
-  // convert matrix covariance to vector
+
+  // Convert matrix covariance to vector
   for (size_t i = 0; i < 6; ++i) {
     for (size_t j = 0; j < 6; ++j) {
       edge.covariance[6 * i + j] = covariance(i, j);
     }
   }
-  // push back to vector
+
   return edge;
 }
 
@@ -177,6 +219,7 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
                                         gu::Transform3* delta,
                                         gtsam::Matrix66* covariance,
                                         double& fitness_score) {
+
   if (delta == NULL || covariance == NULL) {
     ROS_ERROR("PerformAlignment: Output pointers are null.");
     return false;

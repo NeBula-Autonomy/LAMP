@@ -33,12 +33,17 @@
       <!-- Frames -->
       <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>
 
+      <!-- Ground truth data -->
+      <rosparam file="$(find lamp)/config/GT_artifacts.yaml" subst_value="true"/>
+
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
 
       <!-- Factor handlers -->
       <rosparam file="$(find factor_handlers)/config/manual_lc_parameters.yaml" subst_value="true"/>
 
+      <!-- Lamp settings -->
+      <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/>
 
     </node>
 

@@ -53,6 +53,7 @@ void LoopClosure::InputCallback(
 
     // add new key and stamp to keyed_stamps_
     keyed_stamps_[new_key] = timestamp;
+    
     // add new key and pose to keyed_poses_
     keyed_poses_[new_key] = new_pose;
 
