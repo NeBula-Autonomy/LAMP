@@ -95,7 +95,7 @@ bool LaserLoopClosure::FindLoopClosures(
     return false;
   }
 
-  // If a loop has already been closed recently, don't try to close a new one.
+  // // If a loop has already been closed recently, don't try to close a new one.
   if (std::llabs(new_key - last_closure_key_) * translation_threshold_nodes_ <
       distance_before_reclosing_)
     return false;
@@ -109,6 +109,17 @@ bool LaserLoopClosure::FindLoopClosures(
 
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
+
+    // If a loop has already been closed recently, don't try to close a new one.
+    gtsam::Key last_closure_key_new = last_closure_key_map_[{gtsam::Symbol(new_key).chr(), other_key.chr()}];
+    // if (std::llabs(new_key - last_closure_key_new) * translation_threshold_nodes_ <
+    //     distance_before_reclosing_)
+    //   return false;
+    // // If a loop has already been closed recently, don't try to close a new one.
+    // gtsam::Key last_closure_key_other = last_closure_key_map_[{other_key.chr(), gtsam::Symbol(new_key).chr()}];
+    // if (std::llabs(other_key.key() - last_closure_key_other) * translation_threshold_nodes_ <
+    //     distance_before_reclosing_)
+    //   return false;
 
     // Skip poses with no keyed scans.
     if (!keyed_scans_.count(other_key)) {
@@ -194,6 +205,8 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
 
   // Store last time a new loop closure was added
   last_closure_key_ = key1;
+  last_closure_key_map_[{key1.chr(), key2.chr()}] = key1;
+  last_closure_key_map_[{key2.chr(), key1.chr()}] = key2;
 
   // Create the new loop closure edge
   pose_graph_msgs::PoseGraphEdge edge;
