@@ -802,8 +802,6 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   if (!uwb_data->b_has_data) return false;
   // New Factors to be added
   NonlinearFactorGraph new_factors;
-  // New Values to be added
-  Values new_values;
   Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
 
   ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
@@ -814,12 +812,18 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     auto uwb_key = gtsam::Symbol('u', factor.key_to);
     // Check if it is a new uwb id or not
     auto values = pose_graph_.GetValues();
-    if (!values.exists(uwb_key) && !new_values.exists(uwb_key)) {
+    if (!values.exists(uwb_key)) {
       // Insert it into the values
       global_uwb_pose = pose_graph_.GetPose(odom_key);
-      new_values.insert(uwb_key, global_uwb_pose);
       // Add it into the keyed stamps
       pose_graph_.InsertKeyedStamp(uwb_key, factor.stamp);
+      gtsam::Vector6 prior_precision;
+      prior_precision.head<3>().setConstant(0.0000001);
+      prior_precision.tail<3>().setConstant(0.0000001);
+      static const gtsam::SharedNoiseModel& prior_noise = 
+        gtsam::noiseModel::Diagonal::Precisions(prior_precision);
+      pose_graph_.TrackNode(factor.stamp, uwb_key, global_uwb_pose, prior_noise);
+
     }
     auto range = factor.range;
     gtsam::noiseModel::Base::shared_ptr range_error 
@@ -837,8 +841,6 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     pose_graph_.TrackFactor(uwb_factor);
   }
   b_run_optimization_ = true;
-  // add new values to buffer to send to pgo
-  pose_graph_.AddNewValues(new_values);
   uwb_handler_.ResetFactorData();
   return true;
 }
