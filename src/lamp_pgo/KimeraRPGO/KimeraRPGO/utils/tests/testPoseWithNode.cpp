@@ -36,7 +36,7 @@ TEST(PoseWithNode, Compose) {
   // Test the compose operator for PoseWithNode struct
   PoseWithNode<gtsam::Pose3> A, AB, B, BC, C, CD, D;
 
-  A.pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 1, 1));  // start
+  A.pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 1, 1)); // start
   A.node = 1;
 
   // First test a translation only

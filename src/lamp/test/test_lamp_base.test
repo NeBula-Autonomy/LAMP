@@ -1,0 +1,5 @@
+<launch>
+  <test test-name="test_lamp_base"
+        pkg="lamp"
+        type="test_lamp_base"/>
+</launch>

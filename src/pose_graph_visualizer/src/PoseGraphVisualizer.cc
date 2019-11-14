@@ -27,7 +27,6 @@ std::string GenerateKey(gtsam::Key key1, gtsam::Key key2) {
 }
 
 geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(gtsam::Key key) const {
-  ROS_INFO("In getPositionMsg");
   if (!pose_graph_.HasKey(key)) {
     ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
   }
@@ -153,6 +152,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
   if (!msg->incremental) {
     pose_graph_.Reset();
   }
+  ROS_INFO("PGV: updating pose graph from message");
   pose_graph_.UpdateFromMsg(msg);
   for (const pose_graph_msgs::PoseGraphNode& msg_node : msg->nodes) {
     tf::Pose pose;

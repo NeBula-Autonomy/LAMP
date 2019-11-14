@@ -20,3 +20,7 @@ fiducial_trans_precision: 0.0
 
 # Noise parameters (as precisions) for point estimation service (survey tool integration)
 point_estimate_precision: 25.0
+
+# Noise parameters (as precisions) for artifact ground truth locations
+artifact_gt_rot_precision: 0.00000000000000000001
+artifact_gt_trans_precision: 25.0
