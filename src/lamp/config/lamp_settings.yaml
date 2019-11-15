@@ -8,6 +8,9 @@ b_use_fixed_covariances: true
 # Flag for whether or not to do loop closure with the artifacts
 use_artifact_loop_closure: false
 
+# Flag for whether of not to use uwb data for range-based loop closure
+b_use_uwb: false
+
 # Artifacts in global frame
 b_artifacts_in_global: true
 
