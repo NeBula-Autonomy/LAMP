@@ -113,6 +113,7 @@ private:
   // Parameters
   gtsam::Vector6 initial_noise_;
   bool b_artifacts_in_global_;
+  bool b_use_uwb_;
 
   // Test class fixtures
   friend class TestLampRobot;

@@ -90,6 +90,10 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Settings for precisions
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
+  
+  // Switch on/off flag for UWB
+  if (!pu::Get("b_use_uwb", b_use_uwb_))
+    return false;
 
   // Load frame ids.
   if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
@@ -332,8 +336,8 @@ bool LampRobot::CheckHandlers() {
   b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
   // Check for april tags
   b_have_new_april_tags = ProcessAprilTagData(april_tag_handler_.GetData());
-  // TODO - determine what a true and false return means here
-  b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
+  // Check for UWB data
+  if (b_use_uwb_) b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
   return true;
 }
 
