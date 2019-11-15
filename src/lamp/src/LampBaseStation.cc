@@ -328,18 +328,56 @@ bool LampBaseStation::ProcessArtifactGT() {
 }
 
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {
-  ROS_INFO_STREAM("Debug message received: " << msg.data);
+  ROS_INFO_STREAM("Debug message received: ");
+
+  // Split message data into a vector of space-separated strings
+  std::vector<std::string> data;
+  boost::split(data, msg.data, [](char c){return c == ' ';}); 
+
+  if (data.size() == 0) {
+    ROS_INFO_STREAM("Invalid debug message data");
+  }
+  std::string cmd = data[0];
 
   // Freeze the current point cloud map on the visualizer
-  if (msg.data == "freeze") {
+  if (cmd == "freeze") {
     ROS_INFO_STREAM("Publishing frozen map");
     mapper_.PublishMapFrozen();
   }
 
   // Read in artifact ground truth data
-  else if (msg.data == "artifact_gt") {
+  else if (cmd == "artifact_gt") {
     ROS_INFO_STREAM("Processing artifact ground truth data");
     ProcessArtifactGT();
+  }
+
+  // Save the pose graph 
+  else if (cmd == "save") {
+    ROS_INFO_STREAM("Saving the pose graph");
+
+    // Use filename if provided
+    if (data.size() >= 2) {
+      pose_graph_.Save(data[1]);
+    }
+    else {
+      pose_graph_.Save("saved_pose_graph.zip");
+    }
+  }
+
+  // Load pose graph from file 
+  else if (cmd == "load") {
+    ROS_INFO_STREAM("Loading pose graph and keyed scans");
+
+    // Use filename if provided
+    if (data.size() >= 2) {
+      pose_graph_.Load(data[1]);
+    }
+    else {
+      pose_graph_.Load("saved_pose_graph.zip");
+    }
+    
+    PublishPoseGraph(); 
+    ReGenerateMapPointCloud();
   }
 
   else {
