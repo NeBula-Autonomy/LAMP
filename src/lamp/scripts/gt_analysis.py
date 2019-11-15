@@ -1,3 +1,10 @@
+'''
+Copyright Notes
+
+Authors: Alex Stephens    (alex.stephens@jpl.nasa.gov)
+'''
+
+
 import rospy
 import rosbag
 from pose_graph_msgs.msg import PoseGraph
@@ -8,6 +15,9 @@ import numpy as np
 from random import random
 import math
 
+
+#
+# outputfile_GT = 'pose_graph_GT'
 
 class Node(object):
     '''
@@ -67,7 +77,7 @@ def AddNoise(nodes):
     return nodes2
 
 
-def PlotPoseGraphs(nodes1, nodes2):
+def PlotPoseGraphs(nodes_data, nodes_gt):
     '''
     Display two sets of pose graph nodes on a single 3D figure.
     '''
@@ -75,15 +85,15 @@ def PlotPoseGraphs(nodes1, nodes2):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
 
-    x1 = [g.x for g in nodes1]
-    y1 = [g.y for g in nodes1]
-    z1 = [g.z for g in nodes1]
-    x2 = [g.x for g in nodes2]
-    y2 = [g.y for g in nodes2]
-    z2 = [g.z for g in nodes2]
+    x1 = [g.x for g in nodes_data]
+    y1 = [g.y for g in nodes_data]
+    z1 = [g.z for g in nodes_data]
+    x2 = [g.x for g in nodes_gt]
+    y2 = [g.y for g in nodes_gt]
+    z2 = [g.z for g in nodes_gt]
 
-    ax.plot(x1, y1, zs=z1, label='ground truth')
-    ax.plot(x2, y2, zs=z2, label='pose graph')
+    ax.plot(x1, y1, zs=z1, label='pose graph')
+    ax.plot(x2, y2, zs=z2, label='ground truth')
     plt.xlabel('x')
     plt.ylabel('y')
     plt.legend()
@@ -100,7 +110,7 @@ def DistBetween(n1, n2):
     return math.sqrt((n1.x - n2.x)**2 + ((n1.y - n2.y))**2 + ((n1.z - n2.z))**2)
 
 
-def PlotErrors(nodes1, nodes2):
+def PlotErrors(nodes_data, nodes_gt):
     '''
     Plot the Euclidean distance errors between corresponding nodes in two pose graphs.
     Shows errors in x, y, z as well as total error.
@@ -109,16 +119,16 @@ def PlotErrors(nodes1, nodes2):
     fig = plt.figure()
     ax = fig.gca()
 
-    x1 = [g.x for g in nodes1]
-    y1 = [g.y for g in nodes1]
-    z1 = [g.z for g in nodes1]
-    x2 = [g.x for g in nodes2]
-    y2 = [g.y for g in nodes2]
-    z2 = [g.z for g in nodes2]
-    dist = [0] * len(nodes1)
-    base = [0] * len(nodes1)
-    for i in range(1, len(nodes1)):
-        dist[i] = dist[i - 1] + DistBetween(nodes1[i], nodes1[i - 1])
+    x1 = [g.x for g in nodes_gt]
+    y1 = [g.y for g in nodes_gt]
+    z1 = [g.z for g in nodes_gt]
+    x2 = [g.x for g in nodes_data]
+    y2 = [g.y for g in nodes_data]
+    z2 = [g.z for g in nodes_data]
+    dist = [0] * len(nodes_gt)
+    base = [0] * len(nodes_gt)
+    for i in range(1, len(nodes_gt)):
+        dist[i] = dist[i - 1] + DistBetween(nodes_gt[i], nodes_gt[i - 1])
 
     x_err = [abs(p1 - p2) for p1, p2 in zip(x1, x2)]
     y_err = [abs(p1 - p2) for p1, p2 in zip(y1, y2)]
@@ -174,7 +184,7 @@ def ReadPoseGraphFromBagfile(filename):
 
     msgs, nodes = [], []
 
-    for topic, msg, t in bag.read_messages(topics='/base1/lamp/pose_graph'):
+    for topic, msg, t in bag.read_messages(topics='pose_graph'):
         print(topic)
         msgs.append(msg)
 
@@ -189,14 +199,28 @@ def ReadPoseGraphFromBagfile(filename):
     return nodes
 
 
-if __name__ == '__main__':
+def PerformAnalysis(abspath, filename_data, filename_gt):
 
-    # nodes1 = ReadPoseGraphFromG2O('graph.txt')
-    nodes1 = ReadPoseGraphFromBagfile('../data/pose_graph.bag')
-    nodes2 = AddNoise(nodes1)
+    if not filename_data.endswith('.bag'):
+        print("Data must be a .bag file")
+
+    if not filename_gt.endswith('.bag'):
+        print("Ground truth must be a .bag file")
+
+    nodes1 = ReadPoseGraphFromBagfile(abspath + filename_data)
+    nodes2 = ReadPoseGraphFromBagfile(abspath + filename_gt)
 
     PlotPoseGraphs(nodes1, nodes2)
     PlotErrors(nodes1, nodes2)
 
     # show all plots
     plt.show()
+
+
+if __name__ == '__main__':
+
+    abspath = '/home/costar/data/groundtruth/'
+    filename_data = 'saved_pose_graph.bag'
+    filename_gt = 'saved_pose_graph_gt.bag'
+
+    PerformAnalysis(abspath, filename_data, filename_gt)
