@@ -256,12 +256,10 @@ public:
   }
 
   // Saves pose graph and accompanying point clouds to a zip file.
-  template <typename PGOSolver>
-  bool Save(const std::string& zipFilename, PGOSolver& solver) const;
+  bool Save(const std::string& zipFilename) const;
 
   // Loads pose graph and accompanying point clouds from a zip file.
-  template <typename PGOSolver>
-  bool Load(const std::string& zipFilename, PGOSolver& solver);
+  bool Load(const std::string& zipFilename);
 
   // Convert entire pose graph to message.
   GraphMsgPtr ToMsg() const;
@@ -466,6 +464,3 @@ public:
   std::vector<AprilTagFactor> factors;
 };
 #endif
-
-// need to include source file for templatized save/load functions
-#include "utils/PoseGraphFileIO.hpp"
