@@ -10,6 +10,10 @@ import math
 
 
 class Node(object):
+    '''
+    Simple class representing a pose graph node.
+    Only stores x, y, z and id.
+    '''
 
     def __init__(self, string=''):
 
@@ -35,13 +39,11 @@ class Node(object):
         self.z = node.pose.position.z
 
 
-'''
-Read a pose graph in g2o format from a text file.
-Extracts nodes only, edges are ignored
-'''
-
-
 def AddNoise(nodes):
+    '''
+    Add noise to the x,y,z coordinates of a list of nodes.
+    Used for debugging purposes only.
+    '''
 
     nodes2 = []
     noise_x = 0.02
@@ -66,6 +68,10 @@ def AddNoise(nodes):
 
 
 def PlotPoseGraphs(nodes1, nodes2):
+    '''
+    Display two sets of pose graph nodes on a single 3D figure.
+    '''
+
     fig = plt.figure()
     ax = fig.gca(projection='3d')
 
@@ -84,14 +90,22 @@ def PlotPoseGraphs(nodes1, nodes2):
     scaling = np.array([getattr(ax, 'get_{}lim'.format(dim))()
                         for dim in 'xyz'])
     ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]] * 3)
-    # ax.set_aspect('equal', 'box')
 
 
 def DistBetween(n1, n2):
+    '''
+    Compute Euclidean distance between two Nodes.
+    '''
+
     return math.sqrt((n1.x - n2.x)**2 + ((n1.y - n2.y))**2 + ((n1.z - n2.z))**2)
 
 
 def PlotErrors(nodes1, nodes2):
+    '''
+    Plot the Euclidean distance errors between corresponding nodes in two pose graphs.
+    Shows errors in x, y, z as well as total error.
+    '''
+
     fig = plt.figure()
     ax = fig.gca()
 
@@ -133,11 +147,14 @@ def PlotErrors(nodes1, nodes2):
 
 
 def ReadPoseGraphFromG2O(file):
+    '''
+    Read a pose graph in g2o format from a text file.
+    Extracts nodes only, edges are ignored
+    '''
 
     nodes = []
 
     with open(file) as f:
-
         for line in f:
             if not line.startswith('VERTEX'):
                 break
@@ -148,18 +165,21 @@ def ReadPoseGraphFromG2O(file):
 
 
 def ReadPoseGraphFromBagfile(filename):
+    '''
+    Read a pose graph in g2o format from a bagfile.
+    Extracts nodes only, edges are ignored
+    '''
 
     bag = rosbag.Bag(filename)
 
-    msgs = []
+    msgs, nodes = [], []
 
     for topic, msg, t in bag.read_messages(topics='/base1/lamp/pose_graph'):
         print(topic)
         msgs.append(msg)
 
+    # Take most recent message only
     msg = msgs[-1]
-
-    nodes = []
 
     for n in msg.nodes:
         new_node = Node()
