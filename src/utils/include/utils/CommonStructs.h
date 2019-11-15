@@ -402,6 +402,15 @@ struct ImuFactor {
   gtsam::Pose3AttitudeFactor attitude;
 };
 
+struct UwbFactor {
+  ros::Time stamp;
+  gtsam::Symbol key_from;
+  gtsam::Symbol key_to;
+  double range;
+  double range_error;
+};
+
+
 // ---------------------------------------------------------
 
 // Base factor data class
@@ -463,4 +472,16 @@ public:
 
   std::vector<AprilTagFactor> factors;
 };
+
+class UwbData : public FactorData {
+
+  public:
+    
+    UwbData() { };
+    virtual ~UwbData() { };
+
+    std::vector<UwbFactor> factors;
+};
+
+
 #endif

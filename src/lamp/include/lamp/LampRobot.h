@@ -13,6 +13,7 @@
 #include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/OdometryHandler.h>
+#include <factor_handlers/UwbHandler.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl/filters/filter.h>
@@ -76,11 +77,12 @@ private:
     bool ProcessOdomData(std::shared_ptr<FactorData> data);
     // Process the artifact factors if any available
     bool ProcessArtifactData(std::shared_ptr<FactorData> data);
-    // Process the april tag factors if any available    
+    // Process the uwb factors if any available
+    bool ProcessUwbData(std::shared_ptr<FactorData> data);
+
     bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
     bool InitializeGraph(gtsam::Pose3& pose, 
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-    // void ProcessUWBData(FactorData data);
     // Example use:
     // ProcessArtifactData(artifact_handler_.GetData());
 
@@ -98,6 +100,7 @@ private:
     OdometryHandler odometry_handler_; 
     ArtifactHandler artifact_handler_;
     AprilTagHandler april_tag_handler_;
+    UwbHandler      uwb_handler_;
     // Manual LC
     // IMU
     // TS

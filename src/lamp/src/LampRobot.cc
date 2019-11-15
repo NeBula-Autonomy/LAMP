@@ -298,6 +298,11 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
     return false;
   }
 
+  if (!uwb_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the uwb handler.", name_.c_str());
+    return false;
+  }
+
   return true; 
 }
 
@@ -310,6 +315,7 @@ bool LampRobot::CheckHandlers() {
   // bool b_have_loop_closure;
   bool b_have_new_artifacts;
   bool b_have_new_april_tags;
+  bool b_have_new_uwb;
 
   // Check the odom for adding new poses
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
@@ -327,6 +333,7 @@ bool LampRobot::CheckHandlers() {
   // Check for april tags
   b_have_new_april_tags = ProcessAprilTagData(april_tag_handler_.GetData());
   // TODO - determine what a true and false return means here
+  b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
   return true;
 }
 
@@ -779,6 +786,62 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data){
   // Clean the new keys 
   april_tag_handler_.CleanFailedFactors(true);
 
+  return true;
+}
+
+/*!
+  \brief  Wrapper for the uwb class interactions
+  Creates factors from the uwb output
+  \param   data - the output data struct from the UwbHandler class
+  \warning ...
+  \author Nobuhiro Funabiki
+  \date Oct 2019
+*/
+bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
+  std::shared_ptr<UwbData> uwb_data = std::dynamic_pointer_cast<UwbData>(data);
+  if (!uwb_data->b_has_data) return false;
+  // New Factors to be added
+  NonlinearFactorGraph new_factors;
+  Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
+
+  ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
+  ROS_INFO_STREAM("Number of UWB factors to be added : " << uwb_data->factors.size());
+
+  for (auto factor : uwb_data->factors) {
+    auto odom_key = factor.key_from;
+    auto uwb_key = gtsam::Symbol('u', factor.key_to);
+    // Check if it is a new uwb id or not
+    auto values = pose_graph_.GetValues();
+    if (!values.exists(uwb_key)) {
+      // Insert it into the values
+      global_uwb_pose = pose_graph_.GetPose(odom_key);
+      // Add it into the keyed stamps
+      pose_graph_.InsertKeyedStamp(uwb_key, factor.stamp);
+      gtsam::Vector6 prior_precision;
+      prior_precision.head<3>().setConstant(0.0000001);
+      prior_precision.tail<3>().setConstant(0.0000001);
+      static const gtsam::SharedNoiseModel& prior_noise = 
+        gtsam::noiseModel::Diagonal::Precisions(prior_precision);
+      pose_graph_.TrackNode(factor.stamp, uwb_key, global_uwb_pose, prior_noise);
+
+    }
+    auto range = factor.range;
+    gtsam::noiseModel::Base::shared_ptr range_error 
+      = gtsam::noiseModel::Isotropic::Sigma(1, factor.range_error);
+    new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
+      odom_key, uwb_key, range, range_error));
+    // Track the edges that have been added
+    EdgeMessage uwb_factor;
+    uwb_factor.key_from = odom_key;
+    uwb_factor.key_to = uwb_key;
+    uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
+    uwb_factor.range = range;
+    uwb_factor.range_error = factor.range_error;
+    // add new factors to buffer to send to pgo
+    pose_graph_.TrackFactor(uwb_factor);
+  }
+  b_run_optimization_ = true;
+  uwb_handler_.ResetFactorData();
   return true;
 }
 
