@@ -154,11 +154,11 @@ public:
     return lr.artifact_handler_.GetArtifactKey2InfoHash();
   }
 
-  std::unordered_map<std::string, gtsam::Symbol> &GetIdKeyHash() {
+  std::unordered_map<std::string, gtsam::Symbol>& GetIdKeyHash() {
     return lr.artifact_handler_.artifact_id2key_hash;
   }
 
-  std::vector<gtsam::Symbol> &GetNewKeys() {
+  std::vector<gtsam::Symbol>& GetNewKeys() {
     return lr.artifact_handler_.new_keys_;
   }
 
@@ -166,11 +166,11 @@ public:
     return lr.artifact_handler_.largest_artifact_id_;
   }
 
-  std::unordered_map<std::string, gtsam::Symbol> &GetAprilIdKeyHash() {
+  std::unordered_map<std::string, gtsam::Symbol>& GetAprilIdKeyHash() {
     return lr.april_tag_handler_.artifact_id2key_hash;
   }
 
-  std::vector<gtsam::Symbol> &GetAprilNewKeys() {
+  std::vector<gtsam::Symbol>& GetAprilNewKeys() {
     return lr.april_tag_handler_.new_keys_;
   }
 
@@ -395,7 +395,8 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   temp_info.global_position = gtsam::Point3(9.7, 0, 0);
 
   // Add the factor in InfoHash
-  std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_map =
+      GetArtifactInfoHash();
   info_map[new_factor.key] = temp_info;
 
   // Add to idkey hash
@@ -480,10 +481,14 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
     }
   }
   // Check if a1 is present in a factor with l1
-  EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',1)) != other_keys.end());
+  EXPECT_TRUE(find(other_keys.begin(),
+                   other_keys.end(),
+                   gtsam::Symbol('a', 1)) != other_keys.end());
 
-  // Check if a2 is present in a factor with l1  
-  EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2)) != other_keys.end());
+  // Check if a2 is present in a factor with l1
+  EXPECT_TRUE(find(other_keys.begin(),
+                   other_keys.end(),
+                   gtsam::Symbol('a', 2)) != other_keys.end());
 
   // Add a new failed factor
   new_data->factors.clear();
@@ -513,7 +518,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
 
   // Add to new keys
   temp_keys = GetNewKeys();
-  temp_keys.push_back(new_factor.key);  
+  temp_keys.push_back(new_factor.key);
 
   // Call Process Artifacts should fail
   ProcessArtifacts(new_data);
@@ -535,23 +540,31 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   EXPECT_EQ(largest_id, 2);
 }
 
-/** Check Process April tag data. 
- * Same as Artifacts unit test. The two main purpose here is 
+/** Check Process April tag data.
+ * Same as Artifacts unit test. The two main purpose here is
  *      Optimization is done for new april as well
  *      Prior is added when the april is new
- *  Call ProcessAprilTags with April tags. New April tag added. 
- * Second message for same april arrives and only between factor added  
- *                                                  |-----------------------------------------------------|                                                       Graph loop closure
- * a0       a1                          l1         a2                      l1       a3                l1  V                                                       Node symbols
- * Odom     Odom                     April         Odom                 April       Odom              April measured position    April ground position            Type of measurement
- * g(0,0,0) g(2,0,0)    g(2.4,0,0)   r(9.7,0,0)    g(4,0,0)  g(4.4,0,0) r(7.8,0,0)  g(6,0,0)          g(12.1,0,0)                g(12.2,0,0)                      global(g)/relative(r) position
- *o--------->o------------|------------------------->o------------------------------>o-----------------------------------------------------                       Graph odom
- * -|--------|------------|------------|------------|-------------|---------|--------|--------------------|---------------------------|----                       1D line
- * 0.05     0.1         0.109        0.11          0.15         0.159      0.16     2.0                                                                           Time
- * QUESTION: Check if global flag needs to be turned on in case of april.
- * TODO: Reflect the new non-sequential unit test in the above graph for both Artifact and april tag handler
- * TODO: I dont think that the position in these new non sequential factor matters. Check it once. 
-*/
+ *  Call ProcessAprilTags with April tags. New April tag added.
+ * Second message for same april arrives and only between factor added
+ *                                                  |-----------------------------------------------------|
+ *Graph loop closure a0       a1                          l1         a2 l1 a3 l1
+ *V                                                       Node symbols Odom Odom
+ *April         Odom                 April       Odom              April
+ *measured position    April ground position            Type of measurement
+ * g(0,0,0) g(2,0,0)    g(2.4,0,0)   r(9.7,0,0)    g(4,0,0)  g(4.4,0,0)
+ *r(7.8,0,0)  g(6,0,0)          g(12.1,0,0)                g(12.2,0,0)
+ *global(g)/relative(r) position
+ *o--------->o------------|------------------------->o------------------------------>o-----------------------------------------------------
+ *Graph odom
+ * -|--------|------------|------------|------------|-------------|---------|--------|--------------------|---------------------------|----
+ *1D line 0.05     0.1         0.109        0.11          0.15         0.159
+ *0.16     2.0 Time QUESTION: Check if global flag needs to be turned on in case
+ *of april.
+ * TODO: Reflect the new non-sequential unit test in the above graph for both
+ *Artifact and april tag handler
+ * TODO: I dont think that the position in these new non sequential factor
+ *matters. Check it once.
+ */
 TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // Construct the new April tag data
   std::shared_ptr<AprilTagData> new_data = std::make_shared<AprilTagData>();
@@ -575,29 +588,31 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   setFixedCovariance(false);
 
   // Add ground truth value for April Tag l1
-  std::unordered_map<long unsigned int, ArtifactInfo>& info_hash = GetInfoHash();
-  info_hash[gtsam::Symbol('l',1)].id = "distal";
-  info_hash[gtsam::Symbol('l',1)].num_updates = 1;
-  info_hash[gtsam::Symbol('l',1)].global_position = gtsam::Point3(12.2,0.0,0.0);
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_hash =
+      GetInfoHash();
+  info_hash[gtsam::Symbol('l', 1)].id = "distal";
+  info_hash[gtsam::Symbol('l', 1)].num_updates = 1;
+  info_hash[gtsam::Symbol('l', 1)].global_position =
+      gtsam::Point3(12.2, 0.0, 0.0);
 
   // Add to values
-  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a',0));
-  InsertValues(gtsam::Symbol('a',0), gtsam::Pose3(gtsam::Rot3(), 
-                                          gtsam::Point3 (0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a',1));
-  InsertValues(gtsam::Symbol('a',1), gtsam::Pose3(gtsam::Rot3(), 
-                                          gtsam::Point3 (2.0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a',2));
-  InsertValues(gtsam::Symbol('a',2), gtsam::Pose3(gtsam::Rot3(), 
-                                          gtsam::Point3 (4.0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a',3));
-  InsertValues(gtsam::Symbol('a',3), gtsam::Pose3(gtsam::Rot3(), 
-                                          gtsam::Point3 (6.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a', 0));
+  InsertValues(gtsam::Symbol('a', 0),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a', 1));
+  InsertValues(gtsam::Symbol('a', 1),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a', 2));
+  InsertValues(gtsam::Symbol('a', 2),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4.0, 0, 0)));
+  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a', 3));
+  InsertValues(gtsam::Symbol('a', 3),
+               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(6.0, 0, 0)));
 
-  AddKeyedStamp(gtsam::Symbol('a',0), ros::Time(0.05));
-  AddKeyedStamp(gtsam::Symbol('a',1), ros::Time(0.1));
-  AddKeyedStamp(gtsam::Symbol('a',2), ros::Time(0.15));
-  AddKeyedStamp(gtsam::Symbol('a',3), ros::Time(0.2));
+  AddKeyedStamp(gtsam::Symbol('a', 0), ros::Time(0.05));
+  AddKeyedStamp(gtsam::Symbol('a', 1), ros::Time(0.1));
+  AddKeyedStamp(gtsam::Symbol('a', 2), ros::Time(0.15));
+  AddKeyedStamp(gtsam::Symbol('a', 3), ros::Time(0.2));
 
   // Construct the odometry message for a0 (the nearest key)
   nav_msgs::Odometry a0_value;
@@ -625,8 +640,7 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   l1_value.pose.pose.position.x = 2.4;
   l1_value.pose.pose.orientation.w = 1.0;
 
-  nav_msgs::Odometry::ConstPtr a1l1_odom(
-      new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a1l1_odom(new nav_msgs::Odometry(l1_value));
 
   // Call Lidar callback
   LidarCallback(a1l1_odom);
@@ -652,10 +666,11 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   LidarCallback(a3_odom);
 
   // Check if l1 is added to values
-  EXPECT_FALSE(GetValues().exists(gtsam::Symbol('l',1)));
+  EXPECT_FALSE(GetValues().exists(gtsam::Symbol('l', 1)));
 
   // Add to idkey hash
-  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetAprilIdKeyHash();
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash =
+      GetAprilIdKeyHash();
   key_hash["distal"] = new_factor.key;
 
   // Check if the artifact is in the Info Hash
@@ -680,16 +695,17 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // April tags always lead to optimization
   EXPECT_TRUE(GetOptFlag());
   // Check if l1 is added to values
-  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
   // Check the position of the April Tag
-  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
+  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l', 1)).translation(),
+            gtsam::Point3(12.1, 0, 0));
   // Check the graph for prior
   gtsam::NonlinearFactorGraph graph = GetNfg();
 
   // Number of factors for l1 (One should be prior and one between factor)
   int count = 0;
-  for (auto factor:graph){
-    if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
+  for (auto factor : graph) {
+    if (factor->find(gtsam::Symbol('l', 1)) != factor->end()) {
       count = count + 1;
     }
   }
@@ -700,8 +716,7 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   l1_value.pose.pose.position.x = 4.4;
   l1_value.pose.pose.orientation.w = 1.0;
 
-  nav_msgs::Odometry::ConstPtr a2l1_odom(
-      new nav_msgs::Odometry(l1_value));
+  nav_msgs::Odometry::ConstPtr a2l1_odom(new nav_msgs::Odometry(l1_value));
 
   // Call Lidar callback
   LidarCallback(a2l1_odom);
@@ -709,7 +724,7 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // Change time and send the message again
   new_data->b_has_data = true;
   new_data->factors[0].stamp = ros::Time(0.16);
-  new_data->factors[0].position = gtsam::Point3 (7.8, 0, 0);
+  new_data->factors[0].position = gtsam::Point3(7.8, 0, 0);
 
   // Call the ProcessAprilTagData. Adding an old April Tag
   ProcessAprilTags(new_data);
@@ -717,32 +732,37 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // April tags always optimize
   EXPECT_TRUE(GetOptFlag());
   // Check if l1 is added to values
-  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l',1)));
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
   // Check the position of the April Tag
-  EXPECT_EQ(GetPose(gtsam::Symbol('l',1)).translation(),gtsam::Point3(12.1,0,0));
+  EXPECT_EQ(GetPose(gtsam::Symbol('l', 1)).translation(),
+            gtsam::Point3(12.1, 0, 0));
   // Check the loop closure factor
   graph = GetNfg();
   std::vector<gtsam::Symbol> other_keys;
-  
-  for (auto factor:graph){
-    if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
-      if (factor->keys()[0] == gtsam::Symbol('l',1)){
+
+  for (auto factor : graph) {
+    if (factor->find(gtsam::Symbol('l', 1)) != factor->end()) {
+      if (factor->keys()[0] == gtsam::Symbol('l', 1)) {
         other_keys.push_back(factor->keys()[1]);
       } else {
-        other_keys.push_back(factor->keys()[0]);        
+        other_keys.push_back(factor->keys()[0]);
       }
     }
   }
   // Check if a1 is present in a factor with l1
-  EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',1)) != other_keys.end());
+  EXPECT_TRUE(find(other_keys.begin(),
+                   other_keys.end(),
+                   gtsam::Symbol('a', 1)) != other_keys.end());
 
-  // Check if a2 is present in a factor with l1  
-  EXPECT_TRUE(find(other_keys.begin(),other_keys.end(),gtsam::Symbol('a',2)) != other_keys.end());
+  // Check if a2 is present in a factor with l1
+  EXPECT_TRUE(find(other_keys.begin(),
+                   other_keys.end(),
+                   gtsam::Symbol('a', 2)) != other_keys.end());
 
   // Number of factors for l1 (One should be prior and two between factors)
   count = 0;
-  for (auto factor:graph){
-    if (factor->find(gtsam::Symbol('l',1))!=factor->end()){
+  for (auto factor : graph) {
+    if (factor->find(gtsam::Symbol('l', 1)) != factor->end()) {
       count = count + 1;
     }
   }
@@ -777,7 +797,7 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
 
   // Add to new keys
   temp_keys = GetAprilNewKeys();
-  temp_keys.push_back(new_factor.key);  
+  temp_keys.push_back(new_factor.key);
 
   // Call Process Artifacts should fail
   ProcessAprilTags(new_data);
@@ -824,7 +844,8 @@ TEST_F(TestLampRobot, NonSequentialKeys) {
   temp_info.global_position = gtsam::Point3(9.7, 0, 0);
 
   // Add the factor in InfoHash
-  std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_map =
+      GetArtifactInfoHash();
   info_map[new_factor.key] = temp_info;
 
   // Add to idkey hash
@@ -1193,6 +1214,140 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
   std::cout << "Converting message to graph.\n";
   PoseGraph graph;
   graph.UpdateFromMsg(g);
+  for (const auto& n : graph.GetNodes()) {
+    x = n.pose.position.x;
+    y = n.pose.position.y;
+    z = n.pose.position.z;
+    std::cout << "\tconverted node " << n.key << ": (" << x << ", " << y << ", "
+              << z << ")\n";
+  }
+  for (const auto& e : graph.GetEdges()) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\tconverted edge from " << e.key_from << " to " << e.key_to
+              << ": (" << x << ", " << y << ", " << z << ")\n";
+  }
+  for (const auto& e : graph.GetPriors()) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\tconverted prior " << e.key_from << ": (" << x << ", " << y
+              << ", " << z << ")\n";
+  }
+
+  // Node a100 - check all information
+  gtsam::Pose3 pose0 = graph.GetPose(key0);
+  gtsam::Pose3 actual0 = GetPose(key0);
+  std::cout << "Pose0:   " << pose0 << std::endl;
+  std::cout << "Actual0: " << actual0 << std::endl;
+  EXPECT_EQ(pose0.equals(actual0, tolerance_), true);
+
+  // Node a101 - check all information
+  gtsam::Pose3 pose1 = graph.GetPose(key1);
+  gtsam::Pose3 actual1 = GetPose(key1);
+  std::cout << "Pose1:   " << pose1 << std::endl;
+  std::cout << "Actual1: " << actual1 << std::endl;
+  EXPECT_EQ(pose1.equals(actual1, tolerance_), true);
+
+  // Node m0 - check all information
+  gtsam::Pose3 pose2 = graph.GetPose(key2);
+  gtsam::Pose3 actual2 = GetPose(key2);
+  std::cout << "Pose2:   " << pose2 << std::endl;
+  std::cout << "Actual2: " << actual2 << std::endl;
+  EXPECT_EQ(pose2.equals(actual2, tolerance_), true);
+
+  // Odom edge
+  const auto* edge0 = graph.FindEdge(key0, key1);
+  auto edge0_tf = utils::MessageToPose(*edge0);
+  auto edge0_noise = utils::MessageToCovariance(*edge0);
+  EXPECT_EQ(edge0->type, pose_graph_msgs::PoseGraphEdge::ODOM);
+  EXPECT_EQ(edge0_tf.equals(tf2, tolerance_), true);
+  EXPECT_EQ(edge0_noise->equals(*noise, tolerance_), true);
+
+  // Artifact edge
+  const auto* edge1 = graph.FindEdge(key2, key0);
+  auto edge1_tf = utils::MessageToPose(*edge1);
+  auto edge1_noise = utils::MessageToCovariance(*edge1);
+  EXPECT_EQ(edge1->type, pose_graph_msgs::PoseGraphEdge::ARTIFACT);
+  EXPECT_EQ(edge1_tf.equals(tf1, tolerance_), true);
+  EXPECT_EQ(edge1_noise->equals(*noise, tolerance_), true);
+
+  // Prior factor
+  const auto* prior = graph.FindPrior(key0);
+  auto prior_tf = utils::MessageToPose(*prior);
+  auto prior_noise = utils::MessageToCovariance(*prior);
+  EXPECT_EQ(prior->type, pose_graph_msgs::PoseGraphEdge::PRIOR);
+  EXPECT_EQ(prior_tf.equals(tf0, tolerance_), true);
+  EXPECT_EQ(prior_noise->equals(*noise, tolerance_), true);
+}
+
+TEST_F(TestLampRobot, SaveLoadPoseGraph) {
+  ros::Time::init();
+
+  // NOTE: this test does not use a full valid graph
+
+  // Set up the robot prefix for odom nodes
+  SetPrefix('a');
+
+  // Initialize some keys and poses that are used for nodes, edges and priors.
+
+  const gtsam::Symbol key0('a', 100);
+  const gtsam::Symbol key1('a', 101);
+  const gtsam::Symbol key2('m', 0);
+
+  gtsam::Pose3 tf0(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
+                   gtsam::Point3(420.0, 69.0, 0.0));
+  gtsam::Pose3 tf1(gtsam::Rot3(sqrt(0.3), sqrt(0.3), sqrt(0.4), 0.0),
+                   gtsam::Point3(10.0, -1.0, 1000.0));
+  gtsam::Pose3 tf2(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(500.0, 433.5, -2.5));
+
+  static const gtsam::SharedNoiseModel& noise =
+      gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+
+  // Test values
+  InsertValues(key0, tf0);
+  InsertValues(key1, tf1);
+  InsertValues(key2, tf2);
+
+  // Test edges
+  TrackFactor(key0, key1, pose_graph_msgs::PoseGraphEdge::ODOM, tf2, noise);
+  TrackFactor(key2, key0, pose_graph_msgs::PoseGraphEdge::ARTIFACT, tf1, noise);
+
+  // Test priors
+  AddKeyedStamp(key0, ros::Time(67589467.0));
+  TrackPrior(key0, tf0, noise);
+
+  float x, y, z;
+  for (const auto& n : GetNodes()) {
+    x = n.pose.position.x;
+    y = n.pose.position.y;
+    z = n.pose.position.z;
+    std::cout << "\toriginal node " << n.key << ": (" << x << ", " << y << ", "
+              << z << ")\n";
+  }
+  for (const auto& e : GetEdges()) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\toriginal edge from " << e.key_from << " to " << e.key_to
+              << ": (" << x << ", " << y << ", " << z << ")\n";
+  }
+  for (const auto& e : GetPriors()) {
+    x = e.pose.position.x;
+    y = e.pose.position.y;
+    z = e.pose.position.z;
+    std::cout << "\toriginal prior " << e.key_from << ": (" << x << ", " << y
+              << ", " << z << ")\n";
+  }
+
+  std::cout << "Saving graph to file.\n";
+  EXPECT_EQ(lr.graph().Save("graph.zip"), true);
+
+  PoseGraph graph;
+  std::cout << "Load graph from file.\n";
+  EXPECT_EQ(graph.Load("graph.zip"), true);
+
   for (const auto& n : graph.GetNodes()) {
     x = n.pose.position.x;
     y = n.pose.position.y;
