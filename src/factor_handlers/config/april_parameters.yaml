@@ -1,5 +1,5 @@
 # Are the April tags transforms in global 
-b_artifacts_in_global:      true
+# b_artifacts_in_global:      false
 
 # Should April loop closure be used
 use_artifact_loop_closure:  true

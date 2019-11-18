@@ -32,6 +32,7 @@ abspath = '/home/costar/.ros/'
 
 # Saved data filenames (used for the .zip and pose graph .bag file)
 # file must already exist in the above directory
+# NOTE: these must match $DATA_FILE and $GT_FILE in launch_post_processing.yaml
 filename_data = 'pose_graph_data.zip'
 filename_gt = 'pose_graph_gt.zip'
 

@@ -8,8 +8,8 @@ environment:
   ROBOT_NAME: husky1
   BASE_NAME: base1
 
-  DATA_PATH: pose_graph_data.zip # saved pose graph in ~/.ros directory
-  GT_PATH: pose_graph_gt.zip
+  DATA_FILE: pose_graph_data.zip # saved pose graph in ~/.ros directory
+  GT_FILE: pose_graph_gt.zip
 
 options:
   default-command: /bin/bash
@@ -20,16 +20,13 @@ windows:
   layout: tiled
   panes:
     - roscore
-    - sleep 4; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
-    - sleep 3; roslaunch lamp turn_on_robot_viz.launch robot_namespace:=$ROBOT_NAME
+    - sleep 3; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
     - sleep 1; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME 
-    # - rosparam set /use_sim_time true; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /velodyne /$ROBOT_NAME/base_link # only for Eagle mine
-    - rosparam rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$ROBOT_NAME/map # only for Eagle mine
     - rosparam rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$BASE_NAME/map # base station
     - sleep 2; rosrun rviz rviz
 
     # load PG, apply GT correction, and save
-    - sleep 6; rostopic pub /base1/lamp/debug std_msgs/String "load $DATA_PATH"
-    - sleep 7; rostopic pub /base1/lamp/debug std_msgs/String "artifact_gt" 
-    - sleep 8; rostopic pub /base1/lamp/debug std_msgs/String "save $GT_PATH" 
-    - sleep 9; tmux kill-window;
+    - sleep 5; rostopic pub /base1/lamp/debug std_msgs/String "load $DATA_FILE"
+    - sleep 6; rostopic pub /base1/lamp/debug std_msgs/String "artifact_gt" 
+    - sleep 7; rostopic pub /base1/lamp/debug std_msgs/String "save $GT_FILE" 
+    - sleep 8; tmux kill-window;

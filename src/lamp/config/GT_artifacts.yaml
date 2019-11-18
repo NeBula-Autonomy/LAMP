@@ -2,6 +2,8 @@
 #       'UUID x y z'
 artifacts_GT: 
   # - 'm3 backpack 10.0 2.0 2.0'
-  - 'l0 drill 10.0 -1.0 0.0'
-  - 'l1 drill 20.0 3.0 0.0'
+  # - 'l0 drill 10.0 -1.0 0.0'
+  # - 'l1 drill 20.0 3.0 0.0'
+  - 'n6 drill 95.183 -95.138 2.021'
+  - 'n7 drill 91.524 -130.967 1.372'
   # - 'a10 drill 10.0 0.0 0.0'
