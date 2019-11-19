@@ -25,6 +25,20 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
   }
 
   gtsam::Pose3 delta = utils::MessageToPose(msg);
+
+  if (delta.rotation().matrix().determinant() > 1.01 && b_first_){
+    ROS_WARN_STREAM("[Track Factor] Determinant non unary, FIRST TIME is " << delta.rotation().matrix().determinant());
+    b_first_ = false;
+  } else if (delta.rotation().matrix().determinant() > 1.01){
+    ROS_WARN_STREAM("[Track Factor] Determinant non unary, is " << delta.rotation().matrix().determinant());
+  }
+
+  Eigen::Quaterniond quat(delta.rotation().matrix());
+  // quat = quat.normalized();
+  delta.rotation().matrix() = quat.normalized().toRotationMatrix();
+  ROS_INFO_STREAM("Quat normalized is: " << quat.normalized().x() << ", "  << quat.normalized().y() << ", " << quat.normalized().z() << ", "  << quat.normalized().w());
+
+  ROS_WARN_STREAM("[Track Factor] Determinant pose normalization in TrackFactor, is " << delta.rotation().matrix().determinant() << ". matrix is: " << delta.rotation().matrix());
   Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
 
   if (msg.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
@@ -95,21 +109,38 @@ bool PoseGraph::TrackNode(const Node& node) {
   return TrackNode(node.ToMsg());
 }
 
-bool PoseGraph::TrackNode(const NodeMessage& msg) {
-  const auto pose = utils::MessageToPose(msg);
-    
-  if (values_.exists(msg.key)) {
-    values_.update(msg.key, pose);
+bool PoseGraph::TrackNode(const NodeMessage& msg, bool b_do_values) {
+  auto pose = utils::MessageToPose(msg);
+
+  if (pose.rotation().matrix().determinant() > 1.01 && b_first_){
+    ROS_WARN_STREAM("[Track Node] Determinant non unary, FIRST TIME is " << pose.rotation().matrix().determinant());
+    b_first_ = false;
+  } else if (pose.rotation().matrix().determinant() > 1.01){
+    ROS_WARN_STREAM("[Track Node] Determinant non unary, is " << pose.rotation().matrix().determinant());
   }
-  else {
-    values_.insert(msg.key, pose);
+
+  Eigen::Quaterniond quat(pose.rotation().matrix());
+  // quat = quat.normalize();
+  pose.rotation().matrix() = quat.normalized().toRotationMatrix();
+  ROS_INFO_STREAM("Quat normalized is: " << quat.normalized().x() << ", "  << quat.normalized().y() << ", " << quat.normalized().z() << ", "  << quat.normalized().w());
+  
+  ROS_WARN_STREAM("Determinant pose normalization in TrackNode, is " << pose.rotation().matrix().determinant() << ". matrix is: " << pose.rotation().matrix());
+
+  if (b_do_values){
+    if (values_.exists(msg.key)) {
+      values_.update(msg.key, pose);
+    }
+    else {
+      values_.insert(msg.key, pose);
+    }
+    if (values_new_.exists(msg.key)) {
+      values_new_.update(msg.key, pose);
+    }
+    else {
+      values_new_.insert(msg.key, pose);
+    }
   }
-  if (values_new_.exists(msg.key)) {
-    values_new_.update(msg.key, pose);
-  }
-  else {
-    values_new_.insert(msg.key, pose);
-  }
+
   keyed_stamps[msg.key] = msg.header.stamp;
   
   // make copy to modify ID
@@ -133,9 +164,22 @@ bool PoseGraph::TrackNode(const ros::Time& stamp,
                           gtsam::Symbol key,
                           const gtsam::Pose3& pose,
                           const gtsam::SharedNoiseModel& covariance) {
+  if (values_.exists(key)) {
+    values_.update(key, pose);
+  }
+  else {
+    values_.insert(key, pose);
+  }
+  if (values_new_.exists(key)) {
+    values_new_.update(key, pose);
+  }
+  else {
+    values_new_.insert(key, pose);
+  }
+  
   NodeMessage msg =
       utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
-  return TrackNode(msg);
+  return TrackNode(msg, false);
 }
 
 bool PoseGraph::TrackPrior(const EdgeMessage& msg) {
@@ -218,6 +262,8 @@ void PoseGraph::Initialize(gtsam::Symbol initial_key,
                            const Diagonal::shared_ptr& covariance) {
   nfg_ = gtsam::NonlinearFactorGraph();
   values_ = gtsam::Values();
+
+  b_first_ = true;
 
   Node prior;
   prior.key = initial_key;

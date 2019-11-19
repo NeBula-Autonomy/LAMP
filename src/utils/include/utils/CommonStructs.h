@@ -134,6 +134,7 @@ struct Node {
 // Pose graph structure storing values, factors and meta data.
 class PoseGraph {
 public:
+  bool b_first_;
   const gtsam::Values& GetValues() const {
     return values_;
   }
@@ -216,7 +217,7 @@ public:
   // Tracks nodes and updates values. Returns true if new node is added.
   // Updates the internal keyed_stamp map for this key.
   bool TrackNode(const Node& node);
-  bool TrackNode(const NodeMessage& msg);
+  bool TrackNode(const NodeMessage& msg, bool b_do_values = true);
   bool TrackNode(const ros::Time& stamp,
                  gtsam::Symbol key,
                  const gtsam::Pose3& pose,

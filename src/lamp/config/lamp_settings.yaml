@@ -24,7 +24,7 @@ time_threshold: 10.0
 robot: 
 
   # Turn laser loop closures on or off
-  b_find_laser_loop_closures: true
+  b_find_laser_loop_closures: false
 
 
 #######################################
