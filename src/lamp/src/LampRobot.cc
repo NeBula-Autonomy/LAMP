@@ -477,13 +477,13 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
                                               new_scan->size());
 
       // // Apply random downsampling to the keyed scan
-      pcl::RandomSample<pcl::PointXYZ> random_filter;
+      pcl::RandomSample<pcl::PointXYZI> random_filter;
       random_filter.setSample(n_points);
       random_filter.setInputCloud(new_scan);
       random_filter.filter(*new_scan);
 
       // Apply voxel grid filter to the keyed scan
-      pcl::VoxelGrid<pcl::PointXYZ> grid;
+      pcl::VoxelGrid<pcl::PointXYZI> grid;
       grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
       grid.setInputCloud(new_scan);
       grid.filter(*new_scan);

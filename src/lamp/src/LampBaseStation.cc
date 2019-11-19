@@ -205,7 +205,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   b_has_new_factor_ = true;
 
   pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>);
 
   gtsam::Values new_values;
 
