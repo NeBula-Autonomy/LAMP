@@ -203,15 +203,20 @@ public:
                   const gtsam::Pose3& pose,
                   const Diagonal::shared_ptr& covariance);
 
-  // Tracks edge (factor) without updating nfg. Returns true if new factor is
-  // added.
+  // Tracks edge (factor) and updates nfg. Returns true if new edge is added.
   bool TrackFactor(const Factor& factor);
   bool TrackFactor(const EdgeMessage& msg);
   bool TrackFactor(gtsam::Symbol key_from,
                    gtsam::Symbol key_to,
                    int type,
                    const gtsam::Pose3& transform,
-                   const gtsam::SharedNoiseModel& covariance);
+                   const gtsam::SharedNoiseModel& covariance,
+                   bool create_msg = true);
+  bool TrackUWBFactor(gtsam::Symbol key_from,
+                      gtsam::Symbol key_to,
+                      double range,
+                      double range_error,
+                      bool create_msg = true);
 
   // Tracks nodes and updates values. Returns true if new node is added.
   // Updates the internal keyed_stamp map for this key.
@@ -220,7 +225,8 @@ public:
   bool TrackNode(const ros::Time& stamp,
                  gtsam::Symbol key,
                  const gtsam::Pose3& pose,
-                 const gtsam::SharedNoiseModel& covariance);
+                 const gtsam::SharedNoiseModel& covariance,
+                 bool create_msg = true);
 
   // Tracks priors (one-sided edges). Returns true if new prior is added.
   // Does NOT update the internal keyed_stamp map for this key.
@@ -229,7 +235,8 @@ public:
   bool TrackPrior(const EdgeMessage& msg);
   bool TrackPrior(gtsam::Symbol key,
                   const gtsam::Pose3& pose,
-                  const gtsam::SharedNoiseModel& covariance);
+                  const gtsam::SharedNoiseModel& covariance,
+                  bool create_msg = true);
 
   // Adds gtsam::Values to internal values and values_new without updating node
   // messages.
@@ -270,8 +277,9 @@ public:
 
   // Incremental update from pose graph message.
   void UpdateFromMsg(const GraphMsgPtr& msg);
-  
-  // Update all values_new_ so the incremental publisher republishes the whole graph 
+
+  // Update all values_new_ so the incremental publisher republishes the whole
+  // graph
   void AddAllValuesToNew();
 
   inline void ClearIncrementalMessages() {
@@ -410,7 +418,6 @@ struct UwbFactor {
   double range_error;
 };
 
-
 // ---------------------------------------------------------
 
 // Base factor data class
@@ -474,14 +481,11 @@ public:
 };
 
 class UwbData : public FactorData {
+public:
+  UwbData(){};
+  virtual ~UwbData(){};
 
-  public:
-    
-    UwbData() { };
-    virtual ~UwbData() { };
-
-    std::vector<UwbFactor> factors;
+  std::vector<UwbFactor> factors;
 };
-
 
 #endif
