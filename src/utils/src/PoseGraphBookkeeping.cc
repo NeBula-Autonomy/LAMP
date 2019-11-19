@@ -33,12 +33,12 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
     ROS_WARN_STREAM("[Track Factor] Determinant non unary, is " << delta.rotation().matrix().determinant());
   }
 
-  Eigen::Quaterniond quat(delta.rotation().matrix());
-  // quat = quat.normalized();
-  delta.rotation().matrix() = quat.normalized().toRotationMatrix();
-  ROS_INFO_STREAM("[Track Factor] Quat normalized is: " << quat.normalized().x() << ", "  << quat.normalized().y() << ", " << quat.normalized().z() << ", "  << quat.normalized().w());
+  // Eigen::Quaterniond quat(delta.rotation().matrix());
+  // // quat = quat.normalized();
+  // delta.rotation().matrix() = quat.normalized().toRotationMatrix();
+  // ROS_INFO_STREAM("[Track Factor] Quat normalized is: " << quat.normalized().x() << ", "  << quat.normalized().y() << ", " << quat.normalized().z() << ", "  << quat.normalized().w());
 
-  ROS_WARN_STREAM("[Track Factor] Determinant pose normalization in TrackFactor, is " << delta.rotation().matrix().determinant() << ".\n matrix is: " << delta.rotation().matrix());
+  ROS_WARN_STREAM("[Track Factor] Determinant post normalization in TrackFactor, is " << delta.rotation().matrix().determinant() << ".\n matrix is: " << delta.rotation().matrix());
   Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
 
   if (msg.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
@@ -119,12 +119,12 @@ bool PoseGraph::TrackNode(const NodeMessage& msg, bool b_do_values) {
     ROS_WARN_STREAM("[Track Node] Determinant non unary, is " << pose.rotation().matrix().determinant());
   }
 
-  Eigen::Quaterniond quat(pose.rotation().matrix());
-  // quat = quat.normalize();
-  pose.rotation().matrix() = quat.normalized().toRotationMatrix();
-  ROS_INFO_STREAM("[Track Node] Quat normalized is: " << quat.normalized().x() << ", "  << quat.normalized().y() << ", " << quat.normalized().z() << ", "  << quat.normalized().w());
+  // Eigen::Quaterniond quat(pose.rotation().matrix());
+  // // quat = quat.normalize();
+  // pose.rotation().matrix() = quat.normalized().toRotationMatrix();
+  // ROS_INFO_STREAM("[Track Node] Quat normalized is: " << quat.normalized().x() << ", "  << quat.normalized().y() << ", " << quat.normalized().z() << ", "  << quat.normalized().w());
   
-  ROS_WARN_STREAM("[Track Node] Determinant pose normalization in TrackNode, is " << pose.rotation().matrix().determinant() << "\n. matrix is: " << pose.rotation().matrix());
+  ROS_WARN_STREAM("[Track Node] Determinant post normalization in TrackNode, is " << pose.rotation().matrix().determinant() << "\n. matrix is: " << pose.rotation().matrix());
 
   if (b_do_values){
     if (values_.exists(msg.key)) {
