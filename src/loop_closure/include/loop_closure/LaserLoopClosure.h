@@ -42,16 +42,17 @@ private:
   bool PerformLoopClosure(
           gtsam::Symbol key1,
           gtsam::Symbol key2,
+          bool b_use_prior,
+          gtsam::Pose3 prior,
           std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
 
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
   void SeedCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
 
-  bool PerformAlignment(const PointCloud::ConstPtr& scan1,
-                        const PointCloud::ConstPtr& scan2,
-                        const gtsam::Pose3& pose1,
-                        const gtsam::Pose3& pose2,
+  bool PerformAlignment(const gtsam::Symbol key1,
+                        const gtsam::Symbol key2,
+                        bool b_use_delta_as_prior,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance,
                         double& fitness_score);

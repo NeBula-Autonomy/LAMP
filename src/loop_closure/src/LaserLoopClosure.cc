@@ -35,7 +35,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback, this);
   loop_closure_seed_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
-      "loop_closure_seed", 10, &LaserLoopClosure::SeedCallback, this);
+      "seed_loop_closure", 10, &LaserLoopClosure::SeedCallback, this);
 
   // Publishers
   loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
@@ -165,32 +165,24 @@ bool LaserLoopClosure::CheckForLoopClosure(
     return false;
   }
 
-  return PerformLoopClosure(key1, key2, loop_closure_edges);
+  // Perform loop closure without a provided prior transform
+  return PerformLoopClosure(key1, key2, false, gtsam::Pose3(), loop_closure_edges);
 }
 
 bool LaserLoopClosure::PerformLoopClosure(
         gtsam::Symbol key1,
         gtsam::Symbol key2,
+        bool b_use_prior,
+        gtsam::Pose3 prior,
         std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
 
-  // Get poses and keys
-  const gtsam::Pose3 pose1 = keyed_poses_.at(key1);
-  const gtsam::Pose3 pose2 = keyed_poses_.at(key2);  
-  const PointCloud::ConstPtr scan1 = keyed_scans_.at(key1);
-  const PointCloud::ConstPtr scan2 = keyed_scans_.at(key2);
-
-  gu::Transform3 delta;  // (Using BetweenFactor)
+  gu::Transform3 delta = utils::ToGu(prior);  // (Using BetweenFactor)
   gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
-
   double fitness_score; // retrieve ICP fitness score if matched
-
-  ROS_INFO_STREAM("Performing alignment between "
-                  << gtsam::DefaultKeyFormatter(key1) << " and "
-                  << gtsam::DefaultKeyFormatter(key2));
 
   // Perform ICP
   if (PerformAlignment(
-          scan1, scan2, pose1, pose2, &delta, &covariance, fitness_score)) {
+          key1, key2, b_use_prior, &delta, &covariance, fitness_score)) {
     ROS_INFO_STREAM("Closed loop between "
                     << gtsam::DefaultKeyFormatter(key1) << " and "
                     << gtsam::DefaultKeyFormatter(key2));
@@ -234,18 +226,33 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
   return edge;
 }
 
-bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
-                                        const PointCloud::ConstPtr& scan2,
-                                        const gtsam::Pose3& pose1,
-                                        const gtsam::Pose3& pose2,
+bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1, 
+                                        const gtsam::Symbol key2,
+                                        bool b_use_delta_as_prior,
                                         gu::Transform3* delta,
                                         gtsam::Matrix66* covariance,
                                         double& fitness_score) {
+
+  ROS_INFO_STREAM("Performing alignment between "
+                  << gtsam::DefaultKeyFormatter(key1) << " and "
+                  << gtsam::DefaultKeyFormatter(key2));
 
   if (delta == NULL || covariance == NULL) {
     ROS_ERROR("PerformAlignment: Output pointers are null.");
     return false;
   }
+
+  // Check for available information
+  if (!keyed_poses_.count(key1) || !keyed_poses_.count(key2) || !keyed_scans_.count(key1) || !keyed_scans_.count(key2)) {
+    ROS_WARN("Incomplete keyed poses/scans");
+    return false;
+  }
+
+  // Get poses and keys
+  const gtsam::Pose3 pose1 = keyed_poses_.at(key1);
+  const gtsam::Pose3 pose2 = keyed_poses_.at(key2);  
+  const PointCloud::ConstPtr scan1 = keyed_scans_.at(key1.key());
+  const PointCloud::ConstPtr scan2 = keyed_scans_.at(key2.key());
 
   if (scan1 == NULL || scan2 == NULL) {
     ROS_ERROR("PerformAlignment: Null point clouds.");
@@ -284,6 +291,7 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
   {
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
   } break;
+  
   case IcpInitMethod::ODOMETRY: // initialize with odometry
   {
     gtsam::Pose3 pose_21 = pose2.between(pose1);
@@ -292,6 +300,7 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
     initial_guess.block(0, 3, 3, 1) =
         pose_21.translation().vector().cast<float>();
   } break;
+  
   case IcpInitMethod::ODOM_ROTATION: // initialize with zero translation but
                                      // rot from odom
   {
@@ -299,10 +308,25 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
   } break;
+  
   default: // identity as default (default in ICP anyways)
   {
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
   }
+  }
+
+  // If an initial guess was provided, override the initialization
+  if (b_use_delta_as_prior) {
+    ROS_INFO_STREAM("Using initial guess provided by delta");
+
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+    gtsam::Pose3 guess(utils::ToGtsam(*delta));
+
+    ROS_INFO_STREAM("\tTranslation: " << guess.translation().x() << ", " << guess.translation().y() << ", " << guess.translation().z());
+
+    initial_guess.block(0, 0, 3, 3) = guess.rotation().matrix().cast<float>();
+    initial_guess.block(0, 3, 3, 1) =
+        guess.translation().vector().cast<float>();
   }
 
   // Perform ICP.
@@ -359,17 +383,31 @@ void LaserLoopClosure::SeedCallback(
   for (auto e : msg->edges) {
     ROS_INFO_STREAM("Received seeded loop closure between " << gtsam::DefaultKeyFormatter(e.key_from) << " and " << gtsam::DefaultKeyFormatter(e.key_to));
 
+    gtsam::Symbol key1 = e.key_from;
+    gtsam::Symbol key2 = e.key_to;
+
     // Check that scans exist 
-    if (!keyed_scans_.count(e.key_from) || !keyed_scans_.count(e.key_to)) {
+    if (!keyed_scans_.count(key1) || !keyed_scans_.count(key2)) {
       ROS_WARN_STREAM("Could not seed loop closure - keys do not have scans");
       continue;
     }
 
-    PerformLoopClosure(e.key_from, e.key_to, &loop_closure_edges);
+    // If edge type is PRIOR, use the edge transform as a prior in ICP 
+    bool b_use_prior = false;
+    gtsam::Pose3 prior;
+    ROS_INFO_STREAM("Edge type: " << e.type);
+    if (e.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
+      b_use_prior = true;
+      prior = utils::ToGtsam(e.pose);
+    }
+
+    PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges);
   }
 
-  // Publish the successful edges
-  PublishLoopClosures(loop_closure_edges);
+  // Publish the successful edges if there are any
+  if (loop_closure_edges.size() > 0) {
+    PublishLoopClosures(loop_closure_edges);
+  }
 }
 
 
