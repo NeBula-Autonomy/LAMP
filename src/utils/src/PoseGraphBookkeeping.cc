@@ -6,7 +6,11 @@
 #include <gtsam/slam/PriorFactor.h>
 
 bool PoseGraph::TrackFactor(const Factor& factor) {
-  return TrackFactor(factor.ToMsg());
+  return TrackFactor(factor.key_from,
+                     factor.key_to,
+                     factor.type,
+                     factor.transform,
+                     factor.covariance);
 }
 
 bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
@@ -24,127 +28,205 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
     return false;
   }
 
-  gtsam::Pose3 delta = utils::MessageToPose(msg);
-  Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
-
-  if (msg.type == pose_graph_msgs::PoseGraphEdge::ODOM) {
-    // Add to posegraph
-    ROS_DEBUG_STREAM("Adding Odom edge for key "
-                     << gtsam::DefaultKeyFormatter(msg.key_from) << " to key "
-                     << gtsam::DefaultKeyFormatter(msg.key_to));
-    nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
-        gtsam::Symbol(msg.key_from), gtsam::Symbol(msg.key_to), delta, noise));
-  } else if (msg.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
-    ROS_DEBUG_STREAM("Adding loop closure edge for key "
-                     << gtsam::DefaultKeyFormatter(msg.key_from) << " to key "
-                     << gtsam::DefaultKeyFormatter(msg.key_to));
-    nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
-        gtsam::Symbol(msg.key_from), gtsam::Symbol(msg.key_to), delta, noise));
-  } else if (msg.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
-    ROS_DEBUG_STREAM("Adding artifact edge for key "
-                     << gtsam::DefaultKeyFormatter(msg.key_from) << " to key "
-                     << gtsam::DefaultKeyFormatter(msg.key_to));
-    nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
-        gtsam::Symbol(msg.key_from), gtsam::Symbol(msg.key_to), delta, noise));
-  } else if (msg.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
-    ROS_DEBUG_STREAM("Adding UWB range factor for key "
-                     << gtsam::DefaultKeyFormatter(msg.key_from) << " to key "
-                     << gtsam::DefaultKeyFormatter(msg.key_to));
-    double range = msg.range;
-    double sigmaR = msg.range_error;
-    gtsam::noiseModel::Base::shared_ptr rangeNoise =
-        gtsam::noiseModel::Isotropic::Sigma(1, sigmaR);
-    nfg_.add(gtsam::RangeFactor<gtsam::Pose3, gtsam::Pose3>(
-        gtsam::Symbol(msg.key_from),
-        gtsam::Symbol(msg.key_to),
-        range,
-        rangeNoise));
-  } else if (msg.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
-    ROS_DEBUG_STREAM("Adding UWB between factor for key "
-                     << gtsam::DefaultKeyFormatter(msg.key_from) << " to key "
-                     << gtsam::DefaultKeyFormatter(msg.key_to));
-    nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
-        gtsam::Symbol(msg.key_from), gtsam::Symbol(msg.key_to), delta, noise));
+  bool success = true;
+  if (msg.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+    success = TrackUWBFactor(gtsam::Symbol(msg.key_from),
+                             gtsam::Symbol(msg.key_to),
+                             msg.range,
+                             msg.range_error,
+                             false);
   } else {
-    ROS_DEBUG_STREAM("Cannot add edge of unknown type "
-                     << msg.type << " between keys "
-                     << gtsam::DefaultKeyFormatter(msg.key_from) << " and "
-                     << gtsam::DefaultKeyFormatter(msg.key_to) << ".");
+    gtsam::Pose3 delta = utils::MessageToPose(msg);
+    Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
+
+    // Track factor without (re)creating an edge message
+    success = TrackFactor(gtsam::Symbol(msg.key_from),
+                          gtsam::Symbol(msg.key_to),
+                          msg.type,
+                          delta,
+                          noise,
+                          false);
   }
 
-  edges_.insert(msg);
-  edges_new_.insert(msg);
-  return true;
+  if (success) {
+    edges_.insert(msg);
+    edges_new_.insert(msg);
+  }
+  return success;
 }
 
 bool PoseGraph::TrackFactor(gtsam::Symbol key_from,
                             gtsam::Symbol key_to,
                             int type,
                             const gtsam::Pose3& transform,
-                            const gtsam::SharedNoiseModel& covariance) {
-  Factor factor;
-  factor.key_from = key_from;
-  factor.key_to = key_to;
-  factor.type = type;
-  factor.transform = transform;
-  factor.covariance = covariance;
-  return TrackFactor(factor.ToMsg());
+                            const gtsam::SharedNoiseModel& covariance,
+                            bool create_msg) {
+  if (type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
+    return TrackPrior(key, transform, covariance);
+  }
+
+  if (create_msg) {
+    auto msg =
+        utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
+    if (edges_.find(msg) != edges_.end()) {
+      ROS_DEBUG_STREAM("Edge of type " << type << " from key "
+                                       << gtsam::DefaultKeyFormatter(key_from)
+                                       << " to key "
+                                       << gtsam::DefaultKeyFormatter(key_to)
+                                       << " already exists.");
+      return false;
+    }
+    edges_.insert(msg);
+    edges_new_.insert(msg);
+  }
+
+  if (type == pose_graph_msgs::PoseGraphEdge::ODOM) {
+    // Add to posegraph
+    ROS_DEBUG_STREAM("Adding Odom edge for key "
+                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                     << gtsam::DefaultKeyFormatter(key_to));
+    nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
+        key_from, key_to, transform, covariance));
+  } else if (type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+    ROS_DEBUG_STREAM("Adding loop closure edge for key "
+                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                     << gtsam::DefaultKeyFormatter(key_to));
+    nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
+        key_from, key_to, transform, covariance));
+  } else if (type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+    ROS_DEBUG_STREAM("Adding artifact edge for key "
+                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                     << gtsam::DefaultKeyFormatter(key_to));
+    nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
+        key_from, key_to, transform, covariance));
+  } else if (type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+    ROS_ERROR_STREAM("Cannot track UWB range factor for key "
+                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                     << gtsam::DefaultKeyFormatter(key_to)
+                     << " using PoseGraph::TrackFactor(). Use "
+                        "PoseGraph::TrackUWBFactor() instead.");
+    return false;
+  } else if (type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+    ROS_DEBUG_STREAM("Adding UWB between factor for key "
+                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                     << gtsam::DefaultKeyFormatter(key_to));
+    nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
+        key_from, key_to, transform, covariance));
+  } else {
+    ROS_DEBUG_STREAM("Cannot add edge of unknown type "
+                     << type << " between keys "
+                     << gtsam::DefaultKeyFormatter(key_from) << " and "
+                     << gtsam::DefaultKeyFormatter(key_to) << ".");
+  }
+  return true;
+}
+
+bool PoseGraph::TrackUWBFactor(gtsam::Symbol key_from,
+                               gtsam::Symbol key_to,
+                               double range,
+                               double range_error,
+                               bool create_msg) {
+  gtsam::noiseModel::Base::shared_ptr noise =
+      gtsam::noiseModel::Isotropic::Sigma(1, range_error);
+  if (create_msg) {
+    auto msg = utils::GtsamToRosMsg(key_from,
+                                    key_to,
+                                    pose_graph_msgs::PoseGraphEdge::UWB_RANGE,
+                                    gtsam::Pose3(),
+                                    noise);
+
+    if (edges_.find(msg) != edges_.end()) {
+      ROS_DEBUG_STREAM("UWB range factor from key "
+                       << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                       << gtsam::DefaultKeyFormatter(key_to)
+                       << " already exists.");
+      return false;
+    }
+    msg.range = range;
+    msg.range_error = range_error;
+    edges_.insert(msg);
+    edges_new_.insert(msg);
+  }
+
+  nfg_.add(gtsam::RangeFactor<gtsam::Pose3, gtsam::Pose3>(
+      key_from, key_to, range, noise));
+  return true;
 }
 
 bool PoseGraph::TrackNode(const Node& node) {
-  return TrackNode(node.ToMsg());
+  return TrackNode(node.stamp, node.key, node.pose, node.covariance);
 }
 
 bool PoseGraph::TrackNode(const NodeMessage& msg) {
   const auto pose = utils::MessageToPose(msg);
-    
-  if (values_.exists(msg.key)) {
-    values_.update(msg.key, pose);
-  }
-  else {
-    values_.insert(msg.key, pose);
-  }
-  if (values_new_.exists(msg.key)) {
-    values_new_.update(msg.key, pose);
-  }
-  else {
-    values_new_.insert(msg.key, pose);
-  }
-  keyed_stamps[msg.key] = msg.header.stamp;
-  
+  Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
+
+  // Track node without creating another node message
+  if (!TrackNode(msg.header.stamp, gtsam::Symbol(msg.key), pose, noise, false))
+    return false;
+
   // make copy to modify ID
-  if (nodes_.find(msg) == nodes_.end()) {
+  auto msg_found = nodes_.find(msg);
+  if (msg_found == nodes_.end()) {
     NodeMessage m = msg;
     if (m.ID.empty() && !symbol_id_map.empty())
       m.ID = symbol_id_map(msg.key);
     nodes_.insert(m);
     nodes_new_.insert(m);
-    return true;
-  }
-  else {
-    nodes_.erase(nodes_.find(msg));
+  } else {
+    nodes_.erase(msg_found);
     nodes_.insert(msg);
-    return true;
   }
-  return false;
+  return true;
 }
 
 bool PoseGraph::TrackNode(const ros::Time& stamp,
                           gtsam::Symbol key,
                           const gtsam::Pose3& pose,
-                          const gtsam::SharedNoiseModel& covariance) {
-  NodeMessage msg =
-      utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
-  return TrackNode(msg);
+                          const gtsam::SharedNoiseModel& covariance,
+                          bool create_msg) {
+  // TODO use covariance?
+
+  if (values_.exists(key)) {
+    values_.update(key, pose);
+  } else {
+    values_.insert(key, pose);
+  }
+  if (values_new_.exists(key)) {
+    values_new_.update(key, pose);
+  } else {
+    values_new_.insert(key, pose);
+  }
+  keyed_stamps[key] = stamp;
+
+  if (create_msg) {
+    NodeMessage msg =
+        utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
+    // make copy to modify ID
+    auto msg_found = nodes_.find(msg);
+    if (msg_found == nodes_.end()) {
+      NodeMessage m = msg;
+      if (m.ID.empty() && !symbol_id_map.empty())
+        m.ID = symbol_id_map(msg.key);
+      nodes_.insert(m);
+      nodes_new_.insert(m);
+    } else {
+      nodes_.erase(msg_found);
+      nodes_.insert(msg);
+    }
+  }
+
+  return true;
 }
 
 bool PoseGraph::TrackPrior(const EdgeMessage& msg) {
   if (msg.type != pose_graph_msgs::PoseGraphEdge::PRIOR) {
-    TrackFactor(msg);
-    return false;
+    return TrackFactor(msg);
   }
   if (priors_.find(msg) != priors_.end()) {
     // prior already exists
+    ROS_DEBUG_STREAM("Prior at key " << gtsam::DefaultKeyFormatter(msg.key_from)
+                                     << " already exists.");
     return false;
   }
 
@@ -157,42 +239,47 @@ bool PoseGraph::TrackPrior(const EdgeMessage& msg) {
   // static const gtsam::SharedNoiseModel& prior_noise =
   //     gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
 
-  ROS_DEBUG_STREAM("Adding prior factor for key "
-                   << gtsam::DefaultKeyFormatter(msg.key_from));
   gtsam::Pose3 delta = utils::MessageToPose(msg);
   Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
-  gtsam::PriorFactor<gtsam::Pose3> factor(
-      gtsam::Symbol(msg.key_from), delta, noise);
-  nfg_.add(factor);
+
+  if (!TrackPrior(gtsam::Symbol(msg.key_from), delta, noise, false))
+    return false;
+
   priors_new_.insert(msg);
   priors_.insert(msg);
   return true;
 }
 
 bool PoseGraph::TrackPrior(const Factor& factor) {
-  return TrackPrior(factor.ToMsg());
+  return TrackPrior(factor.key_from, factor.transform, factor.covariance);
 }
 
 bool PoseGraph::TrackPrior(const Node& node) {
-  Factor prior;
-  prior.covariance = node.covariance;
-  prior.key_from = node.key;
-  prior.key_to = node.key;
-  prior.type = pose_graph_msgs::PoseGraphEdge::PRIOR;
-  prior.transform = node.pose;
-  return TrackPrior(prior.ToMsg());
+  return TrackPrior(node.key, node.pose, node.covariance);
 }
 
 bool PoseGraph::TrackPrior(gtsam::Symbol key,
                            const gtsam::Pose3& pose,
-                           const gtsam::SharedNoiseModel& covariance) {
-  Factor prior;
-  prior.covariance = covariance;
-  prior.key_from = key;
-  prior.key_to = key;
-  prior.type = pose_graph_msgs::PoseGraphEdge::PRIOR;
-  prior.transform = pose;
-  return TrackPrior(prior.ToMsg());
+                           const gtsam::SharedNoiseModel& covariance,
+                           bool create_msg) {
+  if (create_msg) {
+    auto msg = utils::GtsamToRosMsg(
+        key, key, pose_graph_msgs::PoseGraphEdge::PRIOR, pose, covariance);
+
+    if (priors_.find(msg) != priors_.end()) {
+      // prior already exists
+      ROS_DEBUG_STREAM("Prior at key " << gtsam::DefaultKeyFormatter(key)
+                                       << " already exists.");
+      return false;
+    }
+    priors_new_.insert(msg);
+    priors_.insert(msg);
+  }
+  ROS_DEBUG_STREAM("Adding prior factor for key "
+                   << gtsam::DefaultKeyFormatter(key));
+  gtsam::PriorFactor<gtsam::Pose3> factor(key, pose, covariance);
+  nfg_.add(factor);
+  return true;
 }
 
 // DEPRECATED!!

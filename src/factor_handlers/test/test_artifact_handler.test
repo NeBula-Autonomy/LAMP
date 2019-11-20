@@ -1,5 +1,6 @@
 <launch>
   <test test-name="test_artifact_handler"
         pkg="factor_handlers"
-        type="test_artifact_handler"/>
+        type="test_artifact_handler"
+        time-limit="300.0"/>
 </launch>

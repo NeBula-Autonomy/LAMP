@@ -1,5 +1,6 @@
 <launch>
   <test test-name="test_odometry_handler"
         pkg="factor_handlers"
-        type="test_odometry_handler"/>
+        type="test_odometry_handler"
+        time-limit="300.0"/>
 </launch>
