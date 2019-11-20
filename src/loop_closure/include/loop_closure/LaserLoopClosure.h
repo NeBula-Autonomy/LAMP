@@ -39,8 +39,14 @@ private:
           gtsam::Symbol key1,
           gtsam::Symbol key2,
           std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
+  bool PerformLoopClosure(
+          gtsam::Symbol key1,
+          gtsam::Symbol key2,
+          std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
+
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
+  void SeedCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
 
   bool PerformAlignment(const PointCloud::ConstPtr& scan1,
                         const PointCloud::ConstPtr& scan2,
@@ -50,6 +56,9 @@ private:
                         gtsam::Matrix66* covariance,
                         double& fitness_score);
 
+double DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol key2);
+
+
   pose_graph_msgs::PoseGraphEdge CreateLoopClosureEdge(
           gtsam::Symbol key1, 
           gtsam::Symbol key2,
@@ -58,6 +67,7 @@ private:
 
 private:
   ros::Subscriber keyed_scans_sub_;
+  ros::Subscriber loop_closure_seed_sub_;
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
 

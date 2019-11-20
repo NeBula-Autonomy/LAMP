@@ -30,12 +30,12 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   // If laser loop closures are off, exit without setting up publishers or subscribers
   if (!pu::Get(param_ns_ + "/b_find_laser_loop_closures", b_check_for_loop_closures_))
     return false;
-  if (!b_check_for_loop_closures_)
-    return true;
 
   // Subscribers
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback, this);
+  loop_closure_seed_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
+      "loop_closure_seed", 10, &LaserLoopClosure::SeedCallback, this);
 
   // Publishers
   loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
@@ -87,6 +87,11 @@ bool LaserLoopClosure::FindLoopClosures(
     gtsam::Key new_key,
     std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
 
+  // If laser loop closures are off, exit immediately
+  if (!b_check_for_loop_closures_)
+    return false;
+
+
   // Look for loop closures for the latest received key
   // Don't check for loop closures against poses that are missing scans.
   if (!keyed_scans_.count(new_key)) {
@@ -115,7 +120,6 @@ bool LaserLoopClosure::FindLoopClosures(
       continue;
     }
 
-
     // Check for single robot loop closures
     if (utils::IsKeyFromSameRobot(new_key, other_key)) {
       closed_loop |= CheckForLoopClosure(new_key, other_key, loop_closure_edges);
@@ -128,6 +132,15 @@ bool LaserLoopClosure::FindLoopClosures(
   } 
 
   return closed_loop;
+}
+
+double LaserLoopClosure::DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol key2) {
+
+  const gtsam::Pose3 pose1 = keyed_poses_.at(key1);
+  const gtsam::Pose3 pose2 = keyed_poses_.at(key2);
+  const gtsam::Pose3 delta = pose1.between(pose2);
+
+  return delta.translation().norm();
 }
 
 bool LaserLoopClosure::CheckForLoopClosure(
@@ -147,43 +160,52 @@ bool LaserLoopClosure::CheckForLoopClosure(
   // Don't compare against poses that were recently collected.
   if (std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
     return false;
-
-  // Get pose and scan for each key.
-  const gtsam::Pose3 pose1 = keyed_poses_.at(key1);
-  const PointCloud::ConstPtr scan1 = keyed_scans_.at(key1);
-
-  const gtsam::Pose3 pose2 = keyed_poses_.at(key2);
-  const gtsam::Pose3 difference = pose1.between(pose2);
   
-  if (difference.translation().norm() < proximity_threshold_) {
-    const PointCloud::ConstPtr scan2 = keyed_scans_[key2];
+  if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
+    return false;
+  }
 
-    gu::Transform3 delta;  // (Using BetweenFactor)
-    gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
+  return PerformLoopClosure(key1, key2, loop_closure_edges);
+}
 
-    double fitness_score; // retrieve ICP fitness score if matched
+bool LaserLoopClosure::PerformLoopClosure(
+        gtsam::Symbol key1,
+        gtsam::Symbol key2,
+        std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
 
-    ROS_INFO_STREAM("Performing alignment between "
+  // Get poses and keys
+  const gtsam::Pose3 pose1 = keyed_poses_.at(key1);
+  const gtsam::Pose3 pose2 = keyed_poses_.at(key2);  
+  const PointCloud::ConstPtr scan1 = keyed_scans_.at(key1);
+  const PointCloud::ConstPtr scan2 = keyed_scans_.at(key2);
+
+  gu::Transform3 delta;  // (Using BetweenFactor)
+  gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
+
+  double fitness_score; // retrieve ICP fitness score if matched
+
+  ROS_INFO_STREAM("Performing alignment between "
+                  << gtsam::DefaultKeyFormatter(key1) << " and "
+                  << gtsam::DefaultKeyFormatter(key2));
+
+  // Perform ICP
+  if (PerformAlignment(
+          scan1, scan2, pose1, pose2, &delta, &covariance, fitness_score)) {
+    ROS_INFO_STREAM("Closed loop between "
                     << gtsam::DefaultKeyFormatter(key1) << " and "
                     << gtsam::DefaultKeyFormatter(key2));
 
-    // Perform ICP
-    if (PerformAlignment(
-            scan1, scan2, pose1, pose2, &delta, &covariance, fitness_score)) {
-      ROS_INFO_STREAM("Closed loop between "
-                      << gtsam::DefaultKeyFormatter(key1) << " and "
-                      << gtsam::DefaultKeyFormatter(key2));
+    // Add the edge
+    pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(key1, key2, delta, covariance);
+    loop_closure_edges->push_back(edge);
 
-      // Add the edgeq
-      pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(key1, key2, delta, covariance);
-      loop_closure_edges->push_back(edge);
-
-      return true;
-    }
-  }  
-
+    return true;
+  }
+  
   return false;
+
 }
+
 
 
 pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
@@ -327,6 +349,29 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
 
   return true;
 }
+
+void LaserLoopClosure::SeedCallback(
+    const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
+
+  // Edges to publish
+  std::vector<pose_graph_msgs::PoseGraphEdge> loop_closure_edges;
+
+  for (auto e : msg->edges) {
+    ROS_INFO_STREAM("Received seeded loop closure between " << gtsam::DefaultKeyFormatter(e.key_from) << " and " << gtsam::DefaultKeyFormatter(e.key_to));
+
+    // Check that scans exist 
+    if (!keyed_scans_.count(e.key_from) || !keyed_scans_.count(e.key_to)) {
+      ROS_WARN_STREAM("Could not seed loop closure - keys do not have scans");
+      continue;
+    }
+
+    PerformLoopClosure(e.key_from, e.key_to, &loop_closure_edges);
+  }
+
+  // Publish the successful edges
+  PublishLoopClosures(loop_closure_edges);
+}
+
 
 void LaserLoopClosure::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
