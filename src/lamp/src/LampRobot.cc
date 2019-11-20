@@ -448,8 +448,14 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     // TODO - use this for other handlers: Symbol prev_key =
     // GetKeyAtTime(times.first);
 
-    // Compute the new value
+    // Compute the new value with a normalized transform
     Pose3 last_pose = pose_graph_.GetPose(prev_key);
+    ROS_INFO_STREAM("Last pose det: " << last_pose.rotation().matrix().determinant());
+    Eigen::Quaterniond quat(last_pose.rotation().matrix());
+    quat = quat.normalized();
+    last_pose = Pose3(gtsam::Rot3(quat.toRotationMatrix()), last_pose.translation());
+    ROS_INFO_STREAM("Last pose det after: " << last_pose.rotation().matrix().determinant());
+
 
     // Add values to graph so have it for adding map TODO - use unit covariance
     pose_graph_.TrackNode(times.second, current_key, last_pose.compose(transform), covariance);

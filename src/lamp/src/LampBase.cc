@@ -291,8 +291,18 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
 
   const gu::Transform3 pose = utils::ToGu(pose_graph_.GetPose(key));
   Eigen::Matrix4d b2w;
+  b2w.setZero();
   b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
   b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
+  b2w(3,3) = 1;
+
+  Eigen::Quaterniond quat(pose.rotation.Eigen());
+  quat.normalize();
+  b2w.block(0, 0, 3, 3) = quat.matrix();
+
+  ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " << pose.rotation.Eigen().determinant() << ")");
+  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+  ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
 
   // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
