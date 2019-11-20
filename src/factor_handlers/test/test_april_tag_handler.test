@@ -1,5 +1,6 @@
 <launch>
   <test test-name="test_april_tag_handler"
         pkg="factor_handlers"
-        type="test_april_tag_handler"/>
+        type="test_april_tag_handler"
+        time-limit="300.0"/>
 </launch>

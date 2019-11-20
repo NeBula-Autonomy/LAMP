@@ -1,5 +1,6 @@
 <launch>
   <test test-name="test_lamp_base"
         pkg="lamp"
-        type="test_lamp_base"/>
+        type="test_lamp_base"
+        time-limit="300.0"/>
 </launch>
