@@ -306,6 +306,8 @@ void PoseGraph::Initialize(gtsam::Symbol initial_key,
   nfg_ = gtsam::NonlinearFactorGraph();
   values_ = gtsam::Values();
 
+  b_first_ = true;
+
   Node prior;
   prior.key = initial_key;
   prior.pose = pose;

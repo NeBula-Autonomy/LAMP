@@ -134,6 +134,7 @@ struct Node {
 // Pose graph structure storing values, factors and meta data.
 class PoseGraph {
 public:
+  bool b_first_;
   const gtsam::Values& GetValues() const {
     return values_;
   }
