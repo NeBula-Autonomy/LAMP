@@ -230,7 +230,7 @@ bool LaserLoopClosure::PerformAlignment(const PointCloud::ConstPtr& scan1,
     return false;
   }
   // Set up ICP.
-  pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+  pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
   icp.setTransformationEpsilon(icp_tf_epsilon_);
   icp.setMaxCorrespondenceDistance(icp_corr_dist_);
@@ -338,7 +338,7 @@ void LaserLoopClosure::KeyedScanCallback(
     return;
   }
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr scan(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZI>::Ptr scan(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
   // Add the key and scan.

@@ -28,7 +28,7 @@ public:
 
   bool Initialize(const ros::NodeHandle& n);
 
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 
 private:
   bool FindLoopClosures(
