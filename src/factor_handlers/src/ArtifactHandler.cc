@@ -301,8 +301,8 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
   // Fill artifact message
   core_msgs::Artifact new_msg = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg;
   
-  // Update the time
-  new_msg.header.stamp = ros::Time::now();
+  // // Update the time
+  // new_msg.header.stamp = ros::Time::now();
 
   // Fill the new message positions
   new_msg.point.point.x = artifact_position[0];

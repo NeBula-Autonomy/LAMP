@@ -9,6 +9,8 @@
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
+#include <utils/PrefixHandling.h>
+
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -43,6 +45,7 @@ bool PoseGraphVisualizer::Initialize(const ros::NodeHandle& nh,
   ROS_INFO("PoseGraphVisualizer: Initializing");
   name_ = ros::names::append(pnh.getNamespace(), "PoseGraphVisualizer");
 
+
   if (!LoadParameters(pnh)) {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
     return false;
@@ -65,6 +68,17 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("b_artifacts_in_global", artifacts_in_global_))
     return false;
+
+  // Names of all robots for base station to subscribe to
+  if (!pu::Get("robot_names", robot_names_)) {
+  ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
+    return false;
+  }
+  else {
+    for (auto s : robot_names_) {
+      ROS_INFO_STREAM("Registered new robot: " << s);
+    }
+  }
 
   // Load proximity threshold from LaserLoopClosure node
   if (!pu::Get("proximity_threshold", proximity_threshold_))
@@ -141,8 +155,17 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       &PoseGraphVisualizer::RemoveFactorVizCallback,
       this);
 
-  artifact_sub_ = nh.subscribe(
-      "lamp/artifact_global", 10, &PoseGraphVisualizer::ArtifactCallback, this);
+  // Create subscribers for each robot
+  for (std::string robot : robot_names_) {
+
+    // artifact subs
+    artifact_sub_ = nh.subscribe(
+        "/" + robot + "/lamp/artifact_global", 10, &PoseGraphVisualizer::ArtifactCallback, this);
+
+    // Store the subscribers
+    subscribers_artifacts_.push_back(artifact_sub_);
+  }
+
 
   return true;
 }
@@ -167,8 +190,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
     // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
 
     // Add UUID if an artifact or uwb node
-    if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' ||
-        sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q') {
+    if (utils::IsArtifactPrefix(sym_key)) {
       ROS_INFO_STREAM("Have an artifact node with key "
                       << gtsam::DefaultKeyFormatter(sym_key));
 
@@ -255,7 +277,7 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Subscribe to artifact messages, include in pose graph, publish global
   // position
 
-  std::cout << "Artifact message received is for id " << msg.id << std::endl;
+  std::cout << "[PoseGraphVisualizer] Artifact message received is for id " << msg.id << std::endl;
   std::cout << "\t Parent id: " << msg.parent_id << std::endl;
   std::cout << "\t Confidence: " << msg.confidence << std::endl;
   std::cout << "\t Position:\n[" << msg.point.point.x << ", "
@@ -545,8 +567,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       continue;
     }
 
-    if (sym_key.chr() == 'l' || sym_key.chr() == 'm' || sym_key.chr() == 'n' ||
-        sym_key.chr() == 'o' || sym_key.chr() == 'p' || sym_key.chr() == 'q') {
+    if (utils::IsArtifactPrefix(sym_key)) {
       // handle artifacts separately (below)
       continue;
     }
@@ -678,13 +699,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       m.id = key;
       m_id.id = m.id;
 
-      ROS_INFO_STREAM("Artifact key (raw) is: " << entry.second);
-      ROS_INFO_STREAM("Artifact key is " << key);
-      ROS_INFO_STREAM("Artifact hash key is "
-                      << gtsam::DefaultKeyFormatter(key));
-      if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' &&
-          gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' &&
-          gtsam::Symbol(key).chr() != 'p' && gtsam::Symbol(key).chr() != 'q') {
+      // ROS_INFO_STREAM("[Publishing Artifact] Artifact key (raw) is: " << entry.second);
+      // ROS_INFO_STREAM("Artifact key is " << key);
+      // ROS_INFO_STREAM("Artifact hash key is "
+      //                 << gtsam::DefaultKeyFormatter(key));
+      if (!utils::IsArtifactPrefix(gtsam::Symbol(key))) {
         ROS_WARN("ERROR - have a non-landmark ID");
         ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
         continue;
@@ -698,6 +717,10 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       // Get the artifact information
       ArtifactInfo art = artifacts_[entry.second];
+
+      // Update the artifact position from the graph
+      art.msg.point.point = GetPositionMsg(gtsam::Symbol(key));
+      art.msg.point.header.stamp = ros::Time::now();
 
       // Populate the artifact marker
       VisualizeSingleArtifact(m, art);
@@ -765,7 +788,7 @@ void PoseGraphVisualizer::VisualizeSingleArtifactId(
     m.color.g = 0.0f;
     m.color.b = 0.7f;
   } else {
-    std::cout << "Fiducial marker" << std::endl;
+    std::cout << "UNDEFINED MARKER" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 1.0f;
     m.color.b = 1.0f;
@@ -781,15 +804,8 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   // Get class of artifact
   std::string artifact_label = art.msg.label;
 
-  // TODO consider whether we should get the position from the graph
-  // artifact_position = GetArtifactPosition(key);
-  // geometry_msgs::Point pos = art.msg.point.point;
-  // std::cout << "\t Position:\n[" << art.msg.point.point.x << ", "
-  //           << art.msg.point.point.y << ", " << art.msg.point.point.z << "]"
-  //           << std::endl;
-  // pos.x = artifact_position[0];
-  // pos.y = artifact_position[1];
-  // pos.z = artifact_position[2];
+  ROS_INFO_STREAM("Artifact label for visualization is: " << artifact_label);
+
   m.pose.position = art.msg.point.point;
 
   m.header.frame_id = "world";
@@ -839,15 +855,24 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.z = 0.3f;
     m.type = visualization_msgs::Marker::CUBE;
   } else {
-    std::cout << "Fiducial marker" << std::endl;
+    std::cout << "UNDEFINED ARTIFACT" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 1.0f;
     m.color.b = 1.0f;
-    m.scale.x = 0.15f;
-    m.scale.y = 0.7f;
-    m.scale.z = 0.7f;
+    m.scale.x = 1.0f;
+    m.scale.y = 1.0f;
+    m.scale.z = 1.0f;
     m.type = visualization_msgs::Marker::CUBE;
   }
+
+    //   std::cout << "Fiducial marker" << std::endl;
+    // m.color.r = 1.0f;
+    // m.color.g = 1.0f;
+    // m.color.b = 1.0f;
+    // m.scale.x = 0.15f;
+    // m.scale.y = 0.7f;
+    // m.scale.z = 0.7f;
+    // m.type = visualization_msgs::Marker::CUBE;
 }
 
 void PoseGraphVisualizer::VisualizeArtifacts() {
