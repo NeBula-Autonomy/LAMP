@@ -228,6 +228,12 @@ public:
                  const gtsam::Pose3& pose,
                  const gtsam::SharedNoiseModel& covariance,
                  bool create_msg = true);
+  bool TrackNode(const ros::Time& stamp,
+                 gtsam::Symbol key,
+                 const gtsam::Pose3& pose,
+                 const gtsam::SharedNoiseModel& covariance,
+                 const std::string id,
+                 bool create_msg = true);
 
   // Tracks priors (one-sided edges). Returns true if new prior is added.
   // Does NOT update the internal keyed_stamp map for this key.

@@ -88,7 +88,7 @@ ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) const {
 /*! \brief  Get artifacts ID from artifact key
  * Returns Artifacts ID
  */
-std::string ArtifactHandler::GetArtifactID(const gtsam::Symbol artifact_key) const {
+std::string ArtifactHandler::GetArtifactID(const gtsam::Symbol artifact_key) {
   std::string artifact_id;
   for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end();
        ++it) {

@@ -110,6 +110,11 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     inline bool SetPgoInitialized(const bool value) {is_pgo_initialized = value;}
 
+    /*! \brief  Get artifacts ID from artifact key
+     * Returns Artifacts ID
+     */
+    std::string GetArtifactID(const gtsam::Symbol artifact_key);    
+
     protected:
     /*! \brief Load artifact parameters. 
      * n - Nodehandle
@@ -141,10 +146,6 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg) const;
 
-    /*! \brief  Get artifacts ID from artifact key
-     * Returns Artifacts ID
-     */
-    std::string GetArtifactID(const gtsam::Symbol artifact_key) const;
 
     /*! \brief  Callback for Artifacts.
      * Returns  Void

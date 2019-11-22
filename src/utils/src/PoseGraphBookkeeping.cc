@@ -219,6 +219,45 @@ bool PoseGraph::TrackNode(const ros::Time& stamp,
   return true;
 }
 
+bool PoseGraph::TrackNode(const ros::Time& stamp,
+                          gtsam::Symbol key,
+                          const gtsam::Pose3& pose,
+                          const gtsam::SharedNoiseModel& covariance,
+                          const std::string id,
+                          bool create_msg) {
+  // TODO use covariance?
+
+  if (values_.exists(key)) {
+    values_.update(key, pose);
+  } else {
+    values_.insert(key, pose);
+  }
+  if (values_new_.exists(key)) {
+    values_new_.update(key, pose);
+  } else {
+    values_new_.insert(key, pose);
+  }
+  keyed_stamps[key] = stamp;
+
+  if (create_msg) {
+    NodeMessage msg =
+        utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
+    msg.ID = id;
+    // make copy to modify ID
+    auto msg_found = nodes_.find(msg);
+    if (msg_found == nodes_.end()) {
+      NodeMessage m = msg;
+      nodes_.insert(m);
+      nodes_new_.insert(m);
+    } else {
+      nodes_.erase(msg_found);
+      nodes_.insert(msg);
+    }
+  }
+
+  return true;
+}
+
 bool PoseGraph::TrackPrior(const EdgeMessage& msg) {
   if (msg.type != pose_graph_msgs::PoseGraphEdge::PRIOR) {
     return TrackFactor(msg);
