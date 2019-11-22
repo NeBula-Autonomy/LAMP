@@ -1,12 +1,13 @@
 #ifndef POSE_GRAPH_VISUALIZER_H
 #define POSE_GRAPH_VISUALIZER_H
 
+#include <ros/ros.h>
+
 #include <unordered_map>
 
 #include <pose_graph_visualizer/HighlightEdge.h>
 #include <pose_graph_visualizer/HighlightNode.h>
 
-#include <ros/ros.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>

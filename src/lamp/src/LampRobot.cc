@@ -651,8 +651,9 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       ROS_INFO("Have a new artifact in LAMP");
 
       // Insert into the values TODO - add unit covariance
+      std::string id = artifact_handler_.GetArtifactID(cur_artifact_key);
       pose_graph_.TrackNode(
-          timestamp, cur_artifact_key, global_pose, covariance);
+          timestamp, cur_artifact_key, global_pose, covariance, id);
 
       // Add keyed stamps
       pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);

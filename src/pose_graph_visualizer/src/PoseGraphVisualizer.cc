@@ -29,10 +29,11 @@ std::string GenerateKey(gtsam::Key key1, gtsam::Key key2) {
 }
 
 geometry_msgs::Point PoseGraphVisualizer::GetPositionMsg(gtsam::Key key) const {
-  if (!pose_graph_.HasKey(key)) {
-    ROS_ERROR("PGV: Key %lu does not exist in GetPositionMsg", key);
-  }
   geometry_msgs::Point p;
+  if (!pose_graph_.HasKey(key)) {
+    ROS_WARN_STREAM(" Key " << gtsam::DefaultKeyFormatter(key) << " does not exist in GetPositionMsg - returning zeros [TO IMPROVE]");
+    return p;
+  }
   auto pose = pose_graph_.GetPose(key);
   p.x = pose.x();
   p.y = pose.y();
@@ -190,13 +191,13 @@ void PoseGraphVisualizer::PoseGraphCallback(
     // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
 
     // Add UUID if an artifact or uwb node
-    if (utils::IsArtifactPrefix(sym_key)) {
+    if (utils::IsArtifactPrefix(sym_key.chr())) {
       ROS_INFO_STREAM("Have an artifact node with key "
                       << gtsam::DefaultKeyFormatter(sym_key));
 
       // node.ID = artifacts_[keyed_pose.key].msg.id;
-      artifact_id2key_hash_[msg_node.ID] = msg_node.key;
-      artifact_key2id_hash_[msg_node.key] = msg_node.ID;
+      artifact_id2key_hash_[msg_node.ID] = gtsam::Symbol(msg_node.key);
+      artifact_key2id_hash_[gtsam::Symbol(msg_node.key)] = msg_node.ID;
       continue;
     }
   }
@@ -276,7 +277,7 @@ PoseGraphVisualizer::GetArtifactPosition(const gtsam::Key artifact_key) const {
 void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Subscribe to artifact messages, include in pose graph, publish global
   // position
-
+  ROS_WARN("HAVE ARTIFACT IN PGV");
   std::cout << "[PoseGraphVisualizer] Artifact message received is for id " << msg.id << std::endl;
   std::cout << "\t Parent id: " << msg.parent_id << std::endl;
   std::cout << "\t Confidence: " << msg.confidence << std::endl;
@@ -567,7 +568,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       continue;
     }
 
-    if (utils::IsArtifactPrefix(sym_key)) {
+    if (utils::IsArtifactPrefix(sym_key.chr())) {
       // handle artifacts separately (below)
       continue;
     }
@@ -703,7 +704,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       // ROS_INFO_STREAM("Artifact key is " << key);
       // ROS_INFO_STREAM("Artifact hash key is "
       //                 << gtsam::DefaultKeyFormatter(key));
-      if (!utils::IsArtifactPrefix(gtsam::Symbol(key))) {
+      if (!utils::IsArtifactPrefix(gtsam::Symbol(key).chr())) {
         ROS_WARN("ERROR - have a non-landmark ID");
         ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
         continue;
@@ -716,6 +717,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       ROS_INFO_STREAM("ID from key for the artifact is: " << entry.second);
 
       // Get the artifact information
+      if (artifacts_.find(entry.second) == artifacts_.end()){
+        ROS_WARN_STREAM("No artifact info for artifact that is in the graph, key: " << gtsam::DefaultKeyFormatter(key));
+        continue;
+      }
+
       ArtifactInfo art = artifacts_[entry.second];
 
       // Update the artifact position from the graph
