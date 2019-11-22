@@ -12,7 +12,7 @@ use_artifact_loop_closure: false
 b_use_uwb: false
 
 # Artifacts in global frame
-b_artifacts_in_global: true
+b_artifacts_in_global: false
 
 # Threshold for time to be matched 
 time_threshold: 10.0
