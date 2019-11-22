@@ -183,9 +183,18 @@ bool LaserLoopClosure::PerformLoopClosure(
   // Perform ICP
   if (PerformAlignment(
           key1, key2, b_use_prior, &delta, &covariance, fitness_score)) {
+    
     ROS_INFO_STREAM("Closed loop between "
                     << gtsam::DefaultKeyFormatter(key1) << " and "
                     << gtsam::DefaultKeyFormatter(key2));
+    ROS_INFO_STREAM("Translation (x,y,z): " 
+                    << delta.translation.X() << ", " << delta.translation.Y() << ", " 
+                    << delta.translation.Z()
+                    << ", rotation (w,x,y,z): " << utils::ToGtsam(delta).rotation().quaternion().w()
+                    << ", " << utils::ToGtsam(delta).rotation().quaternion().x()
+                    << ", " << utils::ToGtsam(delta).rotation().quaternion().y()
+                    << ", " << utils::ToGtsam(delta).rotation().quaternion().z());
+    
 
     // Add the edge
     pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(key1, key2, delta, covariance);
@@ -295,6 +304,8 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   case IcpInitMethod::ODOMETRY: // initialize with odometry
   {
     gtsam::Pose3 pose_21 = pose2.between(pose1);
+    ROS_INFO_STREAM("INITIAL GUESS:");
+    pose_21.print();
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
     initial_guess.block(0, 3, 3, 1) =
@@ -318,15 +329,18 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   // If an initial guess was provided, override the initialization
   if (b_use_delta_as_prior) {
     ROS_INFO_STREAM("Using initial guess provided by delta");
-
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
-    gtsam::Pose3 guess(utils::ToGtsam(*delta));
+    const gu::Transform3 guess = *delta; //gu::PoseInverse(*delta);
 
-    ROS_INFO_STREAM("\tTranslation: " << guess.translation().x() << ", " << guess.translation().y() << ", " << guess.translation().z());
+    ROS_INFO_STREAM("\tTranslation: " << guess.translation.X() << ", " << guess.translation.Y() << ", " << guess.translation.Z());
+    ROS_INFO_STREAM("DELTA INITIAL GUESS:");
+    utils::ToGtsam(guess).print();
 
-    initial_guess.block(0, 0, 3, 3) = guess.rotation().matrix().cast<float>();
-    initial_guess.block(0, 3, 3, 1) =
-        guess.translation().vector().cast<float>();
+    // Normalize the initial guess rotation
+    Eigen::Quaternionf quat(guess.rotation.Eigen().cast<float>());
+    quat.normalize();
+    initial_guess.block(0, 0, 3, 3) = quat.matrix();    
+    initial_guess.block(0, 3, 3, 1) = guess.translation.Eigen().cast<float>();
   }
 
   // Perform ICP.
@@ -335,7 +349,7 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
 
   // Get resulting transform.
   const Eigen::Matrix4f T = icp.getFinalTransformation();
-  // gu::Transform3 delta_icp;
+
   delta->translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
   delta->rotation = gu::Rot3(T(0, 0),
                              T(0, 1),
@@ -409,7 +423,6 @@ void LaserLoopClosure::SeedCallback(
     PublishLoopClosures(loop_closure_edges);
   }
 }
-
 
 void LaserLoopClosure::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
