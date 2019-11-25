@@ -24,7 +24,7 @@ ImuHandler::~ImuHandler() {
 // Initialization
 // --------------------------------------------------------------------------------
 
-bool ImuHandler::Initialize(const ros::NodeHandle& n){
+bool ImuHandler::Initialize(const ros::NodeHandle& n) {
     ROS_INFO("ImuHandler - Initialize");    
     name_ = ros::names::append(n.getNamespace(), "ImuHandler");
     if (!LoadParameters(n)) {
@@ -75,8 +75,8 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
 // LAMP Interface
 // --------------------------------------------------------------------------------
 
-std::shared_ptr<FactorData> ImuHandler::GetData(){
-  ROS_INFO("ImuHandler - GetData");
+std::shared_ptr<FactorData> ImuHandler::GetData() {
+  ROS_INFO("ImuHandler - GetData"); 
   std::shared_ptr<ImuData> factors_output = std::make_shared<ImuData>(factors_);
     
   factors_output->b_has_data = false; 
@@ -253,7 +253,7 @@ bool ImuHandler::SetKeyForImuAttitude(const Symbol& key) {
 // Transformations
 // --------------------------------------------------------------------------------
 
-bool ImuHandler::LoadCalibrationFromTfTree(){
+bool ImuHandler::LoadCalibrationFromTfTree() {
     ROS_WARN_DELAYED_THROTTLE(2.0, 
                             "Waiting for \'%s\' and \'%s\' to appear in tf_tree...",
                             imu_frame_id_,
