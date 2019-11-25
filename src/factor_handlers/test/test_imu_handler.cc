@@ -182,6 +182,19 @@ TEST_F(ImuHandlerTest, TestInsertMsgInBuffer) {
   ASSERT_TRUE(result);
 }
 
+/* TEST CheckBufferSize*/
+TEST_F(ImuHandlerTest, TestCheckBufferSize) {
+  ros::NodeHandle nh("~");
+  ih.Initialize(nh);
+  ASSERT_EQ(CheckBufferSize(),0);
+  ImuMessage imu_msg; 
+  imu_msg.header = msg_first.header; 
+  imu_msg.orientation = msg_first.orientation;
+  ImuMessage::ConstPtr imu_msg_ptr(new ImuMessage(imu_msg)); 
+  InsertMsgInBuffer(imu_msg_ptr);
+  ASSERT_EQ(CheckBufferSize(), 1);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_imu_handler");
