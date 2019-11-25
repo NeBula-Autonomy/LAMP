@@ -169,7 +169,7 @@ TEST_F(TestArtifactHandler, AddArtifactData) {
 TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Construct the message
   core_msgs::Artifact msg;
-  msg.header.stamp = ros::Time(0.0);
+  msg.header.stamp = ros::Time(0.1);
   msg.parent_id = "distal";
   msg.confidence = 0.9;
   msg.id = "distal";
@@ -191,7 +191,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
   EXPECT_EQ(artifact_factor.key.index(), 0);
-  EXPECT_EQ(artifact_factor.stamp, ros::Time(0.0));
+  EXPECT_EQ(artifact_factor.stamp, ros::Time(0.1));
   EXPECT_EQ(artifact_factor.position.x(), 0.9);
   EXPECT_EQ(artifact_factor.position.y(), 0.3);
   EXPECT_EQ(artifact_factor.position.z(), 0.5);
@@ -284,7 +284,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
 TEST_F(TestArtifactHandler, IsPgoIntialized) {
   // Construct the message
   core_msgs::Artifact msg;
-  msg.header.stamp = ros::Time(0.0);
+  msg.header.stamp = ros::Time(0.1);
   msg.parent_id = "distal";
   msg.confidence = 0.9;
   msg.id = "distal";
