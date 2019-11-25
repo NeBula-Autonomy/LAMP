@@ -118,8 +118,8 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
 
   // Check for NaNs and reject
   if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) ||
-      std::isnan(msg.point.point.z)) {
-    ROS_WARN("NAN positions input from artifact message - ignoring");
+      std::isnan(msg.point.point.z) || (msg.header.stamp.toNSec() == 0.0)) {
+    ROS_WARN("Ill-formed artifact message. Rejecting Artifact message.");
     return;
   }
 
@@ -438,9 +438,9 @@ void ArtifactHandler::CleanFailedFactors(const bool success) {
       // Find the minimum key
       if (min_key > key.index()) {
         min_key = key.index();
+        largest_artifact_id_ = min_key;
       }
     }
-    largest_artifact_id_ = min_key;
   }
   // Clear keys in success as well as failure
   new_keys_.clear();
