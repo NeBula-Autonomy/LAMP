@@ -214,6 +214,29 @@ TEST_F(ImuHandlerTest, TestClearBuffer) {
   ASSERT_EQ(CheckBufferSize(), 0);
 }
 
+/* TEST GetQuaternionAtTime*/
+TEST_F(ImuHandlerTest, TestGetQuaternionAtTime) {
+  ros::NodeHandle nh("~");
+  ih.Initialize(nh);
+  sensor_msgs::Imu::ConstPtr imu_ptr1(
+      new sensor_msgs::Imu(msg_first));
+  sensor_msgs::Imu::ConstPtr imu_ptr2(
+      new sensor_msgs::Imu(msg_second));
+  sensor_msgs::Imu::ConstPtr imu_ptr3(
+      new sensor_msgs::Imu(msg_third));
+  ImuCallback(imu_ptr1);
+  ImuCallback(imu_ptr2);
+  ImuCallback(imu_ptr3);
+  Eigen::Quaterniond q;
+  bool result = GetQuaternionAtTime(t1_ros, q);
+  ASSERT_TRUE(result);
+  double t_out = 1.30; 
+  ros::Time t_out_ros;
+  t_out_ros.fromSec(t_out);
+  bool result_out = GetQuaternionAtTime(t_out_ros, q);
+  ASSERT_FALSE(result_out);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_imu_handler");

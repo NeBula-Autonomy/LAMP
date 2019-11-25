@@ -4,4 +4,4 @@
 base_frame_id: base_link
 imu_frame_id: vn100
 buffer_size_limit: 1000
-ts_threshold: 5.0
+ts_threshold: 0.1
