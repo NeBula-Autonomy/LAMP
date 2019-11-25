@@ -153,29 +153,25 @@ bool ImuHandler::ClearBuffer() {
 
 bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
     // TODO: Implement GetValueAtTime in base class as it is a common functionality needed by all handlers
+    // TODO: ClearPreviousImuMsgsInBuffer where needed 
     ROS_INFO("ImuHandler - GetQuaternionAtTime"); 
     if (imu_buffer_.size() == 0){
         return false;
     }
     auto itrTime = imu_buffer_.lower_bound(stamp.toSec());
     auto time2 = itrTime->first;
-    double time_diff;
+    double time_diff;    
     if (itrTime == imu_buffer_.begin()) {
         imu_quaternion = itrTime->second;
         time_diff = itrTime->first - stamp.toSec();
-        ROS_WARN("Timestamp before the start of the imu buffer");
-        ROS_INFO_STREAM("time diff is: " << time_diff);
-    } 
+        ROS_WARN("itrTime points to imu_buffer_ begin");
+    }
     else if (itrTime == imu_buffer_.end()) {
-        ROS_WARN("Timestamp past the end of the imu buffer");
         itrTime--;
         imu_quaternion = itrTime->second;
         time_diff = stamp.toSec() - itrTime->first;
-        ROS_INFO_STREAM("input time is " << stamp.toSec()
-                                        << "s, and latest time is "
-                                        << itrTime->first << " s"
-                                        << " diff is " << time_diff);
-    } 
+        ROS_WARN("itrTime points to imu_buffer_ end");
+    }
     else {
         double time1 = std::prev(itrTime, 1)->first;
         if (time2 - stamp.toSec() < stamp.toSec() - time1) {
@@ -187,10 +183,10 @@ bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_
             time_diff = stamp.toSec() - time1;
         }
     }
-    if (time_diff > ts_threshold_) { 
-        ROS_WARN("Time difference between request and latest ImuQuaternion is too large, returning no ImuQuaternion");
+    if (fabs(time_diff) > ts_threshold_) { 
         ROS_INFO_STREAM("Time difference is "
                         << time_diff << "s, threshold is: " << ts_threshold_);
+        ROS_WARN("time_diff > ts_threshold, returning false");
         return false;
     }     
   return true; 
