@@ -87,7 +87,11 @@ class ImuHandlerTest : public ::testing::Test {
     bool GetQuaternionAtTime(const ros::Time& stamp, 
                              ImuQuaternion& imu_quaternion) const {
       return ih.GetQuaternionAtTime(stamp, imu_quaternion);
-    }  
+    }
+    
+    Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const {
+      return ih.CreateAttitudeFactor(imu_rpy);
+    }
 
     ImuMessage msg_first;
     ImuMessage msg_second;
@@ -186,7 +190,7 @@ TEST_F(ImuHandlerTest, TestInsertMsgInBuffer) {
   ASSERT_TRUE(result);
 }
 
-/* TEST CheckBufferSize*/
+/* TEST CheckBufferSize */
 TEST_F(ImuHandlerTest, TestCheckBufferSize) {
   ros::NodeHandle nh("~");
   ih.Initialize(nh);
@@ -199,7 +203,7 @@ TEST_F(ImuHandlerTest, TestCheckBufferSize) {
   ASSERT_EQ(CheckBufferSize(), 1);
 }
 
-/* TEST ClearBuffer*/
+/* TEST ClearBuffer */
 TEST_F(ImuHandlerTest, TestClearBuffer) {
   ros::NodeHandle nh("~");
   ih.Initialize(nh);
@@ -214,7 +218,7 @@ TEST_F(ImuHandlerTest, TestClearBuffer) {
   ASSERT_EQ(CheckBufferSize(), 0);
 }
 
-/* TEST GetQuaternionAtTime*/
+/* TEST GetQuaternionAtTime */
 TEST_F(ImuHandlerTest, TestGetQuaternionAtTime) {
   ros::NodeHandle nh("~");
   ih.Initialize(nh);
@@ -235,6 +239,21 @@ TEST_F(ImuHandlerTest, TestGetQuaternionAtTime) {
   t_out_ros.fromSec(t_out);
   bool result_out = GetQuaternionAtTime(t_out_ros, q);
   ASSERT_FALSE(result_out);
+}
+
+/* TEST CreateAttitudeFactor */
+TEST_F(ImuHandlerTest, TestCreateAttitudeFactor) {
+  Vector3d ypr;
+  ypr << 0.0, 1.0, 0.0;
+  auto f = CreateAttitudeFactor(ypr);
+  auto f_same = CreateAttitudeFactor(ypr);
+  bool result = f.equals(f_same);
+  ASSERT_TRUE(result);
+  Vector3d ypr_diff; 
+  ypr_diff << 0.0, 0.0, 1.0; 
+  auto f_diff = CreateAttitudeFactor(ypr_diff);
+  result = f.equals(f_diff);
+  ASSERT_FALSE(result);
 }
 
 int main(int argc, char** argv) {
