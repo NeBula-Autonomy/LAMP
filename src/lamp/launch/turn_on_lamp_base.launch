@@ -18,7 +18,6 @@
     <node pkg="lamp"
           name="lamp"
           type="lamp_base_station_node"
-          launch-prefix="bash -c 'sleep 1; $0 $@' "
           output="screen">
 
       <!-- Topics -->
@@ -34,8 +33,17 @@
       <!-- Frames -->
       <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>
 
+      <!-- Ground truth data -->
+      <rosparam file="$(find lamp)/config/GT_artifacts.yaml" subst_value="true"/>
+
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
+
+      <!-- Factor handlers -->
+      <rosparam file="$(find factor_handlers)/config/manual_lc_parameters.yaml" subst_value="true"/>
+
+      <!-- Lamp settings -->
+      <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/>
 
     </node>
 
@@ -50,12 +58,15 @@
       <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>      
       <!-- Config - TODO move the proximity_threshold param elsewhere -->
       <rosparam file="$(find pose_graph_visualizer)/config/visualizer_parameters.yaml" subst_value="true"/>      
+      <!-- Robots -->
+      <rosparam file="$(find lamp)/config/robot_names.yaml" subst_value="true"/>
 
       <!-- Topics -->
       <remap from="~lamp/pose_graph" to="lamp_base/pose_graph"/>
-
     </node>
 
-  </group>
+    <!-- Loop Closure  -->
+    <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
 
+  </group>
 </launch>

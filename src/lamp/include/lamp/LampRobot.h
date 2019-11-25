@@ -13,7 +13,12 @@
 #include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/OdometryHandler.h>
+#include <factor_handlers/UwbHandler.h>
 
+#include <pcl_ros/point_cloud.h>
+#include <pcl/filters/filter.h>
+#include <pcl/filters/random_sample.h>
+#include <pcl/filters/voxel_grid.h>
 // Services
 
 // Class Definition
@@ -28,10 +33,10 @@ public:
   // Override base class functions where needed
   virtual bool Initialize(const ros::NodeHandle& n);
 
-  gtsam::Symbol GetInitialKey() {
-    return initial_key_;
+  inline gtsam::Symbol GetInitialKey() const {
+    return pose_graph_.initial_key;
   };
-  gtsam::Symbol GetCurrentKey() {
+  inline gtsam::Symbol GetCurrentKey() const {
     return pose_graph_.key;
   };
 
@@ -63,18 +68,21 @@ protected:
   // Publishers
   ros::Publisher pose_pub_;
 
+  // Flag for artifact initialization
+  bool is_artifact_initialized;
 private:
   // Overwrite base classs functions where needed
 
     // Factor Hanlder Wrappers
-    bool ProcessOdomData(FactorData* data);
+    bool ProcessOdomData(std::shared_ptr<FactorData> data);
     // Process the artifact factors if any available
-    bool ProcessArtifactData(FactorData* data);
-    // Process the april tag factors if any available    
-    bool ProcessAprilTagData(FactorData* data);
+    bool ProcessArtifactData(std::shared_ptr<FactorData> data);
+    // Process the uwb factors if any available
+    bool ProcessUwbData(std::shared_ptr<FactorData> data);
+
+    bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
     bool InitializeGraph(gtsam::Pose3& pose, 
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-    // void ProcessUWBData(FactorData data);
     // Example use:
     // ProcessArtifactData(artifact_handler_.GetData());
 
@@ -92,6 +100,7 @@ private:
     OdometryHandler odometry_handler_; 
     ArtifactHandler artifact_handler_;
     AprilTagHandler april_tag_handler_;
+    UwbHandler      uwb_handler_;
     // Manual LC
     // IMU
     // TS
@@ -104,9 +113,24 @@ private:
   // Parameters
   gtsam::Vector6 initial_noise_;
   bool b_artifacts_in_global_;
+  bool b_use_uwb_;
 
   // Test class fixtures
   friend class TestLampRobot;
+
+  struct Parameters {
+    // Apply a voxel grid filter.
+    bool grid_filter;
+
+    // Resolution of voxel grid filter.
+    double grid_res;
+
+    // Apply a random downsampling filter.
+    bool random_filter;
+
+    // Percentage of points to discard. Must be between 0.0 and 1.0;
+    double decimate_percentage;
+  } params_;
 };
 
 #endif

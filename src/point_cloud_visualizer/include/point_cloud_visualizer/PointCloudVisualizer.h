@@ -42,7 +42,7 @@
 
 class PointCloudVisualizer {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 
   PointCloudVisualizer();
   ~PointCloudVisualizer();

@@ -32,20 +32,6 @@ namespace gu = geometry_utils;
 
 namespace utils {
 
-gtsam::Pose3 EdgeMessageToPose(const pose_graph_msgs::PoseGraphEdge& msg_edge) {
-  gtsam::Point3 delta_translation(msg_edge.pose.position.x,
-                                  msg_edge.pose.position.y,
-                                  msg_edge.pose.position.z);
-  gtsam::Rot3 delta_orientation(
-      gtsam::Rot3::quaternion(msg_edge.pose.orientation.w,
-                              msg_edge.pose.orientation.x,
-                              msg_edge.pose.orientation.y,
-                              msg_edge.pose.orientation.z));
-  gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
-
-  return delta;
-}
-
 pose_graph_msgs::PoseGraphEdge
 GtsamToRosMsg(gtsam::Symbol key_from,
               gtsam::Symbol key_to,
@@ -77,8 +63,14 @@ GtsamToRosMsg(ros::Time stamp,
   prior.header.frame_id = fixed_frame_id;
   prior.header.stamp = stamp;
   prior.pose = gr::ToRosPose(ToGu(pose));
-
+  ROS_INFO_STREAM("[GtsamToRosMsg] Quaternion before norm is " << prior.pose.orientation);
+  double norm = pow(prior.pose.orientation.x*prior.pose.orientation.x+prior.pose.orientation.y*prior.pose.orientation.y+prior.pose.orientation.z*prior.pose.orientation.z + prior.pose.orientation.w*prior.pose.orientation.w,0.5);
+  prior.pose.orientation.x = prior.pose.orientation.x/norm;
+  prior.pose.orientation.y = prior.pose.orientation.y/norm;
+  prior.pose.orientation.z = prior.pose.orientation.z/norm;
+  prior.pose.orientation.w = prior.pose.orientation.w/norm;
   // TODO set prior.ID
+  ROS_INFO_STREAM("[GtsamToRosMsg] Quaternion after norm is " << prior.pose.orientation);
 
   // Update the covariance
   UpdateCovariance(prior, covariance);

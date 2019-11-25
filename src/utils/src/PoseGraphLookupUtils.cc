@@ -1,21 +1,22 @@
 #include "utils/CommonStructs.h"
+#include "utils/PrefixHandling.h"
 
 double PoseGraph::time_threshold = 1.0;
 
 gtsam::Symbol PoseGraph::GetKeyAtTime(const ros::Time& stamp) const {
   if (stamp_to_odom_key.find(stamp.toSec()) == stamp_to_odom_key.end()) {
     ROS_ERROR("No key exists at given time");
-    return gtsam::Symbol();
+    return utils::GTSAM_ERROR_SYMBOL;
   }
-
   return stamp_to_odom_key.at(stamp.toSec());
 }
 
-gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
+gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp,
+                                             bool check_threshold) const {
   // If there are no keys, throw an error
-  if (stamp_to_odom_key.size() == 0) {
+  if (stamp_to_odom_key.empty()) {
     ROS_ERROR("Cannot get closest key - no keys are stored");
-    return gtsam::Symbol();
+    return utils::GTSAM_ERROR_SYMBOL;
   }
 
   // Output key
@@ -54,16 +55,44 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp) const {
     }
   }
 
-  // Check thresholds
-  if (std::abs(t_closest - stamp.toSec()) > time_threshold) {
+  // Check threshold
+  if (check_threshold && std::abs(t_closest - stamp.toSec()) > time_threshold) {
     ROS_ERROR("Delta between queried time and closest time in graph too large");
     ROS_INFO_STREAM("Time queried is: " << stamp.toSec()
                                         << ", closest time is: " << t_closest);
     ROS_INFO_STREAM("Difference is "
                     << std::abs(stamp.toSec() - t_closest)
                     << ", allowable max is: " << time_threshold);
-    key_out = gtsam::Symbol();
+    key_out = utils::GTSAM_ERROR_SYMBOL;
   }
 
   return key_out;
+}
+
+const NodeMessage* PoseGraph::FindNode(gtsam::Key key) const {
+  for (const auto& node : nodes_) {
+    if (node.key == key) {
+      return &node;
+    }
+  }
+  return nullptr;
+}
+
+const EdgeMessage* PoseGraph::FindEdge(gtsam::Key key_from,
+                                       gtsam::Key key_to) const {
+  for (const auto& edge : edges_) {
+    if (edge.key_from == key_from && edge.key_to == key_to) {
+      return &edge;
+    }
+  }
+  return nullptr;
+}
+
+const EdgeMessage* PoseGraph::FindPrior(gtsam::Key key) const {
+  for (const auto& edge : priors_) {
+    if (edge.key_from == key) {
+      return &edge;
+    }
+  }
+  return nullptr;
 }

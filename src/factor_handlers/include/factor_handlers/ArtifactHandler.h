@@ -2,10 +2,14 @@
 #define ARTIFACT_HANDLER_H
 
 // Includes
+// Limits
+#include<bits/stdc++.h>
+
 // For common datastructures
 #include "utils/CommonStructs.h"
 #include <core_msgs/Artifact.h>
 #include <tf2_ros/transform_listener.h>
+#include <utils/PrefixHandling.h>
 
 // Base class
 #include "LampDataHandlerBase.h"
@@ -22,6 +26,34 @@ struct ArtifactInfo {
   core_msgs::Artifact msg;              // All fields in the artifact message that we need
   ArtifactInfo(std::string art_id = "")
     : id(art_id), num_updates(0), global_position(gtsam::Point3()) {}
+};
+
+struct ArtifactGroundTruth {
+  gtsam::Symbol key;                      // identifier
+  std::string type;                       // backpack, drill, etc.
+  gtsam::Point3 position;                 // Global pose of the artifact
+
+  ArtifactGroundTruth() : key(utils::GTSAM_ERROR_SYMBOL), type(""), position(gtsam::Point3()) {}
+
+  ArtifactGroundTruth(std::string data) {
+        // Used to split string around spaces. 
+    std::istringstream ss(data); 
+    std::vector<std::string> words;
+  
+    // Traverse through all words 
+    do { 
+        // Read a word 
+        std::string word; 
+        ss >> word; 
+        words.push_back(word);
+    
+        // While there is more to read 
+    } while (ss); 
+
+    key = gtsam::Symbol(words[0][0], std::stol(words[0].substr(1)));
+    type = words[1];
+    position = gtsam::Point3(std::stod(words[2]), std::stod(words[3]), std::stod(words[4]));
+  }
 };
 
 /*! \brief  Handles artifact messages. Takes artifact data from the artifact
@@ -51,7 +83,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
-    virtual FactorData* GetData();
+    virtual std::shared_ptr<FactorData> GetData();
 
     /*! \brief  Get the artifact_key2info_hash_
      * Returns  artifact_key2info_hash_
@@ -67,6 +99,21 @@ class ArtifactHandler : public LampDataHandlerBase {
      * Returns  Void
      */
     void PublishArtifacts(const gtsam::Symbol artifact_key ,const gtsam::Pose3 global_pose);
+
+    /*! \brief Revert Maps and Artifact ID number upon failure in adding to pose graph.
+     * Returns Void
+     */
+    void CleanFailedFactors(const bool success);
+
+    /*! \brief Set if PGO is initialized
+     * Returns  Void
+     */
+    inline bool SetPgoInitialized(const bool value) {is_pgo_initialized = value;}
+
+    /*! \brief  Get artifacts ID from artifact key
+     * Returns Artifacts ID
+     */
+    std::string GetArtifactID(const gtsam::Symbol artifact_key);    
 
     protected:
     /*! \brief Load artifact parameters. 
@@ -99,10 +146,6 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg) const;
 
-    /*! \brief  Get artifacts ID from artifact key
-     * Returns Artifacts ID
-     */
-    std::string GetArtifactID(const gtsam::Symbol artifact_key) const;
 
     /*! \brief  Callback for Artifacts.
      * Returns  Void
@@ -124,6 +167,12 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     gtsam::SharedNoiseModel ExtractCovariance(const boost::array<float, 9> covariance) const;
 
+
+    /*! \brief  Gets the artifact gtsam key for the given UUID
+     * Returns  gtsam::Symbol
+     */
+    gtsam::Symbol GetKeyFromID(std::string id);
+
     /*! \brief  Clear artifact data
      * Returns  Void
      */
@@ -144,10 +193,11 @@ class ArtifactHandler : public LampDataHandlerBase {
     std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
 
     // Mapping between a artifact id and the node where it is present in the pose graph
-    // TODO: Make keys as symbols gtsam.
     std::unordered_map<std::string, gtsam::Symbol> artifact_id2key_hash;
 
-    
+    // Is pose graph initialized
+    bool is_pgo_initialized;
+
     // Parameters
     bool b_artifacts_in_global_;
     int largest_artifact_id_; 
@@ -168,6 +218,10 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Artifact prefix
     unsigned char artifact_prefix_;
     
+    // New artifact keys. This is kept so that if the ProcessArtifactData fails, I can 
+    // revert the Maps and Id no to the previous state.
+    std::vector<gtsam::Symbol> new_keys_;
+
     private:
 
     // Artifact output data
@@ -175,6 +229,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     
     // Test class
     friend class TestArtifactHandler;
+    friend class TestLampRobot;
 };
 
 #endif // !ARTIFACT_HANDLER_H

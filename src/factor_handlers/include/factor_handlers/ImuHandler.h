@@ -37,7 +37,7 @@ public:
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
   // LAMP Interface
-  FactorData* GetData(); 
+  virtual std::shared_ptr<FactorData> GetData(); 
 
 protected: 
 

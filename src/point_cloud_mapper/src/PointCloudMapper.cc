@@ -94,6 +94,7 @@ bool PointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
   map_pub_ = nl.advertise<PointCloud>("octree_map", 10, false);
   incremental_map_pub_ =
       nl.advertise<PointCloud>("octree_map_updates", 10, false);
+  map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
 
   return true;
 }
@@ -130,7 +131,7 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
     // Iterate over points in the input point cloud, inserting them into the map
     // if there is not already a point in the same voxel.
     for (size_t ii = 0; ii < points->points.size(); ++ii) {
-      const pcl::PointXYZ p = points->points[ii];
+      const pcl::PointXYZI p = points->points[ii];
       map_octree_->getBoundingBox(min_x, min_y, min_z, max_x, max_y, max_z);
       isInBox = (p.x >= min_x && p.x <= max_x) &&
           (p.y >= min_y && p.y <= max_y) && (p.z >= min_z && p.z <= max_z);
@@ -210,6 +211,29 @@ void PointCloudMapper::PublishMapThread() {
   // Don't publish again until we get another map update.
   map_updated_ = false;
   map_mutex_.unlock();
+}
+
+void PointCloudMapper::PublishMapFrozen() {
+  ROS_INFO_STREAM("1");
+  if (initialized_ && map_frozen_pub_.getNumSubscribers() > 0) {
+    ROS_INFO_STREAM("2");
+    // Use a new thread to publish the map to avoid blocking main thread
+    // on concurrent calls.
+    if (publish_frozen_thread_.joinable()) {
+      ROS_INFO_STREAM("3");
+      publish_frozen_thread_.join();
+    }
+    publish_frozen_thread_ = std::thread(&PointCloudMapper::PublishMapFrozenThread, this);
+  }
+}
+
+void PointCloudMapper::PublishMapFrozenThread() {
+  map_frozen_mutex_.lock();
+  ROS_INFO_STREAM("Publishing frozen map");
+  map_frozen_pub_.publish(map_data_);
+
+  // Don't publish again until we get another map update.
+  map_frozen_mutex_.unlock();
 }
 
 void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {

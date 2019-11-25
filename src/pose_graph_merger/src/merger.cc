@@ -107,6 +107,13 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     // ROS_INFO_STREAM("Resulting tf is " << currGraphNodeTf.matrix());
     tf::poseEigenToMsg(currGraphNodeTf, new_merged_graph_node.pose);
 
+    // normalise pose rotation
+    double norm = pow(new_merged_graph_node.pose.orientation.w*new_merged_graph_node.pose.orientation.w + new_merged_graph_node.pose.orientation.x*new_merged_graph_node.pose.orientation.x + new_merged_graph_node.pose.orientation.y*new_merged_graph_node.pose.orientation.y + new_merged_graph_node.pose.orientation.z*new_merged_graph_node.pose.orientation.z, 0.5);
+    new_merged_graph_node.pose.orientation.w = new_merged_graph_node.pose.orientation.w/norm;
+    new_merged_graph_node.pose.orientation.x = new_merged_graph_node.pose.orientation.x/norm;
+    new_merged_graph_node.pose.orientation.y = new_merged_graph_node.pose.orientation.y/norm;
+    new_merged_graph_node.pose.orientation.z = new_merged_graph_node.pose.orientation.z/norm;
+
     merged_graph_KeyToIndex[new_merged_graph_node.key] =
         merged_graph_.nodes.size();
     merged_graph_.nodes.push_back(new_merged_graph_node);

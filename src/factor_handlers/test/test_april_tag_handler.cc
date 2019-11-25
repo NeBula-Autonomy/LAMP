@@ -53,7 +53,7 @@ class TestAprilTagHandler : public ::testing::Test{
       apt_handle.AprilTagCallback(msg);
     }
 
-    FactorData* GetData() {
+    virtual std::shared_ptr<FactorData> GetData() {
       return apt_handle.GetData();
     }
 
@@ -75,6 +75,9 @@ class TestAprilTagHandler : public ::testing::Test{
     gtsam::Pose3 GetGroundTruth(gtsam::Symbol key){
       return apt_handle.GetGroundTruthData(key);
     }
+
+    void setInitialize() {apt_handle.SetPgoInitialized(true);}
+    bool getInitialize() {return apt_handle.is_pgo_initialized;}
 };
 
 // Check if callback working correctly.
@@ -83,12 +86,15 @@ TEST_F(TestAprilTagHandler, AprilTagCallback) {
   system("rosparam load $(rospack find "
              "factor_handlers)/config/april_parameters.yaml");
   LoadParameters();
+  
+  // Set PGO initialized
+  setInitialize();
 
   // Callback
   AprilTagCallback(msg);
 
   // Check the results 
-  AprilTagData* new_data = dynamic_cast<AprilTagData*>(GetData());
+  std::shared_ptr<AprilTagData> new_data = std::dynamic_pointer_cast<AprilTagData>(GetData());
 
   // Is the data new
   EXPECT_TRUE(new_data->b_has_data);
@@ -165,6 +171,9 @@ TEST_F(TestAprilTagHandler, GetGroundTruthData) {
              "factor_handlers)/config/april_parameters.yaml");
   LoadParameters();
 
+  // Set PGO initialized
+  setInitialize();
+  
   // Callback
   AprilTagCallback(msg);
 
@@ -184,6 +193,27 @@ TEST_F(TestAprilTagHandler, Initialize) {
   system("rosparam load $(rospack find "
              "factor_handlers)/config/april_parameters.yaml");
   EXPECT_TRUE(Initialize());
+}
+
+TEST_F(TestAprilTagHandler, IsPgoIntialized) {
+  // PGO initialized should be false
+  EXPECT_FALSE(getInitialize());
+
+  // Trigger the callback
+  AprilTagCallback(msg);
+  
+  // Get the data
+  std::shared_ptr<AprilTagData> stored_data = std::dynamic_pointer_cast<AprilTagData>(GetData());
+  EXPECT_FALSE(stored_data->b_has_data);
+
+  // Initialize Artifacts
+  setInitialize();
+  EXPECT_TRUE(getInitialize());
+
+  // Trigger the callback
+  AprilTagCallback(msg);
+  stored_data = std::dynamic_pointer_cast<AprilTagData>(GetData());
+  EXPECT_TRUE(stored_data->b_has_data);
 }
 
 int main(int argc, char** argv)

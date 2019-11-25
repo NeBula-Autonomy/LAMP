@@ -47,8 +47,8 @@
 
 class PointCloudMapper {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-  typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> Octree;
+  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+  typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZI> Octree;
 
   PointCloudMapper();
   ~PointCloudMapper();
@@ -75,6 +75,7 @@ public:
   // Publish map for visualization. This can be expensive so it is not called
   // from inside, as opposed to PublishMapUpdate().
   void PublishMap();
+  void PublishMapFrozen();
 
   // Getter for the point cloud
   PointCloud::Ptr GetMapData() {
@@ -88,6 +89,7 @@ private:
 
   // Threaded version to avoid blocking SLAM when the map gets big.
   void PublishMapThread();
+  void PublishMapFrozenThread();
 
   // Publish map updates for visualization.
   void PublishMapUpdate(const PointCloud& incremental_points);
@@ -117,9 +119,12 @@ private:
 
   // Map publisher.
   ros::Publisher map_pub_;
+  ros::Publisher map_frozen_pub_;
   ros::Publisher incremental_map_pub_;
   std::thread publish_thread_;
+  std::thread publish_frozen_thread_;
   mutable std::mutex map_mutex_;
+  mutable std::mutex map_frozen_mutex_;
 };
 
 #endif

@@ -25,11 +25,15 @@ using gtsam::Vector3;
 
 // Constructor
 LampBase::LampBase()
-  : update_rate_(10), b_use_fixed_covariances_(false) {
+  : update_rate_(10), 
+  zero_noise_(0.0001),  
+  b_use_fixed_covariances_(false),
+  b_repub_values_after_optimization_(false) {
   // any other things on construction
 
   // set up mapping function to get internal ID given gtsam::Symbol
   pose_graph_.symbol_id_map = boost::bind(&LampBase::MapSymbolToId, this, _1);
+
 }
 
 // Destructor
@@ -50,10 +54,6 @@ bool LampBase::SetFactorPrecisions() {
     return false;
   if (!pu::Get("position_sigma", position_sigma_))
     return false;
-  if (!pu::Get("manual_lc_rot_precision", manual_lc_rot_precision_))
-    return false;
-  if (!pu::Get("manual_lc_trans_precision", manual_lc_trans_precision_))
-    return false;
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
     return false;
   if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_))
@@ -64,7 +64,10 @@ bool LampBase::SetFactorPrecisions() {
     return false;
   if (!pu::Get("point_estimate_precision", point_estimate_precision_))
     return false;
-
+  if (!pu::Get("artifact_gt_rot_precision", artifact_gt_rot_precision_))
+    return false;
+  if (!pu::Get("artifact_gt_trans_precision", artifact_gt_trans_precision_))
+    return false;
   if (!pu::Get("fiducial_trans_precision", fiducial_trans_precision_))
     return false;
   if (!pu::Get("fiducial_rot_precision", fiducial_rot_precision_))
@@ -83,9 +86,13 @@ bool LampBase::SetFactorPrecisions() {
 
   // Artifact
   gtsam::Vector6 precisions;
-  sigmas.head<3>().setConstant(artifact_rot_precision_);
-  sigmas.tail<3>().setConstant(artifact_trans_precision_);
+  precisions.head<3>().setConstant(artifact_rot_precision_);
+  precisions.tail<3>().setConstant(artifact_trans_precision_);
   artifact_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
+
+  // gtsam::Vector6 noise;
+  // noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
+  // zero_covariance_ = gtsam::noiseModel::Diagonal::Sigmas(noise);
 
   return true;
 }
@@ -110,15 +117,31 @@ bool LampBase::CheckHandlers() {
 void LampBase::OptimizerUpdateCallback(
     const pose_graph_msgs::PoseGraphConstPtr& msg) {
   ROS_INFO_STREAM("Received new pose graph from optimizer - merging now "
-                  "--------------------------------------------------");
+                  "-----------------------------------------------------");
 
   ROS_INFO_STREAM("New pose graph nodes: ");
   for (auto n : msg->nodes) {
-    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key) << "(" <<
-    n.pose.position.x << ", " << n.pose.position.y << ", " << 
-    n.pose.position.z << ")");
+    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
+                    << "(" << n.pose.position.x << ", " << n.pose.position.y
+                    << ", " << n.pose.position.z << ")");
   }
 
+  // Merge the optimizer result into the internal pose graph
+  // Note that the edges should not have changed (only values)
+  MergeOptimizedGraph(msg);
+
+  // Publish the pose graph and update the map 
+  PublishPoseGraph();
+
+  // Update the map (also publishes)
+  ReGenerateMapPointCloud();
+
+  // TODO - check that this works as it is defined in the LampRobot class
+  UpdateArtifactPositions();
+}
+
+void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+  
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
@@ -136,16 +159,17 @@ void LampBase::OptimizerUpdateCallback(
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
 
-  // Note that the edges should not have changed (only values)
+  ROS_INFO_STREAM("Pose graph after update: ");
+  for (auto n : pose_graph_.GetNodes()) {
+    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
+                    << "(" << n.pose.position.x << ", " << n.pose.position.y
+                    << ", " << n.pose.position.z << ")");
+  }
 
-  // Publish the pose graph and update the map 
-  PublishPoseGraph();
-
-  // Update the map (also publishes)
-  ReGenerateMapPointCloud();
-
-  // TODO - check that this works as it is defined in the LampRobot class
-  UpdateArtifactPositions();
+  if (b_repub_values_after_optimization_) {
+    ROS_INFO("Republishing all values on incremental pose graph");
+    pose_graph_.AddAllValuesToNew();
+  }
 }
 
 void LampBase::UpdateArtifactPositions(){};
@@ -179,18 +203,7 @@ void LampBase::LaserLoopClosureCallback(
 // Generic addition of loop closure information to the graph
 void LampBase::AddLoopClosureToGraph(
     const pose_graph_msgs::PoseGraphConstPtr msg) {
-  // Add to nfg
-  gtsam::NonlinearFactorGraph new_factors;
-  gtsam::Values blank_values;
-  utils::PoseGraphMsgToGtsam(msg, &new_factors, &blank_values);
-  pose_graph_.nfg.add(new_factors);
-
-  // Add the factors to the pose_graph - loop through in case of multiple loop
-  // closures
-  for (const pose_graph_msgs::PoseGraphEdge& edge : msg->edges) {
-    // Add to tracked edges
-    pose_graph_.TrackFactor(edge);
-  }
+  pose_graph_.UpdateFromMsg(msg);
 
   // Set flag to optimize
   b_run_optimization_ = true;
@@ -211,7 +224,6 @@ LampBase::ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
 //------------------------------------------------------------------------------------------
 // Map generation functions
 //------------------------------------------------------------------------------------------
-
 
 bool LampBase::ReGenerateMapPointCloud() {
   // Reset the map
@@ -239,7 +251,7 @@ bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
 
   // Iterate over poses in the graph, transforming their corresponding laser
   // scans into world frame and appending them to the output.
-  for (const auto& keyed_pose : pose_graph_.values) {
+  for (const auto& keyed_pose : pose_graph_.GetValues()) {
     const gtsam::Symbol key = keyed_pose.key;
 
     PointCloud::Ptr scan_world(new PointCloud);
@@ -271,23 +283,33 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   }
 
   // Check that the key exists
-  if (!pose_graph_.values.exists(key)) {
-    ROS_WARN(
-        "Key %u does not exist in values_ in GetTransformedPointCloudWorld",
-        gtsam::DefaultKeyFormatter(key));
+  if (!pose_graph_.HasKey(key)) {
+    ROS_WARN("Key %s does not exist in values in GetTransformedPointCloudWorld",
+             gtsam::DefaultKeyFormatter(key).c_str());
     return false;
   }
 
   const gu::Transform3 pose = utils::ToGu(pose_graph_.GetPose(key));
   Eigen::Matrix4d b2w;
+  b2w.setZero();
   b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
   b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
+  b2w(3,3) = 1;
+
+  Eigen::Quaterniond quat(pose.rotation.Eigen());
+  quat.normalize();
+  b2w.block(0, 0, 3, 3) = quat.matrix();
+
+  ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " << pose.rotation.Eigen().determinant() << ")");
+  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+  ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
 
   // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
 
   // ROS_INFO_STREAM("Points size is: " << points->points.size()
-  //                                    << ", in GetTransformedPointCloudWorld");
+  //                                    << ", in
+  //                                    GetTransformedPointCloudWorld");
 }
 
 // For adding one scan to the map
@@ -318,7 +340,9 @@ bool LampBase::PublishPoseGraph() {
     // TODO - change interface to just take a flag? Then do the clear in there?
     // - no want to make sure it is published
 
-    ROS_INFO_STREAM("Publishing incremental graph with " << g_inc->nodes.size() << " nodes and " << g_inc->edges.size() << " edges");
+    ROS_INFO_STREAM("Publishing incremental graph with "
+                    << g_inc->nodes.size() << " nodes and "
+                    << g_inc->edges.size() << " edges");
     // Publish
     pose_graph_incremental_pub_.publish(*g_inc);
 
@@ -333,8 +357,9 @@ bool LampBase::PublishPoseGraph() {
 
     // Publish
     pose_graph_pub_.publish(*g_full);
-    ROS_INFO_STREAM("Publishing full graph with " << g_full->nodes.size() << " nodes and "
-     << g_full->edges.size() << " edges");
+    ROS_INFO_STREAM("Publishing full graph with "
+                    << g_full->nodes.size() << " nodes and "
+                    << g_full->edges.size() << " edges");
   }
 
   return true;
@@ -346,7 +371,9 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   // Convert master pose-graph to messages
   pose_graph_msgs::PoseGraphConstPtr g = pose_graph_.ToMsg();
 
-  ROS_INFO_STREAM("Publishing pose graph for optimizer with " << g->nodes.size() << " nodes and "  << g->edges.size() << " edges");
+  ROS_INFO_STREAM("Publishing pose graph for optimizer with "
+                  << g->nodes.size() << " nodes and " << g->edges.size()
+                  << " edges");
   for (auto v : g->nodes) {
     ROS_INFO_STREAM("Key : " << gtsam::DefaultKeyFormatter(v.key));
   }
@@ -377,11 +404,6 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
     // sigmas.tail<3>().setConstant(laser_lc_trans_sigma_);
     // noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
     noise = laser_lc_noise_;
-  } else if (type == "manual_loop_closure") {
-    gtsam::Vector6 noise_vec;
-    noise_vec.head<3>().setConstant(manual_lc_rot_precision_);
-    noise_vec.tail<3>().setConstant(manual_lc_trans_precision_);
-    noise = gtsam::noiseModel::Diagonal::Sigmas(noise_vec);
   } else if (type == "artifact") {
     noise = artifact_noise_;
   } else if (type == "april") {
@@ -390,6 +412,12 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
     precisions.tail<3>().setConstant(fiducial_trans_precision_);
     noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
   } else if (type == "total_station") {
+
+  } else if (type == "artifact_gt") {
+    gtsam::Vector6 precisions;
+    precisions.head<3>().setConstant(artifact_gt_rot_precision_);
+    precisions.tail<3>().setConstant(artifact_gt_trans_precision_);
+    noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
   } else {
     ROS_ERROR("Incorrect input into SetFixedNoiseModels - invalid type");
     throw std::invalid_argument("set fixed noise models");
@@ -403,25 +431,20 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   if (pose_graph_.HasScan(key)) {
     // Key frame, note in the ID
     return "key_frame";
-  } 
-  
+  }
+
   else if (utils::IsRobotPrefix(key.chr())) {
     // Odom or key frame
     return "odom_node";
   } 
-
-  else if (utils::LAMP_BASE_INITIAL_KEY == key) {
-    // Base station root node
-    return "odom_node"; // TODO - add new type for this?
-  }
   
   else if (key.chr() == 'u') {
     // UWB
     // return uwd_handler_.GetUWBID(key); // TODO
     return "UWB"; // TEMPORARY
 
-  } 
-  
+  }
+
   else {
     // Artifact
     // return artifact_handler_.GetArtifactID(key);// TODO

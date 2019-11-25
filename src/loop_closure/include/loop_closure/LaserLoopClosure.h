@@ -28,25 +28,47 @@ public:
 
   bool Initialize(const ros::NodeHandle& n);
 
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 
 private:
   bool FindLoopClosures(
       gtsam::Key new_key,
       std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
 
-  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
+  bool CheckForLoopClosure(
+          gtsam::Symbol key1,
+          gtsam::Symbol key2,
+          std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
+  bool PerformLoopClosure(
+          gtsam::Symbol key1,
+          gtsam::Symbol key2,
+          bool b_use_prior,
+          gtsam::Pose3 prior,
+          std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
 
-  bool PerformAlignment(const PointCloud::ConstPtr& scan1,
-                        const PointCloud::ConstPtr& scan2,
-                        const gtsam::Pose3& pose1,
-                        const gtsam::Pose3& pose2,
+
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
+  void SeedCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
+
+  bool PerformAlignment(const gtsam::Symbol key1,
+                        const gtsam::Symbol key2,
+                        bool b_use_delta_as_prior,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance,
                         double& fitness_score);
 
+double DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol key2);
+
+
+  pose_graph_msgs::PoseGraphEdge CreateLoopClosureEdge(
+          gtsam::Symbol key1, 
+          gtsam::Symbol key2,
+          geometry_utils::Transform3& delta, 
+          gtsam::Matrix66& covariance);
+
 private:
   ros::Subscriber keyed_scans_sub_;
+  ros::Subscriber loop_closure_seed_sub_;
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
 

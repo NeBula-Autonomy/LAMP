@@ -130,7 +130,9 @@ if (CATKIN_ENABLE_TESTING)
   # add_subdirectory(test)
   ## Add gtest based cpp test target and link libraries
   add_rostest_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.test test/test_${PROJECT_NAME}.cc)
-  target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_lamp_base test/test_lamp_base.test test/test_lamp_base.cc)
+  target_link_libraries(test_${PROJECT_NAME}  ${PROJECT_NAME} ${catkin_LIBRARIES})
+  target_link_libraries(test_lamp_base  ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()
 
 

@@ -1,11 +1,16 @@
 #ifndef POSE_GRAPH_VISUALIZER_H
 #define POSE_GRAPH_VISUALIZER_H
 
-#include <unordered_map>
-
 #include <ros/ros.h>
 
+#include <unordered_map>
+
+#include <pose_graph_visualizer/HighlightEdge.h>
+#include <pose_graph_visualizer/HighlightNode.h>
+
+
 #include <geometry_utils/GeometryUtilsROS.h>
+#include <parameter_utils/ParameterUtils.h>
 
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
@@ -13,8 +18,6 @@
 #include <pose_graph_msgs/PoseGraphNode.h>
 #include <std_msgs/Bool.h>
 
-#include <pose_graph_visualizer/HighlightEdge.h>
-#include <pose_graph_visualizer/HighlightNode.h>
 #include <visualization_msgs/Marker.h>
 
 #include <core_msgs/Artifact.h>
@@ -39,8 +42,8 @@
 #include <gtsam/slam/InitializePose3.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <map>
-#include <vector>
+#include <utils/CommonFunctions.h>
+#include <utils/CommonStructs.h>
 
 namespace gu = geometry_utils;
 
@@ -51,22 +54,19 @@ public:
 
   bool Initialize(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  // Typedef for stored point clouds.
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-
-  void MakeMenuMarker(const tf::Pose& position, const std::string& id_number);
+  void MakeMenuMarker(const gtsam::Pose3& pose, const std::string& id_number);
 
   // Visualizes an edge between the two keys.
-  bool HighlightEdge(long unsigned int key1, long unsigned int key2);
+  bool HighlightEdge(gtsam::Key key1, gtsam::Key key2);
   // Removes the edge visualization between the two keys.
   // Removes all highlighting visualizations if both keys are zero.
-  void UnhighlightEdge(long unsigned int key1, long unsigned int key2);
+  void UnhighlightEdge(gtsam::Key key1, gtsam::Key key2);
 
   // Highlights factor graph node associated with the given key.
-  bool HighlightNode(long unsigned int key);
+  bool HighlightNode(gtsam::Key key);
   // Unhighlights factor graph node associated with the given key.
   // Removes all highlighting visualizations if the key is zero.
-  void UnhighlightNode(long unsigned int key);
+  void UnhighlightNode(gtsam::Key key);
 
   void VisualizePoseGraph();
   void VisualizeArtifacts();
@@ -83,6 +83,8 @@ public:
                                  const ArtifactInfo& art);
 
 private:
+  PoseGraph pose_graph_;
+
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
@@ -103,38 +105,18 @@ private:
   HighlightEdgeService(pose_graph_visualizer::HighlightEdgeRequest& request,
                        pose_graph_visualizer::HighlightEdgeResponse& response);
 
-  geometry_msgs::Point
-  GetPositionMsg(long unsigned int key,
-                 const std::map<long unsigned int, tf::Pose>& poses) const;
-
-  inline bool KeyExists(long unsigned int key) const {
-    return keyed_poses_.find(key) != keyed_poses_.end();
-  }
-
-  gtsam::Key GetKeyAtTime(const ros::Time& stamp) const;
-  gu::Transform3 GetPoseAtKey(const gtsam::Key& key) const;
+  geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
 
   // Node name.
   std::string name_;
 
-  // Keep a list of keyed laser scans, poses and timestamps.
-  std::map<long unsigned int, PointCloud::ConstPtr> keyed_scans_;
-  std::map<long unsigned int, tf::Pose> keyed_poses_;
-  std::map<long unsigned int, tf::Pose> keyframe_poses_;
-  std::map<long unsigned int, tf::Pose> keyed_artifact_poses_;
-  std::map<long unsigned int, tf::Pose> keyed_uwb_poses_;
-  std::map<long unsigned int, ros::Time> keyed_stamps_;
-  std::map<double, long unsigned int> stamps_keyed_;
-
   // Frames.
-  std::string fixed_frame_id_;
   std::string base_frame_id_;
   bool artifacts_in_global_;
 
   std::unordered_map<std::string, ArtifactInfo>
       artifacts_; // Keyed with UUID so can build this when we get artifact
                   // messages
-  int largest_artifact_id_{0};
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash_;
   std::unordered_map<gtsam::Key, std::string> artifact_key2id_hash_;
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
@@ -161,24 +143,19 @@ private:
   ros::Subscriber artifact_sub_;
   ros::Subscriber erase_posegraph_sub_;
   ros::Subscriber remove_factor_viz_sub_;
+  std::vector<ros::Subscriber> subscribers_artifacts_;
+
+  // Robots that the base station subscribes to
+  std::vector<std::string> robot_names_;
 
   // Services.
   ros::ServiceServer highlight_node_srv_;
   ros::ServiceServer highlight_edge_srv_;
 
-  typedef std::pair<long unsigned int, long unsigned int> Edge;
-  std::vector<Edge> odometry_edges_;
-  std::vector<Edge> loop_edges_;
-  std::vector<Edge> artifact_edges_;
-  std::vector<Edge> uwb_edges_range_;
-  std::vector<Edge> uwb_edges_between_;
-
   bool publish_interactive_markers_{true};
 
   // Proximity threshold used by LaserLoopClosureNode.
   double proximity_threshold_{1};
-
-  gtsam::Symbol key_{0};
 };
 
 #endif

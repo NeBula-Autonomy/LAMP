@@ -16,11 +16,11 @@ public:
 
     tolerance_ = 1e-5;
 
-    double t1 = 1.00;
-    double t2 = 1.05;
-    double t3 = 1.10;
-    double t4 = 1.15;
-    double t5 = 1.20;
+    t1 = 1.00;
+    t2 = 1.05;
+    t3 = 1.10;
+    t4 = 1.15;
+    t5 = 1.20; 
 
     t1_ros.fromSec(t1);
     t2_ros.fromSec(t2);
@@ -109,7 +109,7 @@ protected:
     return oh.GetOdomDeltaLatestTime(t_latest, delta_pose);
   }
     
-  FactorData* GetData() {
+  virtual std::shared_ptr<FactorData> GetData() {
     return oh.GetData();
   }
   void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
@@ -146,6 +146,14 @@ protected:
   bool GetKeyedScanAtTime(const ros::Time& stamp, PointCloud::Ptr& msg) {
     return oh.GetKeyedScanAtTime(stamp, msg);
   }
+  void ClearPreviousPointCloudScans(const PointCloudBuffer::iterator& itrTime) {
+    return oh.ClearPreviousPointCloudScans(itrTime);
+  }
+
+  PointCloudBuffer *GetPointCloudBuffer() {
+    PointCloudBuffer *ptr = &oh.point_cloud_buffer_;
+    return ptr;
+  }
 
   // Create three messages
   PoseCovStamped msg_first;
@@ -159,6 +167,12 @@ protected:
   ros::Time t3_ros;
   ros::Time t4_ros;
   ros::Time t5_ros;
+
+  double t1; 
+  double t2;
+  double t3;
+  double t4; 
+  double t5;
 
 private:
 };
@@ -680,7 +694,7 @@ TEST_F(OdometryHandlerTest, TestGetData) {
   bool result = GetOdomDeltaLatestTime(query1, myOutput);
   EXPECT_TRUE(result);
 
-  OdomData* factor = dynamic_cast<OdomData*>(GetData());
+  std::shared_ptr<OdomData> factor = std::dynamic_pointer_cast<OdomData>(GetData());
   EXPECT_TRUE(factor->b_has_data);
   
   OdometryFactor odom_factor = factor->factors[0];
@@ -729,7 +743,8 @@ TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
   system("rosparam set ts_threshold 0.6");
   oh.Initialize(nh);
   // Create an output
-  GtsamPosCov myOutput;
+  GtsamPosCov myOutput_1;
+  GtsamPosCov myOutput_2;
   nav_msgs::Odometry msg_first_odom;
   nav_msgs::Odometry msg_second_odom;
   nav_msgs::Odometry msg_third_odom;
@@ -746,15 +761,27 @@ TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
   nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
       new nav_msgs::Odometry(msg_third_odom));
   // Call lidar callback
+  // The 1st message will be stored into lidar_odom_value_at_key_.
+  // This stored value is used when the first time query is out of range.
   LidarOdometryCallback(msg_first_odomPtr);
   LidarOdometryCallback(msg_second_odomPtr);
   LidarOdometryCallback(msg_third_odomPtr);
+  // Corner case 1 (Both queries are out of range)
   ros::Time query1, query2;
   query1.fromSec(0.0);
-  query2.fromSec(1.07);
-  myOutput = GetFusedOdomDeltaBetweenTimes(query1, query2);
-  auto pose_expected = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(2, 0, 0));
-  EXPECT_TRUE((myOutput.pose).equals(pose_expected));
+  query2.fromSec(2.0);
+  myOutput_1 = GetFusedOdomDeltaBetweenTimes(query1, query2);
+  auto pose_expected_1 = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(2, 0, 0));
+  EXPECT_FALSE(myOutput_1.b_has_value);
+  // Corner case 2 (One query is out of range (ex) A robot stacks and stay at the same position for a while.)
+  // query3 refers to the value of "lidar_odom_value_at_key_" because it's out of range
+  // query4 refers to the value associated with the time stamp t2 (=1.05)
+  ros::Time query3, query4;
+  query3.fromSec(0.0);
+  query4.fromSec(1.07);
+  myOutput_2 = GetFusedOdomDeltaBetweenTimes(query3, query4);
+  auto pose_expected_2 = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(1, 0, 0));
+  EXPECT_TRUE((myOutput_2.pose).equals(pose_expected_2));
 }
 
 TEST_F(OdometryHandlerTest, TestGetCovariance) {
@@ -845,7 +872,38 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   ASSERT_TRUE(result);
 }
 
+TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {
+  ros::NodeHandle nh("~");
+  oh.Initialize(nh);
+
+  sensor_msgs::PointCloud2 msg1;
+  msg1.header.stamp = t1_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
+      new sensor_msgs::PointCloud2(msg1));
+      
+  sensor_msgs::PointCloud2 msg2;
+  msg2.header.stamp = t2_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
+      new sensor_msgs::PointCloud2(msg2));
+
+  sensor_msgs::PointCloud2 msg3;
+  msg3.header.stamp = t3_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
+      new sensor_msgs::PointCloud2(msg3));
+  
+  PointCloudCallback(pc_ptr1);
+  PointCloudCallback(pc_ptr2);
+  PointCloudCallback(pc_ptr3);
+  auto ptr_buffer_2 = GetPointCloudBuffer();
+  ASSERT_EQ(ptr_buffer_2->size(), 3);
+  auto itrTime_2 = ptr_buffer_2->lower_bound(t2);
+  ClearPreviousPointCloudScans(itrTime_2);
+  ASSERT_EQ(ptr_buffer_2->size(), 2);
+  ASSERT_EQ((ptr_buffer_2->rbegin())->first, t3);
+}
+
 /* TEST Utilities */
+
 /* TEST ToGtsam */
 TEST_F(OdometryHandlerTest, TestToGtsam) {
   ros::NodeHandle nh("~");

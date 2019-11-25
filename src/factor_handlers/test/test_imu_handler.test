@@ -2,5 +2,6 @@
   <node pkg="tf" type="static_transform_publisher" name="fake_tf_pub" args="0 0 0 0 0 0 1 base_link vn100 100"/>
   <test test-name="test_imu_handler"
         pkg="factor_handlers"
-        type="test_imu_handler"/>
+        type="test_imu_handler"
+        time-limit="300.0"/>
 </launch>

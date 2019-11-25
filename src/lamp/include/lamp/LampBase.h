@@ -48,6 +48,8 @@
 #include <pcl/common/transforms.h>
 #include <pcl_ros/point_cloud.h>
 
+#include <eigen3/Eigen/Core>
+
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
@@ -130,17 +132,20 @@ protected:
   gtsam::SharedNoiseModel laser_lc_noise_;
   gtsam::SharedNoiseModel odom_noise_;
   gtsam::SharedNoiseModel artifact_noise_;
+  // Zero noise param
+  gtsam::noiseModel::Diagonal::shared_ptr zero_covariance_;
+
 
   // New pose graph values from optimizer
   virtual void
   OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
+  virtual void MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
   // Set artifact positions
   virtual void UpdateArtifactPositions();
 
   // Pose graph structure storing values, factors and meta data.
   PoseGraph pose_graph_;
-  gtsam::Symbol initial_key_{0};
 
   // Function used for retrieving internal identifier given gtsam::Symbol.
   virtual std::string MapSymbolToId(gtsam::Symbol key) const;
@@ -165,6 +170,7 @@ protected:
   bool b_has_new_scan_;
   bool b_run_optimization_;
   bool b_use_fixed_covariances_;
+  bool b_repub_values_after_optimization_;
 
   // Frames.
   std::string base_frame_id_;
@@ -188,11 +194,17 @@ protected:
   double fiducial_trans_precision_;
   double fiducial_rot_precision_;
   double point_estimate_precision_;
+  double artifact_gt_rot_precision_;
+  double artifact_gt_trans_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
 
+  
+  double zero_noise_;
+
 private:
   // Anything just in the base class
+
 };
 
 #endif

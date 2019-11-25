@@ -15,7 +15,12 @@ namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
 // Constructor (if there is override)
-LampBaseStation::LampBaseStation(): zero_noise_(0.0001) {}
+LampBaseStation::LampBaseStation(): 
+        b_published_initial_node_(false) {
+
+  // On base station LAMP, republish values after optimization
+  b_repub_values_after_optimization_ = true;
+}
 
 //Destructor
 LampBaseStation::~LampBaseStation() {}
@@ -54,11 +59,6 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
     ROS_ERROR("%s: Failed to initialize handlers.", name_.c_str());
     return false;
   }
-
-  // Init graph
-  InitializeGraph();
-  b_run_optimization_ = true;
-  // PublishPoseGraphForOptimizer();
 }
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
@@ -77,6 +77,13 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
   // TODO : separate rate for base and robot
   if (!pu::Get("rate/update_rate", update_rate_))
     return false;
+
+  // Fixed precisions
+  // TODO - eventually remove the need to use this
+  if (!SetFactorPrecisions()) {
+    ROS_ERROR("SetFactorPrecisions failed");
+    return false;
+  }
 
   // Initialize frame IDs
   pose_graph_.fixed_frame_id = "world";
@@ -104,10 +111,16 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                           &LampBaseStation::OptimizerUpdateCallback,
                                           dynamic_cast<LampBase*>(this));
 
-  // laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
-  //                                        1,
-  //                                        &LampBaseStation::LaserLoopClosureCallback,
-  //                                        dynamic_cast<LampBase*>(this));
+  laser_loop_closure_sub_ = nl.subscribe("laser_loop_closures",
+                                         1,
+                                         &LampBaseStation::LaserLoopClosureCallback,
+                                         dynamic_cast<LampBase*>(this));
+
+  // Uncomment when needed for debugging
+  debug_sub_ = nl.subscribe("debug",
+                            1,
+                            &LampBaseStation::DebugCallback,
+                            this);
 
   return true; 
 }
@@ -122,7 +135,6 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
 
   // Base station publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
-  keyed_scan_pub_ = nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
 
   return true; 
 }
@@ -147,29 +159,6 @@ bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
   
   return true; 
 }
-
-bool LampBaseStation::InitializeGraph() {
-
-  gtsam::Pose3 pose = gtsam::Pose3(gtsam::Rot3(1,0,0,0), 
-                                   gtsam::Point3(0,0,0));
-
-  gtsam::Vector6 noise;
-  noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
-  gtsam::noiseModel::Diagonal::shared_ptr covariance(
-      gtsam::noiseModel::Diagonal::Sigmas(noise));
-
-  pose_graph_.Initialize(utils::LAMP_BASE_INITIAL_KEY, pose, covariance);
-
-  // gtsam::Values new_values;
-  // new_values.insert(utils::LAMP_BASE_INITIAL_KEY, pose);
-  // pose_graph_.AddNewValues(new_values);
-
-
-
-
-  return true;
-}
-
 
 void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
@@ -200,11 +189,11 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Publish anything that is needed 
 }
 
-bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
+bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   // ROS_INFO_STREAM("In ProcessPoseGraphData");
 
   // Extract pose graph data
-  PoseGraphData* pose_graph_data = dynamic_cast<PoseGraphData*>(data);
+  std::shared_ptr<PoseGraphData> pose_graph_data = std::dynamic_pointer_cast<PoseGraphData>(data);
 
   // Check if there are new pose graphs
   if (!pose_graph_data->b_has_data) {
@@ -216,93 +205,35 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
   b_has_new_factor_ = true;
 
   pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>);
 
   gtsam::Values new_values;
-
-  // First check for initial nodes
-  for (auto g : pose_graph_data->graphs) {
-    for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
-      // First node from this robot - add factor connecting to origin
-      if (!pose_graph_.values.exists(n.key) && gtsam::Symbol(n.key).index() == 0) {
-
-        ProcessFirstRobotNode(n);
-        continue; // Each robot pose graph can only have one initial node
-      }
-    }
-  }
 
   for (auto g : pose_graph_data->graphs) {
 
     // Register new data - this will cause pose graph to publish
     b_has_new_factor_ = true;
 
-    for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
-      ROS_INFO_STREAM("Received node with key " << gtsam::Symbol(n.key).chr() << gtsam::Symbol(n.key).index());
-      pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
+    // Merge the current (slow) graph before processing incoming graphs
+    merger_.OnSlowGraphMsg(pose_graph_.ToMsg());
+    merger_.OnFastGraphMsg(g);
 
-      // Add new value to graph
-      if (!pose_graph_.values.exists(n.key)) {
-        // Add the new values to the graph
-        new_values.insert(n.key, utils::ToGtsam(n.pose));
+    // Update the internal pose graph using the merger output
+    pose_graph_msgs::PoseGraphConstPtr fused_graph(
+    new pose_graph_msgs::PoseGraph(merger_.GetCurrentGraph()));
+    pose_graph_.UpdateFromMsg(fused_graph);
 
-      }
-
-      // Update existing value in graph
-      else {
-        if (new_values.exists(n.key)) {
-          new_values.update(n.key, utils::ToGtsam(n.pose));
-        }
-        else {
-          new_values.insert(n.key, utils::ToGtsam(n.pose));
-        }
-      }
-
-
-      // // If node is not in graph, add as placeholder
-      // if (!pose_graph_.values.exists(n.key)) {
-      //   new_values.insert(n.key, utils::ToGtsam(geometry_msgs::Pose()));
-      // }
-    }
-
-    pose_graph_.AddNewValues(new_values);
-    new_values.clear();
-
-    // Track edges
+    // Check for new loop closure edges
     for (pose_graph_msgs::PoseGraphEdge e : g->edges) {
-      pose_graph_.TrackFactor(e.key_from, 
-                              e.key_to, 
-                              e.type, 
-                              utils::ToGtsam(e.pose), 
-                              utils::ToGtsam(e.covariance));
-
-      // Check for new loop closure edges
       if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
       
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
       }
-
-    }
-
-    // Track priors
-    for (pose_graph_msgs::PoseGraphNode p : g->priors) {
-
-      // Ignore the prior attached to the first node
-      if (gtsam::Symbol(p.key).index() == 0) {
-        continue;
-      }
-
-      pose_graph_.TrackNode(p.header.stamp, 
-                            p.key, 
-                            utils::ToGtsam(p.pose), 
-                            utils::ToGtsam(p.covariance));
     }
 
     ROS_INFO_STREAM("Added new pose graph");
   }
-
-
 
   ROS_INFO_STREAM("Keyed stamps: " << pose_graph_.keyed_stamps.size());
 
@@ -318,31 +249,32 @@ bool LampBaseStation::ProcessPoseGraphData(FactorData* data) {
 
     ROS_INFO_STREAM("Added new point cloud to map, " << scan_ptr->points.size() << " points");
   }
+
+  return true; 
 }
 
-void LampBaseStation::ProcessFirstRobotNode(pose_graph_msgs::PoseGraphNode n) {
+bool LampBaseStation::ProcessManualLoopClosureData(std::shared_ptr<FactorData> data) {
 
-  pose_graph_.InsertKeyedStamp(n.key, n.header.stamp);
+  // Extract loop closure data
+  std::shared_ptr<LoopClosureData> manual_loop_closure_data = std::dynamic_pointer_cast<LoopClosureData>(data);
 
-  gtsam::Values new_values;
-  gtsam::Vector6 noise;
-  noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
-  gtsam::noiseModel::Diagonal::shared_ptr covariance(
-      gtsam::noiseModel::Diagonal::Sigmas(noise));
+  if (!manual_loop_closure_data->b_has_data) {
+    return false;
+  }
 
-  ROS_INFO_STREAM("Tracking initial factor-----------------------");
-  pose_graph_.TrackFactor(utils::LAMP_BASE_INITIAL_KEY, 
-                  n.key, 
-                  pose_graph_msgs::PoseGraphEdge::ODOM, 
-                  utils::ToGtsam(n.pose), 
-                  covariance);
+  ROS_INFO_STREAM("Received new manual loop closure data");
 
-  new_values.insert(n.key, utils::ToGtsam(n.pose));
-  pose_graph_.AddNewValues(new_values);
-  PublishPoseGraphForOptimizer();
+  for (auto factor : manual_loop_closure_data->factors) {
+    pose_graph_.TrackFactor(factor.key_from, 
+                            factor.key_to,
+                            pose_graph_msgs::PoseGraphEdge::LOOPCLOSE, 
+                            factor.transform, 
+                            factor.covariance);
 
-  PublishPoseGraph();
+    b_run_optimization_ = true;
+  }
 
+  return true;
 }
 
 
@@ -352,5 +284,66 @@ bool LampBaseStation::CheckHandlers() {
   // Check for pose graphs from the robots
   ProcessPoseGraphData(pose_graph_handler_.GetData());
 
+  // Check for manual loop closures
+  ProcessManualLoopClosureData(manual_loop_closure_handler_.GetData());
+
   return true;
+}
+
+bool LampBaseStation::ProcessArtifactGT() {
+
+  // Read from file
+  if (!pu::Get("artifacts_GT", artifact_GT_strings_)) {
+    ROS_ERROR("%s: No artifact ground truth data provided.", name_.c_str());
+    return false;
+  }
+
+  for (auto s : artifact_GT_strings_) {
+    ROS_INFO_STREAM("New artifact ground truth");
+    artifact_GT_.push_back(ArtifactGroundTruth(s));
+
+    ROS_INFO_STREAM("\t" << gtsam::DefaultKeyFormatter(artifact_GT_.back().key));
+    ROS_INFO_STREAM("\t" << artifact_GT_.back().type);
+    ROS_INFO_STREAM("\t" << artifact_GT_.back().position.x() << ", "<< artifact_GT_.back().position.y() << ", "<< artifact_GT_.back().position.z());
+  }
+
+  for (auto a : artifact_GT_) {
+
+    if (!pose_graph_.HasKey(a.key)) {
+      ROS_WARN_STREAM("Unable to add artifact ground truth for key " << gtsam::DefaultKeyFormatter(a.key));
+      continue;
+    }
+
+    // Add the prior
+    pose_graph_.TrackPrior(a.key, 
+                           gtsam::Pose3(gtsam::Rot3(),a.position), 
+                           SetFixedNoiseModels("artifact_gt"));
+
+
+    // Trigger optimisation 
+    b_run_optimization_ = true; 
+  }
+
+  return true;
+}
+
+void LampBaseStation::DebugCallback(const std_msgs::String msg) {
+  ROS_INFO_STREAM("Debug message received: " << msg.data);
+
+  // Freeze the current point cloud map on the visualizer
+  if (msg.data == "freeze") {
+    ROS_INFO_STREAM("Publishing frozen map");
+    mapper_.PublishMapFrozen();
+  }
+
+  // Read in artifact ground truth data
+  else if (msg.data == "artifact_gt") {
+    ROS_INFO_STREAM("Processing artifact ground truth data");
+    ProcessArtifactGT();
+  }
+
+  else {
+    ROS_WARN_STREAM("Debug message not recognized");
+  }
+
 }

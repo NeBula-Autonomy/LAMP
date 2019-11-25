@@ -1,0 +1,5 @@
+# Ground truth data for each artifact
+#       'UUID x y z'
+artifacts_GT: 
+  - 'm3 backpack 10.0 2.0 2.0'
+  - 'a10 drill 10.0 0.0 0.0'

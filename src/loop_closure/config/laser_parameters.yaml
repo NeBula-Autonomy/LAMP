@@ -1,47 +1,98 @@
-#######################################
-# PARAMETERS FOR LASER LOOP CLOSURES
-#######################################
+#############################################
+# PARAMETERS FOR LASER LOOP CLOSURES (ROBOT)
+#############################################
 
-# Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
-icp_initialization_method: 1
+robot: 
 
-# Translation threshold for new nods to compute values for loop closure checking
-translation_threshold_nodes: 1.0
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
+  icp_initialization_method: 2
 
-# When searching through old poses for loop closures, only consider old poses
-# that are within this distance of the current pose.
-proximity_threshold: 5
+  # Translation threshold for new nods to compute values for loop closure checking
+  translation_threshold_nodes: 1.0
 
-# To compute a loop closure we perform ICP between the current scan and laser
-# scans captured from nearby poses. In order to be considered a loop closure,
-# the ICP "fitness score" must be less than this number.
-max_tolerable_fitness: 5.0
+  # When searching through old poses for loop closures, only consider old poses
+  # that are within this distance of the current pose.
+  proximity_threshold: 5
 
-# Don't attempt loop closures with poses in the graph that were collected within
-# this translational distance (m) from the current pose.
-distance_to_skip_recent_poses: 10 #10 # 200
+  # To compute a loop closure we perform ICP between the current scan and laser
+  # scans captured from nearby poses. In order to be considered a loop closure,
+  # the ICP "fitness score" must be less than this number.
+  max_tolerable_fitness: 2.0
 
-# If a loop has recently been closed, don't close a new one for at least this
-# amount of translational distance (m).
-distance_before_reclosing: 50 #10
+  # Don't attempt loop closures with poses in the graph that were collected within
+  # this translational distance (m) from the current pose.
+  distance_to_skip_recent_poses: 10 #10 # 200
 
-# If a batchloop has recently been closed, don't close a new one for at least this
-# amount of translational distance (m).
-distance_before_batch_reclosing: 10 #3
+  # If a loop has recently been closed, don't close a new one for at least this
+  # amount of translational distance (m).
+  distance_before_reclosing: 50 #10
+
+  # If a batchloop has recently been closed, don't close a new one for at least this
+  # amount of translational distance (m).
+  distance_before_batch_reclosing: 10 #3
 
 
-#--------------------------------------------------------------------------------
-# ICP Settings for laser loop closure
-#--------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------
+  # ICP Settings for laser loop closure
+  #--------------------------------------------------------------------------------
 
-icp_lc:
-  # Stop ICP if the transformation from the last iteration was this small.
-  tf_epsilon: 0.0000000001
+  icp_lc:
+    # Stop ICP if the transformation from the last iteration was this small.
+    tf_epsilon: 0.0000000001
 
-  # During ICP, two points won't be considered a correspondence if they are at
-  # least this far from one another.
-  corr_dist: 0.3
+    # During ICP, two points won't be considered a correspondence if they are at
+    # least this far from one another.
+    corr_dist: 0.3
 
-  # Iterate ICP this many times.
-  iterations: 5 # Default from original branch is 20: 
+    # Iterate ICP this many times.
+    iterations: 5 # Default from original branch is 20: 
+
+#############################################
+# PARAMETERS FOR LASER LOOP CLOSURES (BASE)
+#############################################
+
+base: 
+
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
+  icp_initialization_method: 1
+
+  # Translation threshold for new nods to compute values for loop closure checking
+  translation_threshold_nodes: 1.0
+
+  # When searching through old poses for loop closures, only consider old poses
+  # that are within this distance of the current pose.
+  proximity_threshold: 5
+
+  # To compute a loop closure we perform ICP between the current scan and laser
+  # scans captured from nearby poses. In order to be considered a loop closure,
+  # the ICP "fitness score" must be less than this number.
+  max_tolerable_fitness: 5.0
+
+  # Don't attempt loop closures with poses in the graph that were collected within
+  # this translational distance (m) from the current pose.
+  distance_to_skip_recent_poses: 10 #10 # 200
+
+  # If a loop has recently been closed, don't close a new one for at least this
+  # amount of translational distance (m).
+  distance_before_reclosing: 50 #10
+
+  # If a batchloop has recently been closed, don't close a new one for at least this
+  # amount of translational distance (m).
+  distance_before_batch_reclosing: 10 #3
+
+
+  #--------------------------------------------------------------------------------
+  # ICP Settings for laser loop closure
+  #--------------------------------------------------------------------------------
+
+  icp_lc:
+    # Stop ICP if the transformation from the last iteration was this small.
+    tf_epsilon: 0.0000000001
+
+    # During ICP, two points won't be considered a correspondence if they are at
+    # least this far from one another.
+    corr_dist: 0.3
+
+    # Iterate ICP this many times.
+    iterations: 5 # Default from original branch is 20: 
 
