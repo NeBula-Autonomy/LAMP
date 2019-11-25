@@ -93,6 +93,10 @@ class ImuHandlerTest : public ::testing::Test {
       return ih.CreateAttitudeFactor(imu_rpy);
     }
 
+    virtual std::shared_ptr<FactorData> GetData() {
+      return ih.GetData();
+    }
+
     ImuMessage msg_first;
     ImuMessage msg_second;
     ImuMessage msg_third;
@@ -243,6 +247,9 @@ TEST_F(ImuHandlerTest, TestGetQuaternionAtTime) {
 
 /* TEST CreateAttitudeFactor */
 TEST_F(ImuHandlerTest, TestCreateAttitudeFactor) {
+  ros::NodeHandle nh("~");
+  ih.Initialize(nh);
+  // TODO: Make this fancier
   Vector3d ypr;
   ypr << 0.0, 1.0, 0.0;
   auto f = CreateAttitudeFactor(ypr);
@@ -254,6 +261,28 @@ TEST_F(ImuHandlerTest, TestCreateAttitudeFactor) {
   auto f_diff = CreateAttitudeFactor(ypr_diff);
   result = f.equals(f_diff);
   ASSERT_FALSE(result);
+}
+
+/* TEST GetData */
+TEST_F(ImuHandlerTest, TestGetData) {
+  ros::NodeHandle nh("~");
+  ih.Initialize(nh);
+  // TODO: Make this fancier
+  sensor_msgs::Imu::ConstPtr imu_ptr1(
+      new sensor_msgs::Imu(msg_first));
+  sensor_msgs::Imu::ConstPtr imu_ptr2(
+      new sensor_msgs::Imu(msg_second));
+  sensor_msgs::Imu::ConstPtr imu_ptr3(
+      new sensor_msgs::Imu(msg_third));
+  ImuCallback(imu_ptr1);
+  ImuCallback(imu_ptr2);
+  ImuCallback(imu_ptr3);
+  // Simulate set time and key from LAMP side 
+  Symbol key = 0; 
+  SetTimeForImuAttitude(t1_ros);
+  SetKeyForImuAttitude(key);
+  std::shared_ptr<ImuData> factor = std::dynamic_pointer_cast<ImuData>(GetData());
+  EXPECT_TRUE(factor->b_has_data);
 }
 
 int main(int argc, char** argv) {
