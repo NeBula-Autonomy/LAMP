@@ -186,12 +186,21 @@ TEST_F(ImuHandlerTest, TestSetKeyForImuAttitude) {
 TEST_F(ImuHandlerTest, TestInsertMsgInBuffer) {
   ros::NodeHandle nh("~");
   ih.Initialize(nh);
+  ASSERT_EQ(CheckBufferSize(),0);
   ImuMessage imu_msg; 
   imu_msg.header = msg_first.header; 
   imu_msg.orientation = msg_first.orientation;
   ImuMessage::ConstPtr imu_msg_ptr(new ImuMessage(imu_msg)); 
   bool result = InsertMsgInBuffer(imu_msg_ptr);
   ASSERT_TRUE(result);
+  ASSERT_EQ(CheckBufferSize(),1);
+  ImuMessage new_imu_msg; 
+  new_imu_msg.header = msg_second.header; 
+  new_imu_msg.orientation = msg_second.orientation;
+  ImuMessage::ConstPtr new_imu_msg_ptr(new ImuMessage(new_imu_msg)); 
+  result = InsertMsgInBuffer(new_imu_msg_ptr);
+  ASSERT_TRUE(result);
+  ASSERT_EQ(CheckBufferSize(),2);
 }
 
 /* TEST CheckBufferSize */
@@ -241,8 +250,8 @@ TEST_F(ImuHandlerTest, TestGetQuaternionAtTime) {
   double t_out = 1.30; 
   ros::Time t_out_ros;
   t_out_ros.fromSec(t_out);
-  bool result_out = GetQuaternionAtTime(t_out_ros, q);
-  ASSERT_FALSE(result_out);
+  result = GetQuaternionAtTime(t_out_ros, q);
+  ASSERT_FALSE(result);
 }
 
 /* TEST CreateAttitudeFactor */
