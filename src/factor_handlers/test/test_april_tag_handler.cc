@@ -23,6 +23,12 @@ class TestAprilTagHandler : public ::testing::Test{
      * Methods
      */
     TestAprilTagHandler(){
+
+      system("rosparam load $(rospack find "
+             "factor_handlers)/config/april_parameters.yaml");
+      system("rosparam load $(rospack find "
+             "lamp)/config/lamp_settings.yaml");
+
       apt_handle.use_artifact_loop_closure_ = true;
 
       // Construct messages
@@ -83,8 +89,7 @@ class TestAprilTagHandler : public ::testing::Test{
 // Check if callback working correctly.
 TEST_F(TestAprilTagHandler, AprilTagCallback) {
   // Load parameters
-  system("rosparam load $(rospack find "
-             "factor_handlers)/config/april_parameters.yaml");
+
   LoadParameters();
   
   // Set PGO initialized
@@ -167,8 +172,6 @@ TEST_F(TestAprilTagHandler, ConvertAprilTagMsgToArtifactMsg) {
 // Check if ground truth is being extracted.
 TEST_F(TestAprilTagHandler, GetGroundTruthData) {
   // Load parameters
-  system("rosparam load $(rospack find "
-             "factor_handlers)/config/april_parameters.yaml");
   LoadParameters();
 
   // Set PGO initialized
@@ -183,15 +186,13 @@ TEST_F(TestAprilTagHandler, GetGroundTruthData) {
 
 // Check if parameters are being loaded properly. 
 TEST_F(TestAprilTagHandler, LoadParameters) {
-  system("rosparam load $(rospack find "
-             "factor_handlers)/config/april_parameters.yaml");
+
   EXPECT_TRUE(LoadParameters());
 }
 
 // Check if initialization is done properly.
 TEST_F(TestAprilTagHandler, Initialize) {
-  system("rosparam load $(rospack find "
-             "factor_handlers)/config/april_parameters.yaml");
+
   EXPECT_TRUE(Initialize());
 }
 
