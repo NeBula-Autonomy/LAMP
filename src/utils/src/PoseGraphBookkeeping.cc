@@ -174,7 +174,7 @@ bool PoseGraph::TrackIMUFactor(gtsam::Symbol key_to,
   gtsam::noiseModel::Base::shared_ptr noise =
       gtsam::noiseModel::Isotropic::Sigma(2, att_noise);
   
-  ROS_INFO("TrackIMUFactor - CreateAttitudeFactor");
+  ROS_INFO_STREAM("TrackIMUFactor - CreateAttitudeFactor for key " << gtsam::DefaultKeyFormatter(key_to));
   gtsam::Unit3 ref(0, 0, -1); 
   gtsam::Unit3 meas_gt(meas.x, meas.y, meas.z);
   
@@ -188,7 +188,7 @@ bool PoseGraph::TrackIMUFactor(gtsam::Symbol key_to,
                                     noise);
 
     if (edges_.find(msg) != edges_.end()) {
-      ROS_DEBUG_STREAM("IMU factor for key "
+      ROS_INFO_STREAM("IMU factor for key "
                        << gtsam::DefaultKeyFormatter(key_to)
                        << " already exists.");
       return false;
