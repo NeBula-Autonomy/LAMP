@@ -149,14 +149,7 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
     } 
     
     else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
-      // create precisions // TODO - the precision should come from the message
-      // shouldn't it? As we will use priors for different applications
-      gtsam::Vector6 prior_precisions;
-      prior_precisions.head<3>().setConstant(0.0);
-      prior_precisions.tail<3>().setConstant(10.0);
-      // TODO(Yun) create parameter for this
-      static const gtsam::SharedNoiseModel& prior_noise =
-          gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
+      Gaussian::shared_ptr prior_noise = utils::MessageToCovariance(msg_edge);
 
       ROS_DEBUG_STREAM("Adding prior factor for key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_from));
