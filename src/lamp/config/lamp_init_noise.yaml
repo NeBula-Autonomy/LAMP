@@ -5,10 +5,10 @@
 # Noise parameters for odometry
 init:
   position_sigma:
-    x:      0.016
-    y:      0.016
-    z:      0.016
+    x:      0.0016
+    y:      0.0016
+    z:      0.0016
   orientation_sigma:
     roll:   0.041
     pitch:  0.041
-    yaw:    0.041
+    yaw:    0.00041
