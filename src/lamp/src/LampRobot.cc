@@ -474,6 +474,12 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     int type = pose_graph_msgs::PoseGraphEdge::ODOM;
     pose_graph_.TrackFactor(prev_key, current_key, type, transform, covariance);
 
+    if (b_add_imu_factors_){
+      imu_handler_.SetTimeForImuAttitude(times.second);
+      imu_handler_.SetKeyForImuAttitude(current_key);
+      ProcessImuData(imu_handler_.GetData());
+    }
+
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 
@@ -564,6 +570,36 @@ void LampRobot::UpdateAndPublishOdom() {
 
   // Publish pose graph
   pose_pub_.publish(msg);
+}
+
+/*!
+  \brief  Wrapper for the imu class interactions
+  Creates factors from the imu output - called when there is a new odom message
+  \param   data - the output data struct from the ImuHandler class
+  \warning ...time sync
+  \author Benjamin Morrell
+  \date 22 Nov 2019
+*/
+bool LampRobot::ProcessImuData(std::shared_ptr<FactorData> data) {
+  // Extract odom data
+  std::shared_ptr<ImuData> imu_data =
+      std::dynamic_pointer_cast<ImuData>(data);
+
+  // Check if there are new factors
+  if (!imu_data->b_has_data) {
+    return false;
+  }
+
+  Unit3 meas_unit = imu_data->factors[0].nZ();
+  geometry_msgs::Point meas(meas_unit.point3().x(), meas_unit.point3().y(), meas_unit.point3().z());
+
+  SharedNoiseModel noise = boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(imu_data->factors[0].noiseModel());
+
+  pose_graph_.TrackIMUFactor(imu_data->factors[0].front(),
+                               meas,
+                               noise.sigma(),
+                               true)
+
 }
 
 /*!
