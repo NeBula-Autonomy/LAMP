@@ -355,6 +355,12 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     ProcessArtifactGT();
   }
 
+  // Read in artifact ground truth data
+  else if (msg.data == "optimize") {
+    ROS_INFO_STREAM("Sending pose graph to optimizer");
+    PublishPoseGraphForOptimizer();
+  }
+
   else {
     ROS_WARN_STREAM("Debug message not recognized");
   }

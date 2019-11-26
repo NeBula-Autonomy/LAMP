@@ -316,7 +316,7 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
   }
 
   if (!imu_handler_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize the uwb handler.", name_.c_str());
+    ROS_ERROR("%s: Failed to initialize the imu handler.", name_.c_str());
     return false;
   }
 
