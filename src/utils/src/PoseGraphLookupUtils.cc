@@ -64,6 +64,12 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp,
                     << std::abs(stamp.toSec() - t_closest)
                     << ", allowable max is: " << time_threshold);
     key_out = utils::GTSAM_ERROR_SYMBOL;
+  } else if (std::abs(t_closest - stamp.toSec()) > time_threshold) {
+    ROS_WARN_STREAM("Delta between queried time and closest time in graph too large\n" <<
+                    "Time queried is: " << stamp.toSec()
+                     << ", closest time is: " << t_closest << "\n Difference is "
+                    << std::abs(stamp.toSec() - t_closest)
+                    << ", allowable max is: " << time_threshold);
   }
 
   return key_out;
