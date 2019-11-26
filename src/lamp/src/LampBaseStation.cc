@@ -230,7 +230,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
 
     // Check for new loop closure edges
     for (pose_graph_msgs::PoseGraphEdge e : g->edges) {
-      if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+      if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE || e.type == pose_graph_msgs::PoseGraphEdge::IMU) {
       
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
