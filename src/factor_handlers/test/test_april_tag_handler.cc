@@ -33,6 +33,7 @@ class TestAprilTagHandler : public ::testing::Test{
 
       // Construct messages
       msg.header.stamp = ros::Time(1.0);
+      msg.point.header.stamp = ros::Time(1.0);
       msg.id = "distal";
 
       // Fill covariance
