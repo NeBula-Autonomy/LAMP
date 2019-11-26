@@ -54,6 +54,9 @@ bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {
         return false;
     if (!pu::Get("noise_sigma_imu", noise_sigma_imu_)) 
         return false;
+    if (!pu::Get("b_verbosity", b_verbosity_)){
+        return false;
+    }
 
     LoadCalibrationFromTfTree();
     return true;
@@ -70,12 +73,12 @@ bool ImuHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 // --------------------------------------------------------------------------------
 
 void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {    
-    // ROS_INFO("ImuHandler - ImuCallback"); 
+    if (b_verbosity_) ROS_INFO("ImuHandler - ImuCallback"); 
     if (CheckBufferSize() > buffer_size_limit_){
         imu_buffer_.erase(imu_buffer_.begin());
     }   
     if (!InsertMsgInBuffer(msg)){
-        // ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
+        if (b_verbosity_) ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
     }
 }
 
@@ -83,44 +86,44 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
 // --------------------------------------------------------------------------------
 
 std::shared_ptr<FactorData> ImuHandler::GetData() {
-//   ROS_INFO("ImuHandler - GetData"); 
-  std::shared_ptr<ImuData> factors_output = std::make_shared<ImuData>(factors_);
+    if (b_verbosity_) ROS_INFO("ImuHandler - GetData"); 
+    std::shared_ptr<ImuData> factors_output = std::make_shared<ImuData>(factors_);
     
-  factors_output->b_has_data = false; 
+    factors_output->b_has_data = false; 
 
-  if (CheckBufferSize()==0) {
-      ROS_WARN("Buffers are empty, returning no data");
-      return factors_output;
-  }
+    if (CheckBufferSize()==0) {
+        ROS_WARN("Buffers are empty, returning no data");
+        return factors_output;
+    }
 
-  ImuQuaternion imu_quaternion;
-  ros::Time query_stamp_ros;
-  query_stamp_ros.fromSec(query_stamp_);
+    ImuQuaternion imu_quaternion;
+    ros::Time query_stamp_ros;
+    query_stamp_ros.fromSec(query_stamp_);
 
-  if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
-    //   ROS_INFO("Successfully extracted data from buffer");
-      Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
-      ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
+    if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
+        if (b_verbosity_) ROS_INFO("Successfully extracted data from buffer");
+        Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
+        ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
 
-      factors_output->b_has_data = true; 
-      factors_output->type = "imu";        
-      factors_output->factors.push_back(new_factor);
+        factors_output->b_has_data = true; 
+        factors_output->type = "imu";        
+        factors_output->factors.push_back(new_factor);
 
-      ResetFactorData();
-  }
+        ResetFactorData();
+    }
 
-  else {
-      factors_output->b_has_data = false; 
-  }
+    else {
+        factors_output->b_has_data = false; 
+    }
 
-  return factors_output; 
+    return factors_output; 
 }
 
 // Buffers
 // --------------------------------------------------------------------------------
 
 bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {  
-    // ROS_INFO("ImuHandler - InsertMsgInBuffer");  
+    if (b_verbosity_) ROS_INFO("ImuHandler - InsertMsgInBuffer");  
     int initial_size = imu_buffer_.size();    
     double current_time = msg->header.stamp.toSec();    
     ImuQuaternion current_quaternion;
@@ -140,15 +143,15 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
 }
 
 int ImuHandler::CheckBufferSize() const {    
-    // ROS_INFO("ImuCallback - ChechBufferSize");    
+    if (b_verbosity_) ROS_INFO("ImuCallback - ChechBufferSize");    
     return imu_buffer_.size();
 }
 
 bool ImuHandler::ClearBuffer() {
-    // ROS_INFO("ImuHandler - ClearBuffer");    
+    if (b_verbosity_) ROS_INFO("ImuHandler - ClearBuffer");    
     imu_buffer_.clear();    
     if (CheckBufferSize()==0) {
-        // ROS_INFO("Successfully cleared buffer");
+        if (b_verbosity_) ROS_INFO("Successfully cleared buffer");
         return true;
     }
     else {
@@ -163,7 +166,7 @@ bool ImuHandler::ClearBuffer() {
 bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
     // TODO: Implement GetValueAtTime in base class as it is a common functionality needed by all handlers
     // TODO: ClearPreviousImuMsgsInBuffer where needed 
-    // ROS_INFO("ImuHandler - GetQuaternionAtTime"); 
+    if (b_verbosity_) ROS_INFO("ImuHandler - GetQuaternionAtTime"); 
     if (imu_buffer_.size() == 0){
         return false;
     }
@@ -212,7 +215,7 @@ Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion)
 
 Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const {
     // TODO: Make sure Rot3::Ypr works with input imu_ypr data expressed in radians
-    // ROS_INFO("ImuHandler - CreateAttitudeFactor");
+    if (b_verbosity_) ROS_INFO("ImuHandler - CreateAttitudeFactor");
     Unit3 ref(0, 0, -1); 
     SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, noise_sigma_imu_);    
     // Yaw can be set to 0
@@ -223,32 +226,32 @@ Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_
 }
 
 void ImuHandler::ResetFactorData() {
-    // ROS_INFO("ImuHandler - ResetFactorData");
+    if (b_verbosity_) ROS_INFO("ImuHandler - ResetFactorData");
     factors_.b_has_data = false;
     factors_.type = "imu";
     factors_.factors.clear();
 }
 
 bool ImuHandler::SetTimeForImuAttitude(const ros::Time& stamp) {        
-    // ROS_INFO("ImuHandler - SetTimeForImuAttitude");    
+    if (b_verbosity_) ROS_INFO("ImuHandler - SetTimeForImuAttitude");    
     query_stamp_ = stamp.toSec();    
     if (query_stamp_ == stamp.toSec()) {
         return true;
     }
     else {
-        ROS_WARN("Could not store received stamp into private class member");
+        ROS_WARN("Could not store received stamp into protected class member");
         return false;
     }
 }
 
 bool ImuHandler::SetKeyForImuAttitude(const Symbol& key) {        
-    // ROS_INFO("ImuHandler - SetKeyForImuAttitude");    
+    if (b_verbosity_) ROS_INFO("ImuHandler - SetKeyForImuAttitude");    
     query_key_ = key;    
     if (query_key_ == key) {
         return true;
     }
     else {
-        ROS_WARN("Could not store received symbol into private class member");
+        ROS_WARN("Could not store received symbol into protected class member");
         return false;
     }
 }

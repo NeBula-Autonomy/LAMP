@@ -83,6 +83,7 @@ protected:
 
   bool b_convert_imu_frame_;
   double noise_sigma_imu_;
+  bool b_verbosity_;
         
 };
 
