@@ -161,7 +161,7 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
 
     // artifact subs
     artifact_sub_ = nh.subscribe(
-        "/" + robot + "/lamp/artifact_global", 10, &PoseGraphVisualizer::ArtifactCallback, this);
+        "/" + robot + "/artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
 
     // Store the subscribers
     subscribers_artifacts_.push_back(artifact_sub_);

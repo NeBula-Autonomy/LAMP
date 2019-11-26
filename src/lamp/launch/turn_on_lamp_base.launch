@@ -1,5 +1,6 @@
 <launch>
   <arg name="robot_namespace" default="base_station"/>
+  <arg name="sim" default="false"/>
 
  
   <group ns="$(arg robot_namespace)">
@@ -42,8 +43,11 @@
       <!-- Factor handlers -->
       <rosparam file="$(find factor_handlers)/config/manual_lc_parameters.yaml" subst_value="true"/>
 
-      <!-- Lamp settings -->
+      <!-- Precision parameters -->
       <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/>
+
+      <!-- Lamp settings -->
+      <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
 
     </node>
 
@@ -63,6 +67,11 @@
 
       <!-- Topics -->
       <remap from="~lamp/pose_graph" to="lamp_base/pose_graph"/>
+      <remap if="$(arg sim)" from="/husky1/artifact" to="/husky1/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/husky2/artifact" to="/husky2/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/husky3/artifact" to="/husky3/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/husky4/artifact" to="/husky4/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/telemax1/artifact" to="/telemax1/lamp/artifact_global"/>
     </node>
 
     <!-- Loop Closure  -->
