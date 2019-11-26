@@ -43,8 +43,6 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     merged_graph_.nodes.push_back(node);
   }
 
-  std::set<const GraphEdge*> nonOdomEdges;
-
   // Add edges from the fast graph that connect nodes in the slow graph
   for (const GraphEdge& edge : msg->edges) {
 
