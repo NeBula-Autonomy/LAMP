@@ -886,7 +886,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
                                               gtsam::Pose3& global_pose,
                                               gtsam::Symbol& key_from) {
   // Get the key from:
-  key_from = pose_graph_.GetClosestKeyAtTime(stamp);
+  key_from = pose_graph_.GetClosestKeyAtTime(stamp, false);
 
   if (key_from == utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR("Measurement is from a time out of range. Rejecting");
@@ -925,7 +925,7 @@ bool LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
                                         const gtsam::Pose3 pose_global,
                                         gtsam::Pose3& pose_relative) {
   // Get the closes node in the pose-graph
-  gtsam::Symbol key_from = pose_graph_.GetClosestKeyAtTime(stamp);
+  gtsam::Symbol key_from = pose_graph_.GetClosestKeyAtTime(stamp, false);
 
   if (key_from == utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR(

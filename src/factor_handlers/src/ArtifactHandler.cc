@@ -405,7 +405,7 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
                                         const core_msgs::Artifact& msg) {
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) == artifact_key2info_hash_.end()) {
-    ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
+    ROS_INFO_STREAM("New artifact detected with key " << gtsam::DefaultKeyFormatter(artifact_key));
     ArtifactInfo artifactinfo(msg.parent_id);
     artifactinfo.msg = msg;
     artifactinfo.num_updates = artifactinfo.num_updates+1;
