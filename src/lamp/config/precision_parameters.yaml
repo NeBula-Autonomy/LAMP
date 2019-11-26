@@ -26,4 +26,4 @@ artifact_gt_rot_precision: 0.00000000000000000001
 artifact_gt_trans_precision: 25.0
 
 # Noise parameters for unit vectors in attitude
-noise_sigma_imu: 0.05
+noise_sigma_imu: 0.3

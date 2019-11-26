@@ -100,16 +100,16 @@ private:
                                const gtsam::Pose3 pose_global,
                                gtsam::Pose3& pose_relative);
 
-    // Data Handler classes
-    OdometryHandler odometry_handler_; 
-    ArtifactHandler artifact_handler_;
-    AprilTagHandler april_tag_handler_;
-    UwbHandler      uwb_handler_;
-    ImuHandler      imu_handler_;
-    // Manual LC
-    // IMU
-    // TS
-    // LoopClosure
+  // Data Handler classes
+  OdometryHandler odometry_handler_; 
+  ArtifactHandler artifact_handler_;
+  AprilTagHandler april_tag_handler_;
+  UwbHandler      uwb_handler_;
+  ImuHandler      imu_handler_;
+  // Manual LC
+  // IMU
+  // TS
+  // LoopClosure
 
   // Add new functions as needed
 
@@ -120,6 +120,8 @@ private:
   bool b_artifacts_in_global_;
   bool b_use_uwb_;
   bool b_add_imu_factors_;
+  int factors_per_opt_;
+  int factor_count_;
 
   // Test class fixtures
   friend class TestLampRobot;
