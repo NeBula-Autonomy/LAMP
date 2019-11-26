@@ -4,6 +4,8 @@
 #include <gtsam/sam/RangeFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <gtsam/navigation/AttitudeFactor.h>
+
 
 bool PoseGraph::TrackFactor(const Factor& factor) {
   return TrackFactor(factor.key_from,
@@ -36,7 +38,7 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
                              msg.range_error,
                              false);
   } else if (msg.type == pose_graph_msgs::PoseGraphEdge::IMU) {
-    sucess = TrackIMUFactor(gtsam::Symbol(msg.key_to),
+    success = TrackIMUFactor(gtsam::Symbol(msg.key_to),
                             msg.pose.position,
                             msg.covariance[0],
                             false);
@@ -173,12 +175,10 @@ bool PoseGraph::TrackIMUFactor(gtsam::Symbol key_to,
       gtsam::noiseModel::Isotropic::Sigma(2, att_noise);
   
   ROS_INFO("TrackIMUFactor - CreateAttitudeFactor");
-  Unit3 ref(0, 0, -1); 
-  // Yaw can be set to 0
-  Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2]));
-  Unit3 meas(meas.x, meas.y, meas.z);
+  gtsam::Unit3 ref(0, 0, -1); 
+  gtsam::Unit3 meas_gt(meas.x, meas.y, meas.z);
   
-  Pose3AttitudeFactor factor(key_to, meas, noise, ref);
+  gtsam::Pose3AttitudeFactor factor(key_to, meas_gt, noise, ref);
   
   if (create_msg) {
     auto msg = utils::GtsamToRosMsg(key_to,

@@ -95,6 +95,11 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("b_use_uwb", b_use_uwb_))
     return false;
 
+  // Switch on/off flag for IMU
+  if (!pu::Get("b_add_imu_factors", b_add_imu_factors_))
+    return false;
+    
+
   // Load frame ids.
   if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
     return false;
@@ -306,6 +311,11 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
   }
 
   if (!uwb_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the uwb handler.", name_.c_str());
+    return false;
+  }
+
+  if (!imu_handler_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize the uwb handler.", name_.c_str());
     return false;
   }
@@ -590,15 +600,26 @@ bool LampRobot::ProcessImuData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  Unit3 meas_unit = imu_data->factors[0].nZ();
-  geometry_msgs::Point meas(meas_unit.point3().x(), meas_unit.point3().y(), meas_unit.point3().z());
+  Unit3 meas_unit = imu_data->factors[0].attitude.nZ();
+  geometry_msgs::Point meas;
+  meas.x = meas_unit.point3().x();
+  meas.y = meas_unit.point3().y();
+  meas.z = meas_unit.point3().z();
 
-  SharedNoiseModel noise = boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(imu_data->factors[0].noiseModel());
+  // gtsam::noiseModel::Isotropic noise = boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(imu_data->factors[0].attitude.noiseModel());
+  double noise_sigma =
+        boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(
+            imu_data->factors[0].attitude.noiseModel())
+            ->sigma();
 
-  pose_graph_.TrackIMUFactor(imu_data->factors[0].front(),
+  pose_graph_.TrackIMUFactor(imu_data->factors[0].attitude.front(),
                                meas,
-                               noise.sigma(),
-                               true)
+                               noise_sigma,
+                               true);
+
+  b_run_optimization_ = true;
+
+  return true;
 
 }
 

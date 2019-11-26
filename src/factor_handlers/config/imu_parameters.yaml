@@ -5,3 +5,4 @@ base_frame_id: $(arg robot_namespace)/base_link
 imu_frame_id: $(arg robot_namespace)/vn100
 buffer_size_limit: 1000
 ts_threshold: 0.1
+b_convert_imu_frame: false

@@ -38,6 +38,10 @@ public:
 
   // LAMP Interface
   virtual std::shared_ptr<FactorData> GetData(); 
+  bool SetTimeForImuAttitude(const ros::Time& stamp);
+  bool SetKeyForImuAttitude(const Symbol& key);
+  
+
 
 protected: 
 
@@ -62,9 +66,7 @@ protected:
   // Factors
   Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const;              
   void ResetFactorData();  
-  bool SetTimeForImuAttitude(const ros::Time& stamp);  
   double query_stamp_;
-  bool SetKeyForImuAttitude(const Symbol& key);
   Symbol query_key_;
 
   // Transformations
@@ -78,6 +80,9 @@ protected:
 
   // IMU output data
   ImuData factors_;
+
+  bool b_convert_imu_frame_;
+  double noise_sigma_imu_;
         
 };
 

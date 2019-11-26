@@ -11,6 +11,9 @@ use_artifact_loop_closure: false
 # Flag for whether of not to use uwb data for range-based loop closure
 b_use_uwb: false
 
+# Flag for whether of not to use imu data for roll and pitch constraints
+b_add_imu_factors: false
+
 # Artifacts in global frame
 b_artifacts_in_global: false
 
