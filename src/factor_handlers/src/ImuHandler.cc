@@ -42,15 +42,15 @@ bool ImuHandler::Initialize(const ros::NodeHandle& n) {
 
 bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {    
     ROS_INFO("ImuHandler - LoadParameters");
-    if (!pu::Get("buffer_size_limit", buffer_size_limit_))
+    if (!pu::Get("imu/buffer_size_limit", buffer_size_limit_))
         return false;
-    if (!pu::Get("ts_threshold", ts_threshold_))
+    if (!pu::Get("imu/ts_threshold", ts_threshold_))
         return false;
-    if (!pu::Get("base_frame_id", base_frame_id_))
+    if (!pu::Get("imu/base_frame_id", base_frame_id_))
         return false;
-    if (!pu::Get("imu_frame_id", imu_frame_id_)) 
+    if (!pu::Get("imu/imu_frame_id", imu_frame_id_)) 
         return false;
-    if (!pu::Get("b_convert_imu_frame", b_convert_imu_frame_)) 
+    if (!pu::Get("imu/b_convert_imu_frame", b_convert_imu_frame_)) 
         return false;
     if (!pu::Get("noise_sigma_imu", noise_sigma_imu_)) 
         return false;
