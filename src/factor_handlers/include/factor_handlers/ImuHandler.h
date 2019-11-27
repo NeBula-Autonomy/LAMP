@@ -41,8 +41,6 @@ public:
   bool SetTimeForImuAttitude(const ros::Time& stamp);
   bool SetKeyForImuAttitude(const Symbol& key);
   
-
-
 protected: 
 
   std::string name_;  
@@ -68,6 +66,7 @@ protected:
   void ResetFactorData();  
   double query_stamp_;
   Symbol query_key_;
+  ImuData factors_;
 
   // Transformations
   bool LoadCalibrationFromTfTree();
@@ -78,12 +77,9 @@ protected:
   Eigen::Affine3d B_T_I_; 
   Eigen::Quaterniond I_T_B_q_;  
 
-  // IMU output data
-  ImuData factors_;
-
   bool b_convert_imu_frame_;
-  double noise_sigma_imu_;
   bool b_verbosity_;
+  double noise_sigma_imu_;
         
 };
 

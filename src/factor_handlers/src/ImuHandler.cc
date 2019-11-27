@@ -41,7 +41,7 @@ bool ImuHandler::Initialize(const ros::NodeHandle& n) {
 }
 
 bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {    
-    ROS_INFO("ImuHandler - LoadParameters");
+    ROS_INFO("ImuHandler - LoadParameters");    
     if (!pu::Get("imu/buffer_size_limit", buffer_size_limit_))
         return false;
     if (!pu::Get("imu/ts_threshold", ts_threshold_))
@@ -56,7 +56,6 @@ bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {
         return false;
     if (!pu::Get("noise_sigma_imu", noise_sigma_imu_)) 
         return false;    
-
     LoadCalibrationFromTfTree();
     return true;
 }
@@ -77,7 +76,7 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
         imu_buffer_.erase(imu_buffer_.begin());
     }   
     if (!InsertMsgInBuffer(msg)){
-        if (b_verbosity_) ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
+        ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
     }
 }
 
@@ -123,7 +122,7 @@ std::shared_ptr<FactorData> ImuHandler::GetData() {
 
 bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {  
     if (b_verbosity_) ROS_INFO("ImuHandler - InsertMsgInBuffer");  
-    int initial_size = imu_buffer_.size();    
+    auto initial_size = imu_buffer_.size();    
     double current_time = msg->header.stamp.toSec();    
     ImuQuaternion current_quaternion;
     tf::quaternionMsgToEigen(msg->orientation, current_quaternion);
@@ -132,7 +131,7 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
         current_quaternion = I_T_B_q_*current_quaternion*I_T_B_q_.inverse(); 
     }
     imu_buffer_.insert({current_time, current_quaternion});
-    int final_size = imu_buffer_.size();    
+    auto final_size = imu_buffer_.size();    
     if (final_size == (initial_size+1)) {
         return true;
     }
@@ -142,7 +141,7 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
 }
 
 int ImuHandler::CheckBufferSize() const {    
-    if (b_verbosity_) ROS_INFO("ImuCallback - ChechBufferSize");    
+    if (b_verbosity_) ROS_INFO("ImuHandler - ChechBufferSize");    
     return imu_buffer_.size();
 }
 
@@ -238,7 +237,7 @@ bool ImuHandler::SetTimeForImuAttitude(const ros::Time& stamp) {
         return true;
     }
     else {
-        ROS_WARN("Could not store received stamp into protected class member");
+        ROS_WARN("Could not store received stamp in protected class member");
         return false;
     }
 }
