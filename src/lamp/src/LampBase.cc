@@ -26,7 +26,9 @@ using gtsam::Vector3;
 // Constructor
 LampBase::LampBase()
   : update_rate_(10), 
-  zero_noise_(0.0001),  
+  zero_noise_(0.0001),
+  imu_factors_per_opt_(1),
+  imu_factor_count_(0),   
   b_use_fixed_covariances_(false),
   b_repub_values_after_optimization_(false) {
   // any other things on construction

@@ -120,7 +120,6 @@ private:
   bool b_artifacts_in_global_;
   bool b_use_uwb_;
   bool b_add_imu_factors_;
-  int factors_per_opt_;
   int factor_count_;
 
   // Test class fixtures
