@@ -5,4 +5,4 @@ imu:
   buffer_size_limit: 1000
   ts_threshold: 0.1
   b_convert_imu_frame: false
-  b_verbosity: true
+  b_verbosity: false
