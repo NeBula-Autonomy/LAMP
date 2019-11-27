@@ -33,9 +33,8 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampRobot::LampRobot() : is_artifact_initialized(false),
-  factor_count_(0),
-  factors_per_opt_(1) {
+LampRobot::LampRobot() : 
+  is_artifact_initialized(false) {
   b_run_optimization_ = false;
 }
 
@@ -100,7 +99,7 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Switch on/off flag for IMU
   if (!pu::Get("b_add_imu_factors", b_add_imu_factors_))
     return false;
-  if (!pu::Get("factors_per_opt", factors_per_opt_))
+  if (!pu::Get("imu_factors_per_opt", imu_factors_per_opt_))
     return false;
     
 
@@ -621,11 +620,12 @@ bool LampRobot::ProcessImuData(std::shared_ptr<FactorData> data) {
                                noise_sigma,
                                true);
 
-  // Optimize every "factors_per_opt"
-  if (factor_count_ % factors_per_opt_ == 0){
+  // Optimize every "imu_factors_per_opt"
+  imu_factor_count_++;
+
+  if (imu_factor_count_ % imu_factors_per_opt_ == 0){
     b_run_optimization_ = true;
   }
-  factor_count_ += 1;
 
   return true;
 
