@@ -52,11 +52,10 @@ bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {
         return false;
     if (!pu::Get("imu/b_convert_imu_frame", b_convert_imu_frame_)) 
         return false;
+    if (!pu::Get("imu/b_verbosity", b_verbosity_))
+        return false;
     if (!pu::Get("noise_sigma_imu", noise_sigma_imu_)) 
-        return false;
-    if (!pu::Get("b_verbosity", b_verbosity_)){
-        return false;
-    }
+        return false;    
 
     LoadCalibrationFromTfTree();
     return true;
