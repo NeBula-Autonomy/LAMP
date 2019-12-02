@@ -101,8 +101,8 @@ bool LaserLoopClosure::FindLoopClosures(
   }
 
   // // If a loop has already been closed recently, don't try to close a new one.
-  gtsam::Key last_closure_key_new = last_closure_key_map_[{gtsam::Symbol(new_key).chr(), gtsam::Symbol(new_key).chr()}];
-  if (std::llabs(new_key - last_closure_key_new) * translation_threshold_nodes_ <
+  gtsam::Key last_closure_key_self = last_closure_key_map_[{gtsam::Symbol(new_key).chr(), gtsam::Symbol(new_key).chr()}];
+  if (std::llabs(new_key - last_closure_key_self) * translation_threshold_nodes_ <
       distance_before_reclosing_)
     return false;
 
@@ -117,15 +117,13 @@ bool LaserLoopClosure::FindLoopClosures(
     const gtsam::Symbol other_key = it->first;
 
     // If a loop has already been closed recently, don't try to close a new one.
-    gtsam::Key last_closure_key_new = last_closure_key_map_[{gtsam::Symbol(new_key).chr(), other_key.chr()}];
-    // if (std::llabs(new_key - last_closure_key_new) * translation_threshold_nodes_ <
-    //     distance_before_reclosing_)
-    //   return false;
-    // // If a loop has already been closed recently, don't try to close a new one.
-    // gtsam::Key last_closure_key_other = last_closure_key_map_[{other_key.chr(), gtsam::Symbol(new_key).chr()}];
-    // if (std::llabs(other_key.key() - last_closure_key_other) * translation_threshold_nodes_ <
-    //     distance_before_reclosing_)
-    //   return false;
+    char c1 = gtsam::Symbol(new_key).chr(), c2 = other_key.chr();
+    gtsam::Key last_closure_key_new = last_closure_key_map_[{c1, c2}];
+
+    // If a loop has already been closed recently, don't try to close a new one.
+    if (std::llabs(new_key - last_closure_key_new) * translation_threshold_nodes_ <
+        distance_before_reclosing_)
+      continue;
 
     // Skip poses with no keyed scans.
     if (!keyed_scans_.count(other_key)) {
@@ -139,7 +137,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
     // Check for inter robot loop closures
     else {
-      // closed_loop |= CheckForInterRobotLoopClosure();
+      closed_loop |= CheckForInterRobotLoopClosure(new_key, other_key, loop_closure_edges);
     }
   } 
 
@@ -172,6 +170,24 @@ bool LaserLoopClosure::CheckForLoopClosure(
   // Don't compare against poses that were recently collected.
   if (std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
     return false;
+  
+  if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
+    return false;
+  }
+
+  // Perform loop closure without a provided prior transform
+  return PerformLoopClosure(key1, key2, false, gtsam::Pose3(), loop_closure_edges);
+}
+
+bool LaserLoopClosure::CheckForInterRobotLoopClosure(
+        gtsam::Symbol key1,
+        gtsam::Symbol key2,
+        std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
+
+  if (utils::IsKeyFromSameRobot(key1, key2)) {
+    ROS_ERROR_STREAM("Checking for inter robot loop closures on same robot");
+    return false;
+  }
   
   if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
     return false;

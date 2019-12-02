@@ -41,6 +41,10 @@ private:
           gtsam::Symbol key1,
           gtsam::Symbol key2,
           std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
+  bool CheckForInterRobotLoopClosure(
+          gtsam::Symbol key1,
+          gtsam::Symbol key2,
+          std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
   bool PerformLoopClosure(
           gtsam::Symbol key1,
           gtsam::Symbol key2,
