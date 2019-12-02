@@ -47,8 +47,8 @@
 
 class PointCloudMapper {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-  typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> Octree;
+  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+  typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZI> Octree;
 
   PointCloudMapper();
   ~PointCloudMapper();

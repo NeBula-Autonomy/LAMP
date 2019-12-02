@@ -72,6 +72,8 @@ class LampBaseStation : public LampBase {
 
     // Booleans
     bool b_published_initial_node_;
+    bool b_optimize_on_artifacts_;
+
 
   private:
     // Overwrite base classs functions where needed

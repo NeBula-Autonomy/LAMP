@@ -48,6 +48,8 @@
 #include <pcl/common/transforms.h>
 #include <pcl_ros/point_cloud.h>
 
+#include <eigen3/Eigen/Core>
+
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_mapper/PointCloudMapper.h>

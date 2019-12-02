@@ -19,7 +19,7 @@ typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
 typedef std::map<double, PoseCovStamped> OdomPoseBuffer;
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 typedef std::map<double, PointCloud> PointCloudBuffer; 
 
 typedef struct {

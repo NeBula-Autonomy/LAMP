@@ -50,6 +50,11 @@ gtsam::Pose3 MessageToPose(const MessageT& msg) {
                               msg.pose.orientation.z));
   gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
 
+  // Normalize the rotation
+  Eigen::Quaterniond quat(delta.rotation().matrix());
+  quat = quat.normalized();
+  delta = gtsam::Pose3(gtsam::Rot3(quat.toRotationMatrix()), delta.translation());
+
   return delta;
 }
 
