@@ -14,7 +14,7 @@ filter_imu_bags()
   if [ "$1" != "" ]
     then
         echo "Merging state_tcp_no_delay bags with vn100/imu topic"
-        python $MERGE_SCRIPT $1_state_tcp_no_delay_merged.bag $1_state_tcp_no_delay_* -t "/$1/vn100/imu"
+        python $MERGE_SCRIPT $1_imu.bag $1_state_tcp_no_delay_* -t "/$1/vn100/imu"
         mkdir imu_unused 
         mv $1_state_tcp_no_delay_*.bag imu_unused/
   else
