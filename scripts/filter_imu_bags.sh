@@ -7,6 +7,9 @@ DOCUMENTATION:
 USAGE: 
     - Add "source ~/Desktop/filter_imu_bags.sh" to .bashrc
     - Run "filter_imu_bags husky#" in rosbag folder
+
+TODO:  
+    - Add support for multiple state_tcp_no_delay bags in rosfolder
 '
 
 filter_imu_bags()
