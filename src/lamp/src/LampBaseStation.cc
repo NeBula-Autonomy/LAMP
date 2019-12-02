@@ -341,7 +341,7 @@ bool LampBaseStation::ProcessArtifactGT() {
 }
 
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {
-  ROS_INFO_STREAM("Debug message received: ");
+  ROS_INFO_STREAM("Debug message received: " << msg.data);
 
   // Split message data into a vector of space-separated strings
   std::vector<std::string> data;

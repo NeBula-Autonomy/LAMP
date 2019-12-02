@@ -101,7 +101,8 @@ bool LaserLoopClosure::FindLoopClosures(
   }
 
   // // If a loop has already been closed recently, don't try to close a new one.
-  if (std::llabs(new_key - last_closure_key_) * translation_threshold_nodes_ <
+  gtsam::Key last_closure_key_new = last_closure_key_map_[{gtsam::Symbol(new_key).chr(), gtsam::Symbol(new_key).chr()}];
+  if (std::llabs(new_key - last_closure_key_new) * translation_threshold_nodes_ <
       distance_before_reclosing_)
     return false;
 
