@@ -98,6 +98,9 @@ bool LaserLoopClosure::FindLoopClosures(
   const gtsam::Pose3 pose1 = keyed_poses_.at(new_key);
   const PointCloud::ConstPtr scan1 = keyed_scans_.at(new_key);
 
+  // Create a temporary copy of last_closure_key_map so that updates in this iteration are not used
+  std::map<std::pair<char,char>, gtsam::Key> last_closure_key_copy_(last_closure_key_);
+
   // Set to true if we find a loop closure (single or inter robot)
   bool closed_loop = false;
 
@@ -106,7 +109,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
     // If a loop has already been closed recently, don't try to close a new one.
     char c1 = gtsam::Symbol(new_key).chr(), c2 = other_key.chr();
-    gtsam::Key last_closure_key_new = last_closure_key_map_[{c1, c2}];
+    gtsam::Key last_closure_key_new = last_closure_key_[{c1, c2}];
 
     // If a loop has already been closed recently, don't try to close a new one.
     if (std::llabs(new_key - last_closure_key_new) * translation_threshold_nodes_ <
@@ -140,6 +143,7 @@ double LaserLoopClosure::DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol k
 
   return delta.translation().norm();
 }
+
 
 bool LaserLoopClosure::CheckForLoopClosure(
         gtsam::Symbol key1,
@@ -223,8 +227,6 @@ bool LaserLoopClosure::PerformLoopClosure(
 
 }
 
-
-
 pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
         gtsam::Symbol key1, 
         gtsam::Symbol key2,
@@ -232,8 +234,8 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
         gtsam::Matrix66& covariance) {
 
   // Store last time a new loop closure was added
-  last_closure_key_map_[{key1.chr(), key2.chr()}] = key1;
-  last_closure_key_map_[{key2.chr(), key1.chr()}] = key2;
+  last_closure_key_[{key1.chr(), key2.chr()}] = key1;
+  last_closure_key_[{key2.chr(), key1.chr()}] = key2;
 
   // Create the new loop closure edge
   pose_graph_msgs::PoseGraphEdge edge;

@@ -78,9 +78,9 @@ private:
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
 
-  // last_closure_key_map_<a,b> stores the last key for robot a on which there was a 
+  // last_closure_key_<a,b> stores the last key for robot a on which there was a 
   // loop closure between robots a and b
-  std::map< std::pair<char,char>, gtsam::Key> last_closure_key_map_;
+  std::map< std::pair<char,char>, gtsam::Key> last_closure_key_;
 
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;
