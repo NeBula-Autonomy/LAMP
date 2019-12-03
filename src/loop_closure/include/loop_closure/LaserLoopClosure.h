@@ -78,7 +78,8 @@ private:
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
 
-  gtsam::Key last_closure_key_;
+  // last_closure_key_map_<a,b> stores the last key for robot a on which there was a 
+  // loop closure between robots a and b
   std::map< std::pair<char,char>, gtsam::Key> last_closure_key_map_;
 
   double max_tolerable_fitness_;
@@ -92,8 +93,6 @@ private:
 
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
-
-  PointCloudFilter filter_;
 
   enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION };
 

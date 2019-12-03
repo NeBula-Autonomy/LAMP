@@ -19,7 +19,7 @@ namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
-  : LoopClosure(n), last_closure_key_(0) {}
+  : LoopClosure(n) {}
 
 LaserLoopClosure::~LaserLoopClosure() {}
 
@@ -74,12 +74,6 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   skip_recent_poses_ =
       (int)(distance_to_skip_recent_poses / translation_threshold_nodes_);
 
-  // Initialize point cloud filter
-  if (!filter_.Initialize(n)) {
-    ROS_ERROR("LaserLoopClosure: Failed to initialize point cloud filter.");
-    return false;
-  }
-
   return true;
 }
 
@@ -99,12 +93,6 @@ bool LaserLoopClosure::FindLoopClosures(
                            << " does not have a scan");
     return false;
   }
-
-  // // If a loop has already been closed recently, don't try to close a new one.
-  gtsam::Key last_closure_key_self = last_closure_key_map_[{gtsam::Symbol(new_key).chr(), gtsam::Symbol(new_key).chr()}];
-  if (std::llabs(new_key - last_closure_key_self) * translation_threshold_nodes_ <
-      distance_before_reclosing_)
-    return false;
 
   // Get pose and scan for the provided key.
   const gtsam::Pose3 pose1 = keyed_poses_.at(new_key);
@@ -244,7 +232,6 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
         gtsam::Matrix66& covariance) {
 
   // Store last time a new loop closure was added
-  last_closure_key_ = key1;
   last_closure_key_map_[{key1.chr(), key2.chr()}] = key1;
   last_closure_key_map_[{key2.chr(), key1.chr()}] = key2;
 
@@ -304,21 +291,6 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   icp.setMaxCorrespondenceDistance(icp_corr_dist_);
   icp.setMaximumIterations(icp_iterations_);
   icp.setRANSACIterations(0);
-
-  // Filter the two scans. They are stored in the pose graph as dense scans for
-  // visualization. Filter the first scan only when it is not filtered already.
-  // Can be extended to the other scan if all the key scan pairs store the
-  // filtered results.
-  // PointCloud::Ptr scan1_filtered(new PointCloud);
-  // filter_.Filter(scan1, scan1_filtered);
-
-  // PointCloud::Ptr scan2_filtered(new PointCloud);
-  // filter_.Filter(scan2, scan2_filtered);
-
-  // ROS_INFO_STREAM("scan1 points before filter: " << scan1->size());
-  // ROS_INFO_STREAM("scan1 points after filter: " << scan1_filtered->size());
-  // ROS_INFO_STREAM("scan2 points before filter: " << scan2->size());
-  // ROS_INFO_STREAM("scan2 points after filter: " << scan2_filtered->size());
 
   icp.setInputSource(scan1);
   icp.setInputTarget(scan2);
