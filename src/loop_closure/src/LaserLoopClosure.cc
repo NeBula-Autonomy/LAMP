@@ -309,15 +309,19 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   // visualization. Filter the first scan only when it is not filtered already.
   // Can be extended to the other scan if all the key scan pairs store the
   // filtered results.
-  PointCloud::Ptr scan1_filtered(new PointCloud);
-  filter_.Filter(scan1, scan1_filtered);
+  // PointCloud::Ptr scan1_filtered(new PointCloud);
+  // filter_.Filter(scan1, scan1_filtered);
 
-  PointCloud::Ptr scan2_filtered(new PointCloud);
-  filter_.Filter(scan2, scan2_filtered);
+  // PointCloud::Ptr scan2_filtered(new PointCloud);
+  // filter_.Filter(scan2, scan2_filtered);
 
-  icp.setInputSource(scan1_filtered);
+  // ROS_INFO_STREAM("scan1 points before filter: " << scan1->size());
+  // ROS_INFO_STREAM("scan1 points after filter: " << scan1_filtered->size());
+  // ROS_INFO_STREAM("scan2 points before filter: " << scan2->size());
+  // ROS_INFO_STREAM("scan2 points after filter: " << scan2_filtered->size());
 
-  icp.setInputTarget(scan2_filtered);
+  icp.setInputSource(scan1);
+  icp.setInputTarget(scan2);
 
   ///// ICP initialization scheme
   // Default is to initialize by identity. Other options include
