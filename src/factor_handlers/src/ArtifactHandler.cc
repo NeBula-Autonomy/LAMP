@@ -88,7 +88,7 @@ ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) const {
 /*! \brief  Get artifacts ID from artifact key
  * Returns Artifacts ID
  */
-std::string ArtifactHandler::GetArtifactID(const gtsam::Symbol artifact_key) const {
+std::string ArtifactHandler::GetArtifactID(const gtsam::Symbol artifact_key) {
   std::string artifact_id;
   for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end();
        ++it) {
@@ -118,7 +118,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
 
   // Check for NaNs and reject
   if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) ||
-      std::isnan(msg.point.point.z) || (msg.header.stamp.toNSec() == 0.0)) {
+      std::isnan(msg.point.point.z) || (msg.point.header.stamp.toNSec() == 0.0)) {
     ROS_WARN("Ill-formed artifact message. Rejecting Artifact message.");
     return;
   }
@@ -175,7 +175,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   gtsam::SharedNoiseModel noise = ExtractCovariance(msg.covariance);
 
   // Fill artifact_data_
-  AddArtifactData(cur_artifact_key, msg.header.stamp, relative_pose.translation(), noise);
+  AddArtifactData(cur_artifact_key, msg.point.header.stamp, relative_pose.translation(), noise);
 }
 
 /*! \brief  Gives the factors to be added and clears to start afresh.
@@ -405,7 +405,7 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
                                         const core_msgs::Artifact& msg) {
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) == artifact_key2info_hash_.end()) {
-    ROS_INFO("New artifact detected with key %s", gtsam::DefaultKeyFormatter(artifact_key));
+    ROS_INFO_STREAM("New artifact detected with key " << gtsam::DefaultKeyFormatter(artifact_key));
     ArtifactInfo artifactinfo(msg.parent_id);
     artifactinfo.msg = msg;
     artifactinfo.num_updates = artifactinfo.num_updates+1;

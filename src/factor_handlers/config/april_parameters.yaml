@@ -1,9 +1,3 @@
-# Are the April tags transforms in global 
-b_artifacts_in_global:      true
-
-# Should April loop closure be used
-use_artifact_loop_closure:  true
-
 # Calibration value for left
 calibration_left_x: 0.1
 calibration_left_y: 0.1 

@@ -63,6 +63,11 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
 
+
+  if (!pu::Get("base/b_optimize_on_artifacts", b_optimize_on_artifacts_)) {
+    return false;
+  }
+
   // Names of all robots for base station to subscribe to
   if (!pu::Get("robot_names", robot_names_)) {
   ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
@@ -205,7 +210,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   b_has_new_factor_ = true;
 
   pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>);
 
   gtsam::Values new_values;
 
@@ -230,6 +235,14 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
       }
+
+      // Optimize on artifact loop closures (currently optimizes on all artifact edges)
+      if (b_optimize_on_artifacts_ && e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      
+        // Run optimization to update the base station graph afterwards
+        b_run_optimization_ = true;
+      }
+
     }
 
     ROS_INFO_STREAM("Added new pose graph");
