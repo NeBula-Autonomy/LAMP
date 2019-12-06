@@ -199,7 +199,11 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
 
   if (b_is_first_query_) {
     // Get the first time from the lidar scan
-    query_timestamp_first_.fromSec(lidar_odometry_buffer_.begin()->first);
+    if (lidar_odometry_buffer_.size() > 1){
+      query_timestamp_first_.fromSec(lidar_odometry_buffer_.begin()->first);
+    } else {
+      query_timestamp_first_ = t_now;
+    }
 
     ROS_INFO_STREAM("First query to Odometry Handler, Input timestamp is "
                     << t_now.toSec() << ". setting first timestamp to "
@@ -271,6 +275,7 @@ std::shared_ptr<FactorData> OdometryHandler::GetData() {
     // Get the most recent lidar timestamp
     ros::Time t2;
     ros::Time t_odom;
+
     t_odom.fromSec(lidar_odometry_buffer_.rbegin()->first);
 
     // Get keyed scan from closest time to latest odom
@@ -342,11 +347,8 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
       ROS_WARN("Time diff between point cloud and node larger than 0.1. Using earliest scan in buffer [GetKeyedScanAtTime]");
       ROS_INFO_STREAM("time diff is: " << time_diff << ". [GetKeyedScanAtTime]");
     }
-    return true;
-  }
-
-  // Check if it is past the end of the buffer - if so, take the last point cloud
-  if (itrTime == point_cloud_buffer_.end()) {
+  } else if (itrTime == point_cloud_buffer_.end()) {
+      // Check if it is past the end of the buffer - if so, take the last point cloud
     itrTime--;
     *msg = itrTime->second;
     if (stamp.toSec() - itrTime->first > ts_threshold_){
@@ -359,27 +361,27 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
       }
     }
     ClearPreviousPointCloudScans(itrTime); 
-    return true;
-  }
-
-  // Otherwise, step back by 1 to get the time before the input time (t1, stamp, t2)
-  double time1 = std::prev(itrTime, 1)->first;
-
-  PointCloudBuffer::iterator itrTimeReturned;
-
-  // If closer to time2, then use that
-  if (time2 - stamp.toSec() < stamp.toSec() - time1) {
-    *msg = itrTime->second;
-    time_diff = time2 - stamp.toSec();
-    itrTimeReturned = itrTime;
   } else {
-    // Otherwise use time1
-    *msg = std::prev(itrTime)->second;
-    time_diff = stamp.toSec() - time1;
-    itrTimeReturned = std::prev(itrTime);
+    // Otherwise, step back by 1 to get the time before the input time (t1, stamp, t2)
+    double time1 = std::prev(itrTime, 1)->first;
+
+    PointCloudBuffer::iterator itrTimeReturned;
+
+    // If closer to time2, then use that
+    if (time2 - stamp.toSec() < stamp.toSec() - time1) {
+      *msg = itrTime->second;
+      time_diff = time2 - stamp.toSec();
+      itrTimeReturned = itrTime;
+    } else {
+      // Otherwise use time1
+      *msg = std::prev(itrTime)->second;
+      time_diff = stamp.toSec() - time1;
+      itrTimeReturned = std::prev(itrTime);
+    }
+
+    ClearPreviousPointCloudScans(itrTimeReturned);
   }
 
-  ClearPreviousPointCloudScans(itrTimeReturned);
 
   // Check if the time difference is too large
   if (std::fabs(time_diff) > keyed_scan_time_diff_limit_) { // TODO make this threshold a parameter
@@ -616,6 +618,7 @@ bool OdometryHandler::GetPosesAtTimes(const ros::Time t1,
     output_poses = std::make_pair(first_pose, second_pose);
     return true;
   } else {
+    ROS_ERROR("Second time in GetPosesAtTimes failed to successfully get a pose");
     return false;
   }
 
