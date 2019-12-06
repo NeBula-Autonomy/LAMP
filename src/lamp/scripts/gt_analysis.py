@@ -14,6 +14,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from random import random
 import math
+import key_handling
 
 
 #
@@ -174,6 +175,10 @@ def ReadPoseGraphFromG2O(file):
     return nodes
 
 
+def IsRobotKey(key):
+    return key_handling.split_pg_key(key)[0] in 'abcdef'
+
+
 def ReadPoseGraphFromBagfile(filename):
     '''
     Read a pose graph in g2o format from a bagfile.
@@ -192,6 +197,12 @@ def ReadPoseGraphFromBagfile(filename):
     msg = msgs[-1]
 
     for n in msg.nodes:
+
+        # ignore artifact keys
+        if not IsRobotKey(n.key):
+            print("skipped node", key_handling.split_pg_key(n.key))
+            continue
+
         new_node = Node()
         new_node.InitFromNodeMsg(n)
         nodes.append(new_node)
