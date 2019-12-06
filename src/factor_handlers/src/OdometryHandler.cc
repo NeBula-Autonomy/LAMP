@@ -351,6 +351,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
       // Check if it is past the end of the buffer - if so, take the last point cloud
     itrTime--;
     *msg = itrTime->second;
+    time_diff = stamp.toSec() - itrTime->first;
     if (stamp.toSec() - itrTime->first > ts_threshold_){
       if (b_debug_pointcloud_buffer_) {
         ROS_WARN("Timestamp past the end of the point cloud buffer [GetKeyedScan]");
