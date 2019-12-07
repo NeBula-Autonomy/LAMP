@@ -6,6 +6,7 @@
 #include <minizip/zip.h>
 
 #include <rosbag/bag.h>
+#include <rosbag/query.h>
 #include <rosbag/view.h>
 
 #include "utils/CommonStructs.h"
@@ -262,13 +263,10 @@ bool PoseGraph::Load(const std::string& zipFilename,
 
   rosbag::Bag bag;
   bag.open(pgFilename);
-  std::vector<std::string> topics;
-  if (pose_graph_topic_name.empty())
-    topics.emplace_back("pose_graph");
-  else
-    topic.emplace_back(pose_graph_topic_name);
-
-  auto view = rosbag::View(bag, rosbag::TopicQuery(topics));
+  std::string topic = pose_graph_topic_name;
+  if (topic.empty())
+    topic = "pose_graph";
+  rosbag::View view(bag, rosbag::TopicQuery(topic));
   GraphMsgPtr pg_msg = nullptr;
   // find last pose graph message with desired topic name
   for (const auto& mi : view) {
