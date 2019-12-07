@@ -63,6 +63,11 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
 
+
+  if (!pu::Get("base/b_optimize_on_artifacts", b_optimize_on_artifacts_)) {
+    return false;
+  }
+
   // Names of all robots for base station to subscribe to
   if (!pu::Get("robot_names", robot_names_)) {
   ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
@@ -205,7 +210,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   b_has_new_factor_ = true;
 
   pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>);
 
   gtsam::Values new_values;
 
@@ -230,6 +235,14 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
       }
+
+      // Optimize on artifact loop closures (currently optimizes on all artifact edges)
+      if (b_optimize_on_artifacts_ && e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      
+        // Run optimization to update the base station graph afterwards
+        b_run_optimization_ = true;
+      }
+
     }
 
     ROS_INFO_STREAM("Added new pose graph");
@@ -330,16 +343,54 @@ bool LampBaseStation::ProcessArtifactGT() {
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {
   ROS_INFO_STREAM("Debug message received: " << msg.data);
 
+  // Split message data into a vector of space-separated strings
+  std::vector<std::string> data;
+  boost::split(data, msg.data, [](char c){return c == ' ';}); 
+
+  if (data.size() == 0) {
+    ROS_INFO_STREAM("Invalid debug message data");
+  }
+  std::string cmd = data[0];
+
   // Freeze the current point cloud map on the visualizer
-  if (msg.data == "freeze") {
+  if (cmd == "freeze") {
     ROS_INFO_STREAM("Publishing frozen map");
     mapper_.PublishMapFrozen();
   }
 
   // Read in artifact ground truth data
-  else if (msg.data == "artifact_gt") {
+  else if (cmd == "artifact_gt") {
     ROS_INFO_STREAM("Processing artifact ground truth data");
     ProcessArtifactGT();
+  }
+
+  // Save the pose graph 
+  else if (cmd == "save") {
+    ROS_INFO_STREAM("Saving the pose graph");
+
+    // Use filename if provided
+    if (data.size() >= 2) {
+      pose_graph_.Save(data[1]);
+    }
+    else {
+      pose_graph_.Save("saved_pose_graph.zip");
+    }
+  }
+
+  // Load pose graph from file 
+  else if (cmd == "load") {
+    ROS_INFO_STREAM("Loading pose graph and keyed scans");
+
+    // Use filename if provided
+    if (data.size() >= 2) {
+      pose_graph_.Load(data[1]);
+    }
+    else {
+      pose_graph_.Load("saved_pose_graph.zip");
+    }
+    
+    PublishPoseGraph(); 
+    ReGenerateMapPointCloud();
   }
 
   else {

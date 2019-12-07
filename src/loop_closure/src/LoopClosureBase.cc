@@ -25,11 +25,6 @@ LoopClosure::~LoopClosure(){};
 void LoopClosure::InputCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
 
-  // Exit immediately if not checking for loop closures
-  if (!b_check_for_loop_closures_) {
-    return;
-  }
-
   // Loop through each node (but expect only one at a time)
   ROS_INFO_STREAM("In Input Callback of loop closure (" << graph_msg->nodes.size() <<
       " nodes received)");
@@ -56,6 +51,11 @@ void LoopClosure::InputCallback(
     
     // add new key and pose to keyed_poses_
     keyed_poses_[new_key] = new_pose;
+
+    // Exit if not checking for loop closures
+    if (!b_check_for_loop_closures_) {
+      return;
+    }
 
     std::vector<pose_graph_msgs::PoseGraphEdge> loop_closure_edges;
     // first find loop closures

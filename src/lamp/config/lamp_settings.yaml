@@ -12,7 +12,7 @@ use_artifact_loop_closure: false
 b_use_uwb: false
 
 # Artifacts in global frame
-b_artifacts_in_global: true
+b_artifacts_in_global: false
 
 # Threshold for time to be matched 
 time_threshold: 10.0
@@ -24,7 +24,7 @@ time_threshold: 10.0
 robot: 
 
   # Turn laser loop closures on or off
-  b_find_laser_loop_closures: true
+  b_find_laser_loop_closures: false
 
 
 #######################################
@@ -33,3 +33,8 @@ robot:
 base: 
   # Turn laser loop closures on or off
   b_find_laser_loop_closures: false
+
+  # if true, optimize every time a new artifact edge is received
+  # if false, currently won't optimize for artifact loop closures
+  b_optimize_on_artifacts: false 
+

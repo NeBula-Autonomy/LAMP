@@ -84,7 +84,7 @@ typedef std::set<EdgeMessage, EdgeMessageComparator> EdgeSet;
 typedef std::set<NodeMessage, NodeMessageComparator> NodeSet;
 
 // Typedef for stored point clouds.
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 
 // Function that maps gtsam::Symbol to internal identifier string.
 typedef boost::function<std::string(gtsam::Symbol)> SymbolIdMapping;
@@ -134,6 +134,7 @@ struct Node {
 // Pose graph structure storing values, factors and meta data.
 class PoseGraph {
 public:
+  bool b_first_;
   const gtsam::Values& GetValues() const {
     return values_;
   }
@@ -226,6 +227,12 @@ public:
                  gtsam::Symbol key,
                  const gtsam::Pose3& pose,
                  const gtsam::SharedNoiseModel& covariance,
+                 bool create_msg = true);
+  bool TrackNode(const ros::Time& stamp,
+                 gtsam::Symbol key,
+                 const gtsam::Pose3& pose,
+                 const gtsam::SharedNoiseModel& covariance,
+                 const std::string id,
                  bool create_msg = true);
 
   // Tracks priors (one-sided edges). Returns true if new prior is added.
@@ -379,7 +386,7 @@ struct AprilTagFactor {
 struct OdometryFactor {
   std::pair<ros::Time, ros::Time> stamps;
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud;
+  pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud;
   bool b_has_point_cloud;
 
   gtsam::Pose3 transform;

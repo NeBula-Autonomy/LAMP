@@ -1,14 +1,16 @@
 #ifndef POSE_GRAPH_VISUALIZER_H
 #define POSE_GRAPH_VISUALIZER_H
 
+#include <ros/ros.h>
+
 #include <unordered_map>
 
 #include <pose_graph_visualizer/HighlightEdge.h>
 #include <pose_graph_visualizer/HighlightNode.h>
 
-#include <ros/ros.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
+#include <parameter_utils/ParameterUtils.h>
 
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
@@ -141,6 +143,10 @@ private:
   ros::Subscriber artifact_sub_;
   ros::Subscriber erase_posegraph_sub_;
   ros::Subscriber remove_factor_viz_sub_;
+  std::vector<ros::Subscriber> subscribers_artifacts_;
+
+  // Robots that the base station subscribes to
+  std::vector<std::string> robot_names_;
 
   // Services.
   ros::ServiceServer highlight_node_srv_;

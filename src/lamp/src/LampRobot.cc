@@ -453,8 +453,14 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     // TODO - use this for other handlers: Symbol prev_key =
     // GetKeyAtTime(times.first);
 
-    // Compute the new value
+    // Compute the new value with a normalized transform
     Pose3 last_pose = pose_graph_.GetPose(prev_key);
+    ROS_INFO_STREAM("Last pose det: " << last_pose.rotation().matrix().determinant());
+    Eigen::Quaterniond quat(last_pose.rotation().matrix());
+    quat = quat.normalized();
+    last_pose = Pose3(gtsam::Rot3(quat.toRotationMatrix()), last_pose.translation());
+    ROS_INFO_STREAM("Last pose det after: " << last_pose.rotation().matrix().determinant());
+
 
     // Add values to graph so have it for adding map TODO - use unit covariance
     pose_graph_.TrackNode(
@@ -483,13 +489,13 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
           (1.0 - params_.decimate_percentage) * new_scan->size());
 
       // // Apply random downsampling to the keyed scan
-      pcl::RandomSample<pcl::PointXYZ> random_filter;
+      pcl::RandomSample<pcl::PointXYZI> random_filter;
       random_filter.setSample(n_points);
       random_filter.setInputCloud(new_scan);
       random_filter.filter(*new_scan);
 
       // Apply voxel grid filter to the keyed scan
-      pcl::VoxelGrid<pcl::PointXYZ> grid;
+      pcl::VoxelGrid<pcl::PointXYZI> grid;
       grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
       grid.setInputCloud(new_scan);
       grid.filter(*new_scan);
@@ -645,8 +651,9 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       ROS_INFO("Have a new artifact in LAMP");
 
       // Insert into the values TODO - add unit covariance
+      std::string id = artifact_handler_.GetArtifactID(cur_artifact_key);
       pose_graph_.TrackNode(
-          timestamp, cur_artifact_key, global_pose, covariance);
+          timestamp, cur_artifact_key, global_pose, covariance, id);
 
       // Add keyed stamps
       pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
@@ -879,7 +886,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
                                               gtsam::Pose3& global_pose,
                                               gtsam::Symbol& key_from) {
   // Get the key from:
-  key_from = pose_graph_.GetClosestKeyAtTime(stamp);
+  key_from = pose_graph_.GetClosestKeyAtTime(stamp, false);
 
   if (key_from == utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR("Measurement is from a time out of range. Rejecting");
@@ -918,7 +925,7 @@ bool LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
                                         const gtsam::Pose3 pose_global,
                                         gtsam::Pose3& pose_relative) {
   // Get the closes node in the pose-graph
-  gtsam::Symbol key_from = pose_graph_.GetClosestKeyAtTime(stamp);
+  gtsam::Symbol key_from = pose_graph_.GetClosestKeyAtTime(stamp, false);
 
   if (key_from == utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR(
