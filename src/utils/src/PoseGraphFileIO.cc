@@ -6,6 +6,7 @@
 #include <minizip/zip.h>
 
 #include <rosbag/bag.h>
+#include <rosbag/query.h>
 #include <rosbag/view.h>
 
 #include "utils/CommonStructs.h"
@@ -128,7 +129,8 @@ bool PoseGraph::Save(const std::string& zipFilename) const {
   return true;
 }
 
-bool PoseGraph::Load(const std::string& zipFilename) {
+bool PoseGraph::Load(const std::string& zipFilename,
+                     const std::string& pose_graph_topic_name) {
   const std::string absFilename = absPath(zipFilename);
   auto zipFile = unzOpen64(zipFilename.c_str());
   // TODO: Storing current key before loading graph to set key to this after
@@ -261,16 +263,22 @@ bool PoseGraph::Load(const std::string& zipFilename) {
 
   rosbag::Bag bag;
   bag.open(pgFilename);
-  for (const auto& mi : rosbag::View(bag)) {
-    GraphMsgPtr msg = mi.instantiate<pose_graph_msgs::PoseGraph>();
-    if (msg == nullptr) {
-      ROS_ERROR_STREAM("Could not read pose graph message from " << pgFilename);
-      return false;
-    }
-
-    this->UpdateFromMsg(msg);
-    break;
+  std::string topic = pose_graph_topic_name;
+  if (topic.empty())
+    topic = "pose_graph";
+  rosbag::View view(bag, rosbag::TopicQuery(topic));
+  GraphMsgPtr pg_msg = nullptr;
+  // find last pose graph message with desired topic name
+  for (const auto& mi : view) {
+    GraphMsgPtr current_msg = mi.instantiate<pose_graph_msgs::PoseGraph>();
+    if (current_msg != nullptr)
+      pg_msg = current_msg;
   }
+  if (pg_msg == nullptr) {
+    ROS_ERROR_STREAM("Could not read pose graph message from " << pgFilename);
+    return false;
+  }
+  this->UpdateFromMsg(pg_msg);
   bag.close();
 
   // remove all extracted folders
