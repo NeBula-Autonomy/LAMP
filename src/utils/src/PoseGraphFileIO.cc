@@ -78,7 +78,7 @@ bool PoseGraph::Save(const std::string& zipFilename) const {
   const boost::filesystem::path directory(path);
   boost::filesystem::create_directory(directory);
 
-  nfg_.print("PoseGraph::Save: nfg is: ");
+  // nfg_.print("PoseGraph::Save: nfg is: ");
 
   // keys.csv stores factor key, point cloud filename, and time stamp
   std::ofstream keys_file(path + "/keys.csv");
@@ -134,7 +134,7 @@ bool PoseGraph::Load(const std::string& zipFilename) {
   // TODO: Storing current key before loading graph to set key to this after
   // stored_key = key;
   if (!zipFile) {
-    ROS_ERROR_STREAM("PoseGraph::Save: Failed to open zip file "
+    ROS_ERROR_STREAM("PoseGraph::Load: Failed to open zip file "
                      << absFilename);
     return false;
   }

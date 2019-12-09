@@ -300,9 +300,9 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   quat.normalize();
   b2w.block(0, 0, 3, 3) = quat.matrix();
 
-  ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " << pose.rotation.Eigen().determinant() << ")");
-  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-  ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
+  // ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " << pose.rotation.Eigen().determinant() << ")");
+  // Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+  // ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
 
   // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
