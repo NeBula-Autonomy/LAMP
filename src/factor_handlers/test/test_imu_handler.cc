@@ -9,7 +9,8 @@ class ImuHandlerTest : public ::testing::Test {
       // Load Params
       system("rosparam load $(rospack find "
              "factor_handlers)/config/imu_parameters.yaml");   
-
+      system("rosparam load $(rospack find "
+             "lamp)/config/precision_parameters.yaml");   
       tolerance_ = 1e-5;
 
       double t1 = 1.00;

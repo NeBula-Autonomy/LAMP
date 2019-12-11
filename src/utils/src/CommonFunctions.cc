@@ -52,6 +52,7 @@ GtsamToRosMsg(gtsam::Symbol key_from,
   return edge;
 }
 
+
 pose_graph_msgs::PoseGraphNode
 GtsamToRosMsg(ros::Time stamp,
               const std::string& fixed_frame_id,

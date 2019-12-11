@@ -26,7 +26,9 @@ using gtsam::Vector3;
 // Constructor
 LampBase::LampBase()
   : update_rate_(10), 
-  zero_noise_(0.0001),  
+  zero_noise_(0.0001),
+  imu_factors_per_opt_(1),
+  imu_factor_count_(0),   
   b_use_fixed_covariances_(false),
   b_repub_values_after_optimization_(false) {
   // any other things on construction
@@ -300,9 +302,9 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   quat.normalize();
   b2w.block(0, 0, 3, 3) = quat.matrix();
 
-  ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " << pose.rotation.Eigen().determinant() << ")");
-  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-  ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
+  // ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " << pose.rotation.Eigen().determinant() << ")");
+  // Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+  // ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
 
   // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
