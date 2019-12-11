@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
     eigen_conversions
     pose_graph_msgs
     geometry_utils
+    utils
 )
 
 find_package(Eigen3 REQUIRED)
@@ -38,6 +39,7 @@ catkin_package(
     roscpp
     pose_graph_msgs
     geometry_utils
+    utils
     eigen_conversions
 )
 
@@ -59,16 +61,9 @@ link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DI
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
   src/merger.cc
-  src/TwoPoseGraphMerge.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-)
-
-add_executable(two_pose_graph_merge_node src/two_pose_graph_merge_node.cc src/merger.cc)
-target_link_libraries(two_pose_graph_merge_node
-  ${PROJECT_NAME}
   ${catkin_LIBRARIES}
 )
 
@@ -80,6 +75,4 @@ if (CATKIN_ENABLE_TESTING)
   ## Add gtest based cpp test target and link libraries
   add_rostest_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.test test/test_${PROJECT_NAME}.cc)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES} gtsam)
-  add_rostest_gtest(test_two_pose_graph_merge test/test_two_pose_graph_merge.test test/test_two_pose_graph_merge.cc)
-  target_link_libraries(test_two_pose_graph_merge ${PROJECT_NAME} ${catkin_LIBRARIES} gtsam)  
 endif()

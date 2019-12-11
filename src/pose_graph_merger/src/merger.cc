@@ -22,19 +22,25 @@ void Merger::InsertNewEdges(const pose_graph_msgs::PoseGraphConstPtr& msg) {
       merged_graph_.edges.push_back(edge);
 
       // Add to stored set of edges
-      std::tuple<gtsam::Key, gtsam::Key, int> id = make_tuple(msg.key_from, msg.key_to, msg.type);
+      std::tuple<gtsam::Key, gtsam::Key, int> id = std::make_tuple(edge.key_from, edge.key_to, edge.type);
       unique_edges_.insert(id);
     }
   }
 }
 
-void Merger::InsertNode(pose_graph_msgs::PoseGraphNode& node) {
+void Merger::InsertNode(const pose_graph_msgs::PoseGraphNode& node) {
+  
+  // Track the index at which the node was inserted
+  merged_graph_KeyToIndex_[node.key] = merged_graph_.nodes.size();
   
   // Add the node to the graph
   merged_graph_.nodes.push_back(node);
 
-  // Track the index at which the node was inserted
-  merged_graph_KeyToIndex_[node.key] = merged_graph_.nodes.size();
+  // If the node is from a new robot, add it to the set of robots in the merged graph
+  auto prefix = gtsam::Symbol(node.key).chr();
+  if (robots_.count(prefix) == 0) {
+    robots_.insert(prefix);
+  }
 }
 
 void Merger::ClearNodes() {
@@ -42,11 +48,30 @@ void Merger::ClearNodes() {
   merged_graph_KeyToIndex_.clear();
 }
 
-bool Merger::IsEdgeNew(const pose_graph_msgs::PoseGraphEdgeConstPtr& msg) {
+bool Merger::IsEdgeNew(const pose_graph_msgs::PoseGraphEdge& msg) {
   
   // Checks to see if an edge is new
-  std::tuple<gtsam::Key, gtsam::Key, int> id = make_tuple(msg.key_from, msg.key_to, msg.type);
-  return unique_edges_.count(id) != 0;
+  std::tuple<gtsam::Key, gtsam::Key, int> id = std::make_tuple(msg.key_from, msg.key_to, msg.type);
+  return unique_edges_.count(id) == 0;
+}
+
+std::set<char> Merger::GetNewRobots(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+
+  std::set<char> new_robots;
+
+  for (const GraphNode& node : msg->nodes) {
+  auto prefix = gtsam::Symbol(node.key).chr();
+    if (!utils::IsRobotPrefix(prefix)) {
+      continue;
+    }
+
+    // This node is a robot that is not currently in the merged graph
+    if (robots_.count(prefix) == 0) {
+      new_robots.insert(prefix);
+    }
+  }
+
+  return new_robots;
 }
 
 void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
@@ -66,15 +91,20 @@ void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
 void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   ROS_INFO_STREAM("Received fast graph, size " << msg->nodes.size());
 
+  // NOTE: Assuming these messages are only from one robot
+
+  std::set<char> new_robots = GetNewRobots(msg);
+
   // If no slow graph (or an empty slow graph only) has been received, merged
   // graph is the fast graph only
-  if (lastSlow == nullptr || lastSlow->nodes.size() == 0) {
+  if (merged_graph_.nodes.size() == 0 || new_robots.size() > 0) {
+
+
     for (const GraphNode& node : msg->nodes) {
-      merged_graph_.nodes.push_back(node);
+      InsertNode(node);
     }
-    for (const GraphEdge& edge : msg->edges) {
-      merged_graph_.edges.push_back(edge);
-    }
+    
+    InsertNewEdges(msg);
     return;
   }
 
@@ -139,12 +169,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     tf::poseEigenToMsg(currGraphNodeTf, new_merged_graph_node.pose);
 
     // normalise pose rotation
-    double norm = pow(new_merged_graph_node.pose.orientation.w*new_merged_graph_node.pose.orientation.w + new_merged_graph_node.pose.orientation.x*new_merged_graph_node.pose.orientation.x + new_merged_graph_node.pose.orientation.y*new_merged_graph_node.pose.orientation.y + new_merged_graph_node.pose.orientation.z*new_merged_graph_node.pose.orientation.z, 0.5);
-    new_merged_graph_node.pose.orientation.w = new_merged_graph_node.pose.orientation.w/norm;
-    new_merged_graph_node.pose.orientation.x = new_merged_graph_node.pose.orientation.x/norm;
-    new_merged_graph_node.pose.orientation.y = new_merged_graph_node.pose.orientation.y/norm;
-    new_merged_graph_node.pose.orientation.z = new_merged_graph_node.pose.orientation.z/norm;
-
+    NormalizeNodeOrientation(new_merged_graph_node);
 
     // Add nodes to the graph
     InsertNode(new_merged_graph_node);
@@ -152,6 +177,14 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
 
   ROS_INFO_STREAM("Finished merging graph, size "
                   << merged_graph_.nodes.size());
+}
+
+void Merger::NormalizeNodeOrientation(pose_graph_msgs::PoseGraphNode & msg){
+    double norm = pow(msg.pose.orientation.w*msg.pose.orientation.w + msg.pose.orientation.x*msg.pose.orientation.x + msg.pose.orientation.y*msg.pose.orientation.y + msg.pose.orientation.z*msg.pose.orientation.z, 0.5);
+    msg.pose.orientation.w = msg.pose.orientation.w/norm;
+    msg.pose.orientation.x = msg.pose.orientation.x/norm;
+    msg.pose.orientation.y = msg.pose.orientation.y/norm;
+    msg.pose.orientation.z = msg.pose.orientation.z/norm;
 }
 
 void Merger::OnSlowPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg) {
