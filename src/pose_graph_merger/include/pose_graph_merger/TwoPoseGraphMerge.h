@@ -40,8 +40,12 @@ class TwoPoseGraphMerge {
     void ProcessBaseGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
     void ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
+    geometry_msgs::PoseStamped GetLatestOdomPose(const pose_graph_msgs::PoseGraphConstPtr& msg);
+
     // Publishers
     ros::Publisher merged_graph_pub_;
+    ros::Publisher rob_node_pose_pub_;
+    ros::Publisher merged_node_pose_pub_;
 
     // Subscribers
     ros::Subscriber base_pose_graph_sub_;
@@ -53,6 +57,8 @@ class TwoPoseGraphMerge {
     std::string name_;
 
     // Booleans
+    bool first_call_;
+    char robot_prefix_;
     
     // Pose graph merger
     Merger merger_;

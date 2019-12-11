@@ -8,7 +8,7 @@
 
 
 
-TwoPoseGraphMerge::TwoPoseGraphMerge() {}
+TwoPoseGraphMerge::TwoPoseGraphMerge() : first_call_(true), robot_prefix_('Z') {}
 
 TwoPoseGraphMerge::~TwoPoseGraphMerge() {}
 
@@ -26,6 +26,10 @@ bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   merged_graph_pub_ =
       nl.advertise<pose_graph_msgs::PoseGraph>("merged_pose_graph", 10, false);
+  rob_node_pose_pub_ =
+      nl.advertise<geometry_msgs::PoseStamped>("robot_last_node", 10, false);
+  merged_node_pose_pub_ =
+      nl.advertise<geometry_msgs::PoseStamped>("merged_last_node", 10, false);
 }
 
 // Create Subscribers
@@ -39,6 +43,35 @@ bool TwoPoseGraphMerge::CreateSubscribers(const ros::NodeHandle& n) {
                                           &TwoPoseGraphMerge::ProcessRobotGraph, this);
 }
 
+geometry_msgs::PoseStamped TwoPoseGraphMerge::GetLatestOdomPose(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+
+  geometry_msgs::PoseStamped latest;
+  GraphNode target;
+
+  // Find the latest odom node from this robot
+  // NOTE - assumes nodes are stored in timestamped order
+  for (int i = msg->nodes.size() - 1; i >= 0; i--) {
+    GraphNode n = msg->nodes[i];
+
+    // Skip this node if it isn't from this robot
+    char prefix = gtsam::Symbol(n.key).chr();
+    if ((first_call_ && utils::IsRobotPrefix(prefix)) || prefix == robot_prefix_) {
+      target = n;
+      break;
+    }
+  }
+
+  // On first call of this function, store the prefix of the current robot
+  if (first_call_) {
+    robot_prefix_ = gtsam::Symbol(target.key).chr();
+    first_call_ = false;
+  }
+
+  latest.pose = target.pose;
+  latest.header.stamp = target.header.stamp;
+
+  return latest;
+}
 
 void TwoPoseGraphMerge::ProcessBaseGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   // Store the graph as the slow graph
@@ -60,8 +93,16 @@ void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstP
   // Publish the graph
   merged_graph_pub_.publish(*fused_graph);
 
+  // Poses from the robot-only graph and the merged graph
+  geometry_msgs::PoseStamped robot_pose = GetLatestOdomPose(msg);
+  robot_pose.header.frame_id = "world";
+  geometry_msgs::PoseStamped merged_pose = GetLatestOdomPose(fused_graph);
+  merged_pose.header.frame_id = "world_prime";
+
+  // Publish poses
+  rob_node_pose_pub_.publish(robot_pose);
+  merged_node_pose_pub_.publish(merged_pose);
+  
   // TODO - think about timestamps 
-  
-  
   return;
 }
