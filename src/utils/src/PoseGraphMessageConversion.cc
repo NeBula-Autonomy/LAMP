@@ -94,7 +94,9 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
                                       gtsam::Symbol(msg_edge.key_to),
                                       delta,
                                       noise));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+    } 
+    
+    else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
       ROS_DEBUG_STREAM("Adding loop closure edge for key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_from)
                        << " to key "
@@ -104,7 +106,9 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
                                       gtsam::Symbol(msg_edge.key_to),
                                       delta,
                                       noise));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+    } 
+    
+    else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
       ROS_DEBUG_STREAM("Adding artifact edge for key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_from)
                        << " to key "
@@ -114,7 +118,9 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
                                       gtsam::Symbol(msg_edge.key_to),
                                       delta,
                                       noise));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+    } 
+    
+    else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
       ROS_DEBUG_STREAM("Adding UWB range factor for key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_from)
                        << " to key "
@@ -128,7 +134,9 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
           gtsam::Symbol(msg_edge.key_to),
           range,
           rangeNoise));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+    } 
+    
+    else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
       ROS_DEBUG_STREAM("Adding UWB between factor for key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_from)
                        << " to key "
@@ -138,20 +146,28 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
                                       gtsam::Symbol(msg_edge.key_to),
                                       delta,
                                       noise));
-    } else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
-      // create precisions // TODO - the precision should come from the message
-      // shouldn't it? As we will use priors for different applications
-      gtsam::Vector6 prior_precisions;
-      prior_precisions.head<3>().setConstant(0.0);
-      prior_precisions.tail<3>().setConstant(10.0);
-      // TODO(Yun) create parameter for this
-      static const gtsam::SharedNoiseModel& prior_noise =
-          gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
+    } 
+    
+    else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
+      Gaussian::shared_ptr prior_noise = utils::MessageToCovariance(msg_edge);
 
       ROS_DEBUG_STREAM("Adding prior factor for key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_from));
       graph_nfg->add(gtsam::PriorFactor<gtsam::Pose3>(
           gtsam::Symbol(msg_edge.key_from), delta, prior_noise));
+    } 
+    
+    else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::IMU) {
+      ROS_DEBUG_STREAM("Adding prior factor for IMU");
+
+      gtsam::Unit3 meas_gt(msg_edge.pose.position.x, msg_edge.pose.position.y, msg_edge.pose.position.z);
+
+      // Use top left covariance matrix element only (assume uniform noise)
+      gtsam::SharedNoiseModel noise = gtsam::noiseModel::Isotropic::Sigma(2, msg_edge.covariance[0]);   
+
+      gtsam::Unit3 ref(0, 0, -1); 
+      graph_nfg->add(gtsam::Pose3AttitudeFactor(msg_edge.key_to, meas_gt, noise, ref));
+
     }
   }
 

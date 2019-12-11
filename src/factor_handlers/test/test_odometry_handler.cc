@@ -665,7 +665,7 @@ TEST_F(OdometryHandlerTest, TestGetFusedOdomDeltaLatestTime) {
   EXPECT_NEAR(t3_ros.toSec(), query1.toSec(), 1e-5);
 }
 
-TEST_F(OdometryHandlerTest, TestGetData) {
+TEST_F(OdometryHandlerTest, TestGetDataNoScans) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
   oh.Initialize(nh);
@@ -696,6 +696,204 @@ TEST_F(OdometryHandlerTest, TestGetData) {
 
   std::shared_ptr<OdomData> factor = std::dynamic_pointer_cast<OdomData>(GetData());
   EXPECT_TRUE(factor->b_has_data);
+  EXPECT_FALSE(factor->factors[0].b_has_point_cloud);
+  
+  OdometryFactor odom_factor = factor->factors[0];
+  EXPECT_NEAR(2, odom_factor.transform.x(), 1e-5);
+  EXPECT_NEAR(0.0, odom_factor.transform.rotation().yaw(), 1e-5);
+
+  // Need to return the correct time
+  EXPECT_NEAR(t1_ros.toSec(), odom_factor.stamps.first.toSec(), 1e-5);
+  EXPECT_NEAR(t3_ros.toSec(), odom_factor.stamps.second.toSec(), 1e-5);
+}
+
+TEST_F(OdometryHandlerTest, TestGetData) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+  // Create an output
+  GtsamPosCov myOutput;
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  sensor_msgs::PointCloud2 msg1;
+  sensor_msgs::PointCloud2 msg2;
+  sensor_msgs::PointCloud2 msg3;
+  sensor_msgs::PointCloud2 msg4;
+  msg1.header.stamp = t1_ros;
+  msg2.header.stamp = t2_ros;
+  msg3.header.stamp = t3_ros;
+  msg4.header.stamp = t4_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
+      new sensor_msgs::PointCloud2(msg1));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
+      new sensor_msgs::PointCloud2(msg2));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
+      new sensor_msgs::PointCloud2(msg3));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
+      new sensor_msgs::PointCloud2(msg4));
+  PointCloudCallback(pc_ptr1);
+  PointCloudCallback(pc_ptr2);
+  PointCloudCallback(pc_ptr3);
+  PointCloudCallback(pc_ptr4);
+
+  bool result = GetOdomDelta(t3_ros, myOutput);
+  EXPECT_TRUE(result);
+
+  std::shared_ptr<OdomData> factor = std::dynamic_pointer_cast<OdomData>(GetData());
+  EXPECT_TRUE(factor->b_has_data);
+  EXPECT_TRUE(factor->factors[0].b_has_point_cloud);
+  
+  OdometryFactor odom_factor = factor->factors[0];
+  EXPECT_NEAR(2, odom_factor.transform.x(), 1e-5);
+  EXPECT_NEAR(0.0, odom_factor.transform.rotation().yaw(), 1e-5);
+
+  // Need to return the correct time
+  EXPECT_NEAR(t1_ros.toSec(), odom_factor.stamps.first.toSec(), 1e-5);
+  EXPECT_NEAR(t3_ros.toSec(), odom_factor.stamps.second.toSec(), 1e-5);
+}
+
+TEST_F(OdometryHandlerTest, TestGetDataVLPStop) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+  // Create an output
+  GtsamPosCov myOutput;
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  ros::Time pc_time;
+  pc_time.fromSec(t1 - 1.0);
+  sensor_msgs::PointCloud2 msg1;
+  sensor_msgs::PointCloud2 msg2;
+  sensor_msgs::PointCloud2 msg3;
+  sensor_msgs::PointCloud2 msg4;
+  msg1.header.stamp = pc_time;
+  msg2.header.stamp = pc_time.fromSec(t1 - 0.9);
+  msg3.header.stamp = pc_time.fromSec(t1 - 0.8);
+  msg4.header.stamp = pc_time.fromSec(t1 - 0.7);
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
+      new sensor_msgs::PointCloud2(msg1));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
+      new sensor_msgs::PointCloud2(msg2));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
+      new sensor_msgs::PointCloud2(msg3));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
+      new sensor_msgs::PointCloud2(msg4));
+  PointCloudCallback(pc_ptr1);
+  PointCloudCallback(pc_ptr2);
+  PointCloudCallback(pc_ptr3);
+  PointCloudCallback(pc_ptr4);
+
+  ros::Time query1;
+  query1.fromSec(t4);
+  bool result = GetOdomDelta(t3_ros, myOutput);
+  EXPECT_TRUE(result);
+
+  std::shared_ptr<OdomData> factor = std::dynamic_pointer_cast<OdomData>(GetData());
+  EXPECT_TRUE(factor->b_has_data);
+  EXPECT_FALSE(factor->factors[0].b_has_point_cloud);
+  
+  OdometryFactor odom_factor = factor->factors[0];
+  EXPECT_NEAR(2, odom_factor.transform.x(), 1e-5);
+  EXPECT_NEAR(0.0, odom_factor.transform.rotation().yaw(), 1e-5);
+
+  // Need to return the correct time
+  EXPECT_NEAR(t1_ros.toSec(), odom_factor.stamps.first.toSec(), 1e-5);
+  EXPECT_NEAR(t3_ros.toSec(), odom_factor.stamps.second.toSec(), 1e-5);
+}
+
+TEST_F(OdometryHandlerTest, TestGetDataOldOdom) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+  // Create an output
+  GtsamPosCov myOutput;
+  nav_msgs::Odometry msg_first_odom;
+  nav_msgs::Odometry msg_second_odom;
+  nav_msgs::Odometry msg_third_odom;
+  msg_first_odom.pose = msg_first.pose;
+  msg_first_odom.header = msg_first.header;
+  msg_second_odom.pose = msg_second.pose;
+  msg_second_odom.header = msg_second.header;
+  msg_third_odom.pose = msg_third.pose;
+  msg_third_odom.header = msg_third.header;
+  nav_msgs::Odometry::ConstPtr msg_first_odomPtr(
+      new nav_msgs::Odometry(msg_first_odom));
+  nav_msgs::Odometry::ConstPtr msg_second_odomPtr(
+      new nav_msgs::Odometry(msg_second_odom));
+  nav_msgs::Odometry::ConstPtr msg_third_odomPtr(
+      new nav_msgs::Odometry(msg_third_odom));
+  // Call lidar callback
+  LidarOdometryCallback(msg_first_odomPtr);
+  LidarOdometryCallback(msg_second_odomPtr);
+  LidarOdometryCallback(msg_third_odomPtr);
+
+  ros::Time pc_time;
+  pc_time.fromSec(t3 + 2.0);
+  sensor_msgs::PointCloud2 msg1;
+  sensor_msgs::PointCloud2 msg2;
+  sensor_msgs::PointCloud2 msg3;
+  sensor_msgs::PointCloud2 msg4;
+  msg1.header.stamp = pc_time;
+  msg2.header.stamp = pc_time.fromSec(t3 + 2.1);
+  msg3.header.stamp = pc_time.fromSec(t3 + 2.2);
+  msg4.header.stamp = pc_time.fromSec(t3 + 2.3);
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
+      new sensor_msgs::PointCloud2(msg1));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
+      new sensor_msgs::PointCloud2(msg2));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
+      new sensor_msgs::PointCloud2(msg3));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
+      new sensor_msgs::PointCloud2(msg4));
+  PointCloudCallback(pc_ptr1);
+  PointCloudCallback(pc_ptr2);
+  PointCloudCallback(pc_ptr3);
+  PointCloudCallback(pc_ptr4);
+
+  ros::Time query1;
+  query1.fromSec(t4);
+  bool result = GetOdomDelta(t3_ros, myOutput);
+  EXPECT_TRUE(result);
+
+  std::shared_ptr<OdomData> factor = std::dynamic_pointer_cast<OdomData>(GetData());
+  EXPECT_TRUE(factor->b_has_data);
+  EXPECT_FALSE(factor->factors[0].b_has_point_cloud);
   
   OdometryFactor odom_factor = factor->factors[0];
   EXPECT_NEAR(2, odom_factor.transform.x(), 1e-5);
@@ -870,6 +1068,51 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   PointCloud::Ptr my_keyed_scan(new PointCloud(point_cloud));
   bool result = GetKeyedScanAtTime(t1_ros, my_keyed_scan);
   ASSERT_TRUE(result);
+}
+
+TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTimeError) {
+  ros::NodeHandle nh("~");
+  system("rosparam set ts_threshold 0.6");
+  oh.Initialize(nh);
+  // Create keyed scans
+  sensor_msgs::PointCloud2 msg1;
+  sensor_msgs::PointCloud2 msg2;
+  sensor_msgs::PointCloud2 msg3;
+  sensor_msgs::PointCloud2 msg4;
+  sensor_msgs::PointCloud2 msg5;
+  sensor_msgs::PointCloud2 msg6;
+  msg1.header.stamp = t1_ros;
+  msg2.header.stamp = t2_ros;
+  msg3.header.stamp = t3_ros;
+  msg4.header.stamp = t4_ros;
+  msg5.header.stamp = t5_ros;
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
+      new sensor_msgs::PointCloud2(msg1));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
+      new sensor_msgs::PointCloud2(msg2));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
+      new sensor_msgs::PointCloud2(msg3));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
+      new sensor_msgs::PointCloud2(msg4));
+  sensor_msgs::PointCloud2::ConstPtr pc_ptr5(
+      new sensor_msgs::PointCloud2(msg5));
+  PointCloudCallback(pc_ptr1);
+  PointCloudCallback(pc_ptr2);
+  PointCloudCallback(pc_ptr3);
+  PointCloudCallback(pc_ptr4);
+  PointCloudCallback(pc_ptr5);
+  // Create the keyed scan container to be filled by GetKeyedScanAtTime method
+  PointCloud point_cloud;
+  PointCloud::Ptr my_keyed_scan(new PointCloud(point_cloud));
+  // Try past the end of the keyed scan buffer
+  ros::Time t_test;
+  t_test.fromSec(t5 + 5.0);
+  bool result = GetKeyedScanAtTime(t_test, my_keyed_scan);
+  EXPECT_FALSE(result);
+
+  t_test.fromSec(t1 - 1.0);
+  result = GetKeyedScanAtTime(t_test, my_keyed_scan);
+  EXPECT_FALSE(result);
 }
 
 TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {

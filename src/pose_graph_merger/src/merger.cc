@@ -45,6 +45,13 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
 
   // Add edges from the fast graph that connect nodes in the slow graph
   for (const GraphEdge& edge : msg->edges) {
+
+    if (edge.type != pose_graph_msgs::PoseGraphEdge::ODOM) {
+      // nonOdomEdges.insert(&edge);
+      merged_graph_.edges.push_back(edge);
+      continue;
+    }
+
     // Only add edges that connect two nodes that are in the slow graph
     // These are not new edges for the optimized graph - others are
     if (merged_graph_KeyToIndex.count(edge.key_from) != 0 &&
