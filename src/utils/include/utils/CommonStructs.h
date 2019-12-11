@@ -273,7 +273,8 @@ public:
   bool Save(const std::string& zipFilename) const;
 
   // Loads pose graph and accompanying point clouds from a zip file.
-  bool Load(const std::string& zipFilename);
+  bool Load(const std::string& zipFilename,
+            const std::string& pose_graph_topic_name = "pose_graph");
 
   // Convert entire pose graph to message.
   GraphMsgPtr ToMsg() const;
