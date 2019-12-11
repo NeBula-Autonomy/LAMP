@@ -34,6 +34,11 @@ public:
 
   void OnSlowPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
+  // Insertion, deletion and tracking
+  void InsertNode(pose_graph_msgs::PoseGraphNode& node);
+  void ClearNodes();
+
+
   // Utility functions
   void CleanUpMap(const ros::Time& stamp);
   pose_graph_msgs::PoseGraph GetCurrentGraph();
@@ -62,6 +67,12 @@ private:
 
   ros::Publisher mergedGraphPub;
   ros::Publisher mergedPosePub;
+
+  // unique edges stored in the graph, tracked by <key_from, key_to, type>
+  std::set< std::tuple<gtsam::Key, gtsam::Key, int> > unique_edges_;
+
+  // Storing map from key to the index in the nodes vector
+  std::map<long unsigned int, int> merged_graph_KeyToIndex_;
 
   pose_graph_msgs::PoseGraph merged_graph_;
 
