@@ -33,7 +33,8 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampRobot::LampRobot() : is_artifact_initialized(false) {
+LampRobot::LampRobot() : 
+  is_artifact_initialized(false) {
   b_run_optimization_ = false;
 }
 
@@ -94,6 +95,13 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Switch on/off flag for UWB
   if (!pu::Get("b_use_uwb", b_use_uwb_))
     return false;
+
+  // Switch on/off flag for IMU
+  if (!pu::Get("b_add_imu_factors", b_add_imu_factors_))
+    return false;
+  if (!pu::Get("imu_factors_per_opt", imu_factors_per_opt_))
+    return false;
+    
 
   // Load frame ids.
   if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
@@ -310,6 +318,11 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
     return false;
   }
 
+  if (!imu_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the imu handler.", name_.c_str());
+    return false;
+  }
+
   return true;
 }
 
@@ -474,6 +487,12 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     int type = pose_graph_msgs::PoseGraphEdge::ODOM;
     pose_graph_.TrackFactor(prev_key, current_key, type, transform, covariance);
 
+    if (b_add_imu_factors_){
+      imu_handler_.SetTimeForImuAttitude(times.second);
+      imu_handler_.SetKeyForImuAttitude(current_key);
+      ProcessImuData(imu_handler_.GetData());
+    }
+
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 
@@ -564,6 +583,52 @@ void LampRobot::UpdateAndPublishOdom() {
 
   // Publish pose graph
   pose_pub_.publish(msg);
+}
+
+/*!
+  \brief  Wrapper for the imu class interactions
+  Creates factors from the imu output - called when there is a new odom message
+  \param   data - the output data struct from the ImuHandler class
+  \warning ...time sync
+  \author Benjamin Morrell
+  \date 22 Nov 2019
+*/
+bool LampRobot::ProcessImuData(std::shared_ptr<FactorData> data) {
+  // Extract odom data
+  std::shared_ptr<ImuData> imu_data =
+      std::dynamic_pointer_cast<ImuData>(data);
+
+  // Check if there are new factors
+  if (!imu_data->b_has_data) {
+    return false;
+  }
+
+  Unit3 meas_unit = imu_data->factors[0].attitude.nZ();
+  geometry_msgs::Point meas;
+  meas.x = meas_unit.point3().x();
+  meas.y = meas_unit.point3().y();
+  meas.z = meas_unit.point3().z();
+
+  // gtsam::noiseModel::Isotropic noise = boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(imu_data->factors[0].attitude.noiseModel());
+  double noise_sigma =
+        boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(
+            imu_data->factors[0].attitude.noiseModel())
+            ->sigma();
+
+  pose_graph_.TrackIMUFactor(imu_data->factors[0].attitude.front(),
+                               meas,
+                               noise_sigma,
+                               true);
+
+  // Optimize every "imu_factors_per_opt"
+  imu_factor_count_++;
+
+  if (imu_factor_count_ % imu_factors_per_opt_ == 0){
+    b_run_optimization_ = true;
+  }
+
+  return true;
+
 }
 
 /*!

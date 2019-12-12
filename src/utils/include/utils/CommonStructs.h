@@ -218,6 +218,10 @@ public:
                       double range,
                       double range_error,
                       bool create_msg = true);
+  bool TrackIMUFactor(gtsam::Symbol key_to,
+                      geometry_msgs::Point meas,
+                      double att_noise,
+                      bool create_msg = true);
 
   // Tracks nodes and updates values. Returns true if new node is added.
   // Updates the internal keyed_stamp map for this key.
