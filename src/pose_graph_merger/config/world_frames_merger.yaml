@@ -1,2 +1,2 @@
-frame_id_world1: /world
-frame_id_world2: /world_prime
+frame_id_world1: $(arg robot_namespace)/map
+frame_id_world2: world
