@@ -48,6 +48,10 @@ class Node(object):
         self.x = node.pose.position.x
         self.y = node.pose.position.y
         self.z = node.pose.position.z
+        self.qw = node.pose.orientation.w
+        self.qx = node.pose.orientation.x
+        self.qy = node.pose.orientation.y
+        self.qz = node.pose.orientation.z
 
 
 def AddNoise(nodes):
@@ -78,7 +82,7 @@ def AddNoise(nodes):
     return nodes2
 
 
-def PlotPoseGraphs(nodes_data, nodes_gt):
+def PlotPoseGraphs3D(nodes_data, nodes_gt):
     '''
     Display two sets of pose graph nodes on a single 3D figure.
     '''
@@ -93,15 +97,39 @@ def PlotPoseGraphs(nodes_data, nodes_gt):
     y2 = [g.y for g in nodes_gt]
     z2 = [g.z for g in nodes_gt]
 
-    ax.plot(x1, y1, zs=z1, label='pose graph')
-    ax.plot(x2, y2, zs=z2, label='ground truth')
-    plt.xlabel('x')
-    plt.ylabel('y')
+    ax.plot(x1, y1, zs=z1, label='SLAM estimate')
+    ax.plot(x2, y2, zs=z2, label='Ground truth')
+    ax.set_xlabel('x (m)')
+    ax.set_ylabel('y (m)')
+    ax.set_zlabel('z (m)')
+
     plt.legend()
     scaling = np.array([getattr(ax, 'get_{}lim'.format(dim))()
                         for dim in 'xyz'])
     ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]] * 3)
 
+def PlotPoseGraphs2D(nodes_data, nodes_gt):
+    '''
+    Display two sets of pose graph nodes on a single 2D figure.
+    '''
+
+    fig = plt.figure()
+    ax = fig.gca()
+
+    x1 = [g.x for g in nodes_data]
+    y1 = [g.y for g in nodes_data]
+    x2 = [g.x for g in nodes_gt]
+    y2 = [g.y for g in nodes_gt]
+
+    ax.plot(x1, y1, label='SLAM estimate')
+    ax.plot(x2, y2, label='Ground truth')
+    ax.set_xlabel('x (m)')
+    ax.set_ylabel('y (m)')
+    ax.grid(b=True, which='both', color='0.65', linestyle='-')
+    plt.axis('equal')
+
+    plt.legend()
+    
 
 def DistBetween(n1, n2):
     '''
@@ -127,7 +155,6 @@ def PlotErrors(nodes_data, nodes_gt):
     y2 = [g.y for g in nodes_data]
     z2 = [g.z for g in nodes_data]
     dist = [0] * len(nodes_gt)
-    base = [0] * len(nodes_gt)
     for i in range(1, len(nodes_gt)):
         dist[i] = dist[i - 1] + DistBetween(nodes_gt[i], nodes_gt[i - 1])
 
@@ -139,21 +166,26 @@ def PlotErrors(nodes_data, nodes_gt):
 
     print('max total error:', max(total_err))
 
-    zscaled = [(z - min(z1)) / (max(z1) - min(z1)) * 0.8 * max(total_err)
-               for z in z1]
-    ax.fill_between(dist, 0, zscaled, color='gray', alpha=0.3)
+    yaw = [math.atan2(2.0*(n.qy*n.qz + n.qw*n.qx), n.qw**2 - n.qx**2 - n.qy**2 + n.qz**2) for n in nodes_gt]
+
+    # comparison metric to be displayed as a gray area on the error plot
+    comp = z1 # elevation
+
+    scaled = [(n - min(comp)) / (max(comp) - min(comp)) * 0.8 * max(total_err)
+               for n in comp]
+    # ax.fill_between(dist, 0, scaled, color='gray', alpha=0.3, label='elevation (rel.)')
 
     ax.plot(dist, x_err, label='x error')
     ax.plot(dist, y_err, label='y error')
     ax.plot(dist, z_err, label='z error')
     ax.plot(dist, total_err, label='total error')
-    plt.xlabel('distance travelled (m)')
-    plt.ylabel('error')
+    plt.xlabel('Distance travelled (m)')
+    plt.ylabel('Localisation error (m)')
 
     plt.grid()
     plt.legend()
 
-    plt.xlim(0, plt.xlim()[1])
+    plt.xlim(0, max(dist))
     plt.ylim(0, plt.ylim()[1])
 
 
@@ -190,7 +222,6 @@ def ReadPoseGraphFromBagfile(filename):
     msgs, nodes = [], []
 
     for topic, msg, t in bag.read_messages(topics='pose_graph'):
-        print(topic)
         msgs.append(msg)
 
     # Take most recent message only
@@ -200,7 +231,6 @@ def ReadPoseGraphFromBagfile(filename):
 
         # ignore artifact keys
         if not IsRobotKey(n.key):
-            print("skipped node", key_handling.split_pg_key(n.key))
             continue
 
         new_node = Node()
@@ -221,7 +251,8 @@ def PerformAnalysis(abspath, filename_data, filename_gt):
     nodes1 = ReadPoseGraphFromBagfile(abspath + filename_data)
     nodes2 = ReadPoseGraphFromBagfile(abspath + filename_gt)
 
-    PlotPoseGraphs(nodes1, nodes2)
+    PlotPoseGraphs2D(nodes1, nodes2)
+    PlotPoseGraphs3D(nodes1, nodes2)
     PlotErrors(nodes1, nodes2)
 
     # show all plots

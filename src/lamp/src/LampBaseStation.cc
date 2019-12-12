@@ -397,6 +397,7 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     
     PublishPoseGraph(); 
     ReGenerateMapPointCloud();
+  }
 
   // Read in artifact ground truth data
   else if (msg.data == "optimize") {
