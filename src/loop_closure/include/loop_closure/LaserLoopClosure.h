@@ -97,5 +97,8 @@ private:
   enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION };
 
   IcpInitMethod icp_init_method_;
+
+  // Test class fixtures
+  friend class TestLaserLoopClosure;
 };
 #endif // LASER_LOOP_CLOSURE_H_
