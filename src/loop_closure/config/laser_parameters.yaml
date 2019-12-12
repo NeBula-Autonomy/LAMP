@@ -4,7 +4,7 @@
 
 robot: 
 
-  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES }
   icp_initialization_method: 2
 
   # Translation threshold for new nods to compute values for loop closure checking
@@ -46,6 +46,24 @@ robot:
 
     # Iterate ICP this many times.
     iterations: 5 # Default from original branch is 20: 
+  
+  #--------------------------------------------------------------------------------
+  # SAC-IA Settings for feature-based initialization
+  #--------------------------------------------------------------------------------
+
+  sac_ia:
+    # Iterate SAC-IA this many times.
+    iterations: 100
+
+    # Number of previous and next scans to accumulate for target pointcloud
+    # 0 means no accumulation
+    num_prev_scans: 2
+    num_next_scans: 0
+
+    # Radii of area to consider when computing normals and features
+    normals_radius: 1.0
+    features_radius: 2.0
+
 
 #############################################
 # PARAMETERS FOR LASER LOOP CLOSURES (BASE)
@@ -53,7 +71,7 @@ robot:
 
 base: 
 
-  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES }
   icp_initialization_method: 1
 
   # Translation threshold for new nods to compute values for loop closure checking
@@ -95,4 +113,21 @@ base:
 
     # Iterate ICP this many times.
     iterations: 5 # Default from original branch is 20: 
+
+  #--------------------------------------------------------------------------------
+  # SAC-IA Settings for feature-based initialization
+  #--------------------------------------------------------------------------------
+
+  sac_ia:
+    # Iterate SAC-IA this many times.
+    iterations: 100
+
+    # Number of previous scans to accumulate for target pointcloud
+    # 0 means no accumulation
+    num_prev_scans: 3
+    num_next_scans: 0
+    
+    # Radii of area to consider when computing normals and features
+    normals_radius: 1.0
+    features_radius: 2.0
 
