@@ -94,15 +94,24 @@ void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstP
   merged_graph_pub_.publish(*fused_graph);
 
   // Poses from the robot-only graph and the merged graph
-  geometry_msgs::PoseStamped robot_pose = GetLatestOdomPose(msg);
-  robot_pose.header.frame_id = "world";
-  geometry_msgs::PoseStamped merged_pose = GetLatestOdomPose(fused_graph);
-  merged_pose.header.frame_id = "world_prime";
+  robot_pose_ = GetLatestOdomPose(msg);
+  robot_pose_.header.frame_id = "world";
+  merged_pose_ = GetLatestOdomPose(fused_graph);
+  merged_pose_.header.frame_id = "world_prime";
+
+  // Publish
+  PublishPoses();
+
+  return;
+}
+
+pose_graph_msgs::PoseGraph TwoPoseGraphMerge::GetMergedGraph(){
+  return merger_.GetCurrentGraph();
+}
+
+void TwoPoseGraphMerge::PublishPoses(){
 
   // Publish poses
-  rob_node_pose_pub_.publish(robot_pose);
-  merged_node_pose_pub_.publish(merged_pose);
-  
-  // TODO - think about timestamps 
-  return;
+  rob_node_pose_pub_.publish(robot_pose_);
+  merged_node_pose_pub_.publish(merged_pose_);
 }

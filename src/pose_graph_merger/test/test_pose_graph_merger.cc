@@ -536,7 +536,7 @@ TEST_F(TestMerger, DoubleMerge) {
   g.nodes.push_back(n2);
 
   pose_graph_msgs::PoseGraphConstPtr slow_graph_2(
-      new pose_graph_msgs::PoseGraph(g);
+      new pose_graph_msgs::PoseGraph(g));
 
   // Send first few graphs and get the intermediate result
   merger.OnFastGraphMsg(fast_graph_1);
