@@ -430,6 +430,11 @@ struct UwbFactor {
   double range_error;
 };
 
+struct PoseData {
+  ros::Time stamp;
+  gtsam::Pose3 pose;
+};
+
 // ---------------------------------------------------------
 
 // Base factor data class
@@ -482,6 +487,15 @@ public:
 
   std::vector<pose_graph_msgs::PoseGraph::ConstPtr> graphs;
   std::vector<pose_graph_msgs::KeyedScan::ConstPtr> scans;
+};
+
+class RobotPoseData : public FactorData {
+public:
+  RobotPoseData(){};
+  virtual ~RobotPoseData(){};
+
+  // Stores most recent pose for each robot
+  std::map< std::string, PoseData > poses;
 };
 
 class AprilTagData : public FactorData {

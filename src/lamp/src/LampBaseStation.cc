@@ -142,6 +142,13 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
   // Base station publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
 
+  // Robot pose publishers
+  ros::Publisher pose_pub_;
+  for (auto robot : robot_names_) {
+    pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(robot+"/pose", 10, false);
+    publishers_pose_[robot] = pose_pub_;
+  }
+
   return true; 
 }
 
@@ -160,6 +167,10 @@ bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
   }
   else if (!pose_graph_handler_.Initialize(n, robot_names_)) {
     ROS_ERROR("%s: Failed to initialize the pose graph handler.", name_.c_str());
+    return false;
+  }
+  else if (!robot_pose_handler_.Initialize(n, robot_names_)) {
+    ROS_ERROR("%s: Failed to initialize the robot pose handler.", name_.c_str());
     return false;
   }
   
@@ -272,6 +283,29 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   return true; 
 }
 
+
+bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
+
+  // Extract pose graph data
+  std::shared_ptr<RobotPoseData> pose_data = std::dynamic_pointer_cast<RobotPoseData>(data);
+
+  // Check if there are new pose graphs
+  if (!pose_data->b_has_data) {
+    return false; 
+  }
+
+  for (auto pair : pose_data->poses) {
+    std::string robot = pair.first;
+
+    // pose = pair.second.pose; 
+    // merger_.O
+
+    // publishers_pose_[robot].publish(pair.second.)
+
+
+  }
+}
+
 bool LampBaseStation::ProcessManualLoopClosureData(std::shared_ptr<FactorData> data) {
 
   // Extract loop closure data
@@ -305,6 +339,9 @@ bool LampBaseStation::CheckHandlers() {
 
   // Check for manual loop closures
   ProcessManualLoopClosureData(manual_loop_closure_handler_.GetData());
+
+  // Check for poses
+  ProcessRobotPoseData(robot_pose_handler_.GetData());
 
   return true;
 }
