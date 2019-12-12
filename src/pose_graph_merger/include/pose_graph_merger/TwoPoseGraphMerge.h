@@ -64,7 +64,13 @@ class TwoPoseGraphMerge {
 
     // Booleans
     bool first_call_;
+
+    // Symbols
     char robot_prefix_;
+
+    // Frames
+    std::string world_fid_;
+    std::string world2_fid_;
     
     // Pose graph merger
     Merger merger_;

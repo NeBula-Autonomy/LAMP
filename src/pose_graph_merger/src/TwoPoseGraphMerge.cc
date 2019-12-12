@@ -18,6 +18,9 @@ bool TwoPoseGraphMerge::Initialize(const ros::NodeHandle& n) {
   CreatePublishers(n);
   CreateSubscribers(n);
 
+  n.param<std::string>("frame_id_world1", this->world_fid_,  "/world");
+  n.param<std::string>("frame_id_world2", this->world2_fid_, "/world_prime");
+
   return true;
 }
 
@@ -27,9 +30,9 @@ bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
   merged_graph_pub_ =
       nl.advertise<pose_graph_msgs::PoseGraph>("merged_pose_graph", 10, false);
   rob_node_pose_pub_ =
-      nl.advertise<geometry_msgs::PoseStamped>("robot_last_node", 10, false);
+      nl.advertise<geometry_msgs::PoseStamped>("robot_last_node_pose", 10, false);
   merged_node_pose_pub_ =
-      nl.advertise<geometry_msgs::PoseStamped>("merged_last_node", 10, false);
+      nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, false);
 }
 
 // Create Subscribers
@@ -95,9 +98,9 @@ void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstP
 
   // Poses from the robot-only graph and the merged graph
   robot_pose_ = GetLatestOdomPose(msg);
-  robot_pose_.header.frame_id = "world";
+  robot_pose_.header.frame_id = this->world_fid_;
   merged_pose_ = GetLatestOdomPose(fused_graph);
-  merged_pose_.header.frame_id = "world_prime";
+  merged_pose_.header.frame_id = this->world2_fid_;
 
   // Publish
   PublishPoses();
