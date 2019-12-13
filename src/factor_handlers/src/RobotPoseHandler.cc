@@ -106,7 +106,7 @@ void RobotPoseHandler::PoseCallback(const geometry_msgs::PoseStamped::ConstPtr& 
   ROS_INFO_STREAM("In RobotPoseHandler::PoseCallback");
 // void RobotPoseHandler::PoseCallback(const geometry_msgs::PoseStamped& msg, std::string robot) {
 
-  ROS_INFO_STREAM("Received pose from robot: " << robot);
+  // ROS_INFO_STREAM("Received pose from robot: " << robot);
 
   PoseData new_data;
   new_data.stamp = msg->header.stamp;
