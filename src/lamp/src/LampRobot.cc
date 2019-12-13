@@ -900,7 +900,8 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
 
     // Check if it is a new uwb id or not
     auto values = pose_graph_.GetValues();
-    if (!values.exists(uwb_key)) {
+
+    if (!values.exists(uwb_key) && factor.type != pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
       // Insert it into the values
       global_uwb_pose = pose_graph_.GetPose(odom_key);
       // Add it into the keyed stamps
@@ -942,10 +943,13 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       );
       auto global_uwb_pose = odom_pose.compose(dropped_relative_pose);
       // TODO: SetFixedNoiseModels should be used for the following sentences
-      gtsam::Vector6 precisions;
-      precisions.head<3>().setConstant(0.30);
-      precisions.tail<3>().setConstant(0.50);
-      auto noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
+      gtsam::Vector6 gaussians;
+      gaussians.head<3>().setConstant(uwb_between_rot_sigma_);
+      gaussians.tail<3>().setConstant(uwb_between_trans_sigma_);
+      gtsam::noiseModel::Gaussian::shared_ptr noise 
+        = gtsam::noiseModel::Gaussian::Covariance(gaussians);
+      pose_graph_.TrackNode(
+          factor.stamp, uwb_key, global_uwb_pose, noise);
       // Add new factors to buffer to send to pgo
       pose_graph_.TrackFactor(
         odom_key,

@@ -198,7 +198,8 @@ protected:
   double artifact_gt_trans_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
-
+  double uwb_between_rot_sigma_;
+  double uwb_between_trans_sigma_;
   
   double zero_noise_;
 
