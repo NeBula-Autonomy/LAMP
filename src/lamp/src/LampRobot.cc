@@ -892,8 +892,7 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
 
   ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
-  ROS_INFO_STREAM(
-      "Number of UWB factors to be added : " << uwb_data->factors.size());
+  ROS_INFO_STREAM("Number of UWB factors to be added : " << uwb_data->factors.size());
 
   for (auto factor : uwb_data->factors) {
     auto odom_key = factor.key_from;
@@ -916,17 +915,17 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
           factor.stamp, uwb_key, global_uwb_pose, prior_noise);
     }
 
-    EdgeMessage uwb_factor;
-    uwb_factor.key_from = odom_key;
-    uwb_factor.key_to = uwb_key;
-
     if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+      ROS_INFO("Adding a UWB range factor");
       auto range = factor.range;
       gtsam::noiseModel::Base::shared_ptr range_error =
           gtsam::noiseModel::Isotropic::Sigma(1, factor.range_error);
       new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
           odom_key, uwb_key, range, range_error));
       // Track the edges that have been added
+      EdgeMessage uwb_factor;
+      uwb_factor.key_from = odom_key;
+      uwb_factor.key_to = uwb_key;
       uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
       uwb_factor.range = range;
       uwb_factor.range_error = factor.range_error;
@@ -934,6 +933,7 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       pose_graph_.TrackFactor(uwb_factor);
     }
     else if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+      ROS_INFO("Adding a UWB between factor");
       auto odom_pose = pose_graph_.GetPose(odom_key);
       // TODO: A dropped relative location should be read from the configuration file
       auto dropped_relative_pose = gtsam::Pose3(
@@ -953,7 +953,7 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
         pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN,
         dropped_relative_pose,
         noise,
-        false
+        true
       );
     }
     
