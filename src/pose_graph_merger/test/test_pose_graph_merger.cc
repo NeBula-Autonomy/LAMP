@@ -63,12 +63,14 @@ TEST_F(TestMerger, BasicMerge) {
   e0.pose.position.x = 1.0;
   e0.pose.position.y = 0.0;
   e0.pose.position.z = 0.0;
+  e0.type = pose_graph_msgs::PoseGraphEdge::ODOM;
 
   e1.key_from = n1.key;
   e1.key_to = n2.key;
   e1.pose.position.x = 2.0;
   e1.pose.position.y = 0.0;
   e1.pose.position.z = 0.0;
+  e1.type = pose_graph_msgs::PoseGraphEdge::ODOM;
 
   g.nodes.push_back(n0);
   g.nodes.push_back(n1);
@@ -101,6 +103,7 @@ TEST_F(TestMerger, BasicMerge) {
   e0.pose.position.z = 0.0;
   e0.pose.orientation.z = sqrt(0.5);
   e0.pose.orientation.w = sqrt(0.5);
+  e0.type = pose_graph_msgs::PoseGraphEdge::ODOM;
 
   g.nodes.push_back(n0);
   g.nodes.push_back(n1);

@@ -13,6 +13,10 @@
 
 #include <tf2/transform_datatypes.h>
 
+#include <gtsam/inference/Symbol.h>
+
+#include <utils/PrefixHandling.h>
+
 #include <string>
 
 #include <Eigen/Eigen>
@@ -34,9 +38,19 @@ public:
 
   void OnSlowPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
+  // Insertion, deletion and tracking
+  void InsertNode(const pose_graph_msgs::PoseGraphNode& node);
+  void ClearNodes();
+  void InsertNewEdges(const pose_graph_msgs::PoseGraphConstPtr& msg);
+  bool IsEdgeNew(const pose_graph_msgs::PoseGraphEdge& msg);
+
+
+  std::set<char> GetNewRobots(const pose_graph_msgs::PoseGraphConstPtr& msg);
+
   // Utility functions
   void CleanUpMap(const ros::Time& stamp);
   pose_graph_msgs::PoseGraph GetCurrentGraph();
+  void NormalizeNodeOrientation(pose_graph_msgs::PoseGraphNode & msg);
 
   geometry_utils::Transform3 GetPoseAtTime(const ros::Time& stamp);
 
@@ -62,6 +76,15 @@ private:
 
   ros::Publisher mergedGraphPub;
   ros::Publisher mergedPosePub;
+
+  // unique edges stored in the graph, tracked by <key_from, key_to, type>
+  std::set< std::tuple<gtsam::Key, gtsam::Key, int> > unique_edges_;
+
+  // Robots included in the merged graph, specified by prefix char
+  std::set<char> robots_;
+
+  // Storing map from key to the index in the nodes vector
+  std::map<long unsigned int, int> merged_graph_KeyToIndex_;
 
   pose_graph_msgs::PoseGraph merged_graph_;
 
