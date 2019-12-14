@@ -433,6 +433,9 @@ struct UwbFactor {
   // Only for range factors
   double range;
   double range_error;
+
+  // Only for between factors
+  gtsam::Pose3 pose;
 };
 
 // ---------------------------------------------------------

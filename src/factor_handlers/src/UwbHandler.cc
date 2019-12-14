@@ -68,6 +68,10 @@ void UwbHandler::UwbFactorCallback(const pose_graph_msgs::PoseGraph::ConstPtr& m
             factor.range        = edge.range;
             factor.range_error  = edge.range_error;
         }
+        if (edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+            auto transform = gr::FromROS(edge.pose);
+            factor.pose = utils::ToGtsam(transform);
+        }
         uwb_data_.factors.emplace_back(factor);
     }
 }

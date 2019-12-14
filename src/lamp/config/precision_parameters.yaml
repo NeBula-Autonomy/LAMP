@@ -25,7 +25,7 @@ point_estimate_precision: 25.0
 artifact_gt_rot_precision: 0.00000000000000000001
 artifact_gt_trans_precision: 25.0
 
-# Noise parameters (as variances) for uwb between factor
+# Noise parameters (as standard deviations) for uwb between factor
 uwb_between_rot_sigma: 0.30
 uwb_between_trans_sigma: 0.50
 

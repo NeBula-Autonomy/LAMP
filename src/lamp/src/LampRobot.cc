@@ -936,18 +936,13 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     else if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
       ROS_INFO("Adding a UWB between factor");
       auto odom_pose = pose_graph_.GetPose(odom_key);
-      // TODO: A dropped relative location should be read from the configuration file
-      auto dropped_relative_pose = gtsam::Pose3(
-        gtsam::Rot3(),
-        gtsam::Point3(0.0, 0.0, -1.0)
-      );
+      auto dropped_relative_pose = factor.pose;
+      dropped_relative_pose.print("dropped_relative_pose");
       auto global_uwb_pose = odom_pose.compose(dropped_relative_pose);
-      // TODO: SetFixedNoiseModels should be used for the following sentences
-      gtsam::Vector6 gaussians;
-      gaussians.head<3>().setConstant(uwb_between_rot_sigma_);
-      gaussians.tail<3>().setConstant(uwb_between_trans_sigma_);
-      gtsam::noiseModel::Gaussian::shared_ptr noise 
-        = gtsam::noiseModel::Gaussian::Covariance(gaussians);
+      gtsam::Vector6 sigmas;
+      sigmas.head<3>().setConstant(uwb_between_rot_sigma_);
+      sigmas.tail<3>().setConstant(uwb_between_trans_sigma_);
+      auto noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
       pose_graph_.TrackNode(
           factor.stamp, uwb_key, global_uwb_pose, noise);
       // Add new factors to buffer to send to pgo
