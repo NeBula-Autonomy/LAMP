@@ -117,7 +117,7 @@ protected:
                             gtsam::SharedNoiseModel noise);
 
   // Functions to publish
-  bool PublishPoseGraph();
+  bool PublishPoseGraph(bool b_publish_incremental = true);
   bool PublishPoseGraphForOptimizer();
 
   // Generate map from keyed scans
