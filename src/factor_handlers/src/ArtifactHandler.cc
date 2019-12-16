@@ -138,7 +138,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Check if the ID of the object already exists in the object hash
   if (use_artifact_loop_closure_ &&
       artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() &&
-      msg.label != "cellphone") {
+      msg.label != "Cell Phone") {
     // Take the ID for that object - no reconciliation in the pose-graph of a
     // cell phone (for now)
     cur_artifact_key = artifact_id2key_hash[artifact_id];

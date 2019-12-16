@@ -768,31 +768,41 @@ void PoseGraphVisualizer::VisualizeSingleArtifactId(
   m.header.frame_id = "world";
   std::string artifact_label = art.msg.label;
 
-  if (artifact_label == "backpack") {
+  if (artifact_label == "Backpack") {
     std::cout << "backpack marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.0f;
     m.color.b = 0.0f;
-  } else if (artifact_label == "fire extinguisher") {
+  } else if (artifact_label == "Fire Extinguisher") {
     std::cout << "fire extinguisher marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.5f;
     m.color.b = 0.75f;
-  } else if (artifact_label == "drill") {
+  } else if (artifact_label == "Drill") {
     std::cout << "drill marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 1.0f;
     m.color.b = 0.0f;
-  } else if (artifact_label == "survivor") {
+  } else if (artifact_label == "Survivor") {
     std::cout << "survivor marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 1.0f;
     m.color.b = 1.0f;
-  } else if (artifact_label == "cellphone") {
+  } else if (artifact_label == "Cell Phone") {
     std::cout << "cellphone marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 0.0f;
     m.color.b = 0.7f;
+  } else if (artifact_label == "Gas") {
+    std::cout << "gas marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+  } else if (artifact_label == "Vent") {
+    std::cout << "vent marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
   } else {
     std::cout << "UNDEFINED MARKER" << std::endl;
     m.color.r = 1.0f;
@@ -825,24 +835,24 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   m.color.a = 1.0f;
 
   if (artifact_label == "backpack") {
-    std::cout << "backpack marker" << std::endl;
+    std::cout << "Backpack marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::CUBE;
-  } else if (artifact_label == "fire extinguisher") {
+  } else if (artifact_label == "Fire Extinguisher") {
     std::cout << "fire extinguisher marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.5f;
     m.color.b = 0.75f;
     m.type = visualization_msgs::Marker::SPHERE;
-  } else if (artifact_label == "drill") {
+  } else if (artifact_label == "Drill") {
     std::cout << "drill marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 1.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::CYLINDER;
-  } else if (artifact_label == "survivor") {
+  } else if (artifact_label == "Survivor") {
     std::cout << "survivor marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 1.0f;
@@ -851,7 +861,7 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.y = 1.2f;
     m.scale.z = 1.2f;
     m.type = visualization_msgs::Marker::CYLINDER;
-  } else if (artifact_label == "cellphone") {
+  } else if (artifact_label == "Cell Phone") {
     std::cout << "cellphone marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 0.0f;
@@ -932,28 +942,28 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     marker.scale.z = 0.35f;
     marker.color.a = 1.0f;
 
-    if (artifact_label == "backpack") {
+    if (artifact_label == "Backpack") {
       std::cout << "backpack marker" << std::endl;
       marker.color.r = 1.0f;
       marker.color.g = 0.0f;
       marker.color.b = 0.0f;
       marker.type = visualization_msgs::Marker::CUBE;
     }
-    if (artifact_label == "fire extinguisher") {
+    if (artifact_label == "Fire Extinguisher") {
       std::cout << "fire extinguisher marker" << std::endl;
       marker.color.r = 1.0f;
       marker.color.g = 0.5f;
       marker.color.b = 0.75f;
       marker.type = visualization_msgs::Marker::SPHERE;
     }
-    if (artifact_label == "drill") {
+    if (artifact_label == "Drill") {
       std::cout << "drill marker" << std::endl;
       marker.color.r = 0.0f;
       marker.color.g = 1.0f;
       marker.color.b = 0.0f;
       marker.type = visualization_msgs::Marker::CYLINDER;
     }
-    if (artifact_label == "survivor") {
+    if (artifact_label == "Survivor") {
       std::cout << "survivor marker" << std::endl;
       marker.color.r = 1.0f;
       marker.color.g = 1.0f;
