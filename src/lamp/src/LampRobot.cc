@@ -920,7 +920,7 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       ROS_INFO("Adding a UWB range factor");
       auto range = factor.range;
       gtsam::noiseModel::Base::shared_ptr range_error =
-          gtsam::noiseModel::Isotropic::Sigma(1, factor.range_error);
+          gtsam::noiseModel::Isotropic::Sigma(1, uwb_range_sigma_);
       new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
           odom_key, uwb_key, range, range_error));
       // Track the edges that have been added
@@ -929,7 +929,7 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       uwb_factor.key_to = uwb_key;
       uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
       uwb_factor.range = range;
-      uwb_factor.range_error = factor.range_error;
+      uwb_factor.range_error = uwb_range_sigma_;
       // Add new factors to buffer to send to pgo
       pose_graph_.TrackFactor(uwb_factor);
     }
