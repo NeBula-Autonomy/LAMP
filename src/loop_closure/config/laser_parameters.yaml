@@ -5,7 +5,7 @@
 robot: 
 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
-  icp_initialization_method: 1
+  icp_initialization_method: 2
 
   # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
@@ -54,7 +54,7 @@ robot:
 base: 
 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
-  icp_initialization_method: 1
+  icp_initialization_method: 2
 
   # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
