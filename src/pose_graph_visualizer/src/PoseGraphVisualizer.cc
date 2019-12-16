@@ -834,7 +834,7 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   m.scale.z = 0.95f;
   m.color.a = 1.0f;
 
-  if (artifact_label == "backpack") {
+  if (artifact_label == "Backpack") {
     std::cout << "Backpack marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.0f;
@@ -870,6 +870,18 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.y = 1.2f;
     m.scale.z = 0.3f;
     m.type = visualization_msgs::Marker::CUBE;
+  } else if (artifact_label == "Gas") {
+    std::cout << "gas marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::SPHERE;
+  } else if (artifact_label == "Vent") {
+    std::cout << "vent marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.type = visualization_msgs::Marker::SPHERE;
   } else {
     std::cout << "UNDEFINED ARTIFACT" << std::endl;
     m.color.r = 1.0f;
