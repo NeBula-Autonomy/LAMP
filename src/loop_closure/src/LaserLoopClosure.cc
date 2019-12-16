@@ -19,7 +19,7 @@ namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
-  : LoopClosure(n), last_closure_key_(0) {}
+  : LoopClosure(n) {}
 
 LaserLoopClosure::~LaserLoopClosure() {}
 
@@ -74,12 +74,6 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   skip_recent_poses_ =
       (int)(distance_to_skip_recent_poses / translation_threshold_nodes_);
 
-  // Initialize point cloud filter
-  if (!filter_.Initialize(n)) {
-    ROS_ERROR("LaserLoopClosure: Failed to initialize point cloud filter.");
-    return false;
-  }
-
   return true;
 }
 
@@ -100,20 +94,27 @@ bool LaserLoopClosure::FindLoopClosures(
     return false;
   }
 
-  // If a loop has already been closed recently, don't try to close a new one.
-  if (std::llabs(new_key - last_closure_key_) * translation_threshold_nodes_ <
-      distance_before_reclosing_)
-    return false;
-
   // Get pose and scan for the provided key.
   const gtsam::Pose3 pose1 = keyed_poses_.at(new_key);
   const PointCloud::ConstPtr scan1 = keyed_scans_.at(new_key);
+
+  // Create a temporary copy of last_closure_key_map so that updates in this iteration are not used
+  std::map<std::pair<char,char>, gtsam::Key> last_closure_key_copy_(last_closure_key_);
 
   // Set to true if we find a loop closure (single or inter robot)
   bool closed_loop = false;
 
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
+
+    // If a loop has already been closed recently, don't try to close a new one.
+    char c1 = gtsam::Symbol(new_key).chr(), c2 = other_key.chr();
+    gtsam::Key last_closure_key_new = last_closure_key_copy_[{c1, c2}];
+
+    // If a loop has already been closed recently, don't try to close a new one.
+    if (std::llabs(new_key - last_closure_key_new) * translation_threshold_nodes_ <
+        distance_before_reclosing_)
+      continue;
 
     // Skip poses with no keyed scans.
     if (!keyed_scans_.count(other_key)) {
@@ -127,7 +128,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
     // Check for inter robot loop closures
     else {
-      // closed_loop |= CheckForInterRobotLoopClosure();
+      closed_loop |= CheckForInterRobotLoopClosure(new_key, other_key, loop_closure_edges);
     }
   } 
 
@@ -142,6 +143,7 @@ double LaserLoopClosure::DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol k
 
   return delta.translation().norm();
 }
+
 
 bool LaserLoopClosure::CheckForLoopClosure(
         gtsam::Symbol key1,
@@ -160,6 +162,24 @@ bool LaserLoopClosure::CheckForLoopClosure(
   // Don't compare against poses that were recently collected.
   if (std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
     return false;
+  
+  if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
+    return false;
+  }
+
+  // Perform loop closure without a provided prior transform
+  return PerformLoopClosure(key1, key2, false, gtsam::Pose3(), loop_closure_edges);
+}
+
+bool LaserLoopClosure::CheckForInterRobotLoopClosure(
+        gtsam::Symbol key1,
+        gtsam::Symbol key2,
+        std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
+
+  if (utils::IsKeyFromSameRobot(key1, key2)) {
+    ROS_ERROR_STREAM("Checking for inter robot loop closures on same robot");
+    return false;
+  }
   
   if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
     return false;
@@ -207,8 +227,6 @@ bool LaserLoopClosure::PerformLoopClosure(
 
 }
 
-
-
 pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
         gtsam::Symbol key1, 
         gtsam::Symbol key2,
@@ -216,8 +234,13 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
         gtsam::Matrix66& covariance) {
 
   // Store last time a new loop closure was added
-  last_closure_key_ = key1;
-
+  if (key1 > last_closure_key_[{key1.chr(), key2.chr()}]) {
+    last_closure_key_[{key1.chr(), key2.chr()}] = key1;
+  }
+  if (key2 > last_closure_key_[{key2.chr(), key1.chr()}]) {
+    last_closure_key_[{key2.chr(), key1.chr()}] = key2;
+  }
+  
   // Create the new loop closure edge
   pose_graph_msgs::PoseGraphEdge edge;
   edge.key_from = key1;
@@ -275,19 +298,8 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   icp.setMaximumIterations(icp_iterations_);
   icp.setRANSACIterations(0);
 
-  // Filter the two scans. They are stored in the pose graph as dense scans for
-  // visualization. Filter the first scan only when it is not filtered already.
-  // Can be extended to the other scan if all the key scan pairs store the
-  // filtered results.
-  PointCloud::Ptr scan1_filtered(new PointCloud);
-  filter_.Filter(scan1, scan1_filtered);
-
-  PointCloud::Ptr scan2_filtered(new PointCloud);
-  filter_.Filter(scan2, scan2_filtered);
-
-  icp.setInputSource(scan1_filtered);
-
-  icp.setInputTarget(scan2_filtered);
+  icp.setInputSource(scan1);
+  icp.setInputTarget(scan2);
 
   ///// ICP initialization scheme
   // Default is to initialize by identity. Other options include

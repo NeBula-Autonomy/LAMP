@@ -7,7 +7,7 @@ robot:
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
   icp_initialization_method: 2
 
-  # Translation threshold for new nods to compute values for loop closure checking
+  # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
 
   # When searching through old poses for loop closures, only consider old poses
@@ -17,7 +17,7 @@ robot:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 2.0
+  max_tolerable_fitness: 2.0 # 2.0
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -54,9 +54,9 @@ robot:
 base: 
 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
-  icp_initialization_method: 1
+  icp_initialization_method: 2
 
-  # Translation threshold for new nods to compute values for loop closure checking
+  # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
 
   # When searching through old poses for loop closures, only consider old poses
@@ -66,7 +66,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 5.0
+  max_tolerable_fitness: 2.0
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -74,7 +74,7 @@ base:
 
   # If a loop has recently been closed, don't close a new one for at least this
   # amount of translational distance (m).
-  distance_before_reclosing: 50 #10
+  distance_before_reclosing: 10 #10
 
   # If a batchloop has recently been closed, don't close a new one for at least this
   # amount of translational distance (m).

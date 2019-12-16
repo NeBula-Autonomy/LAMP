@@ -131,6 +131,12 @@ void LampPgo::InputCallback(
 
   // new_factors.print("new factors");
 
+  ROS_INFO_STREAM("FACTORS BEFORE");
+  for (auto f : new_factors) {
+    f->printKeys();
+  }
+
+
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
 
@@ -139,6 +145,11 @@ void LampPgo::InputCallback(
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
   // nfg_.print("nfg");
+  ROS_INFO_STREAM("FACTORS AFTER");
+  for (auto f : nfg_) {
+    f->printKeys();
+    ROS_INFO_STREAM("Error: " << f->error(values_));
+  }
 
   ROS_INFO_STREAM("PGO stored values of size " << values_.size());
   ROS_INFO_STREAM("PGO stored nfg of size " << nfg_.size());

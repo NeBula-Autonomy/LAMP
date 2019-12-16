@@ -1,0 +1,32 @@
+session_name: husky_refactor
+
+# before_script: "~/sim_/scripts/cleanup.sh"
+
+# Default environment variables; Overwrite from command line
+environment:
+  # LOG_PATH: /home/costar/data/parking_oct28/husky3_t3/rosbag
+  ROBOT_NAME: husky1
+  BASE_NAME: base1
+
+  DATA_FILE: pose_graph_data.zip # saved pose graph in ~/.ros directory
+  GT_FILE: pose_graph_gt.zip
+
+options:
+  default-command: /bin/bash
+
+windows:
+- window_name: lamp
+  focus: true
+  layout: tiled
+  panes:
+    - roscore
+    - sleep 3; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
+    - sleep 1; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME 
+    - rosparam rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$BASE_NAME/map # base station
+    - sleep 2; rosrun rviz rviz
+
+    # load PG, apply GT correction, and save
+    - sleep 5; rostopic pub /base1/lamp/debug std_msgs/String "load $DATA_FILE"
+    - sleep 6; rostopic pub /base1/lamp/debug std_msgs/String "artifact_gt" 
+    - sleep 7; rostopic pub /base1/lamp/debug std_msgs/String "save $GT_FILE" 
+    - sleep 8; tmux kill-window;

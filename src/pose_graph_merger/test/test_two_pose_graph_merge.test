@@ -1,0 +1,5 @@
+<launch>
+  <test test-name="test_two_pose_graph_merge"
+        pkg="pose_graph_merger"
+        type="test_two_pose_graph_merge"/>
+</launch>
