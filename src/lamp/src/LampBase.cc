@@ -133,7 +133,7 @@ void LampBase::OptimizerUpdateCallback(
   MergeOptimizedGraph(msg);
 
   // Publish the pose graph and update the map 
-  PublishPoseGraph();
+  PublishPoseGraph(false);
 
   // Update the map (also publishes)
   ReGenerateMapPointCloud();
@@ -334,9 +334,9 @@ bool LampBase::AddTransformedPointCloudToMap(const gtsam::Symbol key) {
 // Conversion and publish pose graph functions
 //------------------------------------------------------------------------------------------
 
-bool LampBase::PublishPoseGraph() {
+bool LampBase::PublishPoseGraph( bool b_publish_incremental) {
   // Incremental publishing
-  if (pose_graph_incremental_pub_.getNumSubscribers() > 0) {
+  if (b_publish_incremental && pose_graph_incremental_pub_.getNumSubscribers() > 0) {
     // Convert new parts of the pose-graph to messages
     pose_graph_msgs::PoseGraphConstPtr g_inc = pose_graph_.ToIncrementalMsg();
     // TODO - change interface to just take a flag? Then do the clear in there?
