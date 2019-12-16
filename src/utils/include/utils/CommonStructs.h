@@ -277,7 +277,8 @@ public:
   bool Save(const std::string& zipFilename) const;
 
   // Loads pose graph and accompanying point clouds from a zip file.
-  bool Load(const std::string& zipFilename);
+  bool Load(const std::string& zipFilename,
+            const std::string& pose_graph_topic_name = "pose_graph");
 
   // Convert entire pose graph to message.
   GraphMsgPtr ToMsg() const;
@@ -429,6 +430,11 @@ struct UwbFactor {
   double range_error;
 };
 
+struct PoseData {
+  ros::Time stamp;
+  gtsam::Pose3 pose;
+};
+
 // ---------------------------------------------------------
 
 // Base factor data class
@@ -481,6 +487,15 @@ public:
 
   std::vector<pose_graph_msgs::PoseGraph::ConstPtr> graphs;
   std::vector<pose_graph_msgs::KeyedScan::ConstPtr> scans;
+};
+
+class RobotPoseData : public FactorData {
+public:
+  RobotPoseData(){};
+  virtual ~RobotPoseData(){};
+
+  // Stores most recent pose for each robot
+  std::map< std::string, PoseData > poses;
 };
 
 class AprilTagData : public FactorData {
