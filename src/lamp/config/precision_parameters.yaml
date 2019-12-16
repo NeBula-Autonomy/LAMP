@@ -30,8 +30,8 @@ artifact_gt_trans_precision: 25.0
 uwb_range_sigma: 1.0
 
 # Noise parameters (as standard deviations) for uwb between factor
-uwb_between_rot_sigma: 0.30
-uwb_between_trans_sigma: 0.50
+uwb_between_rot_sigma: 1.0
+uwb_between_trans_sigma: 2.0
 
 # Noise parameters for unit vectors in attitude
 noise_sigma_imu: 0.3
