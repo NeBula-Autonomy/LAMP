@@ -16,6 +16,9 @@
 
 // Class definition
 class TwoPoseGraphMerge {
+
+  friend class TestTwoPoseGraphMerge;
+
   public:
     // Constructor
     TwoPoseGraphMerge();
@@ -42,6 +45,9 @@ class TwoPoseGraphMerge {
 
     geometry_msgs::PoseStamped GetLatestOdomPose(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
+    pose_graph_msgs::PoseGraph GetMergedGraph();
+    void PublishPoses();
+
     // Publishers
     ros::Publisher merged_graph_pub_;
     ros::Publisher rob_node_pose_pub_;
@@ -58,10 +64,20 @@ class TwoPoseGraphMerge {
 
     // Booleans
     bool first_call_;
+
+    // Symbols
     char robot_prefix_;
+
+    // Frames
+    std::string world_fid_;
+    std::string world2_fid_;
     
     // Pose graph merger
     Merger merger_;
+
+    // Poses
+    geometry_msgs::PoseStamped robot_pose_;
+    geometry_msgs::PoseStamped merged_pose_;
 
   private:
     // Anything just in the base class
