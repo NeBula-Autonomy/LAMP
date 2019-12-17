@@ -48,6 +48,9 @@ private:
 
   // Parameter namespace ("robot" or "base")
   std::string param_ns_;
+
+  // Keep track of node IDs for output message (not stored by GTSAM types)
+  std::map<gtsam::Key, std::string> key_to_id_map_;
 };
 
 #endif // LAMP_PGO_H_

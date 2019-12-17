@@ -95,6 +95,13 @@ void LampPgo::InputCallback(
 
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
+
+  // Track node IDs 
+  for (auto n : graph_msg->nodes) {
+    if (!key_to_id_map_.count(n.key)) {
+      key_to_id_map_[n.key] = n.ID;
+    }
+  }
  
 
   // Extract new values
@@ -167,6 +174,12 @@ void LampPgo::PublishValues() const {
   for (const auto& key : key_list) {
     pose_graph_msgs::PoseGraphNode node;
     node.key = key;
+    if (key_to_id_map_.count(key)) {
+      node.ID = key_to_id_map_.at(key);
+    }
+    else {
+      ROS_ERROR_STREAM("PGO: ID not found for node key");
+    }
     // pose - translation
     node.pose.position.x = values_.at<gtsam::Pose3>(key).translation().x();
     node.pose.position.y = values_.at<gtsam::Pose3>(key).translation().y();
