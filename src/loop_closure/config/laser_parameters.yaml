@@ -4,20 +4,20 @@
 
 robot: 
 
-  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION }
-  icp_initialization_method: 2
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES }
+  icp_initialization_method: 3
 
   # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 5
+  proximity_threshold: 10
 
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 2.0 # 2.0
+  max_tolerable_fitness: 0.10
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -25,7 +25,7 @@ robot:
 
   # If a loop has recently been closed, don't close a new one for at least this
   # amount of translational distance (m).
-  distance_before_reclosing: 50 #10
+  distance_before_reclosing: 5 #10
 
   # If a batchloop has recently been closed, don't close a new one for at least this
   # amount of translational distance (m).
@@ -46,6 +46,24 @@ robot:
 
     # Iterate ICP this many times.
     iterations: 5 # Default from original branch is 20: 
+  
+  #--------------------------------------------------------------------------------
+  # SAC-IA Settings for feature-based initialization
+  #--------------------------------------------------------------------------------
+
+  sac_ia:
+    # Iterate SAC-IA this many times.
+    iterations: 100
+
+    # Number of previous and next scans to accumulate for target pointcloud
+    # 0 means no accumulation
+    num_prev_scans: 1
+    num_next_scans: 1
+
+    # Radii of area to consider when computing normals and features
+    normals_radius: 1.0
+    features_radius: 2.0
+
 
 #############################################
 # PARAMETERS FOR LASER LOOP CLOSURES (BASE)
@@ -95,4 +113,21 @@ base:
 
     # Iterate ICP this many times.
     iterations: 5 # Default from original branch is 20: 
+
+  #--------------------------------------------------------------------------------
+  # SAC-IA Settings for feature-based initialization
+  #--------------------------------------------------------------------------------
+
+  sac_ia:
+    # Iterate SAC-IA this many times.
+    iterations: 100
+
+    # Number of previous scans to accumulate for target pointcloud
+    # 0 means no accumulation
+    num_prev_scans: 3
+    num_next_scans: 0
+    
+    # Radii of area to consider when computing normals and features
+    normals_radius: 1.0
+    features_radius: 2.0
 
