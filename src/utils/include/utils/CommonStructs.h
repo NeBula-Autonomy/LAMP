@@ -426,8 +426,17 @@ struct UwbFactor {
   ros::Time stamp;
   gtsam::Symbol key_from;
   gtsam::Symbol key_to;
+
+  // pose_graph_msgs::PoseGraphEdge::UWB_RANGE
+  // pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN
+  int type;
+
+  // Only for range factors
   double range;
   double range_error;
+
+  // Only for between factors
+  gtsam::Pose3 pose;
 };
 
 struct PoseData {
