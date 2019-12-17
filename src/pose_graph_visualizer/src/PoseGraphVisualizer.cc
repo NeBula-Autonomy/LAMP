@@ -113,6 +113,8 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       pnh.advertise<visualization_msgs::Marker>("artifact_edges", 10, false);
   uwb_edge_pub_ =
       pnh.advertise<visualization_msgs::Marker>("uwb_edges", 10, false);
+  uwb_edge_between_pub_ =
+      pnh.advertise<visualization_msgs::Marker>("uwb_edges_between", 10, false);
   uwb_node_pub_ =
       pnh.advertise<visualization_msgs::Marker>("uwb_nodes", 10, false);
   graph_node_pub_ =
@@ -458,6 +460,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   visualization_msgs::Marker loop_edges;
   visualization_msgs::Marker artifact_edges;
   visualization_msgs::Marker uwb_edges;
+  visualization_msgs::Marker uwb_between_edges;
 
   visualization_msgs::Marker* edge_target;
   // TODO visualize new edges/nodes or all?
@@ -474,8 +477,10 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       edge_target = &artifact_edges;
       break;
     case pose_graph_msgs::PoseGraphEdge::UWB_RANGE:
-    case pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN:
       edge_target = &uwb_edges;
+      break;
+    case pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN:
+      edge_target = &uwb_between_edges;
       break;
     }
     // TODO - look at how to handle Priors - a small edge - 1 m down in z
@@ -536,7 +541,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Publish UWB edges.
   if (uwb_edge_pub_.getNumSubscribers() > 0) {
     ROS_INFO("UWB Edges");
-    visualization_msgs::Marker m;
+    // visualization_msgs::Marker m;
     uwb_edges.header.frame_id = pose_graph_.fixed_frame_id;
     uwb_edges.ns = pose_graph_.fixed_frame_id;
     uwb_edges.id = 3;
@@ -548,6 +553,23 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     uwb_edges.color.a = 0.8;
     uwb_edges.scale.x = 0.02;
     uwb_edge_pub_.publish(uwb_edges);
+  }
+
+  // Publish UWB between edges.
+  if (uwb_edge_between_pub_.getNumSubscribers() > 0) {
+    ROS_INFO("UWB Between Edges");
+    // visualization_msgs::Marker m;
+    uwb_between_edges.header.frame_id = pose_graph_.fixed_frame_id;
+    uwb_between_edges.ns = pose_graph_.fixed_frame_id;
+    uwb_between_edges.id = 4;
+    uwb_between_edges.action = visualization_msgs::Marker::ADD;
+    uwb_between_edges.type = visualization_msgs::Marker::LINE_LIST;
+    uwb_between_edges.color.r = 1.0;
+    uwb_between_edges.color.g = 1.0;
+    uwb_between_edges.color.b = 0.0;
+    uwb_between_edges.color.a = 0.8;
+    uwb_between_edges.scale.x = 0.05;
+    uwb_edge_between_pub_.publish(uwb_between_edges);
   }
 
   visualization_msgs::Marker generic_nodes;

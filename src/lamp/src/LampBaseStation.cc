@@ -142,6 +142,13 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
   // Base station publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
 
+  // Robot pose publishers
+  ros::Publisher pose_pub_;
+  for (auto robot : robot_names_) {
+    pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(robot+"/pose", 10, false);
+    publishers_pose_[robot] = pose_pub_;
+  }
+
   return true; 
 }
 
@@ -160,6 +167,10 @@ bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
   }
   else if (!pose_graph_handler_.Initialize(n, robot_names_)) {
     ROS_ERROR("%s: Failed to initialize the pose graph handler.", name_.c_str());
+    return false;
+  }
+  else if (!robot_pose_handler_.Initialize(n, robot_names_)) {
+    ROS_ERROR("%s: Failed to initialize the robot pose handler.", name_.c_str());
     return false;
   }
   
@@ -272,6 +283,29 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   return true; 
 }
 
+
+bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
+
+  // Extract pose graph data
+  std::shared_ptr<RobotPoseData> pose_data = std::dynamic_pointer_cast<RobotPoseData>(data);
+
+  // Check if there are new pose graphs
+  if (!pose_data->b_has_data) {
+    return false; 
+  }
+
+  for (auto pair : pose_data->poses) {
+    std::string robot = pair.first;
+
+    // pose = pair.second.pose; 
+    // merger_.O
+
+    // publishers_pose_[robot].publish(pair.second.)
+
+
+  }
+}
+
 bool LampBaseStation::ProcessManualLoopClosureData(std::shared_ptr<FactorData> data) {
 
   // Extract loop closure data
@@ -305,6 +339,9 @@ bool LampBaseStation::CheckHandlers() {
 
   // Check for manual loop closures
   ProcessManualLoopClosureData(manual_loop_closure_handler_.GetData());
+
+  // Check for poses
+  ProcessRobotPoseData(robot_pose_handler_.GetData());
 
   return true;
 }
@@ -349,16 +386,54 @@ bool LampBaseStation::ProcessArtifactGT() {
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {
   ROS_INFO_STREAM("Debug message received: " << msg.data);
 
+  // Split message data into a vector of space-separated strings
+  std::vector<std::string> data;
+  boost::split(data, msg.data, [](char c){return c == ' ';}); 
+
+  if (data.size() == 0) {
+    ROS_INFO_STREAM("Invalid debug message data");
+  }
+  std::string cmd = data[0];
+
   // Freeze the current point cloud map on the visualizer
-  if (msg.data == "freeze") {
+  if (cmd == "freeze") {
     ROS_INFO_STREAM("Publishing frozen map");
     mapper_.PublishMapFrozen();
   }
 
   // Read in artifact ground truth data
-  else if (msg.data == "artifact_gt") {
+  else if (cmd == "artifact_gt") {
     ROS_INFO_STREAM("Processing artifact ground truth data");
     ProcessArtifactGT();
+  }
+
+  // Save the pose graph 
+  else if (cmd == "save") {
+    ROS_INFO_STREAM("Saving the pose graph");
+
+    // Use filename if provided
+    if (data.size() >= 2) {
+      pose_graph_.Save(data[1]);
+    }
+    else {
+      pose_graph_.Save("saved_pose_graph.zip");
+    }
+  }
+
+  // Load pose graph from file 
+  else if (cmd == "load") {
+    ROS_INFO_STREAM("Loading pose graph and keyed scans");
+
+    // Use filename if provided
+    if (data.size() >= 2) {
+      pose_graph_.Load(data[1]);
+    }
+    else {
+      pose_graph_.Load("saved_pose_graph.zip");
+    }
+    
+    PublishPoseGraph(); 
+    ReGenerateMapPointCloud();
   }
 
   // Read in artifact ground truth data

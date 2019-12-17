@@ -74,6 +74,12 @@ bool LampBase::SetFactorPrecisions() {
     return false;
   if (!pu::Get("fiducial_rot_precision", fiducial_rot_precision_))
     return false;
+  if (!pu::Get("uwb_range_sigma", uwb_range_sigma_))
+    return false;
+  if (!pu::Get("uwb_between_rot_sigma", uwb_between_rot_sigma_))
+    return false;
+  if (!pu::Get("uwb_between_trans_sigma", uwb_between_trans_sigma_))
+    return false;
 
   // Set as noise models
   gtsam::Vector6 sigmas;
