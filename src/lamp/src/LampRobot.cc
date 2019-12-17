@@ -892,19 +892,21 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
 
   ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
-  ROS_INFO_STREAM(
-      "Number of UWB factors to be added : " << uwb_data->factors.size());
+  ROS_INFO_STREAM("Number of UWB factors to be added : " << uwb_data->factors.size());
 
   for (auto factor : uwb_data->factors) {
     auto odom_key = factor.key_from;
     auto uwb_key = gtsam::Symbol('u', factor.key_to);
+
     // Check if it is a new uwb id or not
     auto values = pose_graph_.GetValues();
-    if (!values.exists(uwb_key)) {
+
+    if (!values.exists(uwb_key) && factor.type != pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
       // Insert it into the values
       global_uwb_pose = pose_graph_.GetPose(odom_key);
       // Add it into the keyed stamps
       pose_graph_.InsertKeyedStamp(uwb_key, factor.stamp);
+      // TODO: SetFixedNoiseModels should be used for the following sentences
       gtsam::Vector6 prior_precision;
       prior_precision.head<3>().setConstant(0.0000001);
       prior_precision.tail<3>().setConstant(0.0000001);
@@ -913,20 +915,52 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       pose_graph_.TrackNode(
           factor.stamp, uwb_key, global_uwb_pose, prior_noise);
     }
-    auto range = factor.range;
-    gtsam::noiseModel::Base::shared_ptr range_error =
-        gtsam::noiseModel::Isotropic::Sigma(1, factor.range_error);
-    new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
-        odom_key, uwb_key, range, range_error));
-    // Track the edges that have been added
-    EdgeMessage uwb_factor;
-    uwb_factor.key_from = odom_key;
-    uwb_factor.key_to = uwb_key;
-    uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
-    uwb_factor.range = range;
-    uwb_factor.range_error = factor.range_error;
-    // add new factors to buffer to send to pgo
-    pose_graph_.TrackFactor(uwb_factor);
+
+    if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+      ROS_INFO("Adding a UWB range factor");
+      auto range = factor.range;
+      gtsam::noiseModel::Base::shared_ptr range_error =
+          gtsam::noiseModel::Isotropic::Sigma(1, uwb_range_sigma_);
+      new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
+          odom_key, uwb_key, range, range_error));
+      // Track the edges that have been added
+      EdgeMessage uwb_factor;
+      uwb_factor.key_from = odom_key;
+      uwb_factor.key_to = uwb_key;
+      uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
+      uwb_factor.range = range;
+      uwb_factor.range_error = uwb_range_sigma_;
+      // Add new factors to buffer to send to pgo
+      pose_graph_.TrackFactor(uwb_factor);
+    }
+    else if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+      ROS_INFO("Adding a UWB between factor");
+      auto odom_pose = pose_graph_.GetPose(odom_key);
+      auto dropped_relative_trans = factor.pose.translation();
+
+      auto rotation_matrix = odom_pose.rotation();
+      dropped_relative_trans = rotation_matrix * dropped_relative_trans;
+      auto dropped_relative_pose = gtsam::Pose3(gtsam::Rot3(), dropped_relative_trans);
+
+      dropped_relative_pose.print("dropped_relative_pose");
+      auto global_uwb_pose = odom_pose.compose(dropped_relative_pose);
+      gtsam::Vector6 sigmas;
+      sigmas.head<3>().setConstant(uwb_between_rot_sigma_);
+      sigmas.tail<3>().setConstant(uwb_between_trans_sigma_);
+      auto noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
+      pose_graph_.TrackNode(
+          factor.stamp, uwb_key, global_uwb_pose, noise);
+      // Add new factors to buffer to send to pgo
+      pose_graph_.TrackFactor(
+        odom_key,
+        uwb_key,
+        pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN,
+        dropped_relative_pose,
+        noise,
+        true
+      );
+    }
+    
   }
   b_run_optimization_ = true;
   uwb_handler_.ResetFactorData();

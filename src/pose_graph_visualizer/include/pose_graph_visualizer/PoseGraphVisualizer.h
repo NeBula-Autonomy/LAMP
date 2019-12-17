@@ -126,6 +126,7 @@ private:
   ros::Publisher loop_edge_pub_;
   ros::Publisher artifact_edge_pub_;
   ros::Publisher uwb_edge_pub_;
+  ros::Publisher uwb_edge_between_pub_;
   ros::Publisher uwb_node_pub_;
   ros::Publisher graph_node_pub_;
   ros::Publisher graph_node_id_pub_;
