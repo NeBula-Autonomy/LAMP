@@ -936,7 +936,12 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     else if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
       ROS_INFO("Adding a UWB between factor");
       auto odom_pose = pose_graph_.GetPose(odom_key);
-      auto dropped_relative_pose = factor.pose;
+      auto dropped_relative_trans = factor.pose.translation();
+
+      auto rotation_matrix = odom_pose.rotation();
+      dropped_relative_trans = rotation_matrix * dropped_relative_trans;
+      auto dropped_relative_pose = gtsam::Pose3(gtsam::Rot3(), dropped_relative_trans);
+
       dropped_relative_pose.print("dropped_relative_pose");
       auto global_uwb_pose = odom_pose.compose(dropped_relative_pose);
       gtsam::Vector6 sigmas;
