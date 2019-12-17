@@ -66,6 +66,8 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("base/b_optimize_on_artifacts", b_optimize_on_artifacts_))
     return false;
+  if (!pu::Get("b_use_uwb", b_use_uwb_))
+    return false;
   if (!pu::Get("imu_factors_per_opt", imu_factors_per_opt_))
     return false;
 
@@ -248,7 +250,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
       // Optimize on loop closures, IMU factors and artifact loop closures
       if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE || 
           (b_optimize_on_artifacts_ && e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) ||
-          e.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE)) {
       
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
