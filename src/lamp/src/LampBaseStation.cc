@@ -145,7 +145,7 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
   // Robot pose publishers
   ros::Publisher pose_pub_;
   for (auto robot : robot_names_) {
-    pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(robot+"/pose", 10, false);
+    pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>("/"+robot+"/lamp/pose_base", 10, false);
     publishers_pose_[utils::GetRobotPrefix(robot)] = pose_pub_;
   }
 
