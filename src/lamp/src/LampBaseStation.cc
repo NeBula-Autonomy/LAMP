@@ -147,8 +147,8 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
   // Robot pose publishers
   ros::Publisher pose_pub_;
   for (auto robot : robot_names_) {
-    pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(robot+"/pose", 10, false);
-    publishers_pose_[robot] = pose_pub_;
+    pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>("/"+robot+"/lamp/pose_base", 10, false);
+    publishers_pose_[utils::GetRobotPrefix(robot)] = pose_pub_;
   }
 
   return true; 
@@ -265,6 +265,21 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
       }
     }
 
+    // Store the pose at the most recent node for each robot 
+    for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
+      char prefix = gtsam::Symbol(n.key).chr();
+      if (!utils::IsRobotPrefix(prefix)) continue;
+
+      // First pose from this robot
+      if (!latest_node_pose_.count(prefix)) {
+        latest_node_pose_[prefix] = std::make_pair(n.key, utils::ToGtsam(n.pose));
+      }
+      else if (latest_node_pose_[prefix].first <= n.key) {
+        ROS_INFO_STREAM("Updated pose for robot " << prefix);
+        latest_node_pose_[prefix] = std::make_pair(n.key, utils::ToGtsam(n.pose));
+      }
+    }
+
     ROS_INFO_STREAM("Added new pose graph");
   }
 
@@ -297,15 +312,26 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
     return false; 
   }
 
+  ROS_INFO("Processing robot pose data");
+
   for (auto pair : pose_data->poses) {
-    std::string robot = pair.first;
+    char robot = utils::GetRobotPrefix(pair.first);
+    gtsam::Pose3 pose = pair.second.pose;
 
-    // pose = pair.second.pose; 
-    // merger_.O
+    gtsam::Pose3 last_pose_base = pose_graph_.LastPose(robot);
+    gtsam::Pose3 last_pose_robot = latest_node_pose_[robot].second;
 
-    // publishers_pose_[robot].publish(pair.second.)
+    gtsam::Pose3 delta = last_pose_robot.between(pose);
+    gtsam::Pose3 new_pose = last_pose_base.compose(delta);
 
+    // Convert to ROS to publish
+    geometry_msgs::PoseStamped msg;
+    msg.pose = utils::GtsamToRosMsg(new_pose);
+    msg.header.frame_id = pose_graph_.fixed_frame_id;
+    msg.header.stamp = pair.second.stamp;
 
+    ROS_INFO_STREAM("Publishing pose for robot " << robot);
+    publishers_pose_[robot].publish(msg);
   }
 }
 

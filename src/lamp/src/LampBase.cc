@@ -30,7 +30,8 @@ LampBase::LampBase()
   imu_factors_per_opt_(1),
   imu_factor_count_(0),   
   b_use_fixed_covariances_(false),
-  b_repub_values_after_optimization_(false) {
+  b_repub_values_after_optimization_(false),
+  b_received_optimizer_update_(false) {
   // any other things on construction
 
   // set up mapping function to get internal ID given gtsam::Symbol
@@ -126,6 +127,7 @@ void LampBase::OptimizerUpdateCallback(
     const pose_graph_msgs::PoseGraphConstPtr& msg) {
   ROS_INFO_STREAM("Received new pose graph from optimizer - merging now "
                   "-----------------------------------------------------");
+  b_received_optimizer_update_ = true;
 
   ROS_INFO_STREAM("New pose graph nodes: ");
   for (auto n : msg->nodes) {

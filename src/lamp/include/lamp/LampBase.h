@@ -169,6 +169,7 @@ protected:
   bool b_has_new_factor_;
   bool b_has_new_scan_;
   bool b_run_optimization_;
+  bool b_received_optimizer_update_;
   bool b_use_fixed_covariances_;
   bool b_repub_values_after_optimization_;
 

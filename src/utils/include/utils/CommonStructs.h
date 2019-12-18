@@ -27,6 +27,8 @@
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 
+#include <utils/PrefixHandling.h>
+
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 
@@ -196,6 +198,18 @@ public:
   inline gtsam::Pose3 LastPose() const {
     return values_.at<gtsam::Pose3>(key - 1);
   }
+  inline void AddLastNodeToNew() {
+    gtsam::Key last_node_key = key - 1;
+    const gtsam::Pose3 pose = LastPose();
+
+    if (values_new_.exists(last_node_key)) {
+      values_new_.update(last_node_key, pose);
+    } else {
+      values_new_.insert(last_node_key, pose);
+    }
+
+  }
+
   inline gtsam::Pose3 GetPose(gtsam::Symbol key) const {
     return values_.at<gtsam::Pose3>(key);
   }
@@ -259,6 +273,8 @@ public:
     values_new_.clear();
   }
   bool EraseValue(const gtsam::Symbol key);
+
+  gtsam::Pose3 LastPose(char c) const;
 
   // Time threshold for time-based lookup functions.
   static double time_threshold;
