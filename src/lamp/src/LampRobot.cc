@@ -387,6 +387,14 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     b_run_optimization_ = false;
   }
 
+  if (b_received_optimizer_update_) {
+    ROS_INFO("LampRobot: received optimizer update");
+    pose_graph_.AddLastNodeToNew();
+    PublishPoseGraph();
+
+    b_received_optimizer_update_ = false;
+  }
+
   // Publish anything that is needed
 }
 
@@ -549,11 +557,6 @@ void LampRobot::UpdateAndPublishOdom() {
     // TODO - work out what the best thing is to do in this scenario
     return;
   }
-  // ROS_INFO("Got good result from getting delta at the latest time");
-  // }
-
-  // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp,
-  // delta_pose);
 
   // Compose the delta
   auto delta_pose = delta_pose_cov.pose;
