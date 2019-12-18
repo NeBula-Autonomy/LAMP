@@ -2,8 +2,8 @@
 translation_threshold: 1.0
 
 # Point cloud storing parameters
-keyed_scan_time_diff_limit: 0.1
-pc_buffer_size_limit: 10
+keyed_scan_time_diff_limit: 0.2
+pc_buffer_size_limit: 50
 
 # Timestamp threshold 
 ts_threshold: 5.0
