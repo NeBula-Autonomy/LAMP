@@ -74,7 +74,7 @@ class LampBaseStation : public LampBase {
     ros::Subscriber debug_sub_;
 
     // Publishers
-    std::map<std::string, ros::Publisher> publishers_pose_;
+    std::map<char, ros::Publisher> publishers_pose_;
 
 
     // Booleans
@@ -87,6 +87,9 @@ class LampBaseStation : public LampBase {
 
     // Data Handler classes
     ManualLoopClosureHandler manual_loop_closure_handler_; 
+
+    // Track latest pose from each robot
+    std::map<char, std::pair<gtsam::Key, gtsam::Pose3>> latest_node_pose_;
 
     // Test class fixtures
     friend class TestLampBase;
