@@ -13,6 +13,8 @@
 
 #include <pose_graph_merger/merger.h>
 
+#include <utils/CommonFunctions.h>
+
 
 // Class definition
 class TwoPoseGraphMerge {
@@ -26,8 +28,6 @@ class TwoPoseGraphMerge {
     // Destructor
     ~TwoPoseGraphMerge();
 
-    // Define main interface functions
-
     bool Initialize(const ros::NodeHandle& n);
 
 
@@ -39,11 +39,15 @@ class TwoPoseGraphMerge {
     // Set precisions for fixed covariance settings
     bool CreatePublishers(const ros::NodeHandle& n);
     bool CreateSubscribers(const ros::NodeHandle& n);
+    std::string GetRobotName(const ros::NodeHandle& n);
 
     void ProcessBaseGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
     void ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
+    void ProcessRobotPose(const geometry_msgs::PoseStampedConstPtr& msg);
 
-    geometry_msgs::PoseStamped GetLatestOdomPose(const pose_graph_msgs::PoseGraphConstPtr& msg);
+    geometry_msgs::PoseStamped GetLatestOdomPose(
+            const pose_graph_msgs::PoseGraphConstPtr& msg, 
+            char target_prefix);
 
     pose_graph_msgs::PoseGraph GetMergedGraph();
     void PublishPoses();
@@ -52,12 +56,12 @@ class TwoPoseGraphMerge {
     ros::Publisher merged_graph_pub_;
     ros::Publisher rob_node_pose_pub_;
     ros::Publisher merged_node_pose_pub_;
+    ros::Publisher merged_pose_pub_;
 
     // Subscribers
     ros::Subscriber base_pose_graph_sub_;
     ros::Subscriber robot_pose_graph_sub_;
-
-    // Services
+    ros::Subscriber robot_pose_sub_;
 
     // Main process name
     std::string name_;
@@ -80,7 +84,6 @@ class TwoPoseGraphMerge {
     geometry_msgs::PoseStamped merged_pose_;
 
   private:
-    // Anything just in the base class
 
 };
 
