@@ -108,7 +108,7 @@
   <!-- Base Station graph merger  -->
   <include file="$(find pose_graph_merger)/launch/two_pose_graph_merge.launch">
     <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-    <arg name="base_namespace" value="$(arg robot_namespace)"/>
+    <arg name="base_namespace" value="$(arg base_namespace)"/>
   </include>
 
 </launch>
