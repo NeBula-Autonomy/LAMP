@@ -312,7 +312,6 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
     return false; 
   }
 
-  ROS_INFO("Processing robot pose data");
 
   for (auto pair : pose_data->poses) {
     char robot = utils::GetRobotPrefix(pair.first);
@@ -330,7 +329,6 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
     msg.header.frame_id = pose_graph_.fixed_frame_id;
     msg.header.stamp = pair.second.stamp;
 
-    ROS_INFO_STREAM("Publishing pose for robot " << robot);
     publishers_pose_[robot].publish(msg);
   }
 }
