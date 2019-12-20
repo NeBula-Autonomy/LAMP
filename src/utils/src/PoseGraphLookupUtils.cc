@@ -92,7 +92,7 @@ gtsam::Pose3 PoseGraph::LastPose(char c) const {
     }
 
     if (latest == utils::GTSAM_ERROR_SYMBOL) {
-      ROS_ERROR_STREAM("Could not get latest pose for robot with prefix " << c);
+      ROS_WARN_STREAM("Could not get latest pose for robot with prefix " << c);
       return gtsam::Pose3();
     }
 
