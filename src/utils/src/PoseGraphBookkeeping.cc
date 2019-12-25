@@ -4,6 +4,8 @@
 #include <gtsam/sam/RangeFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <gtsam/navigation/AttitudeFactor.h>
+
 
 bool PoseGraph::TrackFactor(const Factor& factor) {
   return TrackFactor(factor.key_from,
@@ -35,6 +37,11 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
                              msg.range,
                              msg.range_error,
                              false);
+  } else if (msg.type == pose_graph_msgs::PoseGraphEdge::IMU) {
+    success = TrackIMUFactor(gtsam::Symbol(msg.key_to),
+                            msg.pose.position,
+                            msg.covariance[0],
+                            false);
   } else {
     gtsam::Pose3 delta = utils::MessageToPose(msg);
     Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
@@ -112,6 +119,13 @@ bool PoseGraph::TrackFactor(gtsam::Symbol key_from,
                      << gtsam::DefaultKeyFormatter(key_to));
     nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
         key_from, key_to, transform, covariance));
+  } else if (type == pose_graph_msgs::PoseGraphEdge::IMU) {
+    ROS_ERROR_STREAM("Cannot track IMU range factor for key "
+                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                     << gtsam::DefaultKeyFormatter(key_to)
+                     << " using PoseGraph::TrackFactor(). Use "
+                        "PoseGraph::TrackIMUFactor() instead.");
+    return false;
   } else {
     ROS_DEBUG_STREAM("Cannot add edge of unknown type "
                      << type << " between keys "
@@ -150,6 +164,42 @@ bool PoseGraph::TrackUWBFactor(gtsam::Symbol key_from,
 
   nfg_.add(gtsam::RangeFactor<gtsam::Pose3, gtsam::Pose3>(
       key_from, key_to, range, noise));
+  return true;
+}
+
+bool PoseGraph::TrackIMUFactor(gtsam::Symbol key_to,
+                               geometry_msgs::Point meas,
+                               double att_noise,
+                               bool create_msg) {
+  gtsam::noiseModel::Base::shared_ptr noise =
+      gtsam::noiseModel::Isotropic::Sigma(2, att_noise);
+  
+  ROS_INFO_STREAM("TrackIMUFactor - CreateAttitudeFactor for key " << gtsam::DefaultKeyFormatter(key_to));
+  gtsam::Unit3 ref(0, 0, -1); 
+  gtsam::Unit3 meas_gt(meas.x, meas.y, meas.z);
+  
+  gtsam::Pose3AttitudeFactor factor(key_to, meas_gt, noise, ref);
+  
+  if (create_msg) {
+    auto msg = utils::GtsamToRosMsg(key_to,
+                                    key_to,
+                                    pose_graph_msgs::PoseGraphEdge::IMU,
+                                    gtsam::Pose3(),
+                                    noise);
+
+    if (edges_.find(msg) != edges_.end()) {
+      ROS_INFO_STREAM("IMU factor for key "
+                       << gtsam::DefaultKeyFormatter(key_to)
+                       << " already exists.");
+      return false;
+    }
+    msg.pose.position = meas;
+    // msg.covariance[0] = 
+    edges_.insert(msg);
+    edges_new_.insert(msg);
+  }
+
+  nfg_.add(factor);
   return true;
 }
 

@@ -169,6 +169,7 @@ protected:
   bool b_has_new_factor_;
   bool b_has_new_scan_;
   bool b_run_optimization_;
+  bool b_received_optimizer_update_;
   bool b_use_fixed_covariances_;
   bool b_repub_values_after_optimization_;
 
@@ -198,9 +199,16 @@ protected:
   double artifact_gt_trans_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
-
+  double uwb_range_sigma_;
+  double uwb_between_rot_sigma_;
+  double uwb_between_trans_sigma_;
   
   double zero_noise_;
+
+  // Parameters
+  int imu_factors_per_opt_;
+  int imu_factor_count_;
+
 
 private:
   // Anything just in the base class

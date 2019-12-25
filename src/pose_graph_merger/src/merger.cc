@@ -8,57 +8,118 @@ Merger::Merger()
     b_block_slow_pose_update(false),
     lastSlow(nullptr) {}
 
+void Merger::InsertNewEdges(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+
+  if (msg->edges.size() == 0){
+    // No edges - nothing to add
+    return;
+  }
+
+  for (const GraphEdge& edge : msg->edges) {
+    
+    if (IsEdgeNew(edge)){
+      // Add to the merged graph 
+      merged_graph_.edges.push_back(edge);
+
+      // Add to stored set of edges
+      std::tuple<gtsam::Key, gtsam::Key, int> id = std::make_tuple(edge.key_from, edge.key_to, edge.type);
+      unique_edges_.insert(id);
+    }
+  }
+}
+
+void Merger::InsertNode(const pose_graph_msgs::PoseGraphNode& node) {
+  
+  // Track the index at which the node was inserted
+  merged_graph_KeyToIndex_[node.key] = merged_graph_.nodes.size();
+  
+  // Add the node to the graph
+  merged_graph_.nodes.push_back(node);
+
+  // If the node is from a new robot, add it to the set of robots in the merged graph
+  auto prefix = gtsam::Symbol(node.key).chr();
+  if (robots_.count(prefix) == 0) {
+    robots_.insert(prefix);
+  }
+}
+
+void Merger::ClearNodes() {
+  merged_graph_.nodes.clear();
+  merged_graph_KeyToIndex_.clear();
+}
+
+bool Merger::IsEdgeNew(const pose_graph_msgs::PoseGraphEdge& msg) {
+  
+  // Checks to see if an edge is new
+  std::tuple<gtsam::Key, gtsam::Key, int> id = std::make_tuple(msg.key_from, msg.key_to, msg.type);
+  return unique_edges_.count(id) == 0;
+}
+
+std::set<char> Merger::GetNewRobots(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+
+  std::set<char> new_robots;
+
+  for (const GraphNode& node : msg->nodes) {
+  auto prefix = gtsam::Symbol(node.key).chr();
+    if (!utils::IsRobotPrefix(prefix)) {
+      continue;
+    }
+
+    // This node is a robot that is not currently in the merged graph
+    if (robots_.count(prefix) == 0) {
+      new_robots.insert(prefix);
+    }
+  }
+
+  return new_robots;
+}
+
 void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   ROS_INFO_STREAM("Received slow graph, size " << msg->nodes.size());
-  this->lastSlow = msg;
+  
+  // Clear existing nodes
+  ClearNodes();
+
+  // Insert all Nodes - slow graph should be the most accurate and up to date
+  for (const GraphNode& node : msg->nodes) {
+    InsertNode(node);
+  }
+
+  InsertNewEdges(msg);
 }
 
 void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   ROS_INFO_STREAM("Received fast graph, size " << msg->nodes.size());
 
+  // NOTE: Assuming these messages are only from one robot
+
+  std::set<char> new_robots = GetNewRobots(msg);
+
   // If no slow graph (or an empty slow graph only) has been received, merged
   // graph is the fast graph only
-  if (lastSlow == nullptr || lastSlow->nodes.size() == 0) {
+  if (merged_graph_.nodes.size() == 0 || new_robots.size() > 0) {
+
+
     for (const GraphNode& node : msg->nodes) {
-      merged_graph_.nodes.push_back(node);
+      InsertNode(node);
     }
-    for (const GraphEdge& edge : msg->edges) {
-      merged_graph_.edges.push_back(edge);
-    }
+    
+    InsertNewEdges(msg);
     return;
   }
 
-  // Clear the existing merged graph
-  merged_graph_ = pose_graph_msgs::PoseGraph();
-
+  // Add new edges
+  InsertNewEdges(msg);
+  
   // Get header from the fastGraph - most recent graph
   merged_graph_.header = msg->header;
-
-  std::map<long unsigned int, int> merged_graph_KeyToIndex;
-
-  // initialise merged graph as a copy of the most recent slow graph
-  // Add slow graph nodes
-  for (const GraphNode& node : this->lastSlow->nodes) {
-    merged_graph_KeyToIndex[node.key] = merged_graph_.nodes.size();
-    merged_graph_.nodes.push_back(node);
-  }
-
-  // Add edges from the fast graph that connect nodes in the slow graph
-  for (const GraphEdge& edge : msg->edges) {
-    // Only add edges that connect two nodes that are in the slow graph
-    // These are not new edges for the optimized graph - others are
-    if (merged_graph_KeyToIndex.count(edge.key_from) != 0 &&
-        merged_graph_KeyToIndex.count(edge.key_to) != 0) {
-      merged_graph_.edges.push_back(edge);
-    }
-  }
 
   // use map to order the new fast nodes by the order they were created in
   std::map<unsigned int, const GraphNode*> newFastNodes;
   std::map<long unsigned int, const GraphNode*> fastKeyToNode;
 
   for (const GraphNode& node : msg->nodes) {
-    if (merged_graph_KeyToIndex.count(node.key) != 0)
+    if (merged_graph_KeyToIndex_.count(node.key) != 0)
       continue; // skip if this node is in the slow graph
 
     newFastNodes[node.header.seq] = &node;
@@ -90,7 +151,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     // graph
     long unsigned int prevFastKey = edgeToFastNode->key_from;
     const GraphNode* merged_graph_PrevNode =
-        &merged_graph_.nodes[merged_graph_KeyToIndex[prevFastKey]];
+        &merged_graph_.nodes[merged_graph_KeyToIndex_[prevFastKey]];
 
     // calculate the pose of the new merged graph node by applying the edge
     // transformation to the previous node
@@ -108,20 +169,22 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     tf::poseEigenToMsg(currGraphNodeTf, new_merged_graph_node.pose);
 
     // normalise pose rotation
-    double norm = pow(new_merged_graph_node.pose.orientation.w*new_merged_graph_node.pose.orientation.w + new_merged_graph_node.pose.orientation.x*new_merged_graph_node.pose.orientation.x + new_merged_graph_node.pose.orientation.y*new_merged_graph_node.pose.orientation.y + new_merged_graph_node.pose.orientation.z*new_merged_graph_node.pose.orientation.z, 0.5);
-    new_merged_graph_node.pose.orientation.w = new_merged_graph_node.pose.orientation.w/norm;
-    new_merged_graph_node.pose.orientation.x = new_merged_graph_node.pose.orientation.x/norm;
-    new_merged_graph_node.pose.orientation.y = new_merged_graph_node.pose.orientation.y/norm;
-    new_merged_graph_node.pose.orientation.z = new_merged_graph_node.pose.orientation.z/norm;
+    NormalizeNodeOrientation(new_merged_graph_node);
 
-    merged_graph_KeyToIndex[new_merged_graph_node.key] =
-        merged_graph_.nodes.size();
-    merged_graph_.nodes.push_back(new_merged_graph_node);
-    merged_graph_.edges.push_back(new_merged_graph_edge);
+    // Add nodes to the graph
+    InsertNode(new_merged_graph_node);
   }
 
   ROS_INFO_STREAM("Finished merging graph, size "
                   << merged_graph_.nodes.size());
+}
+
+void Merger::NormalizeNodeOrientation(pose_graph_msgs::PoseGraphNode & msg){
+    double norm = pow(msg.pose.orientation.w*msg.pose.orientation.w + msg.pose.orientation.x*msg.pose.orientation.x + msg.pose.orientation.y*msg.pose.orientation.y + msg.pose.orientation.z*msg.pose.orientation.z, 0.5);
+    msg.pose.orientation.w = msg.pose.orientation.w/norm;
+    msg.pose.orientation.x = msg.pose.orientation.x/norm;
+    msg.pose.orientation.y = msg.pose.orientation.y/norm;
+    msg.pose.orientation.z = msg.pose.orientation.z/norm;
 }
 
 void Merger::OnSlowPoseMsg(const geometry_msgs::PoseStamped::ConstPtr& msg) {

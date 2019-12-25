@@ -113,6 +113,8 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       pnh.advertise<visualization_msgs::Marker>("artifact_edges", 10, false);
   uwb_edge_pub_ =
       pnh.advertise<visualization_msgs::Marker>("uwb_edges", 10, false);
+  uwb_edge_between_pub_ =
+      pnh.advertise<visualization_msgs::Marker>("uwb_edges_between", 10, false);
   uwb_node_pub_ =
       pnh.advertise<visualization_msgs::Marker>("uwb_nodes", 10, false);
   graph_node_pub_ =
@@ -458,6 +460,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   visualization_msgs::Marker loop_edges;
   visualization_msgs::Marker artifact_edges;
   visualization_msgs::Marker uwb_edges;
+  visualization_msgs::Marker uwb_between_edges;
 
   visualization_msgs::Marker* edge_target;
   // TODO visualize new edges/nodes or all?
@@ -474,8 +477,10 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       edge_target = &artifact_edges;
       break;
     case pose_graph_msgs::PoseGraphEdge::UWB_RANGE:
-    case pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN:
       edge_target = &uwb_edges;
+      break;
+    case pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN:
+      edge_target = &uwb_between_edges;
       break;
     }
     // TODO - look at how to handle Priors - a small edge - 1 m down in z
@@ -536,7 +541,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
   // Publish UWB edges.
   if (uwb_edge_pub_.getNumSubscribers() > 0) {
     ROS_INFO("UWB Edges");
-    visualization_msgs::Marker m;
+    // visualization_msgs::Marker m;
     uwb_edges.header.frame_id = pose_graph_.fixed_frame_id;
     uwb_edges.ns = pose_graph_.fixed_frame_id;
     uwb_edges.id = 3;
@@ -548,6 +553,23 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     uwb_edges.color.a = 0.8;
     uwb_edges.scale.x = 0.02;
     uwb_edge_pub_.publish(uwb_edges);
+  }
+
+  // Publish UWB between edges.
+  if (uwb_edge_between_pub_.getNumSubscribers() > 0) {
+    ROS_INFO("UWB Between Edges");
+    // visualization_msgs::Marker m;
+    uwb_between_edges.header.frame_id = pose_graph_.fixed_frame_id;
+    uwb_between_edges.ns = pose_graph_.fixed_frame_id;
+    uwb_between_edges.id = 4;
+    uwb_between_edges.action = visualization_msgs::Marker::ADD;
+    uwb_between_edges.type = visualization_msgs::Marker::LINE_LIST;
+    uwb_between_edges.color.r = 1.0;
+    uwb_between_edges.color.g = 1.0;
+    uwb_between_edges.color.b = 0.0;
+    uwb_between_edges.color.a = 0.8;
+    uwb_between_edges.scale.x = 0.05;
+    uwb_edge_between_pub_.publish(uwb_between_edges);
   }
 
   visualization_msgs::Marker generic_nodes;
@@ -768,31 +790,41 @@ void PoseGraphVisualizer::VisualizeSingleArtifactId(
   m.header.frame_id = "world";
   std::string artifact_label = art.msg.label;
 
-  if (artifact_label == "backpack") {
+  if (artifact_label == "Backpack") {
     std::cout << "backpack marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.0f;
     m.color.b = 0.0f;
-  } else if (artifact_label == "fire extinguisher") {
+  } else if (artifact_label == "Fire Extinguisher") {
     std::cout << "fire extinguisher marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.5f;
     m.color.b = 0.75f;
-  } else if (artifact_label == "drill") {
+  } else if (artifact_label == "Drill") {
     std::cout << "drill marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 1.0f;
     m.color.b = 0.0f;
-  } else if (artifact_label == "survivor") {
+  } else if (artifact_label == "Survivor") {
     std::cout << "survivor marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 1.0f;
     m.color.b = 1.0f;
-  } else if (artifact_label == "cellphone") {
+  } else if (artifact_label == "Cell Phone") {
     std::cout << "cellphone marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 0.0f;
     m.color.b = 0.7f;
+  } else if (artifact_label == "Gas") {
+    std::cout << "gas marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+  } else if (artifact_label == "Vent") {
+    std::cout << "vent marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
   } else {
     std::cout << "UNDEFINED MARKER" << std::endl;
     m.color.r = 1.0f;
@@ -824,25 +856,25 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   m.scale.z = 0.95f;
   m.color.a = 1.0f;
 
-  if (artifact_label == "backpack") {
-    std::cout << "backpack marker" << std::endl;
+  if (artifact_label == "Backpack") {
+    std::cout << "Backpack marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::CUBE;
-  } else if (artifact_label == "fire extinguisher") {
+  } else if (artifact_label == "Fire Extinguisher") {
     std::cout << "fire extinguisher marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 0.5f;
     m.color.b = 0.75f;
     m.type = visualization_msgs::Marker::SPHERE;
-  } else if (artifact_label == "drill") {
+  } else if (artifact_label == "Drill") {
     std::cout << "drill marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 1.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::CYLINDER;
-  } else if (artifact_label == "survivor") {
+  } else if (artifact_label == "Survivor") {
     std::cout << "survivor marker" << std::endl;
     m.color.r = 1.0f;
     m.color.g = 1.0f;
@@ -851,7 +883,7 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.y = 1.2f;
     m.scale.z = 1.2f;
     m.type = visualization_msgs::Marker::CYLINDER;
-  } else if (artifact_label == "cellphone") {
+  } else if (artifact_label == "Cell Phone") {
     std::cout << "cellphone marker" << std::endl;
     m.color.r = 0.0f;
     m.color.g = 0.0f;
@@ -860,6 +892,18 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.y = 1.2f;
     m.scale.z = 0.3f;
     m.type = visualization_msgs::Marker::CUBE;
+  } else if (artifact_label == "Gas") {
+    std::cout << "gas marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::SPHERE;
+  } else if (artifact_label == "Vent") {
+    std::cout << "vent marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.type = visualization_msgs::Marker::SPHERE;
   } else {
     std::cout << "UNDEFINED ARTIFACT" << std::endl;
     m.color.r = 1.0f;
@@ -932,28 +976,28 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     marker.scale.z = 0.35f;
     marker.color.a = 1.0f;
 
-    if (artifact_label == "backpack") {
+    if (artifact_label == "Backpack") {
       std::cout << "backpack marker" << std::endl;
       marker.color.r = 1.0f;
       marker.color.g = 0.0f;
       marker.color.b = 0.0f;
       marker.type = visualization_msgs::Marker::CUBE;
     }
-    if (artifact_label == "fire extinguisher") {
+    if (artifact_label == "Fire Extinguisher") {
       std::cout << "fire extinguisher marker" << std::endl;
       marker.color.r = 1.0f;
       marker.color.g = 0.5f;
       marker.color.b = 0.75f;
       marker.type = visualization_msgs::Marker::SPHERE;
     }
-    if (artifact_label == "drill") {
+    if (artifact_label == "Drill") {
       std::cout << "drill marker" << std::endl;
       marker.color.r = 0.0f;
       marker.color.g = 1.0f;
       marker.color.b = 0.0f;
       marker.type = visualization_msgs::Marker::CYLINDER;
     }
-    if (artifact_label == "survivor") {
+    if (artifact_label == "Survivor") {
       std::cout << "survivor marker" << std::endl;
       marker.color.r = 1.0f;
       marker.color.g = 1.0f;

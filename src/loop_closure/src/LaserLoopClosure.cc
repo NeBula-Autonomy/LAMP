@@ -9,6 +9,12 @@ Lidar pointcloud based loop closure
 #include <pcl/io/pcd_io.h>
 #include <pcl/registration/gicp.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/registration/ia_ransac.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/features/fpfh.h>
+#include <pcl/features/fpfh.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/filters/voxel_grid.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
@@ -19,7 +25,7 @@ namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
 LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
-  : LoopClosure(n), last_closure_key_(0) {}
+  : LoopClosure(n) {}
 
 LaserLoopClosure::~LaserLoopClosure() {}
 
@@ -60,6 +66,13 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/icp_lc/corr_dist", icp_corr_dist_)) return false;
   if (!pu::Get(param_ns_ + "/icp_lc/iterations", icp_iterations_)) return false;
 
+  // Load SAC parameters
+  if (!pu::Get(param_ns_ + "/sac_ia/iterations", sac_iterations_)) return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/num_prev_scans", sac_num_prev_scans_)) return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/num_next_scans", sac_num_next_scans_)) return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_)) return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/features_radius", sac_features_radius_)) return false;
+  
   // Hard coded covariances
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
     return false;
@@ -74,13 +87,111 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   skip_recent_poses_ =
       (int)(distance_to_skip_recent_poses / translation_threshold_nodes_);
 
-  // Initialize point cloud filter
-  if (!filter_.Initialize(n)) {
-    ROS_ERROR("LaserLoopClosure: Failed to initialize point cloud filter.");
-    return false;
+  return true;
+}
+
+void LaserLoopClosure::AccumulateScans(
+    gtsam::Key key,
+    PointCloud::Ptr scan_out) {
+  for (int i = 0; i < sac_num_prev_scans_; i++) {
+    gtsam::Key prev_key = key - i - 1;
+    // If scan doesn't exist, just skip it
+    if (!keyed_poses_.count(prev_key) || !keyed_scans_.count(prev_key)) {
+      continue;
+    }
+    const PointCloud::ConstPtr prev_scan = keyed_scans_[prev_key];
+    
+    // Transform and Accumulate
+    const gtsam::Pose3 new_pose = keyed_poses_.at(key);
+    const gtsam::Pose3 old_pose = keyed_poses_.at(prev_key);
+    const gtsam::Pose3 tf = new_pose.between(old_pose);
+    
+    PointCloud::Ptr transformed(new PointCloud);
+    pcl::transformPointCloud(*prev_scan, *transformed, tf.matrix());
+    *scan_out += *transformed;
+  }
+  
+  for (int i = 0; i < sac_num_next_scans_; i++) {
+    gtsam::Key next_key = key + i + 1;
+    // If scan doesn't exist, just skip it
+    if (!keyed_poses_.count(next_key) || !keyed_scans_.count(next_key)) {
+      continue;
+    }
+    const PointCloud::ConstPtr next_scan = keyed_scans_[next_key];
+    
+    // Transform and Accumulate
+    const gtsam::Pose3 new_pose = keyed_poses_.at(key);
+    const gtsam::Pose3 old_pose = keyed_poses_.at(next_key);
+    const gtsam::Pose3 tf = new_pose.between(old_pose);
+    
+    PointCloud::Ptr transformed(new PointCloud);
+    pcl::transformPointCloud(*next_scan, *transformed, tf.matrix());
+    *scan_out += *transformed;
   }
 
-  return true;
+
+  // Filter
+  /*
+  const float voxel_grid_size = 0.2f;
+  pcl::VoxelGrid<pcl::PointXYZI> vox_grid;
+  vox_grid.setInputCloud(scan_out);
+  vox_grid.setLeafSize(voxel_grid_size, voxel_grid_size, voxel_grid_size);
+  vox_grid.filter(*scan_out);
+  */
+}
+
+void LaserLoopClosure::ComputeNormals(
+    PointCloud::ConstPtr input,
+    Normals::Ptr normals) {
+  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(new pcl::search::KdTree<pcl::PointXYZI>);
+  pcl::NormalEstimation<pcl::PointXYZI, pcl::Normal> norm_est;
+  norm_est.setInputCloud(input);
+  norm_est.setSearchMethod(search_method);
+  norm_est.setRadiusSearch(sac_normals_radius_);
+  norm_est.compute(*normals);
+}
+
+void LaserLoopClosure::ComputeFeatures(
+    PointCloud::ConstPtr input,
+    Normals::Ptr normals,
+    Features::Ptr features) {
+  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(new pcl::search::KdTree<pcl::PointXYZI>);
+  pcl::FPFHEstimation<pcl::PointXYZI, pcl::Normal, pcl::FPFHSignature33> fpfh_est;
+  fpfh_est.setInputCloud(input);
+  fpfh_est.setInputNormals(normals);
+  fpfh_est.setSearchMethod(search_method);
+  fpfh_est.setRadiusSearch(sac_features_radius_);
+  fpfh_est.compute(*features);
+}
+
+void LaserLoopClosure::GetInitialAlignment(
+    PointCloud::ConstPtr source,
+    PointCloud::ConstPtr target,
+    Eigen::Matrix4f* tf_out) {
+  // Get Normals
+  Normals::Ptr source_normals(new Normals);
+  Normals::Ptr target_normals(new Normals);
+  ComputeNormals(source, source_normals);
+  ComputeNormals(target, target_normals);
+
+  // Get Features
+  Features::Ptr source_features(new Features);
+  Features::Ptr target_features(new Features);
+  ComputeFeatures(source, source_normals, source_features);
+  ComputeFeatures(target, target_normals, target_features);
+
+  // Align
+  pcl::SampleConsensusInitialAlignment<pcl::PointXYZI, pcl::PointXYZI, pcl::FPFHSignature33> sac_ia;
+  sac_ia.setMaximumIterations(sac_iterations_);
+  sac_ia.setInputSource(source);
+  sac_ia.setSourceFeatures(source_features);
+  sac_ia.setInputTarget(target);
+  sac_ia.setTargetFeatures(target_features);
+  PointCloud::Ptr aligned_output(new PointCloud);
+  sac_ia.align(*aligned_output);
+  ROS_INFO_STREAM("SAC fitness score" << sac_ia.getFitnessScore());
+
+  *tf_out = sac_ia.getFinalTransformation();
 }
 
 bool LaserLoopClosure::FindLoopClosures(
@@ -100,20 +211,27 @@ bool LaserLoopClosure::FindLoopClosures(
     return false;
   }
 
-  // If a loop has already been closed recently, don't try to close a new one.
-  if (std::llabs(new_key - last_closure_key_) * translation_threshold_nodes_ <
-      distance_before_reclosing_)
-    return false;
-
   // Get pose and scan for the provided key.
   const gtsam::Pose3 pose1 = keyed_poses_.at(new_key);
   const PointCloud::ConstPtr scan1 = keyed_scans_.at(new_key);
+
+  // Create a temporary copy of last_closure_key_map so that updates in this iteration are not used
+  std::map<std::pair<char,char>, gtsam::Key> last_closure_key_copy_(last_closure_key_);
 
   // Set to true if we find a loop closure (single or inter robot)
   bool closed_loop = false;
 
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
+
+    // If a loop has already been closed recently, don't try to close a new one.
+    char c1 = gtsam::Symbol(new_key).chr(), c2 = other_key.chr();
+    gtsam::Key last_closure_key_new = last_closure_key_copy_[{c1, c2}];
+
+    // If a loop has already been closed recently, don't try to close a new one.
+    if (std::llabs(new_key - last_closure_key_new) * translation_threshold_nodes_ <
+        distance_before_reclosing_)
+      continue;
 
     // Skip poses with no keyed scans.
     if (!keyed_scans_.count(other_key)) {
@@ -127,7 +245,7 @@ bool LaserLoopClosure::FindLoopClosures(
 
     // Check for inter robot loop closures
     else {
-      // closed_loop |= CheckForInterRobotLoopClosure();
+      closed_loop |= CheckForInterRobotLoopClosure(new_key, other_key, loop_closure_edges);
     }
   } 
 
@@ -142,6 +260,7 @@ double LaserLoopClosure::DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol k
 
   return delta.translation().norm();
 }
+
 
 bool LaserLoopClosure::CheckForLoopClosure(
         gtsam::Symbol key1,
@@ -160,6 +279,24 @@ bool LaserLoopClosure::CheckForLoopClosure(
   // Don't compare against poses that were recently collected.
   if (std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
     return false;
+  
+  if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
+    return false;
+  }
+
+  // Perform loop closure without a provided prior transform
+  return PerformLoopClosure(key1, key2, false, gtsam::Pose3(), loop_closure_edges);
+}
+
+bool LaserLoopClosure::CheckForInterRobotLoopClosure(
+        gtsam::Symbol key1,
+        gtsam::Symbol key2,
+        std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
+
+  if (utils::IsKeyFromSameRobot(key1, key2)) {
+    ROS_ERROR_STREAM("Checking for inter robot loop closures on same robot");
+    return false;
+  }
   
   if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
     return false;
@@ -207,8 +344,6 @@ bool LaserLoopClosure::PerformLoopClosure(
 
 }
 
-
-
 pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
         gtsam::Symbol key1, 
         gtsam::Symbol key2,
@@ -216,8 +351,13 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
         gtsam::Matrix66& covariance) {
 
   // Store last time a new loop closure was added
-  last_closure_key_ = key1;
-
+  if (key1 > last_closure_key_[{key1.chr(), key2.chr()}]) {
+    last_closure_key_[{key1.chr(), key2.chr()}] = key1;
+  }
+  if (key2 > last_closure_key_[{key2.chr(), key1.chr()}]) {
+    last_closure_key_[{key2.chr(), key1.chr()}] = key2;
+  }
+  
   // Create the new loop closure edge
   pose_graph_msgs::PoseGraphEdge edge;
   edge.key_from = key1;
@@ -275,19 +415,13 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   icp.setMaximumIterations(icp_iterations_);
   icp.setRANSACIterations(0);
 
-  // Filter the two scans. They are stored in the pose graph as dense scans for
-  // visualization. Filter the first scan only when it is not filtered already.
-  // Can be extended to the other scan if all the key scan pairs store the
-  // filtered results.
-  PointCloud::Ptr scan1_filtered(new PointCloud);
-  filter_.Filter(scan1, scan1_filtered);
+  PointCloud::Ptr accumulated_target(new PointCloud);
+  *accumulated_target = *scan2;
+  AccumulateScans(key2, accumulated_target);
 
-  PointCloud::Ptr scan2_filtered(new PointCloud);
-  filter_.Filter(scan2, scan2_filtered);
+  icp.setInputSource(scan1);
 
-  icp.setInputSource(scan1_filtered);
-
-  icp.setInputTarget(scan2_filtered);
+  icp.setInputTarget(accumulated_target);
 
   ///// ICP initialization scheme
   // Default is to initialize by identity. Other options include
@@ -318,6 +452,11 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     gtsam::Pose3 pose_21 = pose2.between(pose1);
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
+  } break;
+
+  case IcpInitMethod::FEATURES:
+  {
+    GetInitialAlignment(scan1, accumulated_target, &initial_guess);
   } break;
   
   default: // identity as default (default in ICP anyways)
@@ -365,15 +504,19 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   if (!icp.hasConverged()) {
     std::cout << "No converged, score is: " << icp.getFitnessScore()
               << std::endl;
+    ROS_INFO_STREAM("ICP: No converged, score is: " << icp.getFitnessScore());
     return false;
   }
 
   if (icp.getFitnessScore() > max_tolerable_fitness_) {
+    ROS_INFO_STREAM("ICP: Coverged but score is: " << icp.getFitnessScore());
     std::cout << "Converged, score is: " << icp.getFitnessScore() << std::endl;
     return false;
   }
 
+  ROS_INFO_STREAM("ICP: Found loop with score: " << icp.getFitnessScore());
   fitness_score = icp.getFitnessScore();
+  
 
   // Find transform from pose2 to pose1 from output of ICP.
   *delta = gu::PoseInverse(*delta); // NOTE: gtsam need 2_Transform_1 while

@@ -33,7 +33,8 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampRobot::LampRobot() : is_artifact_initialized(false) {
+LampRobot::LampRobot() : 
+  is_artifact_initialized(false) {
   b_run_optimization_ = false;
 }
 
@@ -94,6 +95,13 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Switch on/off flag for UWB
   if (!pu::Get("b_use_uwb", b_use_uwb_))
     return false;
+
+  // Switch on/off flag for IMU
+  if (!pu::Get("b_add_imu_factors", b_add_imu_factors_))
+    return false;
+  if (!pu::Get("imu_factors_per_opt", imu_factors_per_opt_))
+    return false;
+    
 
   // Load frame ids.
   if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
@@ -310,6 +318,11 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
     return false;
   }
 
+  if (!imu_handler_.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize the imu handler.", name_.c_str());
+    return false;
+  }
+
   return true;
 }
 
@@ -372,6 +385,14 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     PublishPoseGraphForOptimizer();
 
     b_run_optimization_ = false;
+  }
+
+  if (b_received_optimizer_update_) {
+    ROS_INFO("LampRobot: received optimizer update");
+    pose_graph_.AddLastNodeToNew();
+    PublishPoseGraph();
+
+    b_received_optimizer_update_ = false;
   }
 
   // Publish anything that is needed
@@ -474,6 +495,12 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     int type = pose_graph_msgs::PoseGraphEdge::ODOM;
     pose_graph_.TrackFactor(prev_key, current_key, type, transform, covariance);
 
+    if (b_add_imu_factors_){
+      imu_handler_.SetTimeForImuAttitude(times.second);
+      imu_handler_.SetKeyForImuAttitude(current_key);
+      ProcessImuData(imu_handler_.GetData());
+    }
+
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 
@@ -530,11 +557,6 @@ void LampRobot::UpdateAndPublishOdom() {
     // TODO - work out what the best thing is to do in this scenario
     return;
   }
-  // ROS_INFO("Got good result from getting delta at the latest time");
-  // }
-
-  // odometry_handler_.GetDeltaBetweenTimes(keyed_stamps_[key_ - 1], stamp,
-  // delta_pose);
 
   // Compose the delta
   auto delta_pose = delta_pose_cov.pose;
@@ -564,6 +586,52 @@ void LampRobot::UpdateAndPublishOdom() {
 
   // Publish pose graph
   pose_pub_.publish(msg);
+}
+
+/*!
+  \brief  Wrapper for the imu class interactions
+  Creates factors from the imu output - called when there is a new odom message
+  \param   data - the output data struct from the ImuHandler class
+  \warning ...time sync
+  \author Benjamin Morrell
+  \date 22 Nov 2019
+*/
+bool LampRobot::ProcessImuData(std::shared_ptr<FactorData> data) {
+  // Extract odom data
+  std::shared_ptr<ImuData> imu_data =
+      std::dynamic_pointer_cast<ImuData>(data);
+
+  // Check if there are new factors
+  if (!imu_data->b_has_data) {
+    return false;
+  }
+
+  Unit3 meas_unit = imu_data->factors[0].attitude.nZ();
+  geometry_msgs::Point meas;
+  meas.x = meas_unit.point3().x();
+  meas.y = meas_unit.point3().y();
+  meas.z = meas_unit.point3().z();
+
+  // gtsam::noiseModel::Isotropic noise = boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(imu_data->factors[0].attitude.noiseModel());
+  double noise_sigma =
+        boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(
+            imu_data->factors[0].attitude.noiseModel())
+            ->sigma();
+
+  pose_graph_.TrackIMUFactor(imu_data->factors[0].attitude.front(),
+                               meas,
+                               noise_sigma,
+                               true);
+
+  // Optimize every "imu_factors_per_opt"
+  imu_factor_count_++;
+
+  if (imu_factor_count_ % imu_factors_per_opt_ == 0){
+    b_run_optimization_ = true;
+  }
+
+  return true;
+
 }
 
 /*!
@@ -827,19 +895,21 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
 
   ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
-  ROS_INFO_STREAM(
-      "Number of UWB factors to be added : " << uwb_data->factors.size());
+  ROS_INFO_STREAM("Number of UWB factors to be added : " << uwb_data->factors.size());
 
   for (auto factor : uwb_data->factors) {
     auto odom_key = factor.key_from;
     auto uwb_key = gtsam::Symbol('u', factor.key_to);
+
     // Check if it is a new uwb id or not
     auto values = pose_graph_.GetValues();
-    if (!values.exists(uwb_key)) {
+
+    if (!values.exists(uwb_key) && factor.type != pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
       // Insert it into the values
       global_uwb_pose = pose_graph_.GetPose(odom_key);
       // Add it into the keyed stamps
       pose_graph_.InsertKeyedStamp(uwb_key, factor.stamp);
+      // TODO: SetFixedNoiseModels should be used for the following sentences
       gtsam::Vector6 prior_precision;
       prior_precision.head<3>().setConstant(0.0000001);
       prior_precision.tail<3>().setConstant(0.0000001);
@@ -848,20 +918,52 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       pose_graph_.TrackNode(
           factor.stamp, uwb_key, global_uwb_pose, prior_noise);
     }
-    auto range = factor.range;
-    gtsam::noiseModel::Base::shared_ptr range_error =
-        gtsam::noiseModel::Isotropic::Sigma(1, factor.range_error);
-    new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
-        odom_key, uwb_key, range, range_error));
-    // Track the edges that have been added
-    EdgeMessage uwb_factor;
-    uwb_factor.key_from = odom_key;
-    uwb_factor.key_to = uwb_key;
-    uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
-    uwb_factor.range = range;
-    uwb_factor.range_error = factor.range_error;
-    // add new factors to buffer to send to pgo
-    pose_graph_.TrackFactor(uwb_factor);
+
+    if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+      ROS_INFO("Adding a UWB range factor");
+      auto range = factor.range;
+      gtsam::noiseModel::Base::shared_ptr range_error =
+          gtsam::noiseModel::Isotropic::Sigma(1, uwb_range_sigma_);
+      new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
+          odom_key, uwb_key, range, range_error));
+      // Track the edges that have been added
+      EdgeMessage uwb_factor;
+      uwb_factor.key_from = odom_key;
+      uwb_factor.key_to = uwb_key;
+      uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
+      uwb_factor.range = range;
+      uwb_factor.range_error = uwb_range_sigma_;
+      // Add new factors to buffer to send to pgo
+      pose_graph_.TrackFactor(uwb_factor);
+    }
+    else if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+      ROS_INFO("Adding a UWB between factor");
+      auto odom_pose = pose_graph_.GetPose(odom_key);
+      auto dropped_relative_trans = factor.pose.translation();
+
+      auto rotation_matrix = odom_pose.rotation();
+      dropped_relative_trans = rotation_matrix * dropped_relative_trans;
+      auto dropped_relative_pose = gtsam::Pose3(gtsam::Rot3(), dropped_relative_trans);
+
+      dropped_relative_pose.print("dropped_relative_pose");
+      auto global_uwb_pose = odom_pose.compose(dropped_relative_pose);
+      gtsam::Vector6 sigmas;
+      sigmas.head<3>().setConstant(uwb_between_rot_sigma_);
+      sigmas.tail<3>().setConstant(uwb_between_trans_sigma_);
+      auto noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
+      pose_graph_.TrackNode(
+          factor.stamp, uwb_key, global_uwb_pose, noise);
+      // Add new factors to buffer to send to pgo
+      pose_graph_.TrackFactor(
+        odom_key,
+        uwb_key,
+        pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN,
+        dropped_relative_pose,
+        noise,
+        true
+      );
+    }
+    
   }
   b_run_optimization_ = true;
   uwb_handler_.ResetFactorData();

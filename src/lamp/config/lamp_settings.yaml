@@ -9,7 +9,11 @@ b_use_fixed_covariances: true
 use_artifact_loop_closure: false
 
 # Flag for whether of not to use uwb data for range-based loop closure
-b_use_uwb: false
+b_use_uwb: true
+
+# Flag for whether of not to use imu data for roll and pitch constraints
+b_add_imu_factors: false
+imu_factors_per_opt: 1
 
 # Artifacts in global frame
 b_artifacts_in_global: false
@@ -32,7 +36,7 @@ robot:
 #######################################
 base: 
   # Turn laser loop closures on or off
-  b_find_laser_loop_closures: false
+  b_find_laser_loop_closures: true
 
   # if true, optimize every time a new artifact edge is received
   # if false, currently won't optimize for artifact loop closures

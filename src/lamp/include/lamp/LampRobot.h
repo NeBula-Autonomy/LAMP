@@ -14,6 +14,7 @@
 #include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/OdometryHandler.h>
 #include <factor_handlers/UwbHandler.h>
+#include <factor_handlers/ImuHandler.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl/filters/filter.h>
@@ -80,6 +81,9 @@ private:
     // Process the uwb factors if any available
     bool ProcessUwbData(std::shared_ptr<FactorData> data);
 
+    // Process IMU data when an odom node is created (if active)
+    bool ProcessImuData(std::shared_ptr<FactorData> data);
+
     bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
     bool InitializeGraph(gtsam::Pose3& pose, 
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
@@ -96,15 +100,16 @@ private:
                                const gtsam::Pose3 pose_global,
                                gtsam::Pose3& pose_relative);
 
-    // Data Handler classes
-    OdometryHandler odometry_handler_; 
-    ArtifactHandler artifact_handler_;
-    AprilTagHandler april_tag_handler_;
-    UwbHandler      uwb_handler_;
-    // Manual LC
-    // IMU
-    // TS
-    // LoopClosure
+  // Data Handler classes
+  OdometryHandler odometry_handler_; 
+  ArtifactHandler artifact_handler_;
+  AprilTagHandler april_tag_handler_;
+  UwbHandler      uwb_handler_;
+  ImuHandler      imu_handler_;
+  // Manual LC
+  // IMU
+  // TS
+  // LoopClosure
 
   // Add new functions as needed
 
@@ -114,6 +119,8 @@ private:
   gtsam::Vector6 initial_noise_;
   bool b_artifacts_in_global_;
   bool b_use_uwb_;
+  bool b_add_imu_factors_;
+  int factor_count_;
 
   // Test class fixtures
   friend class TestLampRobot;

@@ -1,5 +1,6 @@
 <launch>
   <arg name="robot_namespace" default="husky"/>
+  <arg name="base_namespace" default="base1"/>
 
   <!-- Velodyne topic throttle params -->
   <arg name="vlp_throttle_freq" default="5.0"/><!-- Hz -->
@@ -29,15 +30,16 @@
       <!-- Topics -->
       <remap from="~pcld" to="velodyne_points/transformed"/>
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
-      <remap from="~lio_odom" to="lo_frontend/odometry"/>
+      <!--<remap from="~lio_odom" to="lo_frontend/odometry"/> -->
       <!-- <remap from="~lio_odom" to="hero/lion/odom"/> -->
-      <!--remap from="~lio_odom" to="hero/odometry"/-->
+      <remap from="~lio_odom" to="hero/odometry"/>
       <remap from="~optimized_values" to="lamp_pgo/optimized_values"/>
 
       <remap from="~artifact" to="~artifact_global" />
       <remap from="~artifact_relative" to="unreconciled_artifact" />
 
       <remap from="~uwb_factors" to="uwb_frontend/uwb_factors"/>
+      <remap from="~imu_topic" to="vn100/imu_wori_wcov"/>
 
       <!-- LAMP settings -->
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
@@ -60,10 +62,6 @@
 
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
-
-      <!-- Point cloud visualization -->
-      <!-- TODO - check if we use this -->
-      <rosparam file="$(find point_cloud_visualizer)/config/parameters.yaml"/>
 
       <!-- The robot prefix dependent of robot_namespace -->
       <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
@@ -106,4 +104,11 @@
     <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
 
   </group> 
+
+  <!-- Base Station graph merger  -->
+  <include file="$(find pose_graph_merger)/launch/two_pose_graph_merge.launch">
+    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    <arg name="base_namespace" value="$(arg base_namespace)"/>
+  </include>
+
 </launch>
