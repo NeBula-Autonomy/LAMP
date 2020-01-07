@@ -8,14 +8,9 @@
 
 namespace pu = parameter_utils;
 
-// Constructor & Destructor
-// --------------------------------------------------------------------------------
+// Constructor and Destructor -------------------------------------------------------------
 
-ImuHandler::ImuHandler() 
-  : buffer_size_limit_(1000),
-    ts_threshold_(0.1),
-    b_convert_imu_frame_(false),
-    noise_sigma_imu_(0.25) {
+ImuHandler::ImuHandler() {
     ROS_INFO("ImuHandler Class Constructor");
 }
 
@@ -23,8 +18,7 @@ ImuHandler::~ImuHandler() {
     ROS_INFO("ImuHandler Class Destructor");
 }
 
-// Initialization
-// --------------------------------------------------------------------------------
+// Initialization -------------------------------------------------------------------------
 
 bool ImuHandler::Initialize(const ros::NodeHandle& n) {
     ROS_INFO("ImuHandler - Initialize");    
@@ -67,8 +61,7 @@ bool ImuHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     return true;
 }
 
-// Callback
-// --------------------------------------------------------------------------------
+// Callback -------------------------------------------------------------------------------
 
 void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {    
     if (b_verbosity_) ROS_INFO("ImuHandler - ImuCallback"); 
@@ -80,45 +73,35 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
     }
 }
 
-// LAMP Interface
-// --------------------------------------------------------------------------------
+// LAMP Interface -------------------------------------------------------------------------
 
 std::shared_ptr<FactorData> ImuHandler::GetData() {
     if (b_verbosity_) ROS_INFO("ImuHandler - GetData"); 
-    std::shared_ptr<ImuData> factors_output = std::make_shared<ImuData>(factors_);
-    
+    std::shared_ptr<ImuData> factors_output = std::make_shared<ImuData>(factors_);    
     factors_output->b_has_data = false; 
-
     if (CheckBufferSize()==0) {
         ROS_WARN("Buffers are empty, returning no data");
         return factors_output;
     }
-
     ImuQuaternion imu_quaternion;
     ros::Time query_stamp_ros;
     query_stamp_ros.fromSec(query_stamp_);
-
     if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
         if (b_verbosity_) ROS_INFO("Successfully extracted data from buffer");
         Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
         ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
-
         factors_output->b_has_data = true; 
         factors_output->type = "imu";        
         factors_output->factors.push_back(new_factor);
-
         ResetFactorData();
     }
-
     else {
         factors_output->b_has_data = false; 
     }
-
     return factors_output; 
 }
 
-// Buffers
-// --------------------------------------------------------------------------------
+// Buffers --------------------------------------------------------------------------------
 
 bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {  
     if (b_verbosity_) ROS_INFO("ImuHandler - InsertMsgInBuffer");  
@@ -126,8 +109,7 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
     double current_time = msg->header.stamp.toSec();    
     ImuQuaternion current_quaternion;
     tf::quaternionMsgToEigen(msg->orientation, current_quaternion);
-    // Convert quaternion from imu frame to base frame, then store it 
-    if (b_convert_imu_frame_){
+    if (b_convert_imu_frame_) {
         current_quaternion = I_T_B_q_*current_quaternion*I_T_B_q_.inverse(); 
     }
     imu_buffer_.insert({current_time, current_quaternion});
@@ -158,11 +140,10 @@ bool ImuHandler::ClearBuffer() {
     }
 }
 
-// Quaternions
-// --------------------------------------------------------------------------------
+// Quaternions ----------------------------------------------------------------------------
 
 bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
-    // TODO: Implement GetValueAtTime in base class as it is a common functionality needed by all handlers
+    // TODO: Implement GetValueAtTime in base class as common functionality needed by all handlers
     // TODO: ClearPreviousImuMsgsInBuffer where needed 
     if (b_verbosity_) ROS_INFO("ImuHandler - GetQuaternionAtTime"); 
     if (imu_buffer_.size() == 0){
@@ -202,22 +183,19 @@ bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_
 }
 
 Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion) const {
-    // ROS_INFO("ImuHandler - QuaternionToYpr");
-    auto ypr = imu_quaternion.toRotationMatrix().eulerAngles(2, 1, 0);
-    // Returned ypr is in radians
+    if (b_verbosity_) ROS_INFO("ImuHandler - QuaternionToYpr");
+    auto ypr = imu_quaternion.toRotationMatrix().eulerAngles(2, 1, 0); // radians
     return ypr;
 }
 
-// Factors
-// --------------------------------------------------------------------------------
+// Factors --------------------------------------------------------------------------------
 
 Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const {
     // TODO: Make sure Rot3::Ypr works with input imu_ypr data expressed in radians
     if (b_verbosity_) ROS_INFO("ImuHandler - CreateAttitudeFactor");
     Unit3 ref(0, 0, -1); 
     SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, noise_sigma_imu_);    
-    // Yaw can be set to 0
-    Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2]));
+    Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2])); // Yaw can be set to 0
     Unit3 meas = Unit3(Rot3(R_imu.transpose()).operator*(ref));
     Pose3AttitudeFactor factor(query_key_, meas, model, ref);
     return factor;
@@ -254,8 +232,7 @@ bool ImuHandler::SetKeyForImuAttitude(const Symbol& key) {
     }
 }
 
-// Transformations
-// --------------------------------------------------------------------------------
+// Transformations ------------------------------------------------------------------------
 
 bool ImuHandler::LoadCalibrationFromTfTree() {
     ROS_WARN_DELAYED_THROTTLE(2.0, 
