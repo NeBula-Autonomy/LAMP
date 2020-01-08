@@ -227,19 +227,6 @@ TEST_F(ImuHandlerTest, TestQuaternionToYprNew) {
   std::cerr << "Test Roll: " << ypr[2] << std::endl;
   std::cerr << "------------------------------" << std::endl;
   ASSERT_NEAR(ypr[1], 1.5708, ImuHandlerTest::tolerance_);
-  // 100 degree Pitch (1.74533 rad)
-  imu_quaternion.x = 0;
-  imu_quaternion.y = 0.7660444;
-  imu_quaternion.z = 0;
-  imu_quaternion.w = 0.6427876;
-  ypr = QuaternionToYprNew(imu_quaternion);
-  std::cerr << "------------------------------" << std::endl;
-  std::cerr << "Test 100 degree Pitch (1.74533 rad): " << std::endl;
-  std::cerr << "Test Yaw: " << ypr.at(0) << std::endl;
-  std::cerr << "Test Pitch: " << ypr.at(1) << std::endl;
-  std::cerr << "Test Roll: " << ypr.at(2) << std::endl;
-  std::cerr << "------------------------------" << std::endl;
-  ASSERT_NEAR(ypr[1], 1.74533, ImuHandlerTest::tolerance_);
 }
 
 /* TEST SetTimeForImuAttitude */
