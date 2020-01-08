@@ -88,7 +88,11 @@ std::shared_ptr<FactorData> ImuHandler::GetData() {
     query_stamp_ros.fromSec(query_stamp_);
     if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
         if (b_verbosity_) ROS_INFO("Successfully extracted data from buffer");
-        Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
+        
+        geometry_msgs::Quaternion imu_quaternion_msg; 
+        tf::quaternionEigenToMsg(imu_quaternion, imu_quaternion_msg);
+        auto imu_ypr = QuaternionToYpr(imu_quaternion_msg);        
+        
         ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
         factors_output->b_has_data = true; 
         factors_output->type = "imu";        
@@ -182,21 +186,13 @@ bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_
   return true; 
 }
 
-Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion) const {
+Eigen::Vector3d ImuHandler::QuaternionToYpr(const geometry_msgs::Quaternion& imu_quaternion) const {
     if (b_verbosity_) ROS_INFO("ImuHandler - QuaternionToYpr");
-    auto ypr = imu_quaternion.toRotationMatrix().eulerAngles(2, 1, 0); // radians
-    return ypr;
-}
-
-std::vector<double> ImuHandler::QuaternionToYprNew(const geometry_msgs::Quaternion& imu_quaternion) const {
     tf::Quaternion q(imu_quaternion.x, imu_quaternion.y, imu_quaternion.z, imu_quaternion.w);
     tf::Matrix3x3 m(q);
     double roll, pitch, yaw;
     m.getRPY(roll, pitch, yaw);
-    std::vector<double> imu_ypr;
-    imu_ypr.push_back(yaw);
-    imu_ypr.push_back(pitch);
-    imu_ypr.push_back(roll);
+    Eigen::Vector3d imu_ypr(yaw, pitch, roll);
     return imu_ypr; // radians
 }
 
@@ -208,17 +204,6 @@ Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_
     Unit3 ref(0, 0, -1); 
     SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, noise_sigma_imu_);    
     Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2])); // Yaw can be set to 0
-    Unit3 meas = Unit3(Rot3(R_imu.transpose()).operator*(ref));
-    Pose3AttitudeFactor factor(query_key_, meas, model, ref);
-    return factor;
-}
-
-Pose3AttitudeFactor ImuHandler::CreateAttitudeFactorNew(const std::vector<double>& imu_ypr) const {
-    // Received imu_ypr is in radians 
-    if (b_verbosity_) ROS_INFO("ImuHandler - CreateAttitudeFactorNew");
-    Unit3 ref(0, 0, -1); 
-    SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, noise_sigma_imu_);    
-    Rot3 R_imu = Rot3::Ypr(0, imu_ypr.at(1), imu_ypr.at(2)); // Yaw can be set to 0
     Unit3 meas = Unit3(Rot3(R_imu.transpose()).operator*(ref));
     Pose3AttitudeFactor factor(query_key_, meas, model, ref);
     return factor;

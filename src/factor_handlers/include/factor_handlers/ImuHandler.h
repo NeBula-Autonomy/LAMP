@@ -59,8 +59,8 @@ protected:
   // Quaternions
   double ts_threshold_;
   bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const; 
-  Vector3d QuaternionToYpr(const ImuQuaternion& imu_quaternion) const;
-
+  Eigen::Vector3d QuaternionToYpr(const geometry_msgs::Quaternion& imu_quaternion) const;
+  
   // Factors
   Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const;              
   void ResetFactorData();  
@@ -80,10 +80,6 @@ protected:
   bool b_convert_imu_frame_;
   bool b_verbosity_;
   double noise_sigma_imu_;
-
-  // New TF based quaternion to angle conversion 
-  std::vector<double> QuaternionToYprNew(const geometry_msgs::Quaternion& imu_quaternion) const;
-  Pose3AttitudeFactor CreateAttitudeFactorNew(const std::vector<double>& imu_ypr) const;
         
 };
 

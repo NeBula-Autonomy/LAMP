@@ -10,7 +10,8 @@ class ImuHandlerTest : public ::testing::Test {
       system("rosparam load $(rospack find "
              "factor_handlers)/config/imu_parameters.yaml");   
       system("rosparam load $(rospack find "
-             "lamp)/config/precision_parameters.yaml");   
+             "lamp)/config/precision_parameters.yaml");
+
       tolerance_ = 1e-5;
 
       double t1 = 1.00;
@@ -53,12 +54,8 @@ class ImuHandlerTest : public ::testing::Test {
       ih.ImuCallback(msg);
     }  
 
-    Eigen::Vector3d QuaternionToYpr(const ImuQuaternion& imu_quaternion) const {
+    Eigen::Vector3d QuaternionToYpr(const geometry_msgs::Quaternion& imu_quaternion) const {
       return ih.QuaternionToYpr(imu_quaternion);
-    }
-
-    std::vector<double> QuaternionToYprNew(const geometry_msgs::Quaternion& imu_quaternion) const {
-      return ih.QuaternionToYprNew(imu_quaternion);
     }
 
     bool SetTimeForImuAttitude(const ros::Time& stamp) {
@@ -89,13 +86,12 @@ class ImuHandlerTest : public ::testing::Test {
       return ih.ClearBuffer();
     }
 
-    bool GetQuaternionAtTime(const ros::Time& stamp, 
-                             ImuQuaternion& imu_quaternion) const {
+    bool GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
       return ih.GetQuaternionAtTime(stamp, imu_quaternion);
     }
     
-    Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const {
-      return ih.CreateAttitudeFactor(imu_rpy);
+    Pose3AttitudeFactor CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const {
+      return ih.CreateAttitudeFactor(imu_ypr);
     }
 
     virtual std::shared_ptr<FactorData> GetData() {
@@ -122,50 +118,7 @@ TEST_F(ImuHandlerTest, TestInitialize) {
 }
 
 /* TEST QuaternionToYpr */
-// TEST_F(ImuHandlerTest, TestQuaternionToYpr) {
-//   /*
-//   ImuQuaternion ---> w,x,y,z
-//   Roll ------------> rotation about x axis
-//   Pitch -----------> rotation about y axis
-//   Yaw -------------> rotation about z axis
-//   */
-//   ros::NodeHandle nh("~");
-//   ih.Initialize(nh);
-//   ImuQuaternion imu_quaternion;
-//   // 0 degree Pitch (0 rad)
-//   imu_quaternion = ImuQuaternion(1,0,0,0); 
-//   Eigen::Vector3d ypr = QuaternionToYpr(imu_quaternion);
-//   std::cerr << "------------------------------" << std::endl;
-//   std::cerr << "Test 0 degree Pitch (0 rad): " << std::endl;
-//   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
-//   std::cerr << "Test Pitch: " << ypr[1] << std::endl;
-//   std::cerr << "Test Roll: " << ypr[2] << std::endl;
-//   std::cerr << "------------------------------" << std::endl;
-//   ASSERT_NEAR(ypr[1], 0, ImuHandlerTest::tolerance_);
-//   // 10 degree Pitch (0.174533 rad)
-//   imu_quaternion = ImuQuaternion(0.9961947,0,0.0871557,0); 
-//   ypr = QuaternionToYpr(imu_quaternion);
-//   std::cerr << "------------------------------" << std::endl;
-//   std::cerr << "Test 10 degree Pitch (0.174533 rad): " << std::endl;
-//   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
-//   std::cerr << "Test Pitch: " << ypr[1] << std::endl;
-//   std::cerr << "Test Roll: " << ypr[2] << std::endl;
-//   std::cerr << "------------------------------" << std::endl;
-//   ASSERT_NEAR(ypr[1], 0.174533, ImuHandlerTest::tolerance_);
-//   // 20 degree Pitch (0,349066 rad)
-//   imu_quaternion = ImuQuaternion(0.9848078,0,0.1736482,0); 
-//   ypr = QuaternionToYpr(imu_quaternion);
-//   std::cerr << "------------------------------" << std::endl;
-//   std::cerr << "Test 20 degree Pitch (0,349066 rad): " << std::endl;
-//   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
-//   std::cerr << "Test Pitch: " << ypr[1] << std::endl;
-//   std::cerr << "Test Roll: " << ypr[2] << std::endl;
-//   std::cerr << "------------------------------" << std::endl;
-//   ASSERT_NEAR(ypr[1], 0.349066, ImuHandlerTest::tolerance_);
-// }
-
-/* TEST QuaternionToYprNew */
-TEST_F(ImuHandlerTest, TestQuaternionToYprNew) {
+TEST_F(ImuHandlerTest, TestQuaternionToYpr) {
   /*
   geometry_msgs::Quaternion ---> x,y,z,w
   Yaw -------------> rotation about z axis
@@ -180,7 +133,7 @@ TEST_F(ImuHandlerTest, TestQuaternionToYprNew) {
   imu_quaternion.y = 0;
   imu_quaternion.z = 0;
   imu_quaternion.w = 1;
-  std::vector<double> ypr = QuaternionToYprNew(imu_quaternion);
+  Eigen::Vector3d ypr = QuaternionToYpr(imu_quaternion);
   std::cerr << "------------------------------" << std::endl;
   std::cerr << "Test 0 degree Pitch (0 rad): " << std::endl;
   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
@@ -193,7 +146,7 @@ TEST_F(ImuHandlerTest, TestQuaternionToYprNew) {
   imu_quaternion.y = 0.0871557;
   imu_quaternion.z = 0;
   imu_quaternion.w = 0.9961947;
-  ypr = QuaternionToYprNew(imu_quaternion);
+  ypr = QuaternionToYpr(imu_quaternion);
   std::cerr << "------------------------------" << std::endl;
   std::cerr << "Test 10 degree Pitch (0.174533 rad): " << std::endl;
   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
@@ -206,7 +159,7 @@ TEST_F(ImuHandlerTest, TestQuaternionToYprNew) {
   imu_quaternion.y = 0.1736482;
   imu_quaternion.z = 0;
   imu_quaternion.w = 0.9848078;
-  ypr = QuaternionToYprNew(imu_quaternion);
+  ypr = QuaternionToYpr(imu_quaternion);
   std::cerr << "------------------------------" << std::endl;
   std::cerr << "Test 20 degree Pitch (0.349066 rad): " << std::endl;
   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
@@ -219,7 +172,7 @@ TEST_F(ImuHandlerTest, TestQuaternionToYprNew) {
   imu_quaternion.y = 0.7071068;
   imu_quaternion.z = 0;
   imu_quaternion.w = 0.7071068;
-  ypr = QuaternionToYprNew(imu_quaternion);
+  ypr = QuaternionToYpr(imu_quaternion);
   std::cerr << "------------------------------" << std::endl;
   std::cerr << "Test 90 degree Pitch (1.5708 rad): " << std::endl;
   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
