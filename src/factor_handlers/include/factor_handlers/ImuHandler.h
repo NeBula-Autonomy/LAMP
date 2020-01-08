@@ -83,6 +83,7 @@ protected:
 
   // New TF based quaternion to angle conversion 
   std::vector<double> QuaternionToYprNew(const geometry_msgs::Quaternion& imu_quaternion) const;
+  Pose3AttitudeFactor CreateAttitudeFactorNew(const std::vector<double>& imu_ypr) const;
         
 };
 
