@@ -122,52 +122,52 @@ TEST_F(ImuHandlerTest, TestInitialize) {
 }
 
 /* TEST QuaternionToYpr */
-TEST_F(ImuHandlerTest, TestQuaternionToYpr) {
-  /*
-  ImuQuaternion ---> w,x,y,z
-  Roll ------------> rotation about x axis
-  Pitch -----------> rotation about y axis
-  Yaw -------------> rotation about z axis
-  */
-  ros::NodeHandle nh("~");
-  ih.Initialize(nh);
-  ImuQuaternion imu_quaternion;
-  // 0 degree Pitch (0 rad)
-  imu_quaternion = ImuQuaternion(1,0,0,0); 
-  Eigen::Vector3d ypr = QuaternionToYpr(imu_quaternion);
-  std::cerr << "------------------------------" << std::endl;
-  std::cerr << "Test 0 degree Pitch (0 rad): " << std::endl;
-  std::cerr << "Test Yaw: " << ypr[0] << std::endl;
-  std::cerr << "Test Pitch: " << ypr[1] << std::endl;
-  std::cerr << "Test Roll: " << ypr[2] << std::endl;
-  std::cerr << "------------------------------" << std::endl;
-  ASSERT_NEAR(ypr[1], 0, ImuHandlerTest::tolerance_);
-  // 10 degree Pitch (0.174533 rad)
-  imu_quaternion = ImuQuaternion(0.9961947,0,0.0871557,0); 
-  ypr = QuaternionToYpr(imu_quaternion);
-  std::cerr << "------------------------------" << std::endl;
-  std::cerr << "Test 10 degree Pitch (0.174533 rad): " << std::endl;
-  std::cerr << "Test Yaw: " << ypr[0] << std::endl;
-  std::cerr << "Test Pitch: " << ypr[1] << std::endl;
-  std::cerr << "Test Roll: " << ypr[2] << std::endl;
-  std::cerr << "------------------------------" << std::endl;
-  ASSERT_NEAR(ypr[1], 0.174533, ImuHandlerTest::tolerance_);
-  // 20 degree Pitch (0,349066 rad)
-  imu_quaternion = ImuQuaternion(0.9848078,0,0.1736482,0); 
-  ypr = QuaternionToYpr(imu_quaternion);
-  std::cerr << "------------------------------" << std::endl;
-  std::cerr << "Test 20 degree Pitch (0,349066 rad): " << std::endl;
-  std::cerr << "Test Yaw: " << ypr[0] << std::endl;
-  std::cerr << "Test Pitch: " << ypr[1] << std::endl;
-  std::cerr << "Test Roll: " << ypr[2] << std::endl;
-  std::cerr << "------------------------------" << std::endl;
-  ASSERT_NEAR(ypr[1], 0.349066, ImuHandlerTest::tolerance_);
-}
+// TEST_F(ImuHandlerTest, TestQuaternionToYpr) {
+//   /*
+//   ImuQuaternion ---> w,x,y,z
+//   Roll ------------> rotation about x axis
+//   Pitch -----------> rotation about y axis
+//   Yaw -------------> rotation about z axis
+//   */
+//   ros::NodeHandle nh("~");
+//   ih.Initialize(nh);
+//   ImuQuaternion imu_quaternion;
+//   // 0 degree Pitch (0 rad)
+//   imu_quaternion = ImuQuaternion(1,0,0,0); 
+//   Eigen::Vector3d ypr = QuaternionToYpr(imu_quaternion);
+//   std::cerr << "------------------------------" << std::endl;
+//   std::cerr << "Test 0 degree Pitch (0 rad): " << std::endl;
+//   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
+//   std::cerr << "Test Pitch: " << ypr[1] << std::endl;
+//   std::cerr << "Test Roll: " << ypr[2] << std::endl;
+//   std::cerr << "------------------------------" << std::endl;
+//   ASSERT_NEAR(ypr[1], 0, ImuHandlerTest::tolerance_);
+//   // 10 degree Pitch (0.174533 rad)
+//   imu_quaternion = ImuQuaternion(0.9961947,0,0.0871557,0); 
+//   ypr = QuaternionToYpr(imu_quaternion);
+//   std::cerr << "------------------------------" << std::endl;
+//   std::cerr << "Test 10 degree Pitch (0.174533 rad): " << std::endl;
+//   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
+//   std::cerr << "Test Pitch: " << ypr[1] << std::endl;
+//   std::cerr << "Test Roll: " << ypr[2] << std::endl;
+//   std::cerr << "------------------------------" << std::endl;
+//   ASSERT_NEAR(ypr[1], 0.174533, ImuHandlerTest::tolerance_);
+//   // 20 degree Pitch (0,349066 rad)
+//   imu_quaternion = ImuQuaternion(0.9848078,0,0.1736482,0); 
+//   ypr = QuaternionToYpr(imu_quaternion);
+//   std::cerr << "------------------------------" << std::endl;
+//   std::cerr << "Test 20 degree Pitch (0,349066 rad): " << std::endl;
+//   std::cerr << "Test Yaw: " << ypr[0] << std::endl;
+//   std::cerr << "Test Pitch: " << ypr[1] << std::endl;
+//   std::cerr << "Test Roll: " << ypr[2] << std::endl;
+//   std::cerr << "------------------------------" << std::endl;
+//   ASSERT_NEAR(ypr[1], 0.349066, ImuHandlerTest::tolerance_);
+// }
 
 /* TEST QuaternionToYprNew */
 TEST_F(ImuHandlerTest, TestQuaternionToYprNew) {
   /*
-  ImuQuaternion ---> x,y,z,w
+  geometry_msgs::Quaternion ---> x,y,z,w
   Yaw -------------> rotation about z axis
   Pitch -----------> rotation about y axis
   Roll ------------> rotation about x axis
@@ -227,20 +227,19 @@ TEST_F(ImuHandlerTest, TestQuaternionToYprNew) {
   std::cerr << "Test Roll: " << ypr[2] << std::endl;
   std::cerr << "------------------------------" << std::endl;
   ASSERT_NEAR(ypr[1], 1.5708, ImuHandlerTest::tolerance_);
-  // NOTE: This would fail
-  // 180 degree Pitch (3.14159 rad)
-  // imu_quaternion.x = 0;
-  // imu_quaternion.y = 1;
-  // imu_quaternion.z = 0;
-  // imu_quaternion.w = 0;
-  // ypr = QuaternionToYprNew(imu_quaternion);
-  // std::cerr << "------------------------------" << std::endl;
-  // std::cerr << "Test 180 degree Pitch (3.14159 rad): " << std::endl;
-  // std::cerr << "Test Yaw: " << ypr[0] << std::endl;
-  // std::cerr << "Test Pitch: " << ypr[1] << std::endl;
-  // std::cerr << "Test Roll: " << ypr[2] << std::endl;
-  // std::cerr << "------------------------------" << std::endl;
-  // ASSERT_NEAR(ypr[1], 3.14159, ImuHandlerTest::tolerance_);
+  // 100 degree Pitch (1.74533 rad)
+  imu_quaternion.x = 0;
+  imu_quaternion.y = 0.7660444;
+  imu_quaternion.z = 0;
+  imu_quaternion.w = 0.6427876;
+  ypr = QuaternionToYprNew(imu_quaternion);
+  std::cerr << "------------------------------" << std::endl;
+  std::cerr << "Test 100 degree Pitch (1.74533 rad): " << std::endl;
+  std::cerr << "Test Yaw: " << ypr.at(0) << std::endl;
+  std::cerr << "Test Pitch: " << ypr.at(1) << std::endl;
+  std::cerr << "Test Roll: " << ypr.at(2) << std::endl;
+  std::cerr << "------------------------------" << std::endl;
+  ASSERT_NEAR(ypr[1], 1.74533, ImuHandlerTest::tolerance_);
 }
 
 /* TEST SetTimeForImuAttitude */
