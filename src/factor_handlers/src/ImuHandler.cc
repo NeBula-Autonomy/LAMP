@@ -188,6 +188,18 @@ Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion)
     return ypr;
 }
 
+std::vector<double> ImuHandler::QuaternionToYprNew(const geometry_msgs::Quaternion& imu_quaternion) const {
+    tf::Quaternion q(imu_quaternion.x, imu_quaternion.y, imu_quaternion.z, imu_quaternion.w);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    std::vector<double> imu_ypr;
+    imu_ypr.push_back(roll);
+    imu_ypr.push_back(pitch);
+    imu_ypr.push_back(yaw);
+    return imu_ypr; // radians
+}
+
 // Factors --------------------------------------------------------------------------------
 
 Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const {

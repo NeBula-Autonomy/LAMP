@@ -80,6 +80,9 @@ protected:
   bool b_convert_imu_frame_;
   bool b_verbosity_;
   double noise_sigma_imu_;
+
+  // New TF based quaternion to angle conversion 
+  std::vector<double> QuaternionToYprNew(const geometry_msgs::Quaternion& imu_quaternion) const;
         
 };
 
