@@ -1,2 +1,2 @@
 map:
-  octree_resolution: 0.05
+  octree_resolution: 0.001
