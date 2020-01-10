@@ -44,7 +44,7 @@ robot:
 
     # During ICP, two points won't be considered a correspondence if they are at
     # least this far from one another.
-    corr_dist: 0.3
+    corr_dist: 5.0
 
     # Iterate ICP this many times.
     iterations: 5 # Default from original branch is 20: 
@@ -55,12 +55,12 @@ robot:
 
   sac_ia:
     # Iterate SAC-IA this many times.
-    iterations: 100
+    iterations: 10
 
     # Number of previous and next scans to accumulate for target pointcloud
     # 0 means no accumulation
-    num_prev_scans: 1
-    num_next_scans: 1
+    num_prev_scans: 2
+    num_next_scans: 2
 
     # Radii of area to consider when computing normals and features
     normals_radius: 1.0
