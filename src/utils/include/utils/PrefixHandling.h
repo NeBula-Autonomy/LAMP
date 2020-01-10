@@ -30,8 +30,8 @@ namespace utils {
       {"husky3",  'c'},
       {"husky4",  'f'},
       {"telemax1",'d'},
-      {"robot",   'e'}
-      {"spot1",   'g'}
+      {"robot",   'e'},
+      {"spot1",   'g'},
       {"spot2",   'h'}
   };
 
@@ -41,8 +41,8 @@ namespace utils {
       {"husky3",  'n'},
       {"husky4",  'q'},
       {"telemax1",'o'},
-      {"robot",   'p'}
-      {"spot1",   'r'}
+      {"robot",   'p'},
+      {"spot1",   'r'},
       {"spot2",   's'}
   };
 
