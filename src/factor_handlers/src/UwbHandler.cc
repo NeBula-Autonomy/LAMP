@@ -60,11 +60,18 @@ void UwbHandler::UwbFactorCallback(const pose_graph_msgs::PoseGraph::ConstPtr& m
     ROS_INFO("UwbHandler received UWB range factors from UwbFrontend");
     for (const auto& edge : msg->edges) {
         UwbFactor factor;
-        factor.stamp        = msg->header.stamp;
-        factor.key_from     = edge.key_from;
-        factor.key_to       = edge.key_to;
-        factor.range        = edge.range;
-        factor.range_error  = edge.range_error;
+        factor.stamp    = msg->header.stamp;
+        factor.key_from = edge.key_from;
+        factor.key_to   = edge.key_to;
+        factor.type     = edge.type;
+        if (edge.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
+            factor.range        = edge.range;
+            factor.range_error  = edge.range_error;
+        }
+        if (edge.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+            auto transform = gr::FromROS(edge.pose);
+            factor.pose = utils::ToGtsam(transform);
+        }
         uwb_data_.factors.emplace_back(factor);
     }
 }

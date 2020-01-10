@@ -8,7 +8,7 @@
 
 
 
-TwoPoseGraphMerge::TwoPoseGraphMerge() : first_call_(true), robot_prefix_('Z') {}
+TwoPoseGraphMerge::TwoPoseGraphMerge() : robot_prefix_('Z') {}
 
 TwoPoseGraphMerge::~TwoPoseGraphMerge() {}
 
@@ -21,7 +21,18 @@ bool TwoPoseGraphMerge::Initialize(const ros::NodeHandle& n) {
   n.param<std::string>("frame_id_world1", this->world_fid_,  "/world");
   n.param<std::string>("frame_id_world2", this->world2_fid_, "/world_prime");
 
+  robot_prefix_ = utils::GetRobotPrefix(GetRobotName(n));
+
   return true;
+}
+
+std::string TwoPoseGraphMerge::GetRobotName(const ros::NodeHandle& n) {
+  std::string ns = n.getNamespace();
+  std::stringstream ss(ns);
+  std::string item;
+  std::getline(ss, item, '/');
+  std::getline(ss, item, '/');
+  return item;
 }
 
 // Create Publishers
@@ -33,6 +44,8 @@ bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
       nl.advertise<geometry_msgs::PoseStamped>("robot_last_node_pose", 10, false);
   merged_node_pose_pub_ =
       nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, false);
+  merged_pose_pub_ = 
+      nl.advertise<geometry_msgs::PoseStamped>("merged_pose", 10, false);
 }
 
 // Create Subscribers
@@ -44,9 +57,14 @@ bool TwoPoseGraphMerge::CreateSubscribers(const ros::NodeHandle& n) {
   robot_pose_graph_sub_ = nl.subscribe("robot_graph",
                                           10,
                                           &TwoPoseGraphMerge::ProcessRobotGraph, this);
+  robot_pose_sub_ = nl.subscribe("robot_pose",
+                                 10,
+                                 &TwoPoseGraphMerge::ProcessRobotPose, this);
 }
 
-geometry_msgs::PoseStamped TwoPoseGraphMerge::GetLatestOdomPose(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+geometry_msgs::PoseStamped TwoPoseGraphMerge::GetLatestOdomPose(
+        const pose_graph_msgs::PoseGraphConstPtr& msg, 
+        char target_prefix) {
 
   geometry_msgs::PoseStamped latest;
   GraphNode target;
@@ -56,18 +74,12 @@ geometry_msgs::PoseStamped TwoPoseGraphMerge::GetLatestOdomPose(const pose_graph
   for (int i = msg->nodes.size() - 1; i >= 0; i--) {
     GraphNode n = msg->nodes[i];
 
-    // Skip this node if it isn't from this robot
+    // Skip this node if it isn't from the right robot
     char prefix = gtsam::Symbol(n.key).chr();
-    if ((first_call_ && utils::IsRobotPrefix(prefix)) || prefix == robot_prefix_) {
+    if (prefix == target_prefix) {
       target = n;
       break;
     }
-  }
-
-  // On first call of this function, store the prefix of the current robot
-  if (first_call_) {
-    robot_prefix_ = gtsam::Symbol(target.key).chr();
-    first_call_ = false;
   }
 
   latest.pose = target.pose;
@@ -97,15 +109,33 @@ void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstP
   merged_graph_pub_.publish(*fused_graph);
 
   // Poses from the robot-only graph and the merged graph
-  robot_pose_ = GetLatestOdomPose(msg);
+  robot_pose_ = GetLatestOdomPose(msg, robot_prefix_);
   robot_pose_.header.frame_id = this->world_fid_;
-  merged_pose_ = GetLatestOdomPose(fused_graph);
+  merged_pose_ = GetLatestOdomPose(fused_graph, robot_prefix_);
   merged_pose_.header.frame_id = this->world2_fid_;
 
   // Publish
   PublishPoses();
 
   return;
+}
+
+void TwoPoseGraphMerge::ProcessRobotPose(const geometry_msgs::PoseStampedConstPtr& msg) {
+  gtsam::Pose3 robot_pose = utils::ToGtsam(msg->pose);
+
+  gtsam::Pose3 robot_node_pose = utils::ToGtsam(robot_pose_.pose);
+  gtsam::Pose3 merged_node_pose = utils::ToGtsam(merged_pose_.pose);
+
+  gtsam::Pose3 delta = robot_node_pose.between(robot_pose);
+  gtsam::Pose3 new_pose = merged_node_pose.compose(delta);
+
+  // Convert to ROS to publish
+  geometry_msgs::PoseStamped output;
+  output.pose = utils::GtsamToRosMsg(new_pose);
+  output.header.frame_id = this->world2_fid_;
+  output.header.stamp = msg->header.stamp;
+
+  merged_pose_pub_.publish(output);
 }
 
 pose_graph_msgs::PoseGraph TwoPoseGraphMerge::GetMergedGraph(){

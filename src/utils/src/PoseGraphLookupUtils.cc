@@ -75,6 +75,30 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp,
   return key_out;
 }
 
+gtsam::Pose3 PoseGraph::LastPose(char c) const {
+    gtsam::Key latest = utils::GTSAM_ERROR_SYMBOL; 
+    
+    // Get the most recent pose from the given robot
+    for (auto v : values_) {
+      if (gtsam::Symbol(v.key).chr() != c) {
+        continue;
+      }
+      if (latest == utils::GTSAM_ERROR_SYMBOL) {
+        latest = v.key;
+      }
+      else {
+        latest = std::max(latest, v.key);
+      }
+    }
+
+    if (latest == utils::GTSAM_ERROR_SYMBOL) {
+      ROS_WARN_STREAM("Could not get latest pose for robot with prefix " << c);
+      return gtsam::Pose3();
+    }
+
+    return values_.at<gtsam::Pose3>(latest);;
+}
+
 const NodeMessage* PoseGraph::FindNode(gtsam::Key key) const {
   for (const auto& node : nodes_) {
     if (node.key == key) {

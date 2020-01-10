@@ -7,8 +7,10 @@
       <remap from="~base_graph" to="/$(arg base_namespace)/lamp/pose_graph" />
       <remap from="~robot_graph" to="lamp/pose_graph" />
       <remap from="~merged_pose_graph" to="lamp/pose_graph_merged" />
+      <remap from="~robot_pose" to="lamp/lamp_pose" />
       <remap from="~robot_last_node_pose" to="lamp/pose_graph/last_node_pose" />
       <remap from="~merged_last_node_pose" to="lamp/pose_graph_merged/last_node_pose" />
+      <remap from="~merged_pose" to="lamp/pose_merged"/>
       <rosparam file="$(find pose_graph_merger)/config/world_frames_merger.yaml" subst_value="true"/>
     </node>
   </group>

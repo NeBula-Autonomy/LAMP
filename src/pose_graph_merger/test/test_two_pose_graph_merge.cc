@@ -68,21 +68,23 @@ protected:
 
   geometry_msgs::PoseStamped GetRobotPose(){return merge_.robot_pose_;}
   geometry_msgs::PoseStamped GetMergedPose(){return merge_.merged_pose_;}
+  char GetRobotPrefix(){return merge_.robot_prefix_;}
 
 private:
 };
 
 TEST_F(TestTwoPoseGraphMerge, Initialization){
   // ros::init(argc, argv, "two_pg_merge");
-  ros::NodeHandle n("~");
+  ros::NodeHandle n("/husky1/two_pose_graph_merge");
 
   bool result = merge_.Initialize(n);
 
   EXPECT_TRUE(result);
+  EXPECT_EQ('a', GetRobotPrefix());
 }
 
 TEST_F(TestTwoPoseGraphMerge, BasicMerge) {
-  ros::NodeHandle nh, pnh("~");
+  ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
 
   merge_.Initialize(pnh);
 
@@ -165,7 +167,7 @@ TEST_F(TestTwoPoseGraphMerge, BasicMerge) {
 
 TEST_F(TestTwoPoseGraphMerge, StandardCase) {
   // Also with the latest node in the merged from the other robot
-  ros::NodeHandle nh, pnh("~");
+  ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
 
   merge_.Initialize(pnh);
 
@@ -247,7 +249,7 @@ TEST_F(TestTwoPoseGraphMerge, StandardCase) {
 }
 
 TEST_F(TestTwoPoseGraphMerge, NoNewOnFast) {
-  ros::NodeHandle nh, pnh("~");
+  ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
 
   merge_.Initialize(pnh);
 

@@ -11,6 +11,10 @@
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 
+#include <gtsam/inference/Symbol.h>
+
+#include <utils/PrefixHandling.h>
+
 #include <tf2/transform_datatypes.h>
 
 #include <gtsam/inference/Symbol.h>

@@ -11,6 +11,7 @@
 
 #include <factor_handlers/ManualLoopClosureHandler.h>
 #include <factor_handlers/PoseGraphHandler.h>
+#include <factor_handlers/RobotPoseHandler.h>
 #include <factor_handlers/ArtifactHandler.h>
 #include <std_msgs/String.h>
 
@@ -63,16 +64,23 @@ class LampBaseStation : public LampBase {
     // Factor handler wrappers
     bool ProcessPoseGraphData(std::shared_ptr<FactorData> data);
     bool ProcessManualLoopClosureData(std::shared_ptr<FactorData> data);
+    bool ProcessRobotPoseData(std::shared_ptr<FactorData> data);
 
     // Data handler classes
     PoseGraphHandler pose_graph_handler_;
+    RobotPoseHandler robot_pose_handler_;
 
     // Subscribers
     ros::Subscriber debug_sub_;
 
+    // Publishers
+    std::map<char, ros::Publisher> publishers_pose_;
+
+
     // Booleans
     bool b_published_initial_node_;
     bool b_optimize_on_artifacts_;
+    bool b_use_uwb_;
 
 
   private:
@@ -80,6 +88,9 @@ class LampBaseStation : public LampBase {
 
     // Data Handler classes
     ManualLoopClosureHandler manual_loop_closure_handler_; 
+
+    // Track latest pose from each robot
+    std::map<char, std::pair<gtsam::Key, gtsam::Pose3>> latest_node_pose_;
 
     // Test class fixtures
     friend class TestLampBase;

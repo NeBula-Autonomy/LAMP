@@ -21,6 +21,8 @@ Lidar pointcloud based loop closure
 #include <geometry_utils/Transform3.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 
+#include <map>
+
 class LaserLoopClosure : public LoopClosure {
 public:
   LaserLoopClosure(const ros::NodeHandle& n);
@@ -29,13 +31,34 @@ public:
   bool Initialize(const ros::NodeHandle& n);
 
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+  typedef pcl::PointCloud<pcl::Normal> Normals;
+  typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
 
 private:
+  void AccumulateScans(
+      gtsam::Key key,
+      PointCloud::Ptr scan_out);
+  void ComputeNormals(
+      PointCloud::ConstPtr input,
+      Normals::Ptr normals);
+  void ComputeFeatures(
+      PointCloud::ConstPtr input,
+      Normals::Ptr normals,
+      Features::Ptr features);
+  void GetInitialAlignment(
+      PointCloud::ConstPtr source,
+      PointCloud::ConstPtr target,
+      Eigen::Matrix4f* tf_out);
+  
   bool FindLoopClosures(
       gtsam::Key new_key,
       std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
 
   bool CheckForLoopClosure(
+          gtsam::Symbol key1,
+          gtsam::Symbol key2,
+          std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
+  bool CheckForInterRobotLoopClosure(
           gtsam::Symbol key1,
           gtsam::Symbol key2,
           std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
@@ -57,7 +80,7 @@ private:
                         gtsam::Matrix66* covariance,
                         double& fitness_score);
 
-double DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol key2);
+  double DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol key2);
 
 
   pose_graph_msgs::PoseGraphEdge CreateLoopClosureEdge(
@@ -72,7 +95,10 @@ private:
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
 
-  gtsam::Key last_closure_key_;
+  // last_closure_key_<a,b> stores the last key for robot a on which there was a 
+  // loop closure between robots a and b
+  std::map< std::pair<char,char>, gtsam::Key> last_closure_key_;
+
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;
   double distance_before_reclosing_;
@@ -82,13 +108,22 @@ private:
   double icp_corr_dist_;
   unsigned int icp_iterations_;
 
+  unsigned int sac_iterations_;
+  unsigned int sac_num_prev_scans_;
+  unsigned int sac_num_next_scans_;
+  double sac_normals_radius_;
+  double sac_features_radius_;
+
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
 
   PointCloudFilter filter_;
 
-  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION };
+  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES };
 
   IcpInitMethod icp_init_method_;
+
+  // Test class fixtures
+  friend class TestLaserLoopClosure;
 };
 #endif // LASER_LOOP_CLOSURE_H_

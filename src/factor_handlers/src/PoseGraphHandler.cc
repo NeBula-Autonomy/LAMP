@@ -71,14 +71,14 @@ bool PoseGraphHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     // Pose graph
     pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
         "/" + robot + "/lamp/pose_graph_incremental",
-        20,
+        100,
         &PoseGraphHandler::PoseGraphCallback,
         this);
 
     // Keyed scans
     keyed_scan_sub = nl.subscribe<pose_graph_msgs::KeyedScan>(
         "/" + robot + "/lamp/keyed_scans",
-        10,
+        100,
         &PoseGraphHandler::KeyedScanCallback,
         this);
 

@@ -27,6 +27,8 @@
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 
+#include <utils/PrefixHandling.h>
+
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 
@@ -196,6 +198,18 @@ public:
   inline gtsam::Pose3 LastPose() const {
     return values_.at<gtsam::Pose3>(key - 1);
   }
+  inline void AddLastNodeToNew() {
+    gtsam::Key last_node_key = key - 1;
+    const gtsam::Pose3 pose = LastPose();
+
+    if (values_new_.exists(last_node_key)) {
+      values_new_.update(last_node_key, pose);
+    } else {
+      values_new_.insert(last_node_key, pose);
+    }
+
+  }
+
   inline gtsam::Pose3 GetPose(gtsam::Symbol key) const {
     return values_.at<gtsam::Pose3>(key);
   }
@@ -260,6 +274,8 @@ public:
   }
   bool EraseValue(const gtsam::Symbol key);
 
+  gtsam::Pose3 LastPose(char c) const;
+
   // Time threshold for time-based lookup functions.
   static double time_threshold;
   // Convert timestamps to gtsam keys.
@@ -277,7 +293,8 @@ public:
   bool Save(const std::string& zipFilename) const;
 
   // Loads pose graph and accompanying point clouds from a zip file.
-  bool Load(const std::string& zipFilename);
+  bool Load(const std::string& zipFilename,
+            const std::string& pose_graph_topic_name = "pose_graph");
 
   // Convert entire pose graph to message.
   GraphMsgPtr ToMsg() const;
@@ -425,8 +442,22 @@ struct UwbFactor {
   ros::Time stamp;
   gtsam::Symbol key_from;
   gtsam::Symbol key_to;
+
+  // pose_graph_msgs::PoseGraphEdge::UWB_RANGE
+  // pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN
+  int type;
+
+  // Only for range factors
   double range;
   double range_error;
+
+  // Only for between factors
+  gtsam::Pose3 pose;
+};
+
+struct PoseData {
+  ros::Time stamp;
+  gtsam::Pose3 pose;
 };
 
 // ---------------------------------------------------------
@@ -481,6 +512,15 @@ public:
 
   std::vector<pose_graph_msgs::PoseGraph::ConstPtr> graphs;
   std::vector<pose_graph_msgs::KeyedScan::ConstPtr> scans;
+};
+
+class RobotPoseData : public FactorData {
+public:
+  RobotPoseData(){};
+  virtual ~RobotPoseData(){};
+
+  // Stores most recent pose for each robot
+  std::map< std::string, PoseData > poses;
 };
 
 class AprilTagData : public FactorData {

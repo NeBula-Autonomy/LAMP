@@ -8,6 +8,7 @@
 #ifndef PREFIX_HANDLING_H
 #define PREFIX_HANDLING_H
 
+#include <ros/ros.h>
 #include <string>
 #include <map>
 
@@ -74,7 +75,7 @@ namespace utils {
   // Get the prefix for the given robot
   inline unsigned char GetRobotPrefix(std::string robot) {
     
-    if (ROBOT_PREFIXES.find(robot) != ROBOT_PREFIXES.end()) {
+    if (!ROBOT_PREFIXES.count(robot)) {
       return 0; 
     }
 
@@ -84,7 +85,7 @@ namespace utils {
   // Get the artifact prefix for the given robot
   inline unsigned char GetArtifactPrefix(std::string robot) {
     
-    if (ARTIFACT_PREFIXES.find(robot) != ARTIFACT_PREFIXES.end()) {
+    if (!ARTIFACT_PREFIXES.count(robot)) {
       return 0; 
     }
 
