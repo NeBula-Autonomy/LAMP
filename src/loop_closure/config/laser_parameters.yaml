@@ -31,6 +31,8 @@ robot:
   # amount of translational distance (m).
   distance_before_batch_reclosing: 10 #3
 
+  # if a loop closure is found but the angle is larger than this, reject it
+  max_rotation_deg: 50
 
   #--------------------------------------------------------------------------------
   # ICP Settings for laser loop closure
@@ -93,6 +95,9 @@ base:
   # If a loop has recently been closed, don't close a new one for at least this
   # amount of translational distance (m).
   distance_before_reclosing: 5 #10
+
+  # if a loop closure is found but the angle is larger than this, reject it
+  max_rotation_deg: 50
 
   # If a batchloop has recently been closed, don't close a new one for at least this
   # amount of translational distance (m).

@@ -60,6 +60,9 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get(param_ns_ + "/distance_before_reclosing", distance_before_reclosing_))
     return false;
+  if (!pu::Get(param_ns_ + "/max_rotation_deg", max_rotation_deg_))
+    return false;
+  max_rotation_rad_ = max_rotation_deg_ * M_PI/180;
 
   // Load ICP parameters (from point_cloud localization)
   if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
@@ -513,6 +516,14 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     std::cout << "Converged, score is: " << icp.getFitnessScore() << std::endl;
     return false;
   }
+
+  // reject if the rotation is too big
+  gu::Transform3 odom_delta = utils::ToGu(pose2.between(pose1));
+  gtsam::Pose3 correction = utils::ToGtsam(gu::PoseDelta(*delta, odom_delta));
+  if (fabs(2*acos(correction.rotation().toQuaternion().w()))  > max_rotation_rad_) {
+    ROS_INFO_STREAM("Rejected loop closure - total rotation too large");
+    return false;
+  }  
 
   ROS_INFO_STREAM("ICP: Found loop with score: " << icp.getFitnessScore());
   fitness_score = icp.getFitnessScore();
