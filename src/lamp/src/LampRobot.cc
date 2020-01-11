@@ -34,7 +34,9 @@ using gtsam::Vector3;
 
 // Constructor
 LampRobot::LampRobot() : 
-  is_artifact_initialized(false) {
+  is_artifact_initialized(false),
+  b_init_pg_pub_(false),
+  init_count_(0) {
   b_run_optimization_ = false;
 }
 
@@ -87,6 +89,9 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Rates
   if (!pu::Get("rate/update_rate", update_rate_))
     return false;
+  if (!pu::Get("init_wait_time", init_wait_time_))
+    return false;
+    
 
   // Settings for precisions
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
@@ -294,6 +299,9 @@ bool LampRobot::InitializeGraph(
     gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
   pose_graph_.Initialize(GetInitialKey(), pose, covariance);
 
+  // Publish the first pose
+  PublishPoseGraph(true);
+
   return true;
 }
 
@@ -362,6 +370,16 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Print some debug messages
   // ROS_INFO_STREAM("Checking for new data");
 
+  // Publish initial node again if we haven't move in 5s
+  if (!b_init_pg_pub_){
+    init_count_++;
+    if (init_count_ > (int)(init_wait_time_/update_rate_)){
+      // Publish the pose graph
+      PublishPoseGraph(true);
+      b_init_pg_pub_ = true;
+    }
+  }
+
   // Publish odom
   UpdateAndPublishOdom();
 
@@ -376,6 +394,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     mapper_.PublishMap();
 
     b_has_new_factor_ = false;
+    if (!b_init_pg_pub_) {b_init_pg_pub_ = true;}
   }
 
   // Start optimize, if needed

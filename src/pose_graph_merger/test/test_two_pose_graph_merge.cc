@@ -83,7 +83,7 @@ TEST_F(TestTwoPoseGraphMerge, Initialization){
   EXPECT_EQ('a', GetRobotPrefix());
 }
 
-TEST_F(TestTwoPoseGraphMerge, BasicMerge) {
+TEST_F(TestTwoPoseGraphMerge, BaseGraphCallback) {
   ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
 
   merge_.Initialize(pnh);
@@ -107,229 +107,360 @@ TEST_F(TestTwoPoseGraphMerge, BasicMerge) {
   g.edges.push_back(e0);
   g.edges.push_back(e1);
 
-  pose_graph_msgs::PoseGraphConstPtr fast_graph(
-      new pose_graph_msgs::PoseGraph(g));
-
-  // Make the slow graph
-  g = pose_graph_msgs::PoseGraph();
-
-  n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
-  n1 = CreateNode('a',1, 0.0, 1.0, 0.0);
-  n1.pose.orientation.z = sqrt(0.5);
-  n1.pose.orientation.w = sqrt(0.5);
-
-  e0 = CreateEdge(n0.key, n1.key, 0.0, 1.0, 0.0);
-  e0.pose.orientation.z = sqrt(0.5);
-  e0.pose.orientation.w = sqrt(0.5);
-  
-  g.nodes.push_back(n0);
-  g.nodes.push_back(n1);
-  g.edges.push_back(e0);
-
   pose_graph_msgs::PoseGraphConstPtr slow_graph(
       new pose_graph_msgs::PoseGraph(g));
 
   // Give graphs to merger
   ProcessBaseGraph(slow_graph);
-  ProcessRobotGraph(fast_graph);
 
-  // Get the result
+  // Get merged graph
   pose_graph_msgs::PoseGraph current_graph = GetMergedGraph();
 
   // Check for correct number of nodes and edges
   EXPECT_EQ(3, current_graph.nodes.size());
   EXPECT_EQ(2, current_graph.edges.size());
 
-  ROS_INFO_STREAM("Size of final graph: " << current_graph.nodes.size());
-
-  // Get node a2
-  float x, y, z;
-  bool found = false;
-  for (const GraphNode& node : current_graph.nodes) {
-    if (node.key != gtsam::Symbol('a', 2)) {
-      found = true;
-      continue;
-    }
-    x = node.pose.position.x;
-    y = node.pose.position.y;
-    z = node.pose.position.z;
-    break;
-  }
-
-  // Check that the node exists
-  EXPECT_TRUE(found);
-
-  // Check that final pose is correct
-  EXPECT_NEAR(0.0, x, tolerance_);
-  EXPECT_NEAR(3.0, y, tolerance_);
-  EXPECT_NEAR(0.0, z, tolerance_);
 }
 
-TEST_F(TestTwoPoseGraphMerge, StandardCase) {
-  // Also with the latest node in the merged from the other robot
-  ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
+// TEST_F(TestTwoPoseGraphMerge, BasicMerge) {
+//   ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
 
-  merge_.Initialize(pnh);
+//   merge_.Initialize(pnh);
 
-  pose_graph_msgs::PoseGraph g;
+//   pose_graph_msgs::PoseGraph g;
 
-  // Make the base station graph
-  pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, n4, n5;
-  pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
+//   // Make the fast graph
+//   pose_graph_msgs::PoseGraphNode n0, n1, n2;
+//   pose_graph_msgs::PoseGraphEdge e0, e1;
 
-  n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
-  n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
-  n3 = CreateNode('b',0, 0.0, 1.0, 0.0);
-  n4 = CreateNode('b',1, 2.0, 1.0, 0.0);
-  n5 = CreateNode('b',2, 4.0, 1.0, 0.0);
+//   n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
+//   n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
+//   n2 = CreateNode('a',2, 3.0, 0.0, 0.0);
 
-  e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
-  e1 = CreateEdge(n1.key, n2.key, 2.0, 0.0, 0.0);
-  e2 = CreateEdge(n3.key, n4.key, 2.0, 0.0, 0.0);
-  e3 = CreateEdge(n4.key, n5.key, 2.0, 0.0, 0.0);
+//   e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
+//   e1 = CreateEdge(n1.key, n2.key, 2.0, 0.0, 0.0);
   
-  g.nodes.push_back(n0);
-  g.nodes.push_back(n1);
+//   g.nodes.push_back(n0);
+//   g.nodes.push_back(n1);
+//   g.nodes.push_back(n2);
+//   g.edges.push_back(e0);
+//   g.edges.push_back(e1);
+
+//   pose_graph_msgs::PoseGraphConstPtr fast_graph(
+//       new pose_graph_msgs::PoseGraph(g));
+
+//   // Make the slow graph
+//   g = pose_graph_msgs::PoseGraph();
+
+//   n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
+//   n1 = CreateNode('a',1, 0.0, 1.0, 0.0);
+//   n1.pose.orientation.z = sqrt(0.5);
+//   n1.pose.orientation.w = sqrt(0.5);
+
+//   e0 = CreateEdge(n0.key, n1.key, 0.0, 1.0, 0.0);
+//   e0.pose.orientation.z = sqrt(0.5);
+//   e0.pose.orientation.w = sqrt(0.5);
   
-  g.nodes.push_back(n3);
-  g.nodes.push_back(n4);
-  g.nodes.push_back(n5);
+//   g.nodes.push_back(n0);
+//   g.nodes.push_back(n1);
+//   g.edges.push_back(e0);
 
-  g.edges.push_back(e0);
+//   pose_graph_msgs::PoseGraphConstPtr slow_graph(
+//       new pose_graph_msgs::PoseGraph(g));
 
-  g.edges.push_back(e2);
-  g.edges.push_back(e3);
+//   // Give graphs to merger
+//   ProcessBaseGraph(slow_graph);
+//   ProcessRobotGraph(fast_graph);
 
-  pose_graph_msgs::PoseGraphConstPtr base_graph(
-      new pose_graph_msgs::PoseGraph(g));
+//   // Get the result
+//   pose_graph_msgs::PoseGraph current_graph = GetMergedGraph();
 
-  // Make the robot graph
-  g = pose_graph_msgs::PoseGraph();
+//   // Check for correct number of nodes and edges
+//   EXPECT_EQ(3, current_graph.nodes.size());
+//   EXPECT_EQ(2, current_graph.edges.size());
 
-  n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
-  n1 = CreateNode('a',1, 2.0, 0.0, 0.0);
-  n2 = CreateNode('a',2, 4.0, 0.0, 0.0);
+//   ROS_INFO_STREAM("Size of final graph: " << current_graph.nodes.size());
 
-  e0 = CreateEdge(n0.key, n1.key, 2.0, 0.0, 0.0);
-  e1 = CreateEdge(n1.key, n2.key, 2.0, 0.0, 0.0);
+//   // Get node a2
+//   float x, y, z;
+//   bool found = false;
+//   for (const GraphNode& node : current_graph.nodes) {
+//     if (node.key != gtsam::Symbol('a', 2)) {
+//       found = true;
+//       continue;
+//     }
+//     x = node.pose.position.x;
+//     y = node.pose.position.y;
+//     z = node.pose.position.z;
+//     break;
+//   }
+
+//   // Check that the node exists
+//   EXPECT_TRUE(found);
+
+//   // Check that final pose is correct
+//   EXPECT_NEAR(0.0, x, tolerance_);
+//   EXPECT_NEAR(3.0, y, tolerance_);
+//   EXPECT_NEAR(0.0, z, tolerance_);
+// }
+
+// TEST_F(TestTwoPoseGraphMerge, StandardCase) {
+//   // Also with the latest node in the merged from the other robot
+//   ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
+
+//   merge_.Initialize(pnh);
+
+//   pose_graph_msgs::PoseGraph g;
+
+//   // Make the base station graph
+//   pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, n4, n5;
+//   pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
+
+//   n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
+//   n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
+//   n3 = CreateNode('b',0, 0.0, 1.0, 0.0);
+//   n4 = CreateNode('b',1, 2.0, 1.0, 0.0);
+//   n5 = CreateNode('b',2, 4.0, 1.0, 0.0);
+
+//   e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
+//   e1 = CreateEdge(n1.key, n2.key, 2.0, 0.0, 0.0);
+//   e2 = CreateEdge(n3.key, n4.key, 2.0, 0.0, 0.0);
+//   e3 = CreateEdge(n4.key, n5.key, 2.0, 0.0, 0.0);
   
-  g.nodes.push_back(n0);
-  g.nodes.push_back(n1);
-  g.nodes.push_back(n2);
-  g.edges.push_back(e0);
-  g.edges.push_back(e1);
-
-  pose_graph_msgs::PoseGraphConstPtr robot_graph(
-      new pose_graph_msgs::PoseGraph(g));
-
-  // Give graphs to merger
-  ProcessBaseGraph(base_graph);
-  ProcessRobotGraph(robot_graph);
-
-  // Get the result
-  pose_graph_msgs::PoseGraph current_graph = GetMergedGraph();
-
-  // Check for correct number of nodes and edges
-  EXPECT_EQ(6, current_graph.nodes.size());
-  EXPECT_EQ(4, current_graph.edges.size());
-
-  // Check output poses
-  geometry_msgs::PoseStamped robot_pose = GetRobotPose();
-  geometry_msgs::PoseStamped merged_pose = GetMergedPose();
-
-  // Check that final pose is correct for the robot (what is in the robot graph)
-  EXPECT_NEAR(4.0, robot_pose.pose.position.x, tolerance_);
-  EXPECT_NEAR(0.0, robot_pose.pose.position.y, tolerance_);
-  EXPECT_NEAR(0.0, robot_pose.pose.position.z, tolerance_);
-
-  // Check that merged pose is correct (what is in the merged graph, taking new delta from the robot)
-  EXPECT_NEAR(3.0, merged_pose.pose.position.x, tolerance_);
-  EXPECT_NEAR(0.0, merged_pose.pose.position.y, tolerance_);
-  EXPECT_NEAR(0.0, merged_pose.pose.position.z, tolerance_);
-}
-
-TEST_F(TestTwoPoseGraphMerge, NoNewOnFast) {
-  ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
-
-  merge_.Initialize(pnh);
-
-  pose_graph_msgs::PoseGraph g;
-
-  // Make the base station graph
-  pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, n4, n5;
-  pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
-
-  n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
-  n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
-  n2 = CreateNode('a',2, 3.0, 0.0, 0.0);
-  n3 = CreateNode('b',0, 0.0, 1.0, 0.0);
-  n4 = CreateNode('b',1, 2.0, 1.0, 0.0);
-  n5 = CreateNode('b',2, 4.0, 1.0, 0.0);
-
-  e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
-  e1 = CreateEdge(n1.key, n2.key, 2.0, 0.0, 0.0);
-  e2 = CreateEdge(n3.key, n4.key, 2.0, 0.0, 0.0);
-  e3 = CreateEdge(n4.key, n5.key, 2.0, 0.0, 0.0);
+//   g.nodes.push_back(n0);
+//   g.nodes.push_back(n1);
   
-  g.nodes.push_back(n0);
-  g.nodes.push_back(n1);
-  g.nodes.push_back(n2);
-  g.nodes.push_back(n3);
-  g.nodes.push_back(n4);
-  g.nodes.push_back(n5);
+//   g.nodes.push_back(n3);
+//   g.nodes.push_back(n4);
+//   g.nodes.push_back(n5);
 
-  g.edges.push_back(e0);
-  g.edges.push_back(e1);
-  g.edges.push_back(e2);
-  g.edges.push_back(e3);
+//   g.edges.push_back(e0);
 
-  pose_graph_msgs::PoseGraphConstPtr base_graph(
-      new pose_graph_msgs::PoseGraph(g));
+//   g.edges.push_back(e2);
+//   g.edges.push_back(e3);
 
-  // Make the robot graph
-  g = pose_graph_msgs::PoseGraph();
+//   pose_graph_msgs::PoseGraphConstPtr base_graph(
+//       new pose_graph_msgs::PoseGraph(g));
 
-  n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
-  n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
-  n2 = CreateNode('a',2, 2.0, 0.0, 0.0);
+//   // Make the robot graph
+//   g = pose_graph_msgs::PoseGraph();
 
-  e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
-  e1 = CreateEdge(n1.key, n2.key, 1.0, 0.0, 0.0);
+//   n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
+//   n1 = CreateNode('a',1, 2.0, 0.0, 0.0);
+//   n2 = CreateNode('a',2, 4.0, 0.0, 0.0);
+
+//   e0 = CreateEdge(n0.key, n1.key, 2.0, 0.0, 0.0);
+//   e1 = CreateEdge(n1.key, n2.key, 2.0, 0.0, 0.0);
   
-  g.nodes.push_back(n0);
-  g.nodes.push_back(n1);
-  g.nodes.push_back(n2);
-  g.edges.push_back(e0);
-  g.edges.push_back(e1);
+//   g.nodes.push_back(n0);
+//   g.nodes.push_back(n1);
+//   g.nodes.push_back(n2);
+//   g.edges.push_back(e0);
+//   g.edges.push_back(e1);
 
-  pose_graph_msgs::PoseGraphConstPtr robot_graph(
-      new pose_graph_msgs::PoseGraph(g));
+//   pose_graph_msgs::PoseGraphConstPtr robot_graph(
+//       new pose_graph_msgs::PoseGraph(g));
 
-  // Give graphs to merger
-  ProcessBaseGraph(base_graph);
-  ProcessRobotGraph(robot_graph);
+//   // Give graphs to merger
+//   ProcessBaseGraph(base_graph);
+//   ProcessRobotGraph(robot_graph);
 
-  // Get the result
-  pose_graph_msgs::PoseGraph current_graph = GetMergedGraph();
+//   // Get the result
+//   pose_graph_msgs::PoseGraph current_graph = GetMergedGraph();
 
-  // Check for correct number of nodes and edges
-  EXPECT_EQ(6, current_graph.nodes.size());
-  EXPECT_EQ(4, current_graph.edges.size());
+//   // Check for correct number of nodes and edges
+//   EXPECT_EQ(6, current_graph.nodes.size());
+//   EXPECT_EQ(4, current_graph.edges.size());
 
-  // Check output poses
-  geometry_msgs::PoseStamped robot_pose = GetRobotPose();
-  geometry_msgs::PoseStamped merged_pose = GetMergedPose();
+//   // Check output poses
+//   geometry_msgs::PoseStamped robot_pose = GetRobotPose();
+//   geometry_msgs::PoseStamped merged_pose = GetMergedPose();
 
-  // Check that final pose is correct for the robot (what is in the robot graph)
-  EXPECT_NEAR(2.0, robot_pose.pose.position.x, tolerance_);
-  EXPECT_NEAR(0.0, robot_pose.pose.position.y, tolerance_);
-  EXPECT_NEAR(0.0, robot_pose.pose.position.z, tolerance_);
+//   // Check that final pose is correct for the robot (what is in the robot graph)
+//   EXPECT_NEAR(4.0, robot_pose.pose.position.x, tolerance_);
+//   EXPECT_NEAR(0.0, robot_pose.pose.position.y, tolerance_);
+//   EXPECT_NEAR(0.0, robot_pose.pose.position.z, tolerance_);
 
-  // Check that merged pose is correct (what is in the merged graph, taking new delta from the robot)
-  EXPECT_NEAR(3.0, merged_pose.pose.position.x, tolerance_);
-  EXPECT_NEAR(0.0, merged_pose.pose.position.y, tolerance_);
-  EXPECT_NEAR(0.0, merged_pose.pose.position.z, tolerance_);
-}
+//   // Check that merged pose is correct (what is in the merged graph, taking new delta from the robot)
+//   EXPECT_NEAR(3.0, merged_pose.pose.position.x, tolerance_);
+//   EXPECT_NEAR(0.0, merged_pose.pose.position.y, tolerance_);
+//   EXPECT_NEAR(0.0, merged_pose.pose.position.z, tolerance_);
+// }
+
+// TEST_F(TestTwoPoseGraphMerge, NoNewOnFast) {
+//   ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
+
+//   merge_.Initialize(pnh);
+
+//   pose_graph_msgs::PoseGraph g;
+
+//   // Make the base station graph
+//   pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, n4, n5;
+//   pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
+
+//   n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
+//   n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
+//   n2 = CreateNode('a',2, 3.0, 0.0, 0.0);
+//   n3 = CreateNode('b',0, 0.0, 1.0, 0.0);
+//   n4 = CreateNode('b',1, 2.0, 1.0, 0.0);
+//   n5 = CreateNode('b',2, 4.0, 1.0, 0.0);
+
+//   e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
+//   e1 = CreateEdge(n1.key, n2.key, 2.0, 0.0, 0.0);
+//   e2 = CreateEdge(n3.key, n4.key, 2.0, 0.0, 0.0);
+//   e3 = CreateEdge(n4.key, n5.key, 2.0, 0.0, 0.0);
+  
+//   g.nodes.push_back(n0);
+//   g.nodes.push_back(n1);
+//   g.nodes.push_back(n2);
+//   g.nodes.push_back(n3);
+//   g.nodes.push_back(n4);
+//   g.nodes.push_back(n5);
+
+//   g.edges.push_back(e0);
+//   g.edges.push_back(e1);
+//   g.edges.push_back(e2);
+//   g.edges.push_back(e3);
+
+//   pose_graph_msgs::PoseGraphConstPtr base_graph(
+//       new pose_graph_msgs::PoseGraph(g));
+
+//   // Make the robot graph
+//   g = pose_graph_msgs::PoseGraph();
+
+//   n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
+//   n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
+//   n2 = CreateNode('a',2, 2.0, 0.0, 0.0);
+
+//   e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
+//   e1 = CreateEdge(n1.key, n2.key, 1.0, 0.0, 0.0);
+  
+//   g.nodes.push_back(n0);
+//   g.nodes.push_back(n1);
+//   g.nodes.push_back(n2);
+//   g.edges.push_back(e0);
+//   g.edges.push_back(e1);
+
+//   pose_graph_msgs::PoseGraphConstPtr robot_graph(
+//       new pose_graph_msgs::PoseGraph(g));
+
+//   // Give graphs to merger
+//   ProcessBaseGraph(base_graph);
+//   ProcessRobotGraph(robot_graph);
+
+//   // Get the result
+//   pose_graph_msgs::PoseGraph current_graph = GetMergedGraph();
+
+//   // Check for correct number of nodes and edges
+//   EXPECT_EQ(6, current_graph.nodes.size());
+//   EXPECT_EQ(4, current_graph.edges.size());
+
+//   // Check output poses
+//   geometry_msgs::PoseStamped robot_pose = GetRobotPose();
+//   geometry_msgs::PoseStamped merged_pose = GetMergedPose();
+
+//   // Check that final pose is correct for the robot (what is in the robot graph)
+//   EXPECT_NEAR(2.0, robot_pose.pose.position.x, tolerance_);
+//   EXPECT_NEAR(0.0, robot_pose.pose.position.y, tolerance_);
+//   EXPECT_NEAR(0.0, robot_pose.pose.position.z, tolerance_);
+
+//   // Check that merged pose is correct (what is in the merged graph, taking new delta from the robot)
+//   EXPECT_NEAR(3.0, merged_pose.pose.position.x, tolerance_);
+//   EXPECT_NEAR(0.0, merged_pose.pose.position.y, tolerance_);
+//   EXPECT_NEAR(0.0, merged_pose.pose.position.z, tolerance_);
+// }
+
+// TEST_F(TestTwoPoseGraphMerge, NewBaseRobot1NotMoving) {
+//   ros::NodeHandle nh, pnh("/husky1/two_pose_graph_merge");
+
+//   merge_.Initialize(pnh);
+
+//   pose_graph_msgs::PoseGraph g;
+
+//   // Make the base station graph
+//   pose_graph_msgs::PoseGraphNode n0, n1, n2, n3, n4, n5;
+//   pose_graph_msgs::PoseGraphEdge e0, e1, e2, e3;
+
+//   n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
+//   n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
+//   n2 = CreateNode('a',2, 3.0, 0.0, 0.0);
+//   n3 = CreateNode('b',0, 0.0, 1.0, 0.0);
+//   n4 = CreateNode('b',1, 2.0, 1.0, 0.0);
+//   n5 = CreateNode('b',2, 4.0, 1.0, 0.0);
+
+//   e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
+//   e1 = CreateEdge(n1.key, n2.key, 2.0, 0.0, 0.0);
+//   e2 = CreateEdge(n3.key, n4.key, 2.0, 0.0, 0.0);
+//   e3 = CreateEdge(n4.key, n5.key, 2.0, 0.0, 0.0);
+  
+//   g.nodes.push_back(n0);
+//   g.nodes.push_back(n1);
+//   g.nodes.push_back(n2);
+//   g.nodes.push_back(n3);
+//   g.nodes.push_back(n4);
+
+
+//   g.edges.push_back(e0);
+//   g.edges.push_back(e1);
+//   g.edges.push_back(e2);
+//   g.edges.push_back(e3);
+
+//   pose_graph_msgs::PoseGraphConstPtr base_graph(
+//       new pose_graph_msgs::PoseGraph(g));
+
+//   // Create Updated base graph
+//   g.nodes.push_back(n5);
+//   g.edges.push_back(e3);
+//   pose_graph_msgs::PoseGraphConstPtr base_graph_new(
+//       new pose_graph_msgs::PoseGraph(g));
+
+//   // Make the robot graph
+//   g = pose_graph_msgs::PoseGraph();
+
+//   n0 = CreateNode('a',0, 0.0, 0.0, 0.0);
+//   n1 = CreateNode('a',1, 1.0, 0.0, 0.0);
+//   n2 = CreateNode('a',2, 2.0, 0.0, 0.0);
+
+//   e0 = CreateEdge(n0.key, n1.key, 1.0, 0.0, 0.0);
+//   e1 = CreateEdge(n1.key, n2.key, 1.0, 0.0, 0.0);
+  
+//   g.nodes.push_back(n0);
+//   g.nodes.push_back(n1);
+//   g.nodes.push_back(n2);
+//   g.edges.push_back(e0);
+//   g.edges.push_back(e1);
+
+//   pose_graph_msgs::PoseGraphConstPtr robot_graph(
+//       new pose_graph_msgs::PoseGraph(g));
+
+//   // Give graphs to merger
+//   ProcessBaseGraph(base_graph);
+//   ProcessRobotGraph(robot_graph);
+
+//   // Process the new base graph
+//   ProcessBaseGraph(base_graph_new);
+
+//   // Get the result
+//   pose_graph_msgs::PoseGraph current_graph = GetMergedGraph();
+
+//   // Check for correct number of nodes and edges
+//   EXPECT_EQ(6, current_graph.nodes.size());
+//   EXPECT_EQ(4, current_graph.edges.size());
+
+//   // Check output poses
+//   geometry_msgs::PoseStamped robot_pose = GetRobotPose();
+//   geometry_msgs::PoseStamped merged_pose = GetMergedPose();
+
+//   // Check that final pose is correct for the robot (what is in the robot graph)
+//   EXPECT_NEAR(2.0, robot_pose.pose.position.x, tolerance_);
+//   EXPECT_NEAR(0.0, robot_pose.pose.position.y, tolerance_);
+//   EXPECT_NEAR(0.0, robot_pose.pose.position.z, tolerance_);
+
+//   // Check that merged pose is correct (what is in the merged graph, taking new delta from the robot)
+//   EXPECT_NEAR(3.0, merged_pose.pose.position.x, tolerance_);
+//   EXPECT_NEAR(0.0, merged_pose.pose.position.y, tolerance_);
+//   EXPECT_NEAR(0.0, merged_pose.pose.position.z, tolerance_);
+// }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

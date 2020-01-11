@@ -8,7 +8,7 @@
 
 
 
-TwoPoseGraphMerge::TwoPoseGraphMerge() : robot_prefix_('Z') {}
+TwoPoseGraphMerge::TwoPoseGraphMerge() : robot_prefix_('Z'), b_have_first_robot_graph_(false) {}
 
 TwoPoseGraphMerge::~TwoPoseGraphMerge() {}
 
@@ -21,6 +21,8 @@ bool TwoPoseGraphMerge::Initialize(const ros::NodeHandle& n) {
   n.param<std::string>("frame_id_world1", this->world_fid_,  "/world");
   n.param<std::string>("frame_id_world2", this->world2_fid_, "/world_prime");
 
+  n.param<bool>("b_publish_on_slow_graph", this->b_publish_on_slow_graph_, true);
+  
   robot_prefix_ = utils::GetRobotPrefix(GetRobotName(n));
 
   return true;
@@ -92,14 +94,27 @@ void TwoPoseGraphMerge::ProcessBaseGraph(const pose_graph_msgs::PoseGraphConstPt
   // Store the graph as the slow graph
   merger_.OnSlowGraphMsg(msg);
   ROS_INFO("Received graph from base station");
+
+  // Process again straight away 
+  if (b_publish_on_slow_graph_){
+    ProcessRobotGraph(last_robot_graph_);
+  }
   return;
 }
 
 void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   // Combine the graph with the stored base graph and publish result
-  
-  // Add new posegraph
-  merger_.OnFastGraphMsg(msg);
+  pose_graph_msgs::PoseGraph merged_graph;
+
+  if (b_have_first_robot_graph_){
+
+    // Store the latest message
+    last_robot_graph_ = msg;
+
+    // Add new posegraph
+    merger_.OnFastGraphMsg(msg);
+
+  }
 
   // Get the fused graph
   pose_graph_msgs::PoseGraphConstPtr fused_graph(
