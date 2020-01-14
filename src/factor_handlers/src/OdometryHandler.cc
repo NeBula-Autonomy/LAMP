@@ -99,12 +99,10 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     lidar_odom_sub_ = nl.subscribe(
       "lio_odom", 10, &OdometryHandler::LidarOdometryCallback, this);
   }
-
   if (register_visual_sub_) {
     visual_odom_sub_ = nl.subscribe(
       "vio_odom", 10, &OdometryHandler::VisualOdometryCallback, this);
   }
-
   if (register_wheel_sub_) {
     wheel_odom_sub_ = nl.subscribe(
       "wio_odom", 10, &OdometryHandler::WheelOdometryCallback, this);
@@ -451,9 +449,15 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
   // ROS_INFO_STREAM("Lidar buffer size in GetFusedOdom is: "
   //                 << lidar_odometry_buffer_.size());
 
-  FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2, LIDAR_ODOM_BUFFER_ID);
-  FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2, VISUAL_ODOM_BUFFER_ID);
-  FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2, WHEEL_ODOM_BUFFER_ID);
+  if (register_lidar_sub_) {
+    FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2, LIDAR_ODOM_BUFFER_ID);
+  }
+  if (register_visual_sub_) {
+    FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2, VISUAL_ODOM_BUFFER_ID);
+  }
+  if (register_wheel_sub_) {
+    FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2, WHEEL_ODOM_BUFFER_ID);
+  }  
   
   if (lidar_odom.b_has_value == true) {
     // TODO: For the first implementation, pure lidar-based odometry is used.
@@ -504,7 +508,6 @@ bool OdometryHandler::CheckOdomSize() {
   b_odom_has_data = (lidar_odometry_buffer_.size() > 1);
   b_odom_has_data = b_odom_has_data || (visual_odometry_buffer_.size() > 1);
   b_odom_has_data = b_odom_has_data || (wheel_odometry_buffer_.size() > 1);
-
   return b_odom_has_data;
 }
 
@@ -514,7 +517,6 @@ void OdometryHandler::ResetFactorData() {
   factors_.type = "odom";
   factors_.factors.clear();
 }
-
 
 void OdometryHandler::InitializeOdomValueAtKey(const Odometry::ConstPtr& msg, const unsigned int odom_buffer_id) {
     PoseCovStamped odom_value_at_key;
