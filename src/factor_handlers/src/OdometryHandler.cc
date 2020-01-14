@@ -549,13 +549,13 @@ void OdometryHandler::InitializeOdomValueAtKey(const Odometry::ConstPtr& msg, co
 // Store individual odometric values in protected class members whenever a new key is created
 void OdometryHandler::SetOdomValuesAtKey(const ros::Time query) {
   if (!GetPoseAtTime(query, lidar_odometry_buffer_, lidar_odom_value_at_key_)) {
-    ROS_WARN("OdometryHandler - SetOdomValuesAtKey - Can not GetPoseAtTime from lidar_odometry_buffer");
+    if (b_register_lidar_sub_) ROS_WARN("OdometryHandler - SetOdomValuesAtKey - Can not GetPoseAtTime from lidar_odometry_buffer");
   }
   if (!GetPoseAtTime(query, visual_odometry_buffer_, visual_odom_value_at_key_)) {
-    ROS_WARN("OdometryHandler - SetOdomValuesAtKey - Can not GetPoseAtTime from visual_odometry_buffer");
+    if (b_register_visual_sub_) ROS_WARN("OdometryHandler - SetOdomValuesAtKey - Can not GetPoseAtTime from visual_odometry_buffer");
   }
   if (!GetPoseAtTime(query, wheel_odometry_buffer_, wheel_odom_value_at_key_)) {
-    ROS_WARN("OdometryHandler - SetOdomValuesAtKey - Can not GetPoseAtTime from wheel_odometry_buffer");
+    if (b_register_wheel_sub_) ROS_WARN("OdometryHandler - SetOdomValuesAtKey - Can not GetPoseAtTime from wheel_odometry_buffer");
   }  
 }
 
