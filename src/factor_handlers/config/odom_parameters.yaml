@@ -16,5 +16,5 @@ b_debug_pointcloud_buffer: false
 
 subscriptions: 
   b_register_lidar_sub: true
-  b_register_visual_sub: true
-  b_register_wheel_sub: true
+  b_register_visual_sub: false
+  b_register_wheel_sub: false
