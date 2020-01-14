@@ -76,6 +76,11 @@ protected:
   // Pointcloud Subscribers
   ros::Subscriber point_cloud_sub_;
 
+  // Subscriptions
+  bool register_lidar_sub_; 
+  bool register_visual_sub_;
+  bool register_wheel_sub_;
+
   // Odometry Callbacks 
   void LidarOdometryCallback(const Odometry::ConstPtr& msg); 
   void VisualOdometryCallback(const Odometry::ConstPtr& msg);

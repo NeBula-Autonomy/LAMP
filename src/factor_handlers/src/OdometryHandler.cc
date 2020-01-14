@@ -57,20 +57,34 @@ bool OdometryHandler::Initialize(const ros::NodeHandle& n) {
 bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
 
   // Thresholds to add new factors
-  if (!pu::Get("translation_threshold", translation_threshold_)) return false;
+  if (!pu::Get("translation_threshold", translation_threshold_)) 
+    return false;
 
   // Point Cloud buffer param
-  if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_)) return false;
-  if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_)) return false;
+  if (!pu::Get("keyed_scan_time_diff_limit", keyed_scan_time_diff_limit_)) 
+    return false;
+  if (!pu::Get("pc_buffer_size_limit", pc_buffer_size_limit_)) 
+    return false;
 
   // Timestamp threshold used in GetPoseAtTime method to return true to the caller
-  if (!pu::Get("ts_threshold", ts_threshold_)) return false;
-
-  if (!pu::Get("b_debug_pointcloud_buffer", b_debug_pointcloud_buffer_)) return false;
+  if (!pu::Get("ts_threshold", ts_threshold_)) 
+    return false;
   
   // Specify a maximum buffer size to store history of Odometric data stream 
-  if (!pu::Get("max_buffer_size", max_buffer_size_)) return false;
-  
+  if (!pu::Get("max_buffer_size", max_buffer_size_)) 
+    return false;
+
+  if (!pu::Get("b_debug_pointcloud_buffer", b_debug_pointcloud_buffer_)) 
+    return false;
+
+  // Subscriptions
+  if (!pu::Get("subscriptions/register_lidar_sub", register_lidar_sub_)) 
+    return false;
+  if (!pu::Get("subscriptions/register_visual_sub", register_visual_sub_)) 
+    return false;
+  if (!pu::Get("subscriptions/register_wheel_sub", register_wheel_sub_)) 
+    return false;
+      
   return true;
 }
 
@@ -78,6 +92,7 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
   ROS_INFO("%s: Registering online callbacks in OdometryHandler",
            name_.c_str());
   ros::NodeHandle nl(n);
+  
   // TODO - check what is a reasonable buffer size
   lidar_odom_sub_ = nl.subscribe(
       "lio_odom", 10, &OdometryHandler::LidarOdometryCallback, this);
@@ -414,20 +429,23 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
 
   // Returns the fused GtsamPosCov delta between t1 and t2
   if (!CheckOdomSize()) {
-    ROS_WARN(
-        "Buffers are empty, returning no data (GetFusedOdomDeltaBetweenTimes)");
+    ROS_WARN("Buffers are empty, returning no data (GetFusedOdomDeltaBetweenTimes)");
     return output_odom;
   }
 
   // ROS_INFO_STREAM("Timestamps are: " << t1.toSec() << " and " << t2.toSec()
   //                                    << ". Difference is: "
   //                                    << t2.toSec() - t1.toSec());
+  
   GtsamPosCov lidar_odom, visual_odom, wheel_odom;
+
   // ROS_INFO_STREAM("Lidar buffer size in GetFusedOdom is: "
   //                 << lidar_odometry_buffer_.size());
+
   FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2, LIDAR_ODOM_BUFFER_ID);
   FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2, VISUAL_ODOM_BUFFER_ID);
   FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2, WHEEL_ODOM_BUFFER_ID);
+  
   if (lidar_odom.b_has_value == true) {
     // TODO: For the first implementation, pure lidar-based odometry is used.
     output_odom = lidar_odom;
@@ -435,12 +453,15 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
     ROS_ERROR("Failed to get odom from lidar");
     output_odom = lidar_odom;
   }
+  
   if (visual_odom.b_has_value == true) {
     //
   }
+  
   if (wheel_odom.b_has_value == true) {
     //
   }
+  
   return output_odom;
 }
 
