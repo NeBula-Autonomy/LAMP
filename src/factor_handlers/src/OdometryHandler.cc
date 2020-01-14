@@ -78,11 +78,11 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
     return false;
 
   // Subscriptions
-  if (!pu::Get("subscriptions/register_lidar_sub", register_lidar_sub_)) 
+  if (!pu::Get("subscriptions/b_register_lidar_sub", b_register_lidar_sub_)) 
     return false;
-  if (!pu::Get("subscriptions/register_visual_sub", register_visual_sub_)) 
+  if (!pu::Get("subscriptions/b_register_visual_sub", b_register_visual_sub_)) 
     return false;
-  if (!pu::Get("subscriptions/register_wheel_sub", register_wheel_sub_)) 
+  if (!pu::Get("subscriptions/b_register_wheel_sub", b_register_wheel_sub_)) 
     return false;
       
   return true;
@@ -95,15 +95,15 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
   
   // TODO - check what is a reasonable buffer size
 
-  if (register_lidar_sub_) {
+  if (b_register_lidar_sub_) {
     lidar_odom_sub_ = nl.subscribe(
       "lio_odom", 10, &OdometryHandler::LidarOdometryCallback, this);
   }
-  if (register_visual_sub_) {
+  if (b_register_visual_sub_) {
     visual_odom_sub_ = nl.subscribe(
       "vio_odom", 10, &OdometryHandler::VisualOdometryCallback, this);
   }
-  if (register_wheel_sub_) {
+  if (b_register_wheel_sub_) {
     wheel_odom_sub_ = nl.subscribe(
       "wio_odom", 10, &OdometryHandler::WheelOdometryCallback, this);
   }  
@@ -449,13 +449,13 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
   // ROS_INFO_STREAM("Lidar buffer size in GetFusedOdom is: "
   //                 << lidar_odometry_buffer_.size());
 
-  if (register_lidar_sub_) {
+  if (b_register_lidar_sub_) {
     FillGtsamPosCovOdom(lidar_odometry_buffer_, lidar_odom, t1, t2, LIDAR_ODOM_BUFFER_ID);
   }
-  if (register_visual_sub_) {
+  if (b_register_visual_sub_) {
     FillGtsamPosCovOdom(visual_odometry_buffer_, visual_odom, t1, t2, VISUAL_ODOM_BUFFER_ID);
   }
-  if (register_wheel_sub_) {
+  if (b_register_wheel_sub_) {
     FillGtsamPosCovOdom(wheel_odometry_buffer_, wheel_odom, t1, t2, WHEEL_ODOM_BUFFER_ID);
   }  
   
