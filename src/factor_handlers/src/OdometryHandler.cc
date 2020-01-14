@@ -89,17 +89,26 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
 }
 
 bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
-  ROS_INFO("%s: Registering online callbacks in OdometryHandler",
-           name_.c_str());
+  ROS_INFO("%s: Registering online callbacks in OdometryHandler", name_.c_str());
+  
   ros::NodeHandle nl(n);
   
   // TODO - check what is a reasonable buffer size
-  lidar_odom_sub_ = nl.subscribe(
+
+  if (register_lidar_sub_) {
+    lidar_odom_sub_ = nl.subscribe(
       "lio_odom", 10, &OdometryHandler::LidarOdometryCallback, this);
-  visual_odom_sub_ = nl.subscribe(
+  }
+
+  if (register_visual_sub_) {
+    visual_odom_sub_ = nl.subscribe(
       "vio_odom", 10, &OdometryHandler::VisualOdometryCallback, this);
-  wheel_odom_sub_ = nl.subscribe(
+  }
+
+  if (register_wheel_sub_) {
+    wheel_odom_sub_ = nl.subscribe(
       "wio_odom", 10, &OdometryHandler::WheelOdometryCallback, this);
+  }  
 
   // Point Cloud callback
   point_cloud_sub_ =
