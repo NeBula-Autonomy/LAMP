@@ -6,16 +6,14 @@
 #ifndef IMU_HANDLER_H
 #define IMU_HANDLER_H
 
-// Includes
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <gtsam/navigation/AttitudeFactor.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <tf/transform_listener.h>
 #include <sensor_msgs/Imu.h>
 
-// Typedefs
 typedef sensor_msgs::Imu ImuMessage;
-typedef Eigen::Quaterniond ImuQuaternion; // w,x,y,z
+typedef Eigen::Quaterniond ImuQuaternion; 
 typedef std::map<double, ImuQuaternion> ImuBuffer;
 
 using namespace gtsam;
@@ -26,11 +24,9 @@ class ImuHandler : public LampDataHandlerBase {
 
 public:
 
-  // Constructor & Destructor
   ImuHandler();
   ~ImuHandler();
 
-  // Initialization
   bool Initialize (const ros::NodeHandle& n);
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -43,8 +39,8 @@ public:
 protected: 
 
   std::string name_;  
+  bool b_verbosity_;
 
-  // Subscriber & Callback 
   ros::Subscriber imu_sub_;
   void ImuCallback(const ImuMessage::ConstPtr& msg);
 
@@ -66,8 +62,10 @@ protected:
   double query_stamp_;
   Symbol query_key_;
   ImuData factors_;
+  double noise_sigma_imu_;
 
   // Transformations
+  bool b_convert_imu_frame_;
   bool LoadCalibrationFromTfTree();
   tf::TransformListener imu_T_base_listener_;
   std::string base_frame_id_; 
@@ -75,10 +73,6 @@ protected:
   Eigen::Affine3d I_T_B_;    
   Eigen::Affine3d B_T_I_; 
   Eigen::Quaterniond I_T_B_q_;  
-
-  bool b_convert_imu_frame_;
-  bool b_verbosity_;
-  double noise_sigma_imu_;
         
 };
 

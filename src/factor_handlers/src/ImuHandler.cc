@@ -3,7 +3,6 @@
  * Authors: Matteo Palieri      (matteo.palieri@jpl.nasa.gov)
  */
 
-// Includes
 #include <factor_handlers/ImuHandler.h>
 
 namespace pu = parameter_utils;
@@ -65,10 +64,10 @@ bool ImuHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {    
     if (b_verbosity_) ROS_INFO("ImuHandler - ImuCallback"); 
-    if (CheckBufferSize() > buffer_size_limit_){
+    if (CheckBufferSize() > buffer_size_limit_) {
         imu_buffer_.erase(imu_buffer_.begin());
     }   
-    if (!InsertMsgInBuffer(msg)){
+    if (!InsertMsgInBuffer(msg)) {
         ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
     }
 }
@@ -86,13 +85,11 @@ std::shared_ptr<FactorData> ImuHandler::GetData() {
     ImuQuaternion imu_quaternion;
     ros::Time query_stamp_ros;
     query_stamp_ros.fromSec(query_stamp_);
-    if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
-        if (b_verbosity_) ROS_INFO("Successfully extracted data from buffer");
-        
+    if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)) {        
+        if (b_verbosity_) ROS_INFO("Successfully extracted data from buffer");        
         geometry_msgs::Quaternion imu_quaternion_msg; 
         tf::quaternionEigenToMsg(imu_quaternion, imu_quaternion_msg);
-        auto imu_ypr = QuaternionToYpr(imu_quaternion_msg);        
-        
+        auto imu_ypr = QuaternionToYpr(imu_quaternion_msg);                
         ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
         factors_output->b_has_data = true; 
         factors_output->type = "imu";        
@@ -147,10 +144,10 @@ bool ImuHandler::ClearBuffer() {
 // Quaternions ----------------------------------------------------------------------------
 
 bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
-    // TODO: Implement GetValueAtTime in base class as common functionality needed by all handlers
+    // TODO: Implement template GetValueAtTime method in base class as common functionality needed by all handlers
     // TODO: ClearPreviousImuMsgsInBuffer where needed 
     if (b_verbosity_) ROS_INFO("ImuHandler - GetQuaternionAtTime"); 
-    if (imu_buffer_.size() == 0){
+    if (imu_buffer_.size() == 0) {
         return false;
     }
     auto itrTime = imu_buffer_.lower_bound(stamp.toSec());
