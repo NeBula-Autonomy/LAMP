@@ -62,7 +62,7 @@ protected:
   Eigen::Vector3d QuaternionToYpr(const geometry_msgs::Quaternion& imu_quaternion) const;
   
   // Factors
-  Pose3AttitudeFactor CreateAttitudeFactor(const Vector3d& imu_rpy) const;              
+  Pose3AttitudeFactor CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const;              
   void ResetFactorData();  
   double query_stamp_;
   Symbol query_key_;
