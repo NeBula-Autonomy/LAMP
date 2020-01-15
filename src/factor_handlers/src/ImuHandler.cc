@@ -74,7 +74,11 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
     if (b_verbosity_) ROS_INFO("ImuHandler - ImuCallback"); 
     if (CheckBufferSize() > buffer_size_limit_){
         imu_buffer_.erase(imu_buffer_.begin());
-    }   
+    }
+    if (CheckNans(*msg)) {
+      ROS_WARN("ImuHandler - ImuCallback - Message contains NANS. Throwing the message.");
+      return;
+    }
     if (!InsertMsgInBuffer(msg)){
         ROS_WARN("ImuHandler - ImuCallback - Unable to store message in buffer");
     }
@@ -293,4 +297,17 @@ bool ImuHandler::LoadCalibrationFromTfTree() {
         B_T_I_ = Eigen::Affine3d::Identity();
         return false;
     }
+}
+
+bool ImuHandler::CheckNans(const ImuMessage &imu_msg) {
+  return (std::isnan(imu_msg.orientation.x) || 
+          std::isnan(imu_msg.orientation.y) || 
+          std::isnan(imu_msg.orientation.z) || 
+          std::isnan(imu_msg.orientation.w) || 
+          std::isnan(imu_msg.angular_velocity.x) || 
+          std::isnan(imu_msg.angular_velocity.y) || 
+          std::isnan(imu_msg.angular_velocity.z) ||
+          std::isnan(imu_msg.linear_acceleration.x) || 
+          std::isnan(imu_msg.linear_acceleration.y) || 
+          std::isnan(imu_msg.linear_acceleration.z));
 }
