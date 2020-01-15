@@ -268,7 +268,8 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
 
   if (!(artifact_key.chr() == 'l' || artifact_key.chr() == 'm' ||
         artifact_key.chr() == 'n' || artifact_key.chr() == 'o' ||
-        artifact_key.chr() == 'p' || artifact_key.chr() == 'q')) {
+        artifact_key.chr() == 'p' || artifact_key.chr() == 'q' ||
+        artifact_key.chr() == 'r' || artifact_key.chr() == 's')) {
     ROS_WARN("ERROR - have a non-landmark ID");
     ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
     return;
