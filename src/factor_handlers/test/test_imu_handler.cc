@@ -282,13 +282,13 @@ TEST_F(ImuHandlerTest, TestCreateAttitudeFactor) {
   ros::NodeHandle nh("~");
   ih.Initialize(nh);
   // TODO: Make this fancier
-  Vector3d ypr;
+  Eigen::Vector3d ypr;
   ypr << 0.0, 1.0, 0.0;
   auto f = CreateAttitudeFactor(ypr);
   auto f_same = CreateAttitudeFactor(ypr);
   bool result = f.equals(f_same);
   ASSERT_TRUE(result);
-  Vector3d ypr_diff; 
+  Eigen::Vector3d ypr_diff; 
   ypr_diff << 0.0, 0.0, 1.0; 
   auto f_diff = CreateAttitudeFactor(ypr_diff);
   result = f.equals(f_diff);

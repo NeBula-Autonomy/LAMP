@@ -17,7 +17,6 @@
 typedef sensor_msgs::Imu ImuMessage;
 typedef Eigen::Quaterniond ImuQuaternion; // w,x,y,z
 typedef std::map<double, ImuQuaternion> ImuBuffer;
-typedef Eigen::Vector3d Vector3d;
 
 using namespace gtsam;
 
