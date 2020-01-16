@@ -6,6 +6,7 @@ Interface for ROS and KimeraRPGO
 
 #include "lamp_pgo/LampPgo.h"
 
+#include <string>
 #include <vector>
 
 #include <gtsam/geometry/Point3.h>
@@ -27,7 +28,7 @@ LampPgo::~LampPgo() {}
 
 bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Create subscriber and publisher
-  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
 
   // Publisher
   optimized_pub_ =
@@ -38,6 +39,8 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Subscriber
   input_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_to_optimize", 1, &LampPgo::InputCallback, this);
+  remove_lc_sub_ = nl.subscribe<std_msgs::String>(
+      "remove_loop_closure", 1, &LampPgo::RemoveLCCallback, this);
 
   // Parse parameters
   // Optimizer backend
@@ -59,7 +62,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
   } else {
     rpgo_params_.setNoRejection(
-        KimeraRPGO::Verbosity::VERBOSE); // set no outlier rejection
+        KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection
   }
 
   // Artifact or UWB keys (l, m, n, ... + u)
@@ -67,8 +70,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // set solver
   int solver_num;
-  if (!pu::Get(param_ns_ + "/solver", solver_num))
-    return false;
+  if (!pu::Get(param_ns_ + "/solver", solver_num)) return false;
 
   if (solver_num == 1) {
     // Levenberg-Marquardt
@@ -85,6 +87,18 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   return true;
 }
 
+void LampPgo::RemoveLastLoopClosure(char prefix_1, char prefix_2) {
+  pgo_solver_->removeLastLoopClosure(prefix_1, prefix_2);
+}
+
+void LampPgo::RemoveLCCallback(const std_msgs::String::ConstPtr& msg) {
+  if (msg->data.length() < 2) {
+    return;  // needs two prefixes (two chars)
+  }
+  RemoveLastLoopClosure(msg->data[0], msg->data[1]);
+  return;
+}
+
 void LampPgo::InputCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
   // Callback for the input posegraph
@@ -96,13 +110,12 @@ void LampPgo::InputCallback(
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
 
-  // Track node IDs 
+  // Track node IDs
   for (auto n : graph_msg->nodes) {
     if (!key_to_id_map_.count(n.key)) {
       key_to_id_map_[n.key] = n.ID;
     }
   }
- 
 
   // Extract new values
   // TODO - use the merger here? In case the state of the graph here is
@@ -143,7 +156,6 @@ void LampPgo::InputCallback(
     f->printKeys();
   }
 
-
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
 
@@ -176,8 +188,7 @@ void LampPgo::PublishValues() const {
     node.key = key;
     if (key_to_id_map_.count(key)) {
       node.ID = key_to_id_map_.at(key);
-    }
-    else {
+    } else {
       ROS_ERROR_STREAM("PGO: ID not found for node key");
     }
     // pose - translation
@@ -197,6 +208,7 @@ void LampPgo::PublishValues() const {
     pose_graph_msg.nodes.push_back(node);
   }
 
-  ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size() << " values");
+  ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size()
+                                               << " values");
   optimized_pub_.publish(pose_graph_msg);
 }
