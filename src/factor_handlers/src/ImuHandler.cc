@@ -113,9 +113,6 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
     double current_time = msg->header.stamp.toSec();    
     ImuQuaternion current_quaternion;
     tf::quaternionMsgToEigen(msg->orientation, current_quaternion);
-    if (b_convert_imu_frame_) {
-        current_quaternion = I_T_B_q_*current_quaternion*I_T_B_q_.inverse(); 
-    }
     imu_buffer_.insert({current_time, current_quaternion});
     auto final_size = imu_buffer_.size();    
     if (final_size == (initial_size+1)) {
@@ -178,6 +175,9 @@ bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_
             time_diff = stamp.toSec() - time1;
         }
     }
+
+    if (b_convert_imu_frame_) imu_quaternion = I_T_B_q_*imu_quaternion*I_T_B_q_.inverse();
+        
     if (fabs(time_diff) > ts_threshold_) { 
         ROS_WARN_STREAM("Time difference is "
                         << time_diff << "s, threshold is: " << ts_threshold_ << ", returning false");
