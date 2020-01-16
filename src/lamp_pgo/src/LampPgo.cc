@@ -89,6 +89,15 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
 void LampPgo::RemoveLastLoopClosure(char prefix_1, char prefix_2) {
   pgo_solver_->removeLastLoopClosure(prefix_1, prefix_2);
+  // Extract the optimized values
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+  
+  ROS_INFO_STREAM("Removed last loop closure between prefixes "
+                  << prefix_1 << " and " << prefix_2);
+
+  // publish posegraph
+  PublishValues();
 }
 
 void LampPgo::RemoveLCCallback(const std_msgs::String::ConstPtr& msg) {
