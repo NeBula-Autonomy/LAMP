@@ -102,6 +102,8 @@ private:
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;
   double distance_before_reclosing_;
+  double max_rotation_deg_;
+  double max_rotation_rad_;
   size_t skip_recent_poses_;
   double proximity_threshold_;
   double icp_tf_epsilon_;

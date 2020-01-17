@@ -30,7 +30,9 @@ namespace utils {
       {"husky3",  'c'},
       {"husky4",  'f'},
       {"telemax1",'d'},
-      {"robot",   'e'}
+      {"robot",   'e'},
+      {"spot1",   'g'},
+      {"spot2",   'h'}
   };
 
   const std::map<std::string, char> ARTIFACT_PREFIXES = {
@@ -39,7 +41,9 @@ namespace utils {
       {"husky3",  'n'},
       {"husky4",  'q'},
       {"telemax1",'o'},
-      {"robot",   'p'}
+      {"robot",   'p'},
+      {"spot1",   'r'},
+      {"spot2",   's'}
   };
 
   // ---------------------------------------------------------

@@ -13,3 +13,8 @@ max_buffer_size: 6000
 
 # Debugging message for point cloud buffer handling
 b_debug_pointcloud_buffer: false
+
+subscriptions: 
+  b_register_lidar_sub: true
+  b_register_visual_sub: false
+  b_register_wheel_sub: false

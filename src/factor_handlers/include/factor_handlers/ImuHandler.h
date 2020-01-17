@@ -73,7 +73,13 @@ protected:
   Eigen::Affine3d I_T_B_;    
   Eigen::Affine3d B_T_I_; 
   Eigen::Quaterniond I_T_B_q_;  
-        
+
+  bool b_convert_imu_frame_;
+  bool b_verbosity_;
+  double noise_sigma_imu_;
+  
+  // Check IMU for NANS
+  bool CheckNans(const ImuMessage &msg);
 };
 
 #endif

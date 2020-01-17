@@ -41,7 +41,14 @@ class ImuHandlerTest : public ::testing::Test {
       msg_third.orientation.x = 0;
       msg_third.orientation.y = 0.1736482;
       msg_third.orientation.z = 0;
-      msg_third.orientation.w = 0.9848078;     
+      msg_third.orientation.w = 0.9848078;
+
+      // Message containing Nans
+      msg_nans.header.stamp = t3_ros;
+      msg_nans.orientation.x = 0;
+      msg_nans.orientation.y = std::nan("1");
+      msg_nans.orientation.z = 0;
+      msg_nans.orientation.w = 0.9848078;
     }   
 
     ImuHandler ih;
@@ -65,6 +72,10 @@ class ImuHandlerTest : public ::testing::Test {
     bool SetKeyForImuAttitude(const Symbol& key) { 
       return ih.SetKeyForImuAttitude(key);
     } 
+
+    bool CheckNans(ImuMessage &msg) {
+      return ih.CheckNans(msg);
+    }
 
     double GetTimeForImuAttitude() {
       return ih.query_stamp_;
@@ -101,6 +112,7 @@ class ImuHandlerTest : public ::testing::Test {
     ImuMessage msg_first;
     ImuMessage msg_second;
     ImuMessage msg_third;
+    ImuMessage msg_nans;
 
     ros::Time t1_ros;
     ros::Time t2_ros;
@@ -315,6 +327,18 @@ TEST_F(ImuHandlerTest, TestGetData) {
   SetKeyForImuAttitude(key);
   std::shared_ptr<ImuData> factor = std::dynamic_pointer_cast<ImuData>(GetData());
   EXPECT_TRUE(factor->b_has_data);
+}
+
+/* TEST CheckNans */
+TEST_F(ImuHandlerTest, CheckNans) {
+  ros::NodeHandle nh("~");
+  ih.Initialize(nh);
+  
+  // Check a normal message
+  EXPECT_FALSE(CheckNans(msg_first));
+  
+  // Check a message with NANS
+  EXPECT_TRUE(CheckNans(msg_nans));
 }
 
 int main(int argc, char** argv) {
