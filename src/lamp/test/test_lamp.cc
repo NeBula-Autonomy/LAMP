@@ -130,6 +130,10 @@ public:
     lr.b_artifacts_in_global_ = value;
   }
 
+  void setRegisterLidarSub(bool value) {
+    lr.odometry_handler_.b_register_lidar_sub_ = value;
+  }
+
   void LidarCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     lr.odometry_handler_.LidarOdometryCallback(msg);
   }
@@ -317,6 +321,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Set the global flag
   setArtifactInGlobal(false);
   setFixedCovariance(false);
+  setRegisterLidarSub(true);
 
   // Add to values
   AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a', 0));
@@ -586,6 +591,7 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   // Set the global flag
   setArtifactInGlobal(false);
   setFixedCovariance(false);
+  setRegisterLidarSub(true);
 
   // Add ground truth value for April Tag l1
   std::unordered_map<long unsigned int, ArtifactInfo>& info_hash =
