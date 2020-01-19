@@ -341,6 +341,16 @@ public:
     // Call Lidar callback
     LidarCallback(a2_odom);
 
+    // New message at 0.159 (not gets added to pose graph)
+    l1_value.header.stamp = ros::Time(0.159);
+    l1_value.pose.pose.position.x = 4.4;
+    l1_value.pose.pose.orientation.w = 1.0;
+
+    nav_msgs::Odometry::ConstPtr a2l1_odom(new nav_msgs::Odometry(l1_value));
+
+    // Call Lidar callback
+    LidarCallback(a2l1_odom);
+
     // New message at 0.2
     l1_value.header.stamp = ros::Time(0.2);
     l1_value.pose.pose.position.x = 6.0;
@@ -499,29 +509,30 @@ TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
   // Fill odometry related information
   FillOdometryData();
 
-  // Get a new artifact factor from ArtifactHandler 
+  // Get the first artifact factor from ArtifactHandler 
   std::shared_ptr<ArtifactData> new_data = ConstructArtifactData("artifact", 
                                                                   gtsam::Symbol('l', 1), 
                                                                   gtsam::Point3(9.7, 0, 0), 
                                                                   ros::Time(0.11));
 
-  // Check if the new_keys is inserted
+  // Get references to checked variables
   std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
+
+  // Check if the new_keys is inserted
   EXPECT_EQ(temp_keys.size(), 1);
 
   // Call the ProcessArtifactData. Adding a new artifact
   ProcessArtifacts(new_data);
 
   // Check if the artifact is still in the Info Hash
-  std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
   EXPECT_EQ(info_map.size(), 1);
 
   // Check if the artifact is still in the Key Hash
-  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
   // Check if the new_keys is cleared
-  temp_keys = GetNewKeys();
   EXPECT_EQ(temp_keys.size(), 0);
 
   // As this is a new artifact optimization should be false
@@ -532,20 +543,11 @@ TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
   EXPECT_EQ(GetPose(gtsam::Symbol('l', 1)).translation(),
             gtsam::Point3(12.1, 0, 0));
 
-  // New message at 0.159 (not gets added to pose graph)
-  l1_value.header.stamp = ros::Time(0.159);
-  l1_value.pose.pose.position.x = 4.4;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a2l1_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a2l1_odom);
-
   // Change time and send the message again
-  new_data->b_has_data = true;
-  new_data->factors[0].stamp = ros::Time(0.16);
-  new_data->factors[0].position = gtsam::Point3(7.8, 0, 0);
+  new_data = ConstructArtifactData("artifact", 
+                                    gtsam::Symbol('l', 1), 
+                                    gtsam::Point3(7.8, 0, 0), 
+                                    ros::Time(0.16));
 
   // Call the ProcessArtifactData. Adding an old artifact
   ProcessArtifacts(new_data);
@@ -590,15 +592,12 @@ TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
   ProcessArtifacts(new_data);
 
   // Check if the artifact is still in the Info Hash
-  info_map = GetArtifactInfoHash();
   EXPECT_EQ(info_map.size(), 1);
 
   // Check if the artifact is still in the Key Hash
-  key_hash = GetIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
   // Check if the new_keys is cleared
-  temp_keys = GetNewKeys();
   EXPECT_EQ(temp_keys.size(), 0);
 
   // Check the largest artifact id
@@ -638,19 +637,21 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
                                                               "distal",
                                                               gtsam::Point3(12.2, 0.0, 0.0)); 
 
+  // Get references to checked variables
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_hash = GetInfoHash();
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetAprilIdKeyHash();
+  std::vector<gtsam::Symbol>& temp_keys = GetAprilNewKeys();
+
   // Check if l1 is added to values
   EXPECT_FALSE(GetValues().exists(gtsam::Symbol('l', 1)));
 
   // Check if the artifact is in the Info Hash
-  std::unordered_map<long unsigned int, ArtifactInfo>& info_hash = GetInfoHash();
   EXPECT_EQ(info_hash.size(), 1);
 
   // Check if the artifact is in the Key Hash
-  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetAprilIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
   // Check if the new_keys is inserted
-  std::vector<gtsam::Symbol>& temp_keys = GetAprilNewKeys();
   EXPECT_EQ(temp_keys.size(), 1);
 
   // Call the ProcessAprilTagData. Adding a new April Tag
@@ -675,20 +676,13 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
   }
   EXPECT_EQ(count, 2);
 
-  // New message at 0.159 (not gets added to pose graph)
-  l1_value.header.stamp = ros::Time(0.159);
-  l1_value.pose.pose.position.x = 4.4;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a2l1_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a2l1_odom);
-
   // Change time and send the message again
-  new_data->b_has_data = true;
-  new_data->factors[0].stamp = ros::Time(0.16);
-  new_data->factors[0].position = gtsam::Point3(7.8, 0, 0);
+  new_data = ConstructAprilData("april", 
+                                gtsam::Symbol('l', 1), 
+                                gtsam::Point3(7.8, 0, 0), 
+                                ros::Time(0.16),
+                                "distal",
+                                gtsam::Point3(12.2, 0.0, 0.0));
 
   // Call the ProcessAprilTagData. Adding an old April Tag
   ProcessAprilTags(new_data);
@@ -744,15 +738,12 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
   ProcessAprilTags(new_data);
 
   // Check if the artifact is still in the Info Hash
-  info_hash = GetInfoHash();
   EXPECT_EQ(info_hash.size(), 1);
 
   // Check if the artifact is still in the Key Hash
-  key_hash = GetAprilIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
   // Check if the new_keys is cleared
-  temp_keys = GetAprilNewKeys();
   EXPECT_EQ(temp_keys.size(), 0);
 
   // Check the largest artifact id
@@ -767,16 +758,17 @@ TEST_F(TestLampRobotArtifact, NonSequentialKeys) {
                                                                 gtsam::Point3(9.7, 0, 0), 
                                                                 ros::Time(0.11));
 
-  // Check if the artifact is still in the Info Hash
   std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
+  std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
+
+  // Check if the artifact is still in the Info Hash
   EXPECT_EQ(info_map.size(), 1);
 
   // Check if the artifact is still in the Key Hash
-  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
   // Check if the new_keys is cleared
-  std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
   EXPECT_EQ(temp_keys.size(), 1);
 
   // Set the global flag
@@ -787,15 +779,12 @@ TEST_F(TestLampRobotArtifact, NonSequentialKeys) {
   ProcessArtifacts(new_data);
 
   // Check if the artifact is still in the Info Hash
-  info_map = GetArtifactInfoHash();
   EXPECT_EQ(info_map.size(), 0);
 
   // Check if the artifact is still in the Key Hash
-  key_hash = GetIdKeyHash();
   EXPECT_EQ(key_hash.size(), 0);
 
   // Check if the new_keys is cleared
-  temp_keys = GetNewKeys();
   EXPECT_EQ(temp_keys.size(), 0);
 
   // Turn off global flag
@@ -808,30 +797,24 @@ TEST_F(TestLampRobotArtifact, NonSequentialKeys) {
                                     ros::Time(0.11));
 
   // Check if the artifact is still in the Info Hash
-  info_map = GetArtifactInfoHash();
   EXPECT_EQ(info_map.size(), 1);
 
   // Check if the artifact is still in the Key Hash
-  key_hash = GetIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
   // Check if the new_keys is cleared
-  temp_keys = GetNewKeys();
   EXPECT_EQ(temp_keys.size(), 1);
 
   // Call the ProcessArtifactData. Adding a new artifact
   ProcessArtifacts(new_data);
 
   // Check if the artifact is still in the Info Hash
-  info_map = GetArtifactInfoHash();
   EXPECT_EQ(info_map.size(), 0);
 
   // Check if the artifact is still in the Key Hash
-  key_hash = GetIdKeyHash();
   EXPECT_EQ(key_hash.size(), 0);
 
   // Check if the new_keys is cleared
-  temp_keys = GetNewKeys();
   EXPECT_EQ(temp_keys.size(), 0);
 }
 
