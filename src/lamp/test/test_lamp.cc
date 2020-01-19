@@ -122,14 +122,105 @@ public:
     lr.AddTransformedPointCloudToMap(key);
   }
 
+  // Other utilities
   bool GetOptFlag() {
     return lr.b_run_optimization_;
   }
+  const gtsam::Values& GetValues() const {
+    return lr.graph().GetValues();
+  }
+  void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
+    lr.graph().keyed_scans.insert(
+        std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+  }
+  const gtsam::NonlinearFactorGraph& GetNfg() const {
+    return lr.graph().GetNfg();
+  }
+  const EdgeSet& GetEdges() const {
+    return lr.graph().GetEdges();
+  }
+  const NodeSet& GetNodes() const {
+    return lr.graph().GetNodes();
+  }
+  const EdgeSet& GetPriors() const {
+    return lr.graph().GetPriors();
+  }
+  const EdgeSet& GetNewEdges() const {
+    return lr.graph().GetNewEdges();
+  }
+  const NodeSet& GetNewNodes() const {
+    return lr.graph().GetNewNodes();
+  }
+  const EdgeSet& GetNewPriors() const {
+    return lr.graph().GetNewPriors();
+  }
 
+  gtsam::Pose3 GetPose(gtsam::Key key) const {
+    return lr.graph().GetPose(key);
+  }
+  const EdgeMessage* FindEdge(gtsam::Key key_from, gtsam::Key key_to) const {
+    return lr.graph().FindEdge(key_from, key_to);
+  }
+
+  PointCloud::Ptr GetMapPC() {
+    return lr.mapper_.GetMapData();
+  }
+  // Other utilities
+
+protected:
+  // Tolerance on EXPECT_NEAR assertions
+  double tolerance_ = 1e-5;
+  // friend class TestLampRobotArtifact;
+private:
+};
+
+class TestLampRobotArtifact : public ::testing::Test {
+public:
+  // using namespace TestLampRobot;
+  TestLampRobotArtifact() {
+    // Set the global flags. 
+    setArtifactInGlobal(false);
+    setFixedCovariance(false);
+    setRegisterLidarSub(true);
+
+    gtsam::Vector6 sig;
+    sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
+    noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
+  }
+  ~TestLampRobotArtifact() {}
+  LampRobot lr;
+  
+  gtsam::SharedNoiseModel noise;
+  nav_msgs::Odometry l1_value;
+
+  // Access functions
+  void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
+    lr.graph().stamp_to_odom_key[stamp.toSec()] = key;
+  }
+  void ClearStampToOdom() {
+    lr.graph().stamp_to_odom_key.clear();
+  }
+  void AddKeyedStamp(gtsam::Symbol key, ros::Time stamp) {
+    lr.graph().keyed_stamps[key] = stamp;
+  }
   void setArtifactInGlobal(bool value) {
     lr.b_artifacts_in_global_ = value;
   }
-
+  // Other utilities
+  bool GetOptFlag() {
+    return lr.b_run_optimization_;
+  }
+  const gtsam::NonlinearFactorGraph& GetNfg() const {
+    return lr.graph().GetNfg();
+  }
+  const gtsam::Values& GetValues() const {
+    return lr.graph().GetValues();
+  }
+  void InsertValues(gtsam::Symbol key, gtsam::Pose3 pose) {
+    static const gtsam::SharedNoiseModel& noise =
+        gtsam::noiseModel::Isotropic::Variance(6, 0.1);
+    lr.graph().TrackNode(ros::Time::now(), key, pose, noise);
+  }
   void setRegisterLidarSub(bool value) {
     lr.odometry_handler_.b_register_lidar_sub_ = value;
   }
@@ -177,7 +268,9 @@ public:
   std::vector<gtsam::Symbol>& GetAprilNewKeys() {
     return lr.april_tag_handler_.new_keys_;
   }
-
+  gtsam::Pose3 GetPose(gtsam::Key key) const {
+    return lr.graph().GetPose(key);
+  }
   int GetAprilLargestArtifactId() {
     return lr.april_tag_handler_.largest_artifact_id_;
   }
@@ -188,56 +281,158 @@ public:
     lr.ConvertGlobalToRelative(stamp, pose_global, pose_relative);
   }
 
-  // Other utilities
+  void FillOdometryData() {
+    // Add to values
+    AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a', 0));
+    InsertValues(gtsam::Symbol('a', 0),
+                gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 0)));
+    AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a', 1));
+    InsertValues(gtsam::Symbol('a', 1),
+                gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0, 0)));
+    AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a', 2));
+    InsertValues(gtsam::Symbol('a', 2),
+                gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4.0, 0, 0)));
+    AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a', 3));
+    InsertValues(gtsam::Symbol('a', 3),
+                gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(6.0, 0, 0)));
 
-  const gtsam::Values& GetValues() const {
-    return lr.graph().GetValues();
+    AddKeyedStamp(gtsam::Symbol('a', 0), ros::Time(0.05));
+    AddKeyedStamp(gtsam::Symbol('a', 1), ros::Time(0.1));
+    AddKeyedStamp(gtsam::Symbol('a', 2), ros::Time(0.15));
+    AddKeyedStamp(gtsam::Symbol('a', 3), ros::Time(0.2));
+
+    // Construct the odometry message for a0 (the nearest key)
+    nav_msgs::Odometry a0_value;
+    a0_value.header.stamp = ros::Time(0.05);
+    geometry_msgs::PoseWithCovariance msg_pose;
+    a0_value.pose = msg_pose;
+    nav_msgs::Odometry::ConstPtr a0_odom(new nav_msgs::Odometry(a0_value));
+
+    // Call Lidar callback
+    LidarCallback(a0_odom);
+
+    // New message at 0.1
+    l1_value.header.stamp = ros::Time(0.1);
+    l1_value.pose.pose.position.x = 2.0;
+    l1_value.pose.pose.orientation.w = 1.0;
+
+    nav_msgs::Odometry::ConstPtr a1_odom(new nav_msgs::Odometry(l1_value));
+
+    // Call Lidar callback
+    LidarCallback(a1_odom);
+
+    // New message at 0.109 (not gets added to pose graph)
+    l1_value.header.stamp = ros::Time(0.109);
+    l1_value.pose.pose.position.x = 2.4;
+    l1_value.pose.pose.orientation.w = 1.0;
+
+    nav_msgs::Odometry::ConstPtr a1l1_odom(new nav_msgs::Odometry(l1_value));
+
+    // Call Lidar callback
+    LidarCallback(a1l1_odom);
+
+    // New message at 0.15
+    l1_value.header.stamp = ros::Time(0.15);
+    l1_value.pose.pose.position.x = 4.0;
+    l1_value.pose.pose.orientation.w = 1.0;
+
+    nav_msgs::Odometry::ConstPtr a2_odom(new nav_msgs::Odometry(l1_value));
+
+    // Call Lidar callback
+    LidarCallback(a2_odom);
+
+    // New message at 0.2
+    l1_value.header.stamp = ros::Time(0.2);
+    l1_value.pose.pose.position.x = 6.0;
+    l1_value.pose.pose.orientation.w = 1.0;
+
+    nav_msgs::Odometry::ConstPtr a3_odom(new nav_msgs::Odometry(l1_value));
+
+    // Call Lidar callback
+    LidarCallback(a3_odom);
   }
 
-  void AddToKeyScans(gtsam::Symbol key, PointCloud::ConstPtr scan) {
-    lr.graph().keyed_scans.insert(
-        std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
+  std::shared_ptr<ArtifactData> ConstructArtifactData(std::string type, gtsam::Symbol key, gtsam::Point3 position, ros::Time stamp) {
+    // Construct the new Artifact data
+    std::shared_ptr<ArtifactData> new_data = std::make_shared<ArtifactData>();
+    new_data->b_has_data = true;
+    new_data->type = type;
+
+    ArtifactFactor new_factor;
+    new_factor.key = key;
+    new_factor.position = position;
+
+    new_factor.covariance = noise;
+    new_factor.stamp = stamp;
+
+    // Add the new factor
+    new_data->factors.push_back(new_factor);
+    
+    // Construct Artifact Info
+    ArtifactInfo temp_info;
+    temp_info.id = type;
+    temp_info.num_updates = 1;
+    temp_info.global_position = position;
+
+    // Add the factor in InfoHash
+    std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
+    info_map[new_factor.key] = temp_info;
+
+    // Add to idkey hash
+    std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
+    key_hash[type] = new_factor.key;
+
+    // Add to new keys
+    std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
+    temp_keys.push_back(new_factor.key);
+    return new_data;
   }
 
-  const gtsam::NonlinearFactorGraph& GetNfg() const {
-    return lr.graph().GetNfg();
-  }
-  const EdgeSet& GetEdges() const {
-    return lr.graph().GetEdges();
-  }
-  const NodeSet& GetNodes() const {
-    return lr.graph().GetNodes();
-  }
-  const EdgeSet& GetPriors() const {
-    return lr.graph().GetPriors();
-  }
-  const EdgeSet& GetNewEdges() const {
-    return lr.graph().GetNewEdges();
-  }
-  const NodeSet& GetNewNodes() const {
-    return lr.graph().GetNewNodes();
-  }
-  const EdgeSet& GetNewPriors() const {
-    return lr.graph().GetNewPriors();
+  void ClearArtifactData() {
+    // Clear the factor in InfoHash
+    std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
+    info_map.clear();
+
+    // Add to idkey hash
+    std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
+    key_hash.clear();
+
+    // Add to new keys
+    std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
+    temp_keys.clear();
   }
 
-  gtsam::Pose3 GetPose(gtsam::Key key) const {
-    return lr.graph().GetPose(key);
-  }
-  const EdgeMessage* FindEdge(gtsam::Key key_from, gtsam::Key key_to) const {
-    return lr.graph().FindEdge(key_from, key_to);
-  }
+  std::shared_ptr<AprilTagData> ConstructAprilData(std::string type, gtsam::Symbol key, gtsam::Point3 position, ros::Time stamp, std::string id, gtsam::Point3 ground) {
+    // Construct the new April tag data
+    std::shared_ptr<AprilTagData> new_data = std::make_shared<AprilTagData>();
+    new_data->b_has_data = true;
+    new_data->type = type;
 
-  PointCloud::Ptr GetMapPC() {
-    return lr.mapper_.GetMapData();
+    AprilTagFactor new_factor;
+    new_factor.key = key;
+    new_factor.position = position;
+    new_factor.covariance = noise;
+    new_factor.stamp = stamp;
+
+    // Add the new factor
+    new_data->factors.push_back(new_factor);
+
+    // Add ground truth value for April Tag l1
+    std::unordered_map<long unsigned int, ArtifactInfo>& info_hash = GetInfoHash();
+    info_hash[key].id = id;
+    info_hash[key].num_updates = 1;
+    info_hash[key].global_position = ground;
+
+    // Add to idkey hash
+    std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetAprilIdKeyHash();
+    key_hash[id] = new_factor.key;
+
+    // Add to new keys
+    std::vector<gtsam::Symbol>& temp_keys = GetAprilNewKeys();
+    temp_keys.push_back(new_factor.key);
+
+    return new_data;
   }
-  // Other utilities
-
-protected:
-  // Tolerance on EXPECT_NEAR assertions
-  double tolerance_ = 1e-5;
-
-private:
 };
 
 TEST_F(TestLampRobot, TestSetInitialPositionNoParam) {
@@ -300,139 +495,29 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
  *0.16     2.0                                                        Time
  */
 // CAUSING TESTING ISSUES TODO
-TEST_F(TestLampRobot, TestProcessArtifactData) {
-  // Construct the new Artifact data
-  std::shared_ptr<ArtifactData> new_data = std::make_shared<ArtifactData>();
-  new_data->b_has_data = true;
-  new_data->type = "artifact";
+TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
+  // Fill odometry related information
+  FillOdometryData();
 
-  ArtifactFactor new_factor;
-  new_factor.key = gtsam::Symbol('l', 1);
-  new_factor.position = gtsam::Point3(9.7, 0, 0);
-  gtsam::Vector6 sig;
-  sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
-  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
-  new_factor.covariance = noise;
-  new_factor.stamp = ros::Time(0.11);
-
-  // Add the new factor
-  new_data->factors.push_back(new_factor);
-
-  // Set the global flag
-  setArtifactInGlobal(false);
-  setFixedCovariance(false);
-  setRegisterLidarSub(true);
-
-  // Add to values
-  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a', 0));
-  InsertValues(gtsam::Symbol('a', 0),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a', 1));
-  InsertValues(gtsam::Symbol('a', 1),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a', 2));
-  InsertValues(gtsam::Symbol('a', 2),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4.0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a', 3));
-  InsertValues(gtsam::Symbol('a', 3),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(6.0, 0, 0)));
-
-  AddKeyedStamp(gtsam::Symbol('a', 0), ros::Time(0.05));
-  AddKeyedStamp(gtsam::Symbol('a', 1), ros::Time(0.1));
-  AddKeyedStamp(gtsam::Symbol('a', 2), ros::Time(0.15));
-  AddKeyedStamp(gtsam::Symbol('a', 3), ros::Time(0.2));
-
-  // Construct the odometry message for a0 (the nearest key)
-  nav_msgs::Odometry a0_value;
-  a0_value.header.stamp = ros::Time(0.05);
-  geometry_msgs::PoseWithCovariance msg_pose;
-  a0_value.pose = msg_pose;
-  nav_msgs::Odometry::ConstPtr a0_odom(new nav_msgs::Odometry(a0_value));
-
-  // Call Lidar callback
-  LidarCallback(a0_odom);
-
-  // New message at 0.1
-  nav_msgs::Odometry l1_value;
-  l1_value.header.stamp = ros::Time(0.1);
-  l1_value.pose.pose.position.x = 2.0;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a1_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a1_odom);
-
-  // New message at 0.109 (not gets added to pose graph)
-  l1_value.header.stamp = ros::Time(0.109);
-  l1_value.pose.pose.position.x = 2.4;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a1l1_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a1l1_odom);
-
-  // New message at 0.15
-  l1_value.header.stamp = ros::Time(0.15);
-  l1_value.pose.pose.position.x = 4.0;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a2_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a2_odom);
-
-  // New message at 0.2
-  l1_value.header.stamp = ros::Time(0.2);
-  l1_value.pose.pose.position.x = 6.0;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a3_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a3_odom);
-
-  // Construct Artifact Info
-  ArtifactInfo temp_info;
-  temp_info.id = "artifact";
-  temp_info.num_updates = 1;
-  temp_info.global_position = gtsam::Point3(9.7, 0, 0);
-
-  // Add the factor in InfoHash
-  std::unordered_map<long unsigned int, ArtifactInfo>& info_map =
-      GetArtifactInfoHash();
-  info_map[new_factor.key] = temp_info;
-
-  // Add to idkey hash
-  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
-  key_hash["artifact"] = new_factor.key;
-
-  // Check if the artifact is in the Info Hash
-  info_map = GetArtifactInfoHash();
-  EXPECT_EQ(info_map.size(), 1);
-
-  // Check if the artifact is in the Key Hash
-  key_hash = GetIdKeyHash();
-  EXPECT_EQ(key_hash.size(), 1);
-
-  // Add to new keys
-  std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
-  temp_keys.push_back(new_factor.key);
+  // Get a new artifact factor from ArtifactHandler 
+  std::shared_ptr<ArtifactData> new_data = ConstructArtifactData("artifact", 
+                                                                  gtsam::Symbol('l', 1), 
+                                                                  gtsam::Point3(9.7, 0, 0), 
+                                                                  ros::Time(0.11));
 
   // Check if the new_keys is inserted
-  temp_keys = GetNewKeys();
+  std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
   EXPECT_EQ(temp_keys.size(), 1);
 
   // Call the ProcessArtifactData. Adding a new artifact
   ProcessArtifacts(new_data);
 
   // Check if the artifact is still in the Info Hash
-  info_map = GetArtifactInfoHash();
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
   EXPECT_EQ(info_map.size(), 1);
 
   // Check if the artifact is still in the Key Hash
-  key_hash = GetIdKeyHash();
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
   // Check if the new_keys is cleared
@@ -465,7 +550,7 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
   // Call the ProcessArtifactData. Adding an old artifact
   ProcessArtifacts(new_data);
 
-  // As this is a new artifact optimization should be false
+  // As this is a new artifact optimization should be true
   EXPECT_TRUE(GetOptFlag());
   // Check if l1 is added to values
   EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
@@ -495,35 +580,11 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
                    other_keys.end(),
                    gtsam::Symbol('a', 2)) != other_keys.end());
 
-  // Add a new failed factor
-  new_data->factors.clear();
-  new_data->b_has_data = true;
-  new_data->type = "survivor";
-  new_factor.key = gtsam::Symbol('l', 2);
-  new_factor.position = gtsam::Point3(0.9, 0, 0);
-  new_factor.covariance = noise;
-  // Time greater than threshold
-  new_factor.stamp = ros::Time(20.15);
-
-  // Add the new factor
-  new_data->factors.push_back(new_factor);
-
-  // Construct Artifact Info
-  temp_info.id = "survivor";
-  temp_info.num_updates = 1;
-  temp_info.global_position = gtsam::Point3(0.9, 0, 0);
-
-  // Add the factor in InfoHash
-  info_map = GetArtifactInfoHash();
-  info_map[new_factor.key] = temp_info;
-
-  // Add to idkey hash
-  key_hash = GetIdKeyHash();
-  key_hash["survivor"] = new_factor.key;
-
-  // Add to new keys
-  temp_keys = GetNewKeys();
-  temp_keys.push_back(new_factor.key);
+  // Add a new failed factor as time is high
+  new_data = ConstructArtifactData("survivor", 
+                                  gtsam::Symbol('l', 2), 
+                                  gtsam::Point3(0.9, 0, 0), 
+                                  ros::Time(20.15));
 
   // Call Process Artifacts should fail
   ProcessArtifacts(new_data);
@@ -563,136 +624,33 @@ TEST_F(TestLampRobot, TestProcessArtifactData) {
  *Graph odom
  * -|--------|------------|------------|------------|-------------|---------|--------|--------------------|---------------------------|----
  *1D line 0.05     0.1         0.109        0.11          0.15         0.159
- *0.16     2.0 Time QUESTION: Check if global flag needs to be turned on in case
- *of april.
- * TODO: Reflect the new non-sequential unit test in the above graph for both
- *Artifact and april tag handler
- * TODO: I dont think that the position in these new non sequential factor
- *matters. Check it once.
+ *0.16     2.0 Time 
  */
-TEST_F(TestLampRobot, TestProcessAprilTagData) {
-  // Construct the new April tag data
-  std::shared_ptr<AprilTagData> new_data = std::make_shared<AprilTagData>();
-  new_data->b_has_data = true;
-  new_data->type = "april";
+TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
+  // Fill odometry
+  FillOdometryData();
 
-  AprilTagFactor new_factor;
-  new_factor.key = gtsam::Symbol('l', 1);
-  new_factor.position = gtsam::Point3(9.7, 0, 0);
-  gtsam::Vector6 sig;
-  sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
-  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
-  new_factor.covariance = noise;
-  new_factor.stamp = ros::Time(0.11);
-
-  // Add the new factor
-  new_data->factors.push_back(new_factor);
-
-  // Set the global flag
-  setArtifactInGlobal(false);
-  setFixedCovariance(false);
-  setRegisterLidarSub(true);
-
-  // Add ground truth value for April Tag l1
-  std::unordered_map<long unsigned int, ArtifactInfo>& info_hash =
-      GetInfoHash();
-  info_hash[gtsam::Symbol('l', 1)].id = "distal";
-  info_hash[gtsam::Symbol('l', 1)].num_updates = 1;
-  info_hash[gtsam::Symbol('l', 1)].global_position =
-      gtsam::Point3(12.2, 0.0, 0.0);
-
-  // Add to values
-  AddStampToOdomKey(ros::Time(0.05), gtsam::Symbol('a', 0));
-  InsertValues(gtsam::Symbol('a', 0),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.1), gtsam::Symbol('a', 1));
-  InsertValues(gtsam::Symbol('a', 1),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.15), gtsam::Symbol('a', 2));
-  InsertValues(gtsam::Symbol('a', 2),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(4.0, 0, 0)));
-  AddStampToOdomKey(ros::Time(0.2), gtsam::Symbol('a', 3));
-  InsertValues(gtsam::Symbol('a', 3),
-               gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(6.0, 0, 0)));
-
-  AddKeyedStamp(gtsam::Symbol('a', 0), ros::Time(0.05));
-  AddKeyedStamp(gtsam::Symbol('a', 1), ros::Time(0.1));
-  AddKeyedStamp(gtsam::Symbol('a', 2), ros::Time(0.15));
-  AddKeyedStamp(gtsam::Symbol('a', 3), ros::Time(0.2));
-
-  // Construct the odometry message for a0 (the nearest key)
-  nav_msgs::Odometry a0_value;
-  a0_value.header.stamp = ros::Time(0.05);
-  geometry_msgs::PoseWithCovariance msg_pose;
-  a0_value.pose = msg_pose;
-  nav_msgs::Odometry::ConstPtr a0_odom(new nav_msgs::Odometry(a0_value));
-
-  // Call Lidar callback
-  LidarCallback(a0_odom);
-
-  // New message at 0.1
-  nav_msgs::Odometry l1_value;
-  l1_value.header.stamp = ros::Time(0.1);
-  l1_value.pose.pose.position.x = 2.0;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a1_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a1_odom);
-
-  // New message at 0.109 (not gets added to pose graph)
-  l1_value.header.stamp = ros::Time(0.109);
-  l1_value.pose.pose.position.x = 2.4;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a1l1_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a1l1_odom);
-
-  // New message at 0.15
-  l1_value.header.stamp = ros::Time(0.15);
-  l1_value.pose.pose.position.x = 4.0;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a2_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a2_odom);
-
-  // New message at 0.2
-  l1_value.header.stamp = ros::Time(0.2);
-  l1_value.pose.pose.position.x = 6.0;
-  l1_value.pose.pose.orientation.w = 1.0;
-
-  nav_msgs::Odometry::ConstPtr a3_odom(new nav_msgs::Odometry(l1_value));
-
-  // Call Lidar callback
-  LidarCallback(a3_odom);
+  // Get April tag data
+  std::shared_ptr<AprilTagData> new_data = ConstructAprilData("april", 
+                                                              gtsam::Symbol('l', 1), 
+                                                              gtsam::Point3(9.7, 0, 0), 
+                                                              ros::Time(0.11),
+                                                              "distal",
+                                                              gtsam::Point3(12.2, 0.0, 0.0)); 
 
   // Check if l1 is added to values
   EXPECT_FALSE(GetValues().exists(gtsam::Symbol('l', 1)));
 
-  // Add to idkey hash
-  std::unordered_map<std::string, gtsam::Symbol>& key_hash =
-      GetAprilIdKeyHash();
-  key_hash["distal"] = new_factor.key;
-
   // Check if the artifact is in the Info Hash
-  info_hash = GetInfoHash();
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_hash = GetInfoHash();
   EXPECT_EQ(info_hash.size(), 1);
 
   // Check if the artifact is in the Key Hash
-  key_hash = GetAprilIdKeyHash();
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetAprilIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
-  // Add to new keys
-  std::vector<gtsam::Symbol>& temp_keys = GetAprilNewKeys();
-  temp_keys.push_back(new_factor.key);
-
   // Check if the new_keys is inserted
-  temp_keys = GetAprilNewKeys();
+  std::vector<gtsam::Symbol>& temp_keys = GetAprilNewKeys();
   EXPECT_EQ(temp_keys.size(), 1);
 
   // Call the ProcessAprilTagData. Adding a new April Tag
@@ -774,36 +732,13 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   }
   EXPECT_EQ(count, 3);
 
-  // Add a new failed factor
-  new_data->factors.clear();
-  new_data->b_has_data = true;
-  new_data->type = "april";
-  new_factor.key = gtsam::Symbol('l', 2);
-  new_factor.position = gtsam::Point3(0.9, 0, 0);
-  new_factor.covariance = noise;
-  // Time greater than threshold
-  new_factor.stamp = ros::Time(20.15);
-
-  // Add the new factor
-  new_data->factors.push_back(new_factor);
-
-  // Construct Artifact Info
-  ArtifactInfo temp_info;
-  temp_info.id = "calib";
-  temp_info.num_updates = 1;
-  temp_info.global_position = gtsam::Point3(0.9, 0, 0);
-
-  // Add the factor in InfoHash
-  info_hash = GetInfoHash();
-  info_hash[new_factor.key] = temp_info;
-
-  // Add to idkey hash
-  key_hash = GetAprilIdKeyHash();
-  key_hash["calib"] = new_factor.key;
-
-  // Add to new keys
-  temp_keys = GetAprilNewKeys();
-  temp_keys.push_back(new_factor.key);
+  // Add a new failed factor as time is high
+  new_data = ConstructAprilData("april", 
+                                gtsam::Symbol('l', 2), 
+                                gtsam::Point3(0.9, 0, 0), 
+                                ros::Time(20.15),
+                                "calib",
+                                gtsam::Point3(0.9, 0, 0)); 
 
   // Call Process Artifacts should fail
   ProcessAprilTags(new_data);
@@ -825,53 +760,23 @@ TEST_F(TestLampRobot, TestProcessAprilTagData) {
   EXPECT_EQ(largest_id, 2);
 }
 
-TEST_F(TestLampRobot, NonSequentialKeys) {
+TEST_F(TestLampRobotArtifact, NonSequentialKeys) {
   // Construct the new Artifact data
-  std::shared_ptr<ArtifactData> new_data = std::make_shared<ArtifactData>();
-  new_data->b_has_data = true;
-  new_data->type = "artifact";
-
-  ArtifactFactor new_factor;
-  new_factor.key = gtsam::Symbol('l', 1);
-  new_factor.position = gtsam::Point3(9.7, 0, 0);
-  gtsam::Vector6 sig;
-  sig << 0.3, 0.3, 0.3, 0.3, 0.3, 0.3;
-  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
-  new_factor.covariance = noise;
-  new_factor.stamp = ros::Time(0.11);
-
-  // Add the new factor
-  new_data->factors.push_back(new_factor);
-
-  // Construct Artifact Info
-  ArtifactInfo temp_info;
-  temp_info.id = "artifact";
-  temp_info.num_updates = 1;
-  temp_info.global_position = gtsam::Point3(9.7, 0, 0);
-
-  // Add the factor in InfoHash
-  std::unordered_map<long unsigned int, ArtifactInfo>& info_map =
-      GetArtifactInfoHash();
-  info_map[new_factor.key] = temp_info;
-
-  // Add to idkey hash
-  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
-  key_hash["artifact"] = new_factor.key;
-
-  // Add to new keys
-  std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
-  temp_keys.push_back(new_factor.key);
+  std::shared_ptr<ArtifactData> new_data = ConstructArtifactData("artifact", 
+                                                                gtsam::Symbol('l', 1), 
+                                                                gtsam::Point3(9.7, 0, 0), 
+                                                                ros::Time(0.11));
 
   // Check if the artifact is still in the Info Hash
-  info_map = GetArtifactInfoHash();
+  std::unordered_map<long unsigned int, ArtifactInfo>& info_map = GetArtifactInfoHash();
   EXPECT_EQ(info_map.size(), 1);
 
   // Check if the artifact is still in the Key Hash
-  key_hash = GetIdKeyHash();
+  std::unordered_map<std::string, gtsam::Symbol>& key_hash = GetIdKeyHash();
   EXPECT_EQ(key_hash.size(), 1);
 
   // Check if the new_keys is cleared
-  temp_keys = GetNewKeys();
+  std::vector<gtsam::Symbol>& temp_keys = GetNewKeys();
   EXPECT_EQ(temp_keys.size(), 1);
 
   // Set the global flag
@@ -896,17 +801,11 @@ TEST_F(TestLampRobot, NonSequentialKeys) {
   // Turn off global flag
   setArtifactInGlobal(false);
 
-  // Add the factor in InfoHash
-  info_map = GetArtifactInfoHash();
-  info_map[new_factor.key] = temp_info;
-
-  // Add to idkey hash
-  key_hash = GetIdKeyHash();
-  key_hash["artifact"] = new_factor.key;
-
-  // Add to new keys
-  temp_keys = GetNewKeys();
-  temp_keys.push_back(new_factor.key);
+  // Construct the Artifact data
+  new_data = ConstructArtifactData("artifact", 
+                                    gtsam::Symbol('l', 1), 
+                                    gtsam::Point3(9.7, 0, 0), 
+                                    ros::Time(0.11));
 
   // Check if the artifact is still in the Info Hash
   info_map = GetArtifactInfoHash();
@@ -954,7 +853,7 @@ TEST_F(TestLampRobot, SetInitialKey) {
   EXPECT_EQ(std::string("a0"), key_string);
 }
 
-TEST_F(TestLampRobot, ConvertGlobalToRelative) {
+TEST_F(TestLampRobotArtifact, ConvertGlobalToRelative) {
   // Ros time to search for current key
   const ros::Time stamp = ros::Time(5.0);
   // Global pose of the artifact
