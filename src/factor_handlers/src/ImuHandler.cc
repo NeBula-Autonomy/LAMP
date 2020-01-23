@@ -3,19 +3,13 @@
  * Authors: Matteo Palieri      (matteo.palieri@jpl.nasa.gov)
  */
 
-// Includes
 #include <factor_handlers/ImuHandler.h>
 
 namespace pu = parameter_utils;
 
-// Constructor & Destructor
-// --------------------------------------------------------------------------------
+// Constructor and Destructor -------------------------------------------------------------
 
-ImuHandler::ImuHandler() 
-  : buffer_size_limit_(1000),
-    ts_threshold_(0.1),
-    b_convert_imu_frame_(false),
-    noise_sigma_imu_(0.25) {
+ImuHandler::ImuHandler() {
     ROS_INFO("ImuHandler Class Constructor");
 }
 
@@ -23,8 +17,7 @@ ImuHandler::~ImuHandler() {
     ROS_INFO("ImuHandler Class Destructor");
 }
 
-// Initialization
-// --------------------------------------------------------------------------------
+// Initialization -------------------------------------------------------------------------
 
 bool ImuHandler::Initialize(const ros::NodeHandle& n) {
     ROS_INFO("ImuHandler - Initialize");    
@@ -55,8 +48,11 @@ bool ImuHandler::LoadParameters(const ros::NodeHandle& n) {
     if (!pu::Get("imu/b_verbosity", b_verbosity_))
         return false;
     if (!pu::Get("noise_sigma_imu", noise_sigma_imu_)) 
-        return false;    
-    LoadCalibrationFromTfTree();
+        return false;   
+    if (b_convert_imu_frame_) {
+        if (!LoadCalibrationFromTfTree()) 
+            return false;
+    }    
     return true;
 }
 
@@ -67,12 +63,11 @@ bool ImuHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     return true;
 }
 
-// Callback
-// --------------------------------------------------------------------------------
+// Callback -------------------------------------------------------------------------------
 
 void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {    
     if (b_verbosity_) ROS_INFO("ImuHandler - ImuCallback"); 
-    if (CheckBufferSize() > buffer_size_limit_){
+    if (CheckBufferSize() > buffer_size_limit_) {
         imu_buffer_.erase(imu_buffer_.begin());
     }
     if (CheckNans(*msg)) {
@@ -84,45 +79,37 @@ void ImuHandler::ImuCallback(const ImuMessage::ConstPtr& msg) {
     }
 }
 
-// LAMP Interface
-// --------------------------------------------------------------------------------
+// LAMP Interface -------------------------------------------------------------------------
 
 std::shared_ptr<FactorData> ImuHandler::GetData() {
     if (b_verbosity_) ROS_INFO("ImuHandler - GetData"); 
-    std::shared_ptr<ImuData> factors_output = std::make_shared<ImuData>(factors_);
-    
+    std::shared_ptr<ImuData> factors_output = std::make_shared<ImuData>(factors_);    
     factors_output->b_has_data = false; 
-
     if (CheckBufferSize()==0) {
         ROS_WARN("Buffers are empty, returning no data");
         return factors_output;
     }
-
     ImuQuaternion imu_quaternion;
     ros::Time query_stamp_ros;
     query_stamp_ros.fromSec(query_stamp_);
-
-    if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)==true){        
-        if (b_verbosity_) ROS_INFO("Successfully extracted data from buffer");
-        Eigen::Vector3d imu_ypr = QuaternionToYpr(imu_quaternion);
+    if (GetQuaternionAtTime(query_stamp_ros, imu_quaternion)) {        
+        if (b_verbosity_) ROS_INFO("Successfully extracted data from buffer");        
+        geometry_msgs::Quaternion imu_quaternion_msg; 
+        tf::quaternionEigenToMsg(imu_quaternion, imu_quaternion_msg);
+        auto imu_ypr = QuaternionToYpr(imu_quaternion_msg);                
         ImuFactor new_factor(CreateAttitudeFactor(imu_ypr));
-
         factors_output->b_has_data = true; 
         factors_output->type = "imu";        
         factors_output->factors.push_back(new_factor);
-
         ResetFactorData();
     }
-
     else {
         factors_output->b_has_data = false; 
     }
-
     return factors_output; 
 }
 
-// Buffers
-// --------------------------------------------------------------------------------
+// Buffers --------------------------------------------------------------------------------
 
 bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {  
     if (b_verbosity_) ROS_INFO("ImuHandler - InsertMsgInBuffer");  
@@ -130,10 +117,6 @@ bool ImuHandler::InsertMsgInBuffer(const ImuMessage::ConstPtr& msg) {
     double current_time = msg->header.stamp.toSec();    
     ImuQuaternion current_quaternion;
     tf::quaternionMsgToEigen(msg->orientation, current_quaternion);
-    // Convert quaternion from imu frame to base frame, then store it 
-    if (b_convert_imu_frame_){
-        current_quaternion = I_T_B_q_*current_quaternion*I_T_B_q_.inverse(); 
-    }
     imu_buffer_.insert({current_time, current_quaternion});
     auto final_size = imu_buffer_.size();    
     if (final_size == (initial_size+1)) {
@@ -162,14 +145,13 @@ bool ImuHandler::ClearBuffer() {
     }
 }
 
-// Quaternions
-// --------------------------------------------------------------------------------
+// Quaternions ----------------------------------------------------------------------------
 
 bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_quaternion) const {
-    // TODO: Implement GetValueAtTime in base class as it is a common functionality needed by all handlers
+    // TODO: Implement template GetValueAtTime method in base class as common functionality needed by all handlers
     // TODO: ClearPreviousImuMsgsInBuffer where needed 
     if (b_verbosity_) ROS_INFO("ImuHandler - GetQuaternionAtTime"); 
-    if (imu_buffer_.size() == 0){
+    if (imu_buffer_.size() == 0) {
         return false;
     }
     auto itrTime = imu_buffer_.lower_bound(stamp.toSec());
@@ -197,6 +179,9 @@ bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_
             time_diff = stamp.toSec() - time1;
         }
     }
+
+    if (b_convert_imu_frame_) imu_quaternion = I_T_B_q_*imu_quaternion*I_T_B_q_.inverse();
+        
     if (fabs(time_diff) > ts_threshold_) { 
         ROS_WARN_STREAM("Time difference is "
                         << time_diff << "s, threshold is: " << ts_threshold_ << ", returning false");
@@ -205,23 +190,24 @@ bool ImuHandler::GetQuaternionAtTime(const ros::Time& stamp, ImuQuaternion& imu_
   return true; 
 }
 
-Eigen::Vector3d ImuHandler::QuaternionToYpr(const ImuQuaternion& imu_quaternion) const {
-    // ROS_INFO("ImuHandler - QuaternionToYpr");
-    auto ypr = imu_quaternion.toRotationMatrix().eulerAngles(2, 1, 0);
-    // Returned ypr is in radians
-    return ypr;
+Eigen::Vector3d ImuHandler::QuaternionToYpr(const geometry_msgs::Quaternion& imu_quaternion) const {
+    if (b_verbosity_) ROS_INFO("ImuHandler - QuaternionToYpr");
+    tf::Quaternion q(imu_quaternion.x, imu_quaternion.y, imu_quaternion.z, imu_quaternion.w);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    Eigen::Vector3d imu_ypr(yaw, pitch, roll);
+    return imu_ypr; // radians
 }
 
-// Factors
-// --------------------------------------------------------------------------------
+// Factors --------------------------------------------------------------------------------
 
 Pose3AttitudeFactor ImuHandler::CreateAttitudeFactor(const Eigen::Vector3d& imu_ypr) const {
     // TODO: Make sure Rot3::Ypr works with input imu_ypr data expressed in radians
     if (b_verbosity_) ROS_INFO("ImuHandler - CreateAttitudeFactor");
     Unit3 ref(0, 0, -1); 
     SharedNoiseModel model = noiseModel::Isotropic::Sigma(2, noise_sigma_imu_);    
-    // Yaw can be set to 0
-    Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2]));
+    Rot3 R_imu = Rot3::Ypr(0, double(imu_ypr[1]), double(imu_ypr[2])); // Yaw can be set to 0
     Unit3 meas = Unit3(Rot3(R_imu.transpose()).operator*(ref));
     Pose3AttitudeFactor factor(query_key_, meas, model, ref);
     return factor;
@@ -258,8 +244,7 @@ bool ImuHandler::SetKeyForImuAttitude(const Symbol& key) {
     }
 }
 
-// Transformations
-// --------------------------------------------------------------------------------
+// Transformations ------------------------------------------------------------------------
 
 bool ImuHandler::LoadCalibrationFromTfTree() {
     ROS_WARN_DELAYED_THROTTLE(2.0, 
