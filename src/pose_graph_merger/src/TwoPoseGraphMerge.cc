@@ -97,7 +97,11 @@ void TwoPoseGraphMerge::ProcessBaseGraph(const pose_graph_msgs::PoseGraphConstPt
 
   // Process again straight away 
   if (b_publish_on_slow_graph_){
-    ProcessRobotGraph(last_robot_graph_);
+    if (last_robot_graph_ != NULL){
+      ProcessRobotGraph(last_robot_graph_);
+    } else {
+      ProcessRobotGraph(msg);
+    }
   }
   return;
 }
@@ -106,15 +110,11 @@ void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstP
   // Combine the graph with the stored base graph and publish result
   pose_graph_msgs::PoseGraph merged_graph;
 
-  if (b_have_first_robot_graph_){
+  // Store the latest message
+  last_robot_graph_ = msg;
 
-    // Store the latest message
-    last_robot_graph_ = msg;
-
-    // Add new posegraph
-    merger_.OnFastGraphMsg(msg);
-
-  }
+  // Add new posegraph
+  merger_.OnFastGraphMsg(msg);
 
   // Get the fused graph
   pose_graph_msgs::PoseGraphConstPtr fused_graph(
