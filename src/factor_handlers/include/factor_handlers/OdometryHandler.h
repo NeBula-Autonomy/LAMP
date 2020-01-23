@@ -45,6 +45,8 @@ class OdometryHandler : public LampDataHandlerBase{
 
   friend class OdometryHandlerTest;
   friend class TestLampRobot;
+  friend class TestLampRobotArtifact;
+
 
 public:
 

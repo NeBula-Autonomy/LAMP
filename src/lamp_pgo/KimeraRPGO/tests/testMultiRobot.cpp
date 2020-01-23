@@ -1,6 +1,6 @@
 /**
- * @file    testDoOptimize.cpp
- * @brief   Unit test for pcm and optimize conditions
+ * @file    testMutiRobot.cpp
+ * @brief   Unit test for pcm for multirobot uses
  * @author  Yun Chang
  */
 
