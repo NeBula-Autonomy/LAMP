@@ -124,6 +124,8 @@ private:
 
   // Test class fixtures
   friend class TestLampRobot;
+  friend class TestLampRobotArtifact;
+
 
   struct Parameters {
     // Apply a voxel grid filter.
