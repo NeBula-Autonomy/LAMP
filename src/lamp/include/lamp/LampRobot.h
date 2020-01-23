@@ -120,7 +120,10 @@ private:
   bool b_artifacts_in_global_;
   bool b_use_uwb_;
   bool b_add_imu_factors_;
+  bool b_init_pg_pub_;
   int factor_count_;
+  int init_count_;
+  float init_wait_time_;
 
   // Test class fixtures
   friend class TestLampRobot;
