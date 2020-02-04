@@ -856,54 +856,29 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   m.scale.z = 0.95f;
   m.color.a = 1.0f;
 
+  m.mesh_use_embedded_materials = true;
+  
   if (artifact_label == "Backpack") {
     std::cout << "Backpack marker" << std::endl;
-    m.color.r = 1.0f;
-    m.color.g = 0.0f;
-    m.color.b = 0.0f;
-    m.type = visualization_msgs::Marker::CUBE;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/backpack.dae";
   } else if (artifact_label == "Fire Extinguisher") {
     std::cout << "fire extinguisher marker" << std::endl;
-    m.color.r = 1.0f;
-    m.color.g = 0.5f;
-    m.color.b = 0.75f;
-    m.type = visualization_msgs::Marker::SPHERE;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/fire_extinguisher.dae";
   } else if (artifact_label == "Drill") {
     std::cout << "drill marker" << std::endl;
-    m.color.r = 0.0f;
-    m.color.g = 1.0f;
-    m.color.b = 0.0f;
-    m.type = visualization_msgs::Marker::CYLINDER;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/drill.dae";
   } else if (artifact_label == "Survivor") {
     std::cout << "survivor marker" << std::endl;
-    m.color.r = 1.0f;
-    m.color.g = 1.0f;
-    m.color.b = 1.0f;
-    m.scale.x = 1.2f;
-    m.scale.y = 1.2f;
-    m.scale.z = 1.2f;
-    m.type = visualization_msgs::Marker::CYLINDER;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/survivor.dae";
   } else if (artifact_label == "Cell Phone") {
     std::cout << "cellphone marker" << std::endl;
-    m.color.r = 0.0f;
-    m.color.g = 0.0f;
-    m.color.b = 0.7f;
-    m.scale.x = 0.55f;
-    m.scale.y = 1.2f;
-    m.scale.z = 0.3f;
-    m.type = visualization_msgs::Marker::CUBE;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/cellphone.dae";
   } else if (artifact_label == "Gas") {
     std::cout << "gas marker" << std::endl;
-    m.color.r = 1.0f;
-    m.color.g = 1.0f;
-    m.color.b = 0.0f;
-    m.type = visualization_msgs::Marker::SPHERE;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/gas.dae";
   } else if (artifact_label == "Vent") {
     std::cout << "vent marker" << std::endl;
-    m.color.r = 0.0f;
-    m.color.g = 1.0f;
-    m.color.b = 1.0f;
-    m.type = visualization_msgs::Marker::SPHERE;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/vent.dae";
   } else {
     std::cout << "UNDEFINED ARTIFACT" << std::endl;
     m.color.r = 1.0f;
@@ -914,17 +889,10 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
     m.scale.z = 1.0f;
     m.type = visualization_msgs::Marker::CUBE;
   }
-
-    //   std::cout << "Fiducial marker" << std::endl;
-    // m.color.r = 1.0f;
-    // m.color.g = 1.0f;
-    // m.color.b = 1.0f;
-    // m.scale.x = 0.15f;
-    // m.scale.y = 0.7f;
-    // m.scale.z = 0.7f;
-    // m.type = visualization_msgs::Marker::CUBE;
 }
 
+
+/*
 void PoseGraphVisualizer::VisualizeArtifacts() {
   // Publish Marker with new position
   visualization_msgs::Marker marker;
@@ -979,37 +947,39 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
 
     if (artifact_label == "Backpack") {
       std::cout << "backpack marker" << std::endl;
-      marker.color.r = 1.0f;
-      marker.color.g = 0.0f;
-      marker.color.b = 0.0f;
-      marker.type = visualization_msgs::Marker::CUBE;
+      marker.scale.x = 1.0;
+      marker.scale.y = 1.0;
+      marker.scale.z = 1.0;
+      marker.mesh_use_embedded_materials = true;
+      marker.mesh_resource = "package://pose_graph_visualizer/meshes/backpack.dae";
     }
     if (artifact_label == "Fire Extinguisher") {
       std::cout << "fire extinguisher marker" << std::endl;
-      marker.color.r = 1.0f;
-      marker.color.g = 0.5f;
-      marker.color.b = 0.75f;
-      marker.type = visualization_msgs::Marker::SPHERE;
+      marker.scale.x = 1.0;
+      marker.scale.y = 1.0;
+      marker.scale.z = 1.0;
+      marker.mesh_use_embedded_materials = true;
+      marker.mesh_resource = "package://pose_graph_visualizer/meshes/fire_extinguisher.dae";
     }
     if (artifact_label == "Drill") {
       std::cout << "drill marker" << std::endl;
-      marker.color.r = 0.0f;
-      marker.color.g = 1.0f;
-      marker.color.b = 0.0f;
-      marker.type = visualization_msgs::Marker::CYLINDER;
+      marker.scale.x = 1.0;
+      marker.scale.y = 1.0;
+      marker.scale.z = 1.0;
+      marker.mesh_use_embedded_materials = true;
+      marker.mesh_resource = "package://pose_graph_visualizer/meshes/drill.dae";
     }
     if (artifact_label == "Survivor") {
       std::cout << "survivor marker" << std::endl;
-      marker.color.r = 1.0f;
-      marker.color.g = 1.0f;
-      marker.color.b = 1.0f;
-      marker.scale.x = 1.0f;
-      marker.scale.y = 1.0f;
-      marker.scale.z = 1.0f;
-      marker.type = visualization_msgs::Marker::CYLINDER;
+      marker.scale.x = 1.0;
+      marker.scale.y = 1.0;
+      marker.scale.z = 1.0;
+      marker.mesh_use_embedded_materials = true;
+      marker.mesh_resource = "package://pose_graph_visualizer/meshes/survivor.dae";
     }
     // marker.lifetime = ros::Duration();
 
     artifact_marker_pub_.publish(marker);
   }
 }
+*/
