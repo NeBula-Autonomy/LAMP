@@ -91,7 +91,7 @@ bool PointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  map_pub_ = nl.advertise<PointCloud>("octree_map", 10, false);
+  map_pub_ = nl.advertise<PointCloud>("octree_map", 10, true);
   incremental_map_pub_ =
       nl.advertise<PointCloud>("octree_map_updates", 10, false);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
