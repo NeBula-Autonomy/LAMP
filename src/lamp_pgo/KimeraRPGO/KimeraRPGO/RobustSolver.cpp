@@ -126,13 +126,53 @@ void RobustSolver::update(const gtsam::NonlinearFactorGraph& factors,
   return;
 }
 
-void RobustSolver::removeLastLoopClosure(char prefix_1, char prefix_2) {
+EdgePtr RobustSolver::removeLastLoopClosure(char prefix_1, char prefix_2) {
   ObservationId id(prefix_1, prefix_2);
+  EdgePtr removed_edge;
   if (outlier_removal_) {
     // removing loop closure so values should not change
-    outlier_removal_->removeLastLoopClosure(id, &nfg_);
+    removed_edge = outlier_removal_->removeLastLoopClosure(id, &nfg_);
   } else {
-    removeLastFactor();
+    removed_edge = removeLastFactor();
+  }
+
+  optimize();
+  return removed_edge;
+}
+
+EdgePtr RobustSolver::removeLastLoopClosure() {
+  EdgePtr removed_edge;
+  if (outlier_removal_) {
+    // removing loop closure so values should not change
+    removed_edge = outlier_removal_->removeLastLoopClosure(&nfg_);
+  } else {
+    removed_edge = removeLastFactor();
+  }
+
+  optimize();
+  return removed_edge;
+}
+
+void RobustSolver::ignorePrefix(char prefix) {
+  if (outlier_removal_) {
+    outlier_removal_->ignoreLoopClosureWithPrefix(prefix, &nfg_);
+  } else {
+    log<WARNING>(
+        "'ignorePrefix' currently not implemented for no outlier rejection "
+        "case");
+  }
+
+  optimize();
+  return;
+}
+
+void RobustSolver::revivePrefix(char prefix) {
+  if (outlier_removal_) {
+    outlier_removal_->reviveLoopClosureWithPrefix(prefix, &nfg_);
+  } else {
+    log<WARNING>(
+        "'revivePrefix' and 'ignorePrefix' currently not implemented for no "
+        "outlier rejection case");
   }
 
   optimize();
