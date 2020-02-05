@@ -39,8 +39,10 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Subscriber
   input_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_to_optimize", 1, &LampPgo::InputCallback, this);
-  remove_lc_sub_ = nl.subscribe<std_msgs::String>(
+  remove_lc_sub_ = nl.subscribe<std_msgs::Bool>(
       "remove_loop_closure", 1, &LampPgo::RemoveLCCallback, this);
+  remove_lc_by_id_sub_ = nl.subscribe<std_msgs::String>(
+      "remove_loop_closure_by_id", 1, &LampPgo::RemoveLCByIdCallback, this);
 
   // Parse parameters
   // Optimizer backend
@@ -88,23 +90,46 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 }
 
 void LampPgo::RemoveLastLoopClosure(char prefix_1, char prefix_2) {
-  pgo_solver_->removeLastLoopClosure(prefix_1, prefix_2);
+  KimeraRPGO::EdgePtr removed_edge =
+      pgo_solver_->removeLastLoopClosure(prefix_1, prefix_2);
   // Extract the optimized values
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
-  
-  ROS_INFO_STREAM("Removed last loop closure between prefixes "
-                  << prefix_1 << " and " << prefix_2);
+
+  ROS_INFO_STREAM("Removed last loop closure between "
+                  << gtsam::DefaultKeyFormatter(removed_edge->from_key)
+                  << " and "
+                  << gtsam::DefaultKeyFormatter(removed_edge->to_key));
 
   // publish posegraph
   PublishValues();
 }
 
-void LampPgo::RemoveLCCallback(const std_msgs::String::ConstPtr& msg) {
+void LampPgo::RemoveLastLoopClosure() {
+  KimeraRPGO::EdgePtr removed_edge = pgo_solver_->removeLastLoopClosure();
+  // Extract the optimized values
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  ROS_INFO_STREAM("Removed last loop closure between "
+                  << gtsam::DefaultKeyFormatter(removed_edge->from_key)
+                  << " and "
+                  << gtsam::DefaultKeyFormatter(removed_edge->to_key));
+
+  // publish posegraph
+  PublishValues();
+}
+
+void LampPgo::RemoveLCByIdCallback(const std_msgs::String::ConstPtr& msg) {
   if (msg->data.length() < 2) {
     return;  // needs two prefixes (two chars)
   }
   RemoveLastLoopClosure(msg->data[0], msg->data[1]);
+  return;
+}
+
+void LampPgo::RemoveLCCallback(const std_msgs::Bool::ConstPtr& msg) {
+  RemoveLastLoopClosure();
   return;
 }
 
