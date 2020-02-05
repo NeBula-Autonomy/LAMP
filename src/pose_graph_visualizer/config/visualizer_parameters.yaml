@@ -2,3 +2,7 @@
 # that are within this distance of the current pose.
 # (for visualisation only)
 proximity_threshold: 5
+
+
+# Option for whether or not to subscribe to the reconciled artifacts 
+b_use_base_reconciliation: true
