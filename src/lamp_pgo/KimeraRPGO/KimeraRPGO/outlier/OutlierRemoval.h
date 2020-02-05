@@ -10,6 +10,7 @@ author: Yun Chang
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/slam/BetweenFactor.h>
 #include <string>
 
 #include "KimeraRPGO/utils/type_utils.h"
@@ -49,8 +50,13 @@ class OutlierRemoval {
 
   /*! \brief Remove last measured loop closure
    */
-  virtual void removeLastLoopClosure(
+  virtual EdgePtr removeLastLoopClosure(
       ObservationId id,
+      gtsam::NonlinearFactorGraph* updated_factors) {}
+
+  /*! \brief Remove last measured loop closure regardless of obs id
+   */
+  virtual EdgePtr removeLastLoopClosure(
       gtsam::NonlinearFactorGraph* updated_factors) {}
 
  protected:

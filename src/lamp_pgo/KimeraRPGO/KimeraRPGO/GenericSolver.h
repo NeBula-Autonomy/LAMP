@@ -12,10 +12,11 @@ author: Yun Chang, Luca Carlone
 #define SLOW_BUT_CORRECT_BETWEENFACTOR
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/nonlinear/ISAM2.h>
+#include <gtsam/slam/BetweenFactor.h>
 
 #include "KimeraRPGO/SolverParams.h"
 #include "KimeraRPGO/logger.h"
+#include "KimeraRPGO/utils/type_utils.h"
 
 namespace KimeraRPGO {
 
@@ -47,7 +48,7 @@ class GenericSolver {
 
   void setQuiet() { debug_ = false; }
 
-  void removeLastFactor();  // remove last added factor
+  EdgePtr removeLastFactor();  // remove last added factor
 
  protected:
   bool addAndCheckIfOptimize(
