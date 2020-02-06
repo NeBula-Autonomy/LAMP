@@ -69,7 +69,8 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("b_artifacts_in_global", artifacts_in_global_))
     return false;
-
+  if (!pu::Get("b_use_base_reconciliation", b_use_base_reconciliation_))
+    return false;
   // Names of all robots for base station to subscribe to
   if (!pu::Get("robot_names", robot_names_)) {
   ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
@@ -159,15 +160,25 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       this);
 
   // Create subscribers for each robot
-  for (std::string robot : robot_names_) {
+  if (!b_use_base_reconciliation_){
+    ROS_INFO("Using topics directly from the robot");
+    for (std::string robot : robot_names_) {
+  
+      // artifact subs
+      artifact_sub_ = nh.subscribe(
+          "/" + robot + "/artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
 
-    // artifact subs
-    artifact_sub_ = nh.subscribe(
-        "/" + robot + "/artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
-
-    // Store the subscribers
+      // Store the subscribers
+      subscribers_artifacts_.push_back(artifact_sub_);
+    }
+  } else {
+    ROS_INFO("Using the result from base station reconciliation");
+    // Add for case where base station reconciliation is used
+    artifact_sub_ = nh.subscribe("artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
     subscribers_artifacts_.push_back(artifact_sub_);
+
   }
+
 
 
   return true;

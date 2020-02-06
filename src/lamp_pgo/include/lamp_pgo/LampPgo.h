@@ -12,6 +12,7 @@ Interface for ROS and KimeraRPGO
 
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/String.h>
 
 #include <pose_graph_msgs/PoseGraph.h>
@@ -41,13 +42,19 @@ class LampPgo {
   // revive the loop closures if ignored previously
   ros::Subscriber revive_robot_sub_;
 
+  ros::Subscriber remove_lc_by_id_sub_;
+
   void PublishValues() const;
 
   void InputCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
 
-  void RemoveLCCallback(const std_msgs::String::ConstPtr& msg);
+  void RemoveLCByIdCallback(const std_msgs::String::ConstPtr& msg);
+
+  void RemoveLCCallback(const std_msgs::Bool::ConstPtr& msg);
 
   void RemoveLastLoopClosure(char prefix_1, char prefix_2);
+
+  void RemoveLastLoopClosure();
 
   void IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg);
 
