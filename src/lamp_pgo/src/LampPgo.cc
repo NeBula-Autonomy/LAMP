@@ -41,6 +41,10 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
       "pose_graph_to_optimize", 1, &LampPgo::InputCallback, this);
   remove_lc_sub_ = nl.subscribe<std_msgs::String>(
       "remove_loop_closure", 1, &LampPgo::RemoveLCCallback, this);
+  ignore_robot_sub_ = nl.subscribe<std_msgs::String>(
+      "ignore_loop_closures", 1, &LampPgo::IgnoreRobotLoopClosures, this);
+  revive_robot_sub_ = nl.subscribe<std_msgs::String>(
+      "revive_loop_closures", 1, &LampPgo::ReviveRobotLoopClosures, this);
 
   // Parse parameters
   // Optimizer backend
@@ -220,4 +224,36 @@ void LampPgo::PublishValues() const {
   ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size()
                                                << " values");
   optimized_pub_.publish(pose_graph_msg);
+}
+
+void LampPgo::IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
+  // First convert string "huskyn" to char prefix
+  char prefix = utils::GetRobotPrefix(msg->data);
+
+  pgo_solver_->ignorePrefix(prefix);
+
+  // Extract the optimized values
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  ROS_INFO_STREAM("Ignoring all loop closures involving prefix " << prefix);
+
+  // publish posegraph
+  PublishValues();
+}
+
+void LampPgo::ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
+  // First convert string "huskyn" to char prefix
+  char prefix = utils::GetRobotPrefix(msg->data);
+
+  pgo_solver_->revivePrefix(prefix);
+
+  // Extract the optimized values
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  ROS_INFO_STREAM("Reviving all loop closures involving prefix " << prefix);
+
+  // publish posegraph
+  PublishValues();
 }

@@ -36,6 +36,10 @@ class LampPgo {
   ros::Subscriber input_sub_;
 
   ros::Subscriber remove_lc_sub_;
+  // ignore all loop closures involving this robot
+  ros::Subscriber ignore_robot_sub_;
+  // revive the loop closures if ignored previously
+  ros::Subscriber revive_robot_sub_;
 
   void PublishValues() const;
 
@@ -44,6 +48,10 @@ class LampPgo {
   void RemoveLCCallback(const std_msgs::String::ConstPtr& msg);
 
   void RemoveLastLoopClosure(char prefix_1, char prefix_2);
+
+  void IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg);
+
+  void ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg);
 
  private:
   // Optimizer parameters
