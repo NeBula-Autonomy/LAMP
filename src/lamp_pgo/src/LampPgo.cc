@@ -35,6 +35,8 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
       nl.advertise<pose_graph_msgs::PoseGraph>("optimized_values", 10, false);
   // TODO - make names uniform? - "optimized_values"(here) =
   // "back_end_pose_graph"(lamp)
+  ignored_list_pub_ =
+      nl.advertise<std_msgs::String>("ignored_prefixes", 10, true);
 
   // Subscriber
   input_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
@@ -90,6 +92,10 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // Initialize solver
   pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
+
+  // Publish ignored list once 
+  PublishIgnoredList(); 
+
   return true;
 }
 
@@ -261,10 +267,25 @@ void LampPgo::IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
+  // Double check that it is actually ignored
+  std::vector<char> ignored_prefixes = pgo_solver_->getIgnoredPrefixes();
+  if (std::find(ignored_prefixes.begin(), ignored_prefixes.end(), prefix) ==
+      ignored_prefixes.end()) {
+    ROS_ERROR_STREAM("Failed to ignore loop closures involving prefix "
+                     << prefix);
+    return;
+  }
   ROS_INFO_STREAM("Ignoring all loop closures involving prefix " << prefix);
+  // Add to ignored list
+  if (std::find(ignored_list_.begin(), ignored_list_.end(), msg->data) ==
+      ignored_list_.end()) {
+    ignored_list_.push_back(msg->data);
+  }
 
   // publish posegraph
   PublishValues();
+  // publish ignored list 
+  PublishIgnoredList();
 }
 
 void LampPgo::ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
@@ -277,8 +298,38 @@ void LampPgo::ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
+  // Double check that it is actually revived
+  std::vector<char> ignored_prefixes = pgo_solver_->getIgnoredPrefixes();
+  if (std::find(ignored_prefixes.begin(), ignored_prefixes.end(), prefix) !=
+      ignored_prefixes.end()) {
+    ROS_ERROR_STREAM("Failed to revive loop closures involving prefix "
+                     << prefix);
+    return;
+  }
   ROS_INFO_STREAM("Reviving all loop closures involving prefix " << prefix);
+  // Remove from ignored list
+  if (std::find(ignored_list_.begin(), ignored_list_.end(), msg->data) !=
+      ignored_list_.end()) {
+    ignored_list_.erase(
+        std::remove(ignored_list_.begin(), ignored_list_.end(), msg->data),
+        ignored_list_.end());
+  }
 
   // publish posegraph
   PublishValues();
+  // publish ignored list
+  PublishIgnoredList();
+}
+
+void LampPgo::PublishIgnoredList() const {
+  std::string list_str = "";
+  for (size_t i = 0; i < ignored_list_.size(); i++) {
+    list_str = list_str + ignored_list_[i] + ", ";
+  }
+
+  std_msgs::String msg; 
+  msg.data = list_str; 
+
+  ignored_list_pub_.publish(list_str);
+  return; 
 }
