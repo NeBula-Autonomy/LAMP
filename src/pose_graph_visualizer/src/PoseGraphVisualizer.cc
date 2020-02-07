@@ -859,6 +859,11 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   // the meshes, the meshes will ignore their texture materials and
   // be tinted with the assigned color and alpha
   m.mesh_use_embedded_materials = true;
+  m.color.r = 0.0f;
+  m.color.g = 0.0f;
+  m.color.b = 0.0f;
+  m.color.a = 0.0f;
+  m.type = visualization_msgs::Marker::MESH_RESOURCE;
   
   if (artifact_label == "Backpack") {
     std::cout << "Backpack marker" << std::endl;
