@@ -93,7 +93,7 @@ bool PointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
 
   map_pub_ = nl.advertise<PointCloud>("octree_map", 10, true);
   incremental_map_pub_ =
-      nl.advertise<PointCloud>("octree_map_updates", 10, false);
+      nl.advertise<PointCloud>("octree_map_updates", 10, true);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
 
   return true;
