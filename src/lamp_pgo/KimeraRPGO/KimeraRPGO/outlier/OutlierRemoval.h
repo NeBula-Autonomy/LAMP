@@ -59,6 +59,19 @@ class OutlierRemoval {
   virtual EdgePtr removeLastLoopClosure(
       gtsam::NonlinearFactorGraph* updated_factors) {}
 
+  /*! \brief Ignore all loop closures that involves certain prefix
+   */
+  virtual void ignoreLoopClosureWithPrefix(
+      char prefix,
+      gtsam::NonlinearFactorGraph* updated_factors) {}
+
+  /*! \brief add back all loop closures that involves certain prefix
+   * Basically undos ignore
+   */
+  virtual void reviveLoopClosureWithPrefix(
+      char prefix,
+      gtsam::NonlinearFactorGraph* updated_factors) {}
+
  protected:
   bool debug_ = true;
 };

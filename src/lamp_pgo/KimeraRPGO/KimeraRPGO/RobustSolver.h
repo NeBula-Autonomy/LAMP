@@ -65,6 +65,14 @@ class RobustSolver : public GenericSolver {
    */
   EdgePtr removeLastLoopClosure();
 
+  /*! \brief Ignore all loop closure with certian prefix
+   */
+  void ignorePrefix(char prefix);
+
+  /*! \brief Revive all loop closure with certian prefix
+   */
+  void revivePrefix(char prefix);
+
  private:
   std::unique_ptr<OutlierRemoval> outlier_removal_;  // outlier removal method;
 
