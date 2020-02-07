@@ -17,7 +17,7 @@
   </asset>
   <library_images>
     <image id="mapfbx" name="mapfbx">
-      <init_from>./screen_on_diffuse.png</init_from>
+      <init_from>./phone.jpg</init_from>
     </image>
   </library_images>
   <library_materials>

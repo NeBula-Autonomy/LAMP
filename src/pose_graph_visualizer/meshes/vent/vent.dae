@@ -17,7 +17,7 @@
   </asset>
   <library_images>
     <image id="mapfbx" name="mapfbx">
-      <init_from>./Vent_Albedo.png</init_from>
+      <init_from>./vent.jpg</init_from>
     </image>
   </library_images>
   <library_materials>

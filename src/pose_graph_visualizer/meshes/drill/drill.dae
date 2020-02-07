@@ -17,7 +17,7 @@
   </asset>
   <library_images>
     <image id="mapfbx" name="mapfbx">
-      <init_from>./drill_diffuse.png</init_from>
+      <init_from>./drill.jpg</init_from>
     </image>
   </library_images>
   <library_materials>

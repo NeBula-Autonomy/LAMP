@@ -17,7 +17,7 @@
   </asset>
   <library_images>
     <image id="mapfbx" name="mapfbx">
-      <init_from>RescueRandy_Diffuse.png</init_from>
+      <init_from>survivor.jpg</init_from>
     </image>
   </library_images>
   <library_materials>
