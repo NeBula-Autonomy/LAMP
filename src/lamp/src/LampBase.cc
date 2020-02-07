@@ -344,7 +344,7 @@ bool LampBase::AddTransformedPointCloudToMap(const gtsam::Symbol key) {
 
 bool LampBase::PublishPoseGraph( bool b_publish_incremental) {
   // Incremental publishing
-  if (b_publish_incremental && pose_graph_incremental_pub_.getNumSubscribers() > 0) {
+  if (b_publish_incremental)  {
     // Convert new parts of the pose-graph to messages
     pose_graph_msgs::PoseGraphConstPtr g_inc = pose_graph_.ToIncrementalMsg();
     // TODO - change interface to just take a flag? Then do the clear in there?
@@ -361,16 +361,14 @@ bool LampBase::PublishPoseGraph( bool b_publish_incremental) {
   }
 
   // Full pose graph publishing
-  if (pose_graph_pub_.getNumSubscribers() > 0) {
-    // Convert master pose-graph to messages
-    pose_graph_msgs::PoseGraphConstPtr g_full = pose_graph_.ToMsg();
+  // Convert master pose-graph to messages
+  pose_graph_msgs::PoseGraphConstPtr g_full = pose_graph_.ToMsg();
 
-    // Publish
-    pose_graph_pub_.publish(*g_full);
-    ROS_INFO_STREAM("Publishing full graph with "
-                    << g_full->nodes.size() << " nodes and "
-                    << g_full->edges.size() << " edges");
-  }
+  // Publish
+  pose_graph_pub_.publish(*g_full);
+  ROS_INFO_STREAM("Publishing full graph with "
+                  << g_full->nodes.size() << " nodes and "
+                  << g_full->edges.size() << " edges");
 
   return true;
 }
