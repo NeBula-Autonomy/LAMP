@@ -179,6 +179,18 @@ void RobustSolver::revivePrefix(char prefix) {
   return;
 }
 
+std::vector<char> RobustSolver::getIgnoredPrefixes() {
+  if (outlier_removal_) {
+    return outlier_removal_->getIgnoredPrefixes();
+  } else {
+    log<WARNING>(
+        "'revivePrefix' and 'ignorePrefix' currently not implemented for no "
+        "outlier rejection case");
+  }
+  std::vector<char> empty;
+  return empty;
+}
+
 void RobustSolver::saveData(std::string folder_path) const {
   std::string g2o_file_path = folder_path + "/result.g2o";
   gtsam::writeG2o(nfg_, values_, g2o_file_path);
