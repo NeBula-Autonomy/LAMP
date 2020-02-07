@@ -36,7 +36,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // TODO - make names uniform? - "optimized_values"(here) =
   // "back_end_pose_graph"(lamp)
   ignored_list_pub_ =
-      nl.advertise<std_msgs::String>("ignored_prefixes", 10, true);
+      nl.advertise<std_msgs::String>("ignored_robots", 10, true);
 
   // Subscriber
   input_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
