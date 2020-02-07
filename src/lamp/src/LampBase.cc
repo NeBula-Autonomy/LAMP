@@ -110,9 +110,9 @@ bool LampBase::SetFactorPrecisions() {
 bool LampBase::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   pose_graph_pub_ =
-      nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, false);
+      nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, true);
   pose_graph_incremental_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
-      "pose_graph_incremental", 10, false);
+      "pose_graph_incremental", 10, true);
 }
 
 bool LampBase::InitializeHandlers(const ros::NodeHandle& n) {

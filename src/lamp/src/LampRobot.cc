@@ -194,9 +194,9 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
 
   // Pose Graph publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
-      "pose_graph_to_optimize", 10, false);
+      "pose_graph_to_optimize", 10, true);
   keyed_scan_pub_ =
-      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, true);
 
   // Publishers
   pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>("lamp_pose", 10, false);
