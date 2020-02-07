@@ -41,13 +41,13 @@ std::string TwoPoseGraphMerge::GetRobotName(const ros::NodeHandle& n) {
 bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   merged_graph_pub_ =
-      nl.advertise<pose_graph_msgs::PoseGraph>("merged_pose_graph", 10, false);
+      nl.advertise<pose_graph_msgs::PoseGraph>("merged_pose_graph", 10, true);
   rob_node_pose_pub_ =
-      nl.advertise<geometry_msgs::PoseStamped>("robot_last_node_pose", 10, false);
+      nl.advertise<geometry_msgs::PoseStamped>("robot_last_node_pose", 10, true);
   merged_node_pose_pub_ =
-      nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, false);
+      nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, true);
   merged_pose_pub_ = 
-      nl.advertise<geometry_msgs::PoseStamped>("merged_pose", 10, false);
+      nl.advertise<geometry_msgs::PoseStamped>("merged_pose", 10, true);
 }
 
 // Create Subscribers
