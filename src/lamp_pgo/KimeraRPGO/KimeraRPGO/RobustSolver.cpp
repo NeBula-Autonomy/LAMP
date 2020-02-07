@@ -153,6 +153,32 @@ EdgePtr RobustSolver::removeLastLoopClosure() {
   return removed_edge;
 }
 
+void RobustSolver::ignorePrefix(char prefix) {
+  if (outlier_removal_) {
+    outlier_removal_->ignoreLoopClosureWithPrefix(prefix, &nfg_);
+  } else {
+    log<WARNING>(
+        "'ignorePrefix' currently not implemented for no outlier rejection "
+        "case");
+  }
+
+  optimize();
+  return;
+}
+
+void RobustSolver::revivePrefix(char prefix) {
+  if (outlier_removal_) {
+    outlier_removal_->reviveLoopClosureWithPrefix(prefix, &nfg_);
+  } else {
+    log<WARNING>(
+        "'revivePrefix' and 'ignorePrefix' currently not implemented for no "
+        "outlier rejection case");
+  }
+
+  optimize();
+  return;
+}
+
 void RobustSolver::saveData(std::string folder_path) const {
   std::string g2o_file_path = folder_path + "/result.g2o";
   gtsam::writeG2o(nfg_, values_, g2o_file_path);
