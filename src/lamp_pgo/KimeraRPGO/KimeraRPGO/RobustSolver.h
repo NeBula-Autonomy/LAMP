@@ -8,6 +8,7 @@ author: Yun Chang, Luca Carlone
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -72,6 +73,10 @@ class RobustSolver : public GenericSolver {
   /*! \brief Revive all loop closure with certian prefix
    */
   void revivePrefix(char prefix);
+
+  /*! \brief Get the list of ignored prefix
+   */
+  std::vector<char> getIgnoredPrefixes();
 
  private:
   std::unique_ptr<OutlierRemoval> outlier_removal_;  // outlier removal method;

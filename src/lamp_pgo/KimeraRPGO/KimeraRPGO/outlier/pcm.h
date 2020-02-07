@@ -309,6 +309,10 @@ class Pcm : public OutlierRemoval {
     *updated_factors = buildGraphToOptimize();
   }
 
+  /*! \brief Get the vector of currently ignored prefixes
+   */
+  inline std::vector<char> getIgnoredPrefixes() { return ignored_prefixes_; }
+
  protected:
   /*! \brief goes through the loop closures and updates the corresponding
    * adjacency matrices, in preparation for max clique

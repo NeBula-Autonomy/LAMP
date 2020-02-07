@@ -7,6 +7,7 @@
 #include <CppUnitLite/TestHarness.h>
 #include <memory>
 #include <random>
+#include <vector>
 
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>
@@ -156,10 +157,11 @@ TEST(RobustSolver, IgnoreSinglePrefixA) {
       est.at<gtsam::Pose3>(gtsam::Symbol('a', 5)),
       10e-6));
 
-  // Ignore all loop closures with prefix b
+  // Ignore all loop closures with prefix a
   pgo->ignorePrefix('a');
   nfg = pgo->getFactorsUnsafe();
   est = pgo->calculateEstimate();
+  std::vector<char> ignored_prefixes = pgo->getIgnoredPrefixes();
   EXPECT(nfg.size() == size_t(12));
   EXPECT(est.size() == size_t(12));
   EXPECT(
@@ -170,11 +172,14 @@ TEST(RobustSolver, IgnoreSinglePrefixA) {
       gtsam::Pose3(gtsam::Rot3(0, 0, 0, 1), gtsam::Point3(4, 1, 0)),
       est.at<gtsam::Pose3>(gtsam::Symbol('a', 5)),
       10e-6));
+  EXPECT(ignored_prefixes.size() == size_t(1));
+  EXPECT(ignored_prefixes[0] == 'a');
 
-  // Revive all loop closures with prefix b
+  // Revive all loop closures with prefix a
   pgo->revivePrefix('a');
   nfg = pgo->getFactorsUnsafe();
   est = pgo->calculateEstimate();
+  ignored_prefixes = pgo->getIgnoredPrefixes();
   EXPECT(nfg.size() == size_t(14));
   EXPECT(est.size() == size_t(12));
   EXPECT(gtsam::assert_equal(
@@ -183,6 +188,7 @@ TEST(RobustSolver, IgnoreSinglePrefixA) {
       gtsam::Pose3(gtsam::Rot3(0, 0, 0, 1), gtsam::Point3(4, 0, 0)),
       est.at<gtsam::Pose3>(gtsam::Symbol('a', 5)),
       10e-6));
+  EXPECT(ignored_prefixes.size() == size_t(0));
 }
 
 /* ************************************************************************* */
@@ -242,6 +248,7 @@ TEST(RobustSolver, IgnoreSinglePrefixB) {
   pgo->ignorePrefix('b');
   nfg = pgo->getFactorsUnsafe();
   est = pgo->calculateEstimate();
+  std::vector<char> ignored_prefixes = pgo->getIgnoredPrefixes();
   EXPECT(nfg.size() == size_t(13));
   EXPECT(est.size() == size_t(12));
   EXPECT(
@@ -252,11 +259,14 @@ TEST(RobustSolver, IgnoreSinglePrefixB) {
       gtsam::Pose3(gtsam::Rot3(0, 0, 0, 1), gtsam::Point3(4, 0, 0)),
       est.at<gtsam::Pose3>(gtsam::Symbol('a', 5)),
       10e-6));
+  EXPECT(ignored_prefixes.size() == size_t(1));
+  EXPECT(ignored_prefixes[0] == 'b');
 
   // Revive all loop closures with prefix b
   pgo->revivePrefix('b');
   nfg = pgo->getFactorsUnsafe();
   est = pgo->calculateEstimate();
+  ignored_prefixes = pgo->getIgnoredPrefixes();
   EXPECT(nfg.size() == size_t(14));
   EXPECT(est.size() == size_t(12));
   EXPECT(gtsam::assert_equal(
@@ -265,6 +275,7 @@ TEST(RobustSolver, IgnoreSinglePrefixB) {
       gtsam::Pose3(gtsam::Rot3(0, 0, 0, 1), gtsam::Point3(4, 0, 0)),
       est.at<gtsam::Pose3>(gtsam::Symbol('a', 5)),
       10e-6));
+  EXPECT(ignored_prefixes.size() == size_t(0));
 }
 
 /* ************************************************************************* */
