@@ -47,7 +47,7 @@ bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
   merged_node_pose_pub_ =
       nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, true);
   merged_pose_pub_ = 
-      nl.advertise<geometry_msgs::PoseStamped>("merged_pose", 10, true);
+      nl.advertise<geometry_msgs::PoseStamped>("merged_pose", 10, false);
 }
 
 // Create Subscribers
