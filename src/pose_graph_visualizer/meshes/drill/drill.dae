@@ -12,7 +12,7 @@
     <revision/>
     <subject/>
     <title/>
-    <unit meter="0.010000" name="centimeter"/>
+    <unit meter="0.040000" name="centimeter"/>
     <up_axis>Z_UP</up_axis>
   </asset>
   <library_images>
@@ -12623,7 +12623,7 @@
   <library_visual_scenes>
     <visual_scene id="Drill" name="Drill">
       <node name="Drill" id="Drill" sid="Drill">
-        <matrix sid="matrix">1.000000 0.000000 0.000000 -0.000002 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 -0.000002 0.000000 0.000000 0.000000 1.000000</matrix>
+        <matrix sid="matrix">1.000000 0.000000 0.000000 -0.000002 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 -12.000000 0.000000 0.000000 0.000000 1.000000</matrix>
         <instance_geometry url="#Drill-lib">
           <bind_material>
             <technique_common>

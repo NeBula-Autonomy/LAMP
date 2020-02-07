@@ -12,7 +12,7 @@
     <revision/>
     <subject/>
     <title/>
-    <unit meter="0.010000" name="centimeter"/>
+    <unit meter="0.030000" name="centimeter"/>
     <up_axis>Z_UP</up_axis>
   </asset>
   <library_images>
@@ -8242,7 +8242,7 @@
   <library_visual_scenes>
     <visual_scene id="Extinguisher" name="Extinguisher">
       <node name="Extinguisher" id="Extinguisher" layer="LP" sid="Extinguisher">
-        <matrix sid="matrix">1.000000 0.000000 0.000000 -3.546100 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 -0.649995 0.000000 0.000000 0.000000 1.000000</matrix>
+        <matrix sid="matrix">1.000000 0.000000 0.000000 -3.546100 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 -15.000000 0.000000 0.000000 0.000000 1.000000</matrix>
         <instance_geometry url="#Extinguisher-lib">
           <bind_material>
             <technique_common>

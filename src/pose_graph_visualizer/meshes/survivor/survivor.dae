@@ -12,7 +12,7 @@
     <revision/>
     <subject/>
     <title/>
-    <unit meter="0.00010000" name="millimeter"/>
+    <unit meter="0.00018000" name="millimeter"/>
     <up_axis>Z_UP</up_axis>
   </asset>
   <library_images>
@@ -24168,7 +24168,7 @@
   <library_visual_scenes>
     <visual_scene id="RescueRandy_Sitting" name="RescueRandy_Sitting">
       <node name="RescueRandy_Sitting" id="RescueRandy_Sitting" sid="RescueRandy_Sitting">
-        <matrix sid="matrix">1.000000 0.000000 0.000000 0.000000 -0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 -6500.000000 0.000000 0.000000 0.000000 1.000000</matrix>
+        <matrix sid="matrix">1.000000 0.000000 0.000000 0.000000 -0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 -9000.000000 0.000000 0.000000 0.000000 1.000000</matrix>
         <instance_geometry url="#RescueRandy_Sitting-lib">
           <bind_material>
             <technique_common>

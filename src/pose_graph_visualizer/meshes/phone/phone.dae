@@ -12,7 +12,7 @@
     <revision/>
     <subject/>
     <title/>
-    <unit meter="0.010000" name="centimeter"/>
+    <unit meter="0.080000" name="centimeter"/>
     <up_axis>Z_UP</up_axis>
   </asset>
   <library_images>
@@ -3103,7 +3103,11 @@
   <library_visual_scenes>
     <visual_scene id="J8" name="J8">
       <node name="J8" id="J8" sid="J8">
-        <matrix sid="matrix">1.000000 0.000000 0.000000 0.000000 0.000000 -0.000000 -1.000000 0.000000 0.000000 1.000000 -0.000000 0.000000 0.000000 0.000000 0.000000 1.000000</matrix>
+        <matrix sid="matrix">
+          0.000000 1.000000 0.000000 0.000000
+          -1.000000 -0.000000 0.000000 0.000000
+          0.000000 0.000000 1.000000 0.000000
+        0.000000 0.000000 0.000000 1.000000</matrix>
         <instance_geometry url="#J8-lib">
           <bind_material>
             <technique_common>
