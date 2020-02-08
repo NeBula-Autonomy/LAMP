@@ -1,2 +1,3 @@
 map:
   octree_resolution: 0.001
+  b_publish_only_with_subscribers: true

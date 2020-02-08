@@ -147,12 +147,6 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
     return false;
   }
 
-  // Set the initial position (from fiducials) - also inits the pose-graph
-  if (!SetInitialPosition()) {
-    ROS_ERROR("SetInitialPosition failed");
-    return false;
-  }
-
   // Timestamp to keys initialization (initilization is particular to the robot
   // version of lamp)
   ros::Time stamp = ros::Time::now();
@@ -161,6 +155,15 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
   // Set initial key
   pose_graph_.key = pose_graph_.initial_key + 1;
+
+  // Set the initial position (from fiducials) - also inits the pose-graph
+  if (!SetInitialPosition()) {
+    ROS_ERROR("SetInitialPosition failed");
+    return false;
+  }
+
+  b_has_new_factor_ = false;
+
 
   return true;
 }
@@ -194,9 +197,9 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
 
   // Pose Graph publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
-      "pose_graph_to_optimize", 10, false);
+      "pose_graph_to_optimize", 10, true);
   keyed_scan_pub_ =
-      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, true);
 
   // Publishers
   pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>("lamp_pose", 10, false);
@@ -299,8 +302,8 @@ bool LampRobot::InitializeGraph(
     gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
   pose_graph_.Initialize(GetInitialKey(), pose, covariance);
 
-  // Publish the first pose
-  PublishPoseGraph(true);
+  // // Publish the first pose
+  // PublishPoseGraph(true);
 
   return true;
 }
@@ -388,6 +391,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Publish the pose graph
   if (b_has_new_factor_) {
+    ROS_INFO("Have new factor, publishing pose-graph");
     PublishPoseGraph();
 
     // Publish the full map (for debug)
@@ -466,7 +470,8 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  // Record new factor being added - need to publish pose graph
+  // Record new factor being added - need to publish pose graph(
+  ROS_INFO("Have Odom Factor");
   b_has_new_factor_ = true;
 
   // process data for each new factor
@@ -671,6 +676,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
+  ROS_INFO("Have Artifact Factor");
   b_has_new_factor_ = true;
 
   // Necessary variables
@@ -788,6 +794,7 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
+  ROS_INFO("Have April Factor");
   b_has_new_factor_ = true;
 
   // Necessary variables
