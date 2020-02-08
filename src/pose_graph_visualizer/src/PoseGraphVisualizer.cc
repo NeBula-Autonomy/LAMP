@@ -46,7 +46,6 @@ bool PoseGraphVisualizer::Initialize(const ros::NodeHandle& nh,
   ROS_INFO("PoseGraphVisualizer: Initializing");
   name_ = ros::names::append(pnh.getNamespace(), "PoseGraphVisualizer");
 
-
   if (!LoadParameters(pnh)) {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
     return false;
@@ -85,6 +84,9 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("proximity_threshold", proximity_threshold_))
     return false;
 
+  if (!pu::Get("use_realistic_artifact_models", use_realistic_artifact_models_))
+    return false;
+  
   // Initialize interactive marker server
   if (publish_interactive_markers_) {
     server.reset(new interactive_markers::InteractiveMarkerServer(
@@ -751,7 +753,12 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       art.msg.point.header.stamp = ros::Time::now();
 
       // Populate the artifact marker
-      VisualizeSingleArtifact(m, art);
+      if (use_realistic_artifact_models_) {
+        VisualizeSingleRealisticArtifact(m, art);
+      } else {
+        VisualizeSingleSimpleArtifact(m, art);
+      }
+      
       VisualizeSingleArtifactId(m_id, art);
 
       // Publish
@@ -837,8 +844,8 @@ void PoseGraphVisualizer::VisualizeSingleArtifactId(
   return;
 }
 
-void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
-                                                  const ArtifactInfo& art) {
+void PoseGraphVisualizer::VisualizeSingleRealisticArtifact(visualization_msgs::Marker& m,
+                                                           const ArtifactInfo& art) {
   // Get class of artifact
   std::string artifact_label = art.msg.label;
 
@@ -904,7 +911,94 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
 }
 
 
-/*
+void PoseGraphVisualizer::VisualizeSingleSimpleArtifact(visualization_msgs::Marker& m,
+                                                        const ArtifactInfo& art) {
+  // Get class of artifact
+  std::string artifact_label = art.msg.label;
+
+  ROS_INFO_STREAM("Artifact label for visualization is: " << artifact_label);
+
+  m.pose.position = art.msg.point.point;
+
+  m.header.frame_id = "world";
+  m.pose.orientation.x = 0.0;
+  m.pose.orientation.y = 0.0;
+  m.pose.orientation.z = 0.0;
+  m.pose.orientation.w = 1.0;
+  m.scale.x = 0.95f;
+  m.scale.y = 0.95f;
+  m.scale.z = 0.95f;
+  m.color.a = 1.0f;
+
+  if (artifact_label == "Backpack") {
+    std::cout << "Backpack marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::CUBE;
+  } else if (artifact_label == "Fire Extinguisher") {
+    std::cout << "fire extinguisher marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 0.5f;
+    m.color.b = 0.75f;
+    m.type = visualization_msgs::Marker::SPHERE;
+  } else if (artifact_label == "Drill") {
+    std::cout << "drill marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::CYLINDER;
+  } else if (artifact_label == "Survivor") {
+    std::cout << "survivor marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.scale.x = 1.2f;
+    m.scale.y = 1.2f;
+    m.scale.z = 1.2f;
+    m.type = visualization_msgs::Marker::CYLINDER;
+  } else if (artifact_label == "Cell Phone") {
+    std::cout << "cellphone marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 0.0f;
+    m.color.b = 0.7f;
+    m.scale.x = 0.55f;
+    m.scale.y = 1.2f;
+    m.scale.z = 0.3f;
+    m.type = visualization_msgs::Marker::CUBE;
+  } else if (artifact_label == "Gas") {
+    std::cout << "gas marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+    m.type = visualization_msgs::Marker::SPHERE;
+  } else if (artifact_label == "Vent") {
+    std::cout << "vent marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.type = visualization_msgs::Marker::SPHERE;
+  } else {
+    std::cout << "UNDEFINED ARTIFACT" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.scale.x = 1.0f;
+    m.scale.y = 1.0f;
+    m.scale.z = 1.0f;
+    m.type = visualization_msgs::Marker::CUBE;
+  }
+
+    //   std::cout << "Fiducial marker" << std::endl;
+    // m.color.r = 1.0f;
+    // m.color.g = 1.0f;
+    // m.color.b = 1.0f;
+    // m.scale.x = 0.15f;
+    // m.scale.y = 0.7f;
+    // m.scale.z = 0.7f;
+    // m.type = visualization_msgs::Marker::CUBE;
+}
+
 void PoseGraphVisualizer::VisualizeArtifacts() {
   // Publish Marker with new position
   visualization_msgs::Marker marker;
@@ -993,4 +1087,3 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     artifact_marker_pub_.publish(marker);
   }
 }
-*/
