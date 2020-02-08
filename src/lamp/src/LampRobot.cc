@@ -147,12 +147,6 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
     return false;
   }
 
-  // Set the initial position (from fiducials) - also inits the pose-graph
-  if (!SetInitialPosition()) {
-    ROS_ERROR("SetInitialPosition failed");
-    return false;
-  }
-
   // Timestamp to keys initialization (initilization is particular to the robot
   // version of lamp)
   ros::Time stamp = ros::Time::now();
@@ -161,6 +155,13 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
   // Set initial key
   pose_graph_.key = pose_graph_.initial_key + 1;
+
+  // Set the initial position (from fiducials) - also inits the pose-graph
+  if (!SetInitialPosition()) {
+    ROS_ERROR("SetInitialPosition failed");
+    return false;
+  }
+
 
   return true;
 }
