@@ -376,9 +376,15 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Publish initial node again if we haven't move in 5s
   if (!b_init_pg_pub_){
     init_count_++;
-    if (init_count_ > (int)(init_wait_time_/update_rate_)){
+    if ((float)init_count_/update_rate_ > init_wait_time_){
       // Publish the pose graph
       PublishPoseGraph(true);
+
+      // Get a keyed scan
+      PointCloud::Ptr new_scan(new PointCloud);
+      odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan);
+      AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
+
       b_init_pg_pub_ = true;
     }
   }
@@ -530,40 +536,45 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
 
     if (odom_factor.b_has_point_cloud) {
       // Store the keyed scan and add it to the map
-
       // Copy input scan.
-      PointCloud::Ptr new_scan;
       new_scan = odom_factor.point_cloud;
 
-      // // TODO: Make this a tunable parameter
-      const int n_points = static_cast<int>(
-          (1.0 - params_.decimate_percentage) * new_scan->size());
-
-      // // Apply random downsampling to the keyed scan
-      pcl::RandomSample<pcl::PointXYZI> random_filter;
-      random_filter.setSample(n_points);
-      random_filter.setInputCloud(new_scan);
-      random_filter.filter(*new_scan);
-
-      // Apply voxel grid filter to the keyed scan
-      pcl::VoxelGrid<pcl::PointXYZI> grid;
-      grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
-      grid.setInputCloud(new_scan);
-      grid.filter(*new_scan);
-
-      pose_graph_.InsertKeyedScan(current_key, new_scan);
-
-      AddTransformedPointCloudToMap(current_key);
-
-      // publish keyed scan
-      pose_graph_msgs::KeyedScan keyed_scan_msg;
-      keyed_scan_msg.key = current_key;
-      pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
-      keyed_scan_pub_.publish(keyed_scan_msg);
+      // Add to keyed scans and publish
+      AddKeyedScanAndPublish(new_scan, current_key);
+      
     }
   }
 
   return true;
+}
+
+void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan, gtsam::Symbol current_key){
+  // Filter and publish scan
+  const int n_points = static_cast<int>(
+      (1.0 - params_.decimate_percentage) * new_scan->size());
+
+  // // Apply random downsampling to the keyed scan
+  pcl::RandomSample<pcl::PointXYZI> random_filter;
+  random_filter.setSample(n_points);
+  random_filter.setInputCloud(new_scan);
+  random_filter.filter(*new_scan);
+
+  // Apply voxel grid filter to the keyed scan
+  // TODO - have option to turn on and off keyed scans
+  pcl::VoxelGrid<pcl::PointXYZI> grid;
+  grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
+  grid.setInputCloud(new_scan);
+  grid.filter(*new_scan);
+
+  pose_graph_.InsertKeyedScan(current_key, new_scan);
+
+  AddTransformedPointCloudToMap(current_key);
+
+  // publish keyed scan
+  pose_graph_msgs::KeyedScan keyed_scan_msg;
+  keyed_scan_msg.key = current_key;
+  pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
+  keyed_scan_pub_.publish(keyed_scan_msg);
 }
 
 // Odometry update
