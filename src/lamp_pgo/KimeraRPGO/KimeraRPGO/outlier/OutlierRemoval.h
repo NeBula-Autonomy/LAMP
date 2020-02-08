@@ -12,6 +12,7 @@ author: Yun Chang
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <string>
+#include <vector>
 
 #include "KimeraRPGO/utils/type_utils.h"
 
@@ -71,6 +72,10 @@ class OutlierRemoval {
   virtual void reviveLoopClosureWithPrefix(
       char prefix,
       gtsam::NonlinearFactorGraph* updated_factors) {}
+
+  /*! \brief Get the vector of currently ignored prefixes
+   */
+  virtual inline std::vector<char> getIgnoredPrefixes() {}
 
  protected:
   bool debug_ = true;

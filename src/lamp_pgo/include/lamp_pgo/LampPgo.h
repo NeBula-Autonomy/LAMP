@@ -33,6 +33,7 @@ class LampPgo {
  private:
   // define publishers and subscribers
   ros::Publisher optimized_pub_;
+  ros::Publisher ignored_list_pub_;
 
   ros::Subscriber input_sub_;
 
@@ -60,6 +61,8 @@ class LampPgo {
 
   void ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg);
 
+  void PublishIgnoredList() const; 
+
  private:
   // Optimizer parameters
   KimeraRPGO::RobustSolverParams rpgo_params_;
@@ -73,6 +76,9 @@ class LampPgo {
 
   // Keep track of node IDs for output message (not stored by GTSAM types)
   std::map<gtsam::Key, std::string> key_to_id_map_;
+
+  // Ignored list of robots that is not fused 
+  std::vector<std::string> ignored_list_; 
 };
 
 #endif  // LAMP_PGO_H_
