@@ -302,8 +302,8 @@ bool LampRobot::InitializeGraph(
     gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
   pose_graph_.Initialize(GetInitialKey(), pose, covariance);
 
-  // Publish the first pose
-  PublishPoseGraph(true);
+  // // Publish the first pose
+  // PublishPoseGraph(true);
 
   return true;
 }
@@ -374,14 +374,14 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // ROS_INFO_STREAM("Checking for new data");
 
   // Publish initial node again if we haven't move in 5s
-  // if (!b_init_pg_pub_){
-  //   init_count_++;
-  //   if (init_count_ > (int)(init_wait_time_/update_rate_)){
-  //     // Publish the pose graph
-  //     PublishPoseGraph(true);
-  //     b_init_pg_pub_ = true;
-  //   }
-  // }
+  if (!b_init_pg_pub_){
+    init_count_++;
+    if (init_count_ > (int)(init_wait_time_/update_rate_)){
+      // Publish the pose graph
+      PublishPoseGraph(true);
+      b_init_pg_pub_ = true;
+    }
+  }
 
   // Publish odom
   UpdateAndPublishOdom();
@@ -391,6 +391,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Publish the pose graph
   if (b_has_new_factor_) {
+    ROS_INFO("Have new factor, publishing pose-graph");
     PublishPoseGraph();
 
     // Publish the full map (for debug)

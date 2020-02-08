@@ -350,14 +350,19 @@ bool LampBase::PublishPoseGraph( bool b_publish_incremental) {
     // TODO - change interface to just take a flag? Then do the clear in there?
     // - no want to make sure it is published
 
-    ROS_INFO_STREAM("Publishing incremental graph with "
-                    << g_inc->nodes.size() << " nodes and "
-                    << g_inc->edges.size() << " edges");
-    // Publish
-    pose_graph_incremental_pub_.publish(*g_inc);
+    if (g_inc->nodes.size() > 0 || g_inc->edges.size() > 0){
+      ROS_INFO_STREAM("Publishing incremental graph with "
+                      << g_inc->nodes.size() << " nodes and "
+                      << g_inc->edges.size() << " edges");
+      
+      // Publish
+      pose_graph_incremental_pub_.publish(*g_inc);
 
-    // Reset new tracking
-    pose_graph_.ClearIncrementalMessages();
+      // Reset new tracking
+      pose_graph_.ClearIncrementalMessages();
+    } else {
+      ROS_INFO("No information for incremental publishing");
+    }
   }
 
   // Full pose graph publishing
