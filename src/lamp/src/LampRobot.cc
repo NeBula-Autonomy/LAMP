@@ -162,6 +162,8 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
     return false;
   }
 
+  b_has_new_factor_ = false;
+
 
   return true;
 }
