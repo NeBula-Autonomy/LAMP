@@ -157,6 +157,8 @@ private:
 
   bool publish_interactive_markers_{true};
 
+  bool b_use_base_reconciliation_{false};
+
   // Proximity threshold used by LaserLoopClosureNode.
   double proximity_threshold_{1};
 
