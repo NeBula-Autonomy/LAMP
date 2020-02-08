@@ -176,7 +176,7 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
   } else {
     ROS_INFO("Using the result from base station reconciliation");
     // Add for case where base station reconciliation is used
-    artifact_sub_ = nh.subscribe("artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
+    artifact_sub_ = nh.subscribe("reconciled_artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
     subscribers_artifacts_.push_back(artifact_sub_);
 
   }
@@ -310,8 +310,21 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
 
   ArtifactInfo artifactinfo;
   artifactinfo.msg = msg;
+
+  if (artifacts_.count(msg.parent_id)){
+    ROS_INFO("Have a repeat observation of an existing artifact");
+    if (msg.confidence > artifacts_[msg.parent_id].msg.confidence){
+      ROS_INFO_STREAM("Updating artifact visualization, with larger confidence.\n Increasing from " << msg.confidence << " to " << artifacts_[msg.parent_id].msg.confidence);
+      artifacts_[msg.parent_id] = artifactinfo;
+    } else {
+      ROS_INFO_STREAM("Keeping old artifact with confidence " << artifacts_[msg.parent_id].msg.confidence << ", which is more than new confidence: " << msg.confidence);
+    }
+  } else {
+    ROS_INFO("New artifact");
+    artifacts_[msg.parent_id] = artifactinfo;
+  }
+
   ROS_INFO_STREAM("Artifact parent UUID is " << msg.parent_id);
-  artifacts_[msg.parent_id] = artifactinfo;
 
   // // Delay getting graph key until we have it.
   // ROS_INFO_STREAM("Artifact key is " << artifact_id2key_hash_[msg.id]);
