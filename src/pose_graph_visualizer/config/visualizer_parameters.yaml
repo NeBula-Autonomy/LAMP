@@ -2,3 +2,4 @@
 # that are within this distance of the current pose.
 # (for visualisation only)
 proximity_threshold: 5
+use_realistic_artifact_models: true
