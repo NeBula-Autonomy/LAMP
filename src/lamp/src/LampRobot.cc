@@ -376,7 +376,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Publish initial node again if we haven't move in 5s
   if (!b_init_pg_pub_){
     init_count_++;
-    if (init_count_ > (int)(init_wait_time_/update_rate_)){
+    if ((float)init_count_/update_rate_ > init_wait_time_){
       // Publish the pose graph
       PublishPoseGraph(true);
 
