@@ -371,14 +371,14 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // ROS_INFO_STREAM("Checking for new data");
 
   // Publish initial node again if we haven't move in 5s
-  if (!b_init_pg_pub_){
-    init_count_++;
-    if (init_count_ > (int)(init_wait_time_/update_rate_)){
-      // Publish the pose graph
-      PublishPoseGraph(true);
-      b_init_pg_pub_ = true;
-    }
-  }
+  // if (!b_init_pg_pub_){
+  //   init_count_++;
+  //   if (init_count_ > (int)(init_wait_time_/update_rate_)){
+  //     // Publish the pose graph
+  //     PublishPoseGraph(true);
+  //     b_init_pg_pub_ = true;
+  //   }
+  // }
 
   // Publish odom
   UpdateAndPublishOdom();
