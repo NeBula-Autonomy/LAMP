@@ -466,7 +466,8 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  // Record new factor being added - need to publish pose graph
+  // Record new factor being added - need to publish pose graph(
+  ROS_INFO("Have Odom Factor");
   b_has_new_factor_ = true;
 
   // process data for each new factor
@@ -671,6 +672,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
+  ROS_INFO("Have Artifact Factor");
   b_has_new_factor_ = true;
 
   // Necessary variables
@@ -788,6 +790,7 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
+  ROS_INFO("Have April Factor");
   b_has_new_factor_ = true;
 
   // Necessary variables
