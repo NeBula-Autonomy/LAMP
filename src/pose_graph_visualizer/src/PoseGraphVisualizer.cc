@@ -87,6 +87,10 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("use_realistic_artifact_models", use_realistic_artifact_models_))
     return false;
+
+  if (!pu::Get("b_scale_artifacts_with_confidence", b_scale_artifacts_with_confidence_))
+    return false;
+    
   
   // Initialize interactive marker server
   if (publish_interactive_markers_) {
@@ -308,6 +312,9 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
     return;
   }
 
+  // Update id to parent ID mapping 
+  artifact_ID2ParentID_[msg.id] = msg.parent_id;
+
   ArtifactInfo artifactinfo;
   artifactinfo.msg = msg;
 
@@ -316,12 +323,16 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
     if (msg.confidence > artifacts_[msg.parent_id].msg.confidence){
       ROS_INFO_STREAM("Updating artifact visualization, with larger confidence.\n Increasing from " << msg.confidence << " to " << artifacts_[msg.parent_id].msg.confidence);
       artifacts_[msg.parent_id] = artifactinfo;
+
+      // Update current parent id to id mapping
+      current_parentID2ID_[msg.parent_id] = msg.id;
     } else {
       ROS_INFO_STREAM("Keeping old artifact with confidence " << artifacts_[msg.parent_id].msg.confidence << ", which is more than new confidence: " << msg.confidence);
     }
   } else {
     ROS_INFO("New artifact");
     artifacts_[msg.parent_id] = artifactinfo;
+    current_parentID2ID_[msg.parent_id] = msg.id;
   }
 
   ROS_INFO_STREAM("Artifact parent UUID is " << msg.parent_id);
@@ -745,8 +756,6 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       // get the gtsam key
       gtsam::Key key(entry.first);
-      m.id = key;
-      m_id.id = m.id;
 
       // ROS_INFO_STREAM("[Publishing Artifact] Artifact key (raw) is: " << entry.second);
       // ROS_INFO_STREAM("Artifact key is " << key);
@@ -758,23 +767,48 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
         continue;
       }
 
+      m.id = key;
+      m_id.id = m.id;
+
+      // Check that we have recieved the artifact
+      if (artifact_ID2ParentID_.count(entry.second) == 0){
+        ROS_WARN_STREAM("Have not recevied artifact message for artifact " << gtsam::DefaultKeyFormatter(key) << " that is in the graph yet.");
+        continue;
+      }
+
+      // Get the parent ID
+      std::string parent_id = artifact_ID2ParentID_[entry.second];
+
+      // Continue only if this ID is what is linked to an ative parent ID
+      if (entry.second != current_parentID2ID_[parent_id]){
+        ROS_INFO_STREAM("Artifact with ID: " << entry.second << " is not the active artifact for parent id: " << parent_id);
+        continue;
+      }
+
       // TODO only publish what has changed
       ROS_INFO_STREAM("Artifact key to publish is "
                       << gtsam::DefaultKeyFormatter(key));
 
-      ROS_INFO_STREAM("ID from key for the artifact is: " << entry.second);
+      ROS_INFO_STREAM("ID from key for the artifact is: " << entry.second << ", with parent id " << parent_id);
 
       // Get the artifact information
-      if (artifacts_.find(entry.second) == artifacts_.end()){
+      if (artifacts_.find(parent_id) == artifacts_.end()){
         ROS_WARN_STREAM("No artifact info for artifact that is in the graph, key: " << gtsam::DefaultKeyFormatter(key));
         continue;
       }
 
-      ArtifactInfo art = artifacts_[entry.second];
+      ArtifactInfo art = artifacts_[parent_id];
 
       // Update the artifact position from the graph
       art.msg.point.point = GetPositionMsg(gtsam::Symbol(key));
       art.msg.point.header.stamp = ros::Time::now();
+
+      if (art.msg.confidence < 60.0){
+        confidence_scale_ = 0.90;
+      } else {
+        // Scale by confidence
+        confidence_scale_ = 0.90 + (art.msg.confidence - 60.0)*(2.0 - 0.9)/40.0;
+      }
 
       // Populate the artifact marker
       if (use_realistic_artifact_models_) {
@@ -882,9 +916,14 @@ void PoseGraphVisualizer::VisualizeSingleRealisticArtifact(visualization_msgs::M
   m.pose.orientation.y = 0.0;
   m.pose.orientation.z = 0.0;
   m.pose.orientation.w = 1.0;
-  m.scale.x = 0.95f;
-  m.scale.y = 0.95f;
-  m.scale.z = 0.95f;
+
+  float scale = 0.95;
+  if (b_scale_artifacts_with_confidence_){
+    scale = confidence_scale_;
+  }
+  m.scale.x = scale;
+  m.scale.y = scale;
+  m.scale.z = scale;
 
   // Please note: if color is set to anything other than 0,0,0,0 for
   // the meshes, the meshes will ignore their texture materials and
@@ -949,9 +988,13 @@ void PoseGraphVisualizer::VisualizeSingleSimpleArtifact(visualization_msgs::Mark
   m.pose.orientation.y = 0.0;
   m.pose.orientation.z = 0.0;
   m.pose.orientation.w = 1.0;
-  m.scale.x = 0.95f;
-  m.scale.y = 0.95f;
-  m.scale.z = 0.95f;
+  float scale = 0.95;
+  if (b_scale_artifacts_with_confidence_){
+    scale = confidence_scale_;
+  }
+  m.scale.x = scale;
+  m.scale.y = scale;
+  m.scale.z = scale;
   m.color.a = 1.0f;
 
   if (artifact_label == "Backpack") {

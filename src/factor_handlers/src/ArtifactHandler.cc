@@ -127,8 +127,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   Eigen::Vector3d R_artifact_position = ComputeTransform(msg);
 
   // Get the artifact id
-  std::string artifact_id =
-      msg.parent_id; // Note that we are looking at the parent id here
+  std::string artifact_id = msg.id;
 
   // Artifact key
   gtsam::Symbol cur_artifact_key;

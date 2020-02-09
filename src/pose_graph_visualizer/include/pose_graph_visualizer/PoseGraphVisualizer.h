@@ -121,6 +121,8 @@ private:
                   // messages
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash_;
   std::unordered_map<gtsam::Key, std::string> artifact_key2id_hash_;
+  std::unordered_map<std::string, std::string> artifact_ID2ParentID_;
+  std::unordered_map<std::string, std::string> current_parentID2ID_;
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
 
   // Visualization publishers.
@@ -163,6 +165,8 @@ private:
   double proximity_threshold_{1};
 
   bool use_realistic_artifact_models_;
+  bool b_scale_artifacts_with_confidence_;
+  float confidence_scale_{1.0};
 };
 
 #endif
