@@ -575,11 +575,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     uwb_between_edges.id = 4;
     uwb_between_edges.action = visualization_msgs::Marker::ADD;
     uwb_between_edges.type = visualization_msgs::Marker::LINE_LIST;
-    uwb_between_edges.color.r = 1.0;
+    uwb_between_edges.color.r = 0.0;
     uwb_between_edges.color.g = 1.0;
     uwb_between_edges.color.b = 0.0;
     uwb_between_edges.color.a = 0.8;
-    uwb_between_edges.scale.x = 0.05;
+    uwb_between_edges.scale.x = 0.04;
     uwb_edge_between_pub_.publish(uwb_between_edges);
   }
 

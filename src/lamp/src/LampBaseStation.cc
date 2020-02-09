@@ -251,7 +251,8 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
       // Optimize on loop closures, IMU factors and artifact loop closures
       if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE || 
           (b_optimize_on_artifacts_ && e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) ||
-          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE)) {
+          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) ||
+          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN)) {
       
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;

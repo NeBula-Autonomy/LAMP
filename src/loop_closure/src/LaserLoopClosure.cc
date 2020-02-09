@@ -578,6 +578,12 @@ void LaserLoopClosure::SeedCallback(
     PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges);
   }
 
+  if (msg->edges[0].type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+    for (auto& edge : loop_closure_edges) {
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN;
+    }
+  } 
+
   // Publish the successful edges if there are any
   if (loop_closure_edges.size() > 0) {
     PublishLoopClosures(loop_closure_edges);
