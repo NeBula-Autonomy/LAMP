@@ -147,12 +147,6 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
     return false;
   }
 
-  // Set the initial position (from fiducials) - also inits the pose-graph
-  if (!SetInitialPosition()) {
-    ROS_ERROR("SetInitialPosition failed");
-    return false;
-  }
-
   // Timestamp to keys initialization (initilization is particular to the robot
   // version of lamp)
   ros::Time stamp = ros::Time::now();
@@ -161,6 +155,15 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
   // Set initial key
   pose_graph_.key = pose_graph_.initial_key + 1;
+
+  // Set the initial position (from fiducials) - also inits the pose-graph
+  if (!SetInitialPosition()) {
+    ROS_ERROR("SetInitialPosition failed");
+    return false;
+  }
+
+  b_has_new_factor_ = false;
+
 
   return true;
 }
@@ -194,9 +197,9 @@ bool LampRobot::CreatePublishers(const ros::NodeHandle& n) {
 
   // Pose Graph publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
-      "pose_graph_to_optimize", 10, false);
+      "pose_graph_to_optimize", 10, true);
   keyed_scan_pub_ =
-      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, true);
 
   // Publishers
   pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>("lamp_pose", 10, false);
@@ -299,8 +302,8 @@ bool LampRobot::InitializeGraph(
     gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
   pose_graph_.Initialize(GetInitialKey(), pose, covariance);
 
-  // Publish the first pose
-  PublishPoseGraph(true);
+  // // Publish the first pose
+  // PublishPoseGraph(true);
 
   return true;
 }
@@ -373,9 +376,15 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Publish initial node again if we haven't move in 5s
   if (!b_init_pg_pub_){
     init_count_++;
-    if (init_count_ > (int)(init_wait_time_/update_rate_)){
+    if ((float)init_count_/update_rate_ > init_wait_time_){
       // Publish the pose graph
       PublishPoseGraph(true);
+
+      // Get a keyed scan
+      PointCloud::Ptr new_scan(new PointCloud);
+      odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan);
+      AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
+
       b_init_pg_pub_ = true;
     }
   }
@@ -388,6 +397,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Publish the pose graph
   if (b_has_new_factor_) {
+    ROS_INFO("Have new factor, publishing pose-graph");
     PublishPoseGraph();
 
     // Publish the full map (for debug)
@@ -466,7 +476,8 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  // Record new factor being added - need to publish pose graph
+  // Record new factor being added - need to publish pose graph(
+  ROS_INFO("Have Odom Factor");
   b_has_new_factor_ = true;
 
   // process data for each new factor
@@ -525,40 +536,45 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
 
     if (odom_factor.b_has_point_cloud) {
       // Store the keyed scan and add it to the map
-
       // Copy input scan.
-      PointCloud::Ptr new_scan;
       new_scan = odom_factor.point_cloud;
 
-      // // TODO: Make this a tunable parameter
-      const int n_points = static_cast<int>(
-          (1.0 - params_.decimate_percentage) * new_scan->size());
-
-      // // Apply random downsampling to the keyed scan
-      pcl::RandomSample<pcl::PointXYZI> random_filter;
-      random_filter.setSample(n_points);
-      random_filter.setInputCloud(new_scan);
-      random_filter.filter(*new_scan);
-
-      // Apply voxel grid filter to the keyed scan
-      pcl::VoxelGrid<pcl::PointXYZI> grid;
-      grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
-      grid.setInputCloud(new_scan);
-      grid.filter(*new_scan);
-
-      pose_graph_.InsertKeyedScan(current_key, new_scan);
-
-      AddTransformedPointCloudToMap(current_key);
-
-      // publish keyed scan
-      pose_graph_msgs::KeyedScan keyed_scan_msg;
-      keyed_scan_msg.key = current_key;
-      pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
-      keyed_scan_pub_.publish(keyed_scan_msg);
+      // Add to keyed scans and publish
+      AddKeyedScanAndPublish(new_scan, current_key);
+      
     }
   }
 
   return true;
+}
+
+void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan, gtsam::Symbol current_key){
+  // Filter and publish scan
+  const int n_points = static_cast<int>(
+      (1.0 - params_.decimate_percentage) * new_scan->size());
+
+  // // Apply random downsampling to the keyed scan
+  pcl::RandomSample<pcl::PointXYZI> random_filter;
+  random_filter.setSample(n_points);
+  random_filter.setInputCloud(new_scan);
+  random_filter.filter(*new_scan);
+
+  // Apply voxel grid filter to the keyed scan
+  // TODO - have option to turn on and off keyed scans
+  pcl::VoxelGrid<pcl::PointXYZI> grid;
+  grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
+  grid.setInputCloud(new_scan);
+  grid.filter(*new_scan);
+
+  pose_graph_.InsertKeyedScan(current_key, new_scan);
+
+  AddTransformedPointCloudToMap(current_key);
+
+  // publish keyed scan
+  pose_graph_msgs::KeyedScan keyed_scan_msg;
+  keyed_scan_msg.key = current_key;
+  pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
+  keyed_scan_pub_.publish(keyed_scan_msg);
 }
 
 // Odometry update
@@ -671,6 +687,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
+  ROS_INFO("Have Artifact Factor");
   b_has_new_factor_ = true;
 
   // Necessary variables
@@ -788,6 +805,7 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
+  ROS_INFO("Have April Factor");
   b_has_new_factor_ = true;
 
   // Necessary variables

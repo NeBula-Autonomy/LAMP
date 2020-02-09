@@ -89,6 +89,7 @@ private:
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // Example use:
     // ProcessArtifactData(artifact_handler_.GetData());
+    void AddKeyedScanAndPublish(PointCloud::Ptr new_scan, gtsam::Symbol current_key);
 
   void HandleRelativePoseMeasurement(const ros::Time& time,
                                      const gtsam::Pose3& relative_pose,

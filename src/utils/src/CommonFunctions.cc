@@ -64,14 +64,14 @@ GtsamToRosMsg(ros::Time stamp,
   prior.header.frame_id = fixed_frame_id;
   prior.header.stamp = stamp;
   prior.pose = gr::ToRosPose(ToGu(pose));
-  ROS_INFO_STREAM("[GtsamToRosMsg] Quaternion before norm is " << prior.pose.orientation);
+  // ROS_INFO_STREAM("[GtsamToRosMsg] Quaternion before norm is " << prior.pose.orientation);
   double norm = pow(prior.pose.orientation.x*prior.pose.orientation.x+prior.pose.orientation.y*prior.pose.orientation.y+prior.pose.orientation.z*prior.pose.orientation.z + prior.pose.orientation.w*prior.pose.orientation.w,0.5);
   prior.pose.orientation.x = prior.pose.orientation.x/norm;
   prior.pose.orientation.y = prior.pose.orientation.y/norm;
   prior.pose.orientation.z = prior.pose.orientation.z/norm;
   prior.pose.orientation.w = prior.pose.orientation.w/norm;
   // TODO set prior.ID
-  ROS_INFO_STREAM("[GtsamToRosMsg] Quaternion after norm is " << prior.pose.orientation);
+  // ROS_INFO_STREAM("[GtsamToRosMsg] Quaternion after norm is " << prior.pose.orientation);
 
   // Update the covariance
   UpdateCovariance(prior, covariance);

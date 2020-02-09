@@ -77,8 +77,10 @@ public:
     core_msgs::Artifact msg;
   };
 
-  void VisualizeSingleArtifact(visualization_msgs::Marker& m,
-                               const ArtifactInfo& art);
+  void VisualizeSingleRealisticArtifact(visualization_msgs::Marker& m,
+                                        const ArtifactInfo& art);
+  void VisualizeSingleSimpleArtifact(visualization_msgs::Marker& m,
+                                     const ArtifactInfo& art);
   void VisualizeSingleArtifactId(visualization_msgs::Marker& m,
                                  const ArtifactInfo& art);
 
@@ -159,6 +161,8 @@ private:
 
   // Proximity threshold used by LaserLoopClosureNode.
   double proximity_threshold_{1};
+
+  bool use_realistic_artifact_models_;
 };
 
 #endif
