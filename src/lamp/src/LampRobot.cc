@@ -91,8 +91,9 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("init_wait_time", init_wait_time_))
     return false;
+  if (!pu::Get("repub_first_wait_time", repub_first_wait_time_))
+    return false;
     
-
   // Settings for precisions
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
@@ -373,19 +374,29 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Print some debug messages
   // ROS_INFO_STREAM("Checking for new data");
 
-  // Publish initial node again if we haven't move in 5s
-  if (!b_init_pg_pub_){
+  // Publish initial node again if we haven't moved in 5s
+  if (!b_have_received_first_pg_){
     init_count_++;
-    if ((float)init_count_/update_rate_ > init_wait_time_){
-      // Publish the pose graph
+    if (!b_init_pg_pub_){
+      if ((float)init_count_/update_rate_ > init_wait_time_){
+        // Publish the pose graph
+        PublishPoseGraph(true);
+
+        // Get a keyed scan
+        PointCloud::Ptr new_scan(new PointCloud);
+        odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan);
+        AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
+
+        b_init_pg_pub_ = true;
+      }
+    }
+    if (init_count % 100 == 0){
+      // Republish every 5 seconds (with 20 hz rate)
       PublishPoseGraph(true);
-
-      // Get a keyed scan
-      PointCloud::Ptr new_scan(new PointCloud);
-      odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan);
-      AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
-
-      b_init_pg_pub_ = true;
+    }
+    if ((float)init_count_/update_rate_ > repub_first_wait_time_){
+      // Placeholder to move to incremental publishing - TODO - trigger on callback from the base station
+      b_have_received_first_pg_ = true;
     }
   }
 
@@ -405,6 +416,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
     b_has_new_factor_ = false;
     if (!b_init_pg_pub_) {b_init_pg_pub_ = true;}
+    if (!b_have_received_first_pg_) {b_have_received_first_pg_ = true;}
   }
 
   // Start optimize, if needed

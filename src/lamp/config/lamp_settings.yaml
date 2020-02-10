@@ -23,6 +23,8 @@ time_threshold: 10.0
 
 # Wait time before publishing
 init_wait_time: 5.0
+# Repub full graph for this time 
+repub_first_wait_time: 5.0
 
 #######################################
 # Robot LAMP settings

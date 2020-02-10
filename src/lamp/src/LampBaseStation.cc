@@ -101,8 +101,8 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
   b_run_optimization_ = false;
   b_has_new_factor_ = false;
   b_has_new_scan_ = false;
-
-
+  b_have_received_first_pg_ = true; // True for base station
+  
   return true;
 }
 

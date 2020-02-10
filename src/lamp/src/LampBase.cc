@@ -346,7 +346,13 @@ bool LampBase::PublishPoseGraph( bool b_publish_incremental) {
   // Incremental publishing
   if (b_publish_incremental)  {
     // Convert new parts of the pose-graph to messages
-    pose_graph_msgs::PoseGraphConstPtr g_inc = pose_graph_.ToIncrementalMsg();
+    pose_graph_msgs::PoseGraphConstPtr g_inc;
+
+    if (b_have_received_first_pg_){
+      g_inc = pose_graph_.ToIncrementalMsg();
+    } else {
+      g_inc = pose_graph_.ToMsg();
+    }
     // TODO - change interface to just take a flag? Then do the clear in there?
     // - no want to make sure it is published
 
