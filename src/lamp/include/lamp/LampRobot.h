@@ -125,6 +125,7 @@ private:
   int factor_count_;
   int init_count_;
   float init_wait_time_;
+  float repub_first_wait_time_;
 
   // Test class fixtures
   friend class TestLampRobot;
