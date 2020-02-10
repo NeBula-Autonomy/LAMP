@@ -772,7 +772,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       // Check that we have recieved the artifact
       if (artifact_ID2ParentID_.count(entry.second) == 0){
-        ROS_WARN_STREAM("Have not recevied artifact message for artifact " << gtsam::DefaultKeyFormatter(key) << " that is in the graph yet.");
+        ROS_WARN_STREAM("Have not recevied artifact message for artifact " << gtsam::DefaultKeyFormatter(key) << " that is in the graph yet. Have ID: " << entry.second);
         continue;
       }
 
