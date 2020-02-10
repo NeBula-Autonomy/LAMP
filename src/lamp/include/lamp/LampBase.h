@@ -172,7 +172,7 @@ protected:
   bool b_received_optimizer_update_;
   bool b_use_fixed_covariances_;
   bool b_repub_values_after_optimization_;
-  bool b_have_recieved_first_pg_{false};
+  bool b_have_received_first_pg_{false};
 
   // Frames.
   std::string base_frame_id_;

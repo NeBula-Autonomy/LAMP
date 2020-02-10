@@ -390,9 +390,14 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
         b_init_pg_pub_ = true;
       }
     }
-    if (init_count % 100 == 0){
+    if (init_count_ % 100 == 0){
       // Republish every 5 seconds (with 20 hz rate)
       PublishPoseGraph(true);
+      
+      // Publish first point cloud
+      PointCloud::Ptr new_scan(new PointCloud);
+      odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan);
+      AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
     }
     if ((float)init_count_/update_rate_ > repub_first_wait_time_){
       // Placeholder to move to incremental publishing - TODO - trigger on callback from the base station
