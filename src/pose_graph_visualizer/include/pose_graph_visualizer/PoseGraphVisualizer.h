@@ -2,7 +2,7 @@
 #define POSE_GRAPH_VISUALIZER_H
 
 #include <ros/ros.h>
-
+#include <functional>
 #include <unordered_map>
 
 #include <pose_graph_visualizer/HighlightEdge.h>
@@ -123,6 +123,7 @@ private:
   std::unordered_map<gtsam::Key, std::string> artifact_key2id_hash_;
   std::unordered_map<std::string, std::string> artifact_ID2ParentID_;
   std::unordered_map<std::string, std::string> current_parentID2ID_;
+  std::hash<std::string> parent_id2int_;
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
 
   // Visualization publishers.
