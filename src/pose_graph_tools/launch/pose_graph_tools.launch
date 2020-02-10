@@ -1,0 +1,15 @@
+<!--DOCTYPE html-->
+<launch>
+
+  <arg name="robot_namespace" default="robot"/>
+
+  <group ns="$(arg robot_namespace)">
+
+    <node pkg="pose_graph_tools" type="pose_graph_tools" name="pose_graph_tools" output="screen">
+      <remap from="~pose_graph_in" to="/$(arg robot_namespace)/lamp/pose_graph"/>
+      <remap from="~pose_graph_out" to="/$(arg robot_namespace)/lamp/pose_graph_corrected"/>
+    </node>
+
+  </group>
+
+</launch>
