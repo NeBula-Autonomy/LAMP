@@ -601,11 +601,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     uwb_between_edges.id = 4;
     uwb_between_edges.action = visualization_msgs::Marker::ADD;
     uwb_between_edges.type = visualization_msgs::Marker::LINE_LIST;
-    uwb_between_edges.color.r = 1.0;
+    uwb_between_edges.color.r = 0.0;
     uwb_between_edges.color.g = 1.0;
     uwb_between_edges.color.b = 0.0;
     uwb_between_edges.color.a = 0.8;
-    uwb_between_edges.scale.x = 0.05;
+    uwb_between_edges.scale.x = 0.04;
     uwb_edge_between_pub_.publish(uwb_between_edges);
   }
 
@@ -767,9 +767,6 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
         continue;
       }
 
-      m.id = key;
-      m_id.id = m.id;
-
       // Check that we have recieved the artifact
       if (artifact_ID2ParentID_.count(entry.second) == 0){
         ROS_WARN_STREAM("Have not recevied artifact message for artifact " << gtsam::DefaultKeyFormatter(key) << " that is in the graph yet. Have ID: " << entry.second);
@@ -796,6 +793,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
         ROS_WARN_STREAM("No artifact info for artifact that is in the graph, key: " << gtsam::DefaultKeyFormatter(key));
         continue;
       }
+
+      int id_marker = parent_id2int_(parent_id);
+
+      m.id = id_marker;
+      m_id.id = id_marker;
 
       ArtifactInfo art = artifacts_[parent_id];
 

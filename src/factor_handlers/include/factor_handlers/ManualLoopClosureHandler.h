@@ -41,9 +41,14 @@ class ManualLoopClosureHandler : public LampDataHandlerBase {
 
     // Main subscriber 
     ros::Subscriber manual_loop_closure_sub_;
+    ros::Subscriber suggest_loop_closure_sub_;
+
+    // Publisher 
+    ros::Publisher suggest_loop_closure_pub_;
 
     // Main callback 
     void ManualLoopClosureCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
+    void SuggestLoopClosureCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
 
     // Factor data
     LoopClosureData factors_; 
