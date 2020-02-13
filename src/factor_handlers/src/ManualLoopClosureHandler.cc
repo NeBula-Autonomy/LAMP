@@ -57,6 +57,14 @@ bool ManualLoopClosureHandler::RegisterCallbacks(const ros::NodeHandle& n) {
 
   manual_loop_closure_sub_ = nl.subscribe(
     "manual_lc", 1000, &ManualLoopClosureHandler::ManualLoopClosureCallback, this);
+  suggest_loop_closure_sub_ =
+      nl.subscribe("manual_lc_suggestion",
+                   1000,
+                   &ManualLoopClosureHandler::SuggestLoopClosureCallback,
+                   this);
+
+  suggest_loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
+      "suggest_loop_closures", 10, false);
 
   return true;
 }
@@ -87,6 +95,10 @@ void ManualLoopClosureHandler::ManualLoopClosureCallback(const pose_graph_msgs::
 
   // Record that new data was stored
   factors_.b_has_data = true;
+}
+
+void ManualLoopClosureHandler::SuggestLoopClosureCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
+  suggest_loop_closure_pub_.publish(*msg);
 }
 
 void ManualLoopClosureHandler::ResetFactorData() {
