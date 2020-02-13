@@ -353,8 +353,10 @@ std::shared_ptr<FactorData> OdometryHandler::GetData() {
 bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
                                          PointCloud::Ptr& msg) {
 
-  if (point_cloud_buffer_.size() == 0)
+  if (point_cloud_buffer_.size() == 0){
+    ROS_WARN("Have no point clouds in buffer, not returning any keyed scan");
     return false;
+  }
 
   // Search for lower-bound (first entry that is not less than the input timestamp)
   auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
