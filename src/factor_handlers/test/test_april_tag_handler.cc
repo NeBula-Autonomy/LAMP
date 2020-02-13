@@ -154,7 +154,7 @@ TEST_F(TestAprilTagHandler, ConvertAprilTagMsgToArtifactMsg) {
   // Check sequence
   EXPECT_EQ(artifact_msg.seq, 0);
   // Check id 
-  EXPECT_EQ(artifact_msg.id, "");
+  EXPECT_EQ(artifact_msg.id, msg.id);
   // Check parent id
   EXPECT_EQ(artifact_msg.parent_id, msg.id);
   // Check hostspot name

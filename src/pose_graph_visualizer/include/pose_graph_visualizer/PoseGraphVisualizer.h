@@ -2,7 +2,7 @@
 #define POSE_GRAPH_VISUALIZER_H
 
 #include <ros/ros.h>
-
+#include <functional>
 #include <unordered_map>
 
 #include <pose_graph_visualizer/HighlightEdge.h>
@@ -77,8 +77,10 @@ public:
     core_msgs::Artifact msg;
   };
 
-  void VisualizeSingleArtifact(visualization_msgs::Marker& m,
-                               const ArtifactInfo& art);
+  void VisualizeSingleRealisticArtifact(visualization_msgs::Marker& m,
+                                        const ArtifactInfo& art);
+  void VisualizeSingleSimpleArtifact(visualization_msgs::Marker& m,
+                                     const ArtifactInfo& art);
   void VisualizeSingleArtifactId(visualization_msgs::Marker& m,
                                  const ArtifactInfo& art);
 
@@ -119,6 +121,9 @@ private:
                   // messages
   std::unordered_map<std::string, gtsam::Key> artifact_id2key_hash_;
   std::unordered_map<gtsam::Key, std::string> artifact_key2id_hash_;
+  std::unordered_map<std::string, std::string> artifact_ID2ParentID_;
+  std::unordered_map<std::string, std::string> current_parentID2ID_;
+  std::hash<std::string> parent_id2int_;
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
 
   // Visualization publishers.
@@ -155,8 +160,14 @@ private:
 
   bool publish_interactive_markers_{true};
 
+  bool b_use_base_reconciliation_{false};
+
   // Proximity threshold used by LaserLoopClosureNode.
   double proximity_threshold_{1};
+
+  bool use_realistic_artifact_models_;
+  bool b_scale_artifacts_with_confidence_;
+  float confidence_scale_{1.0};
 };
 
 #endif

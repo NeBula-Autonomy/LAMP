@@ -106,6 +106,8 @@ private:
   // Boolean to only publish the map if it has been updated recently.
   bool map_updated_;
 
+  bool b_publish_only_with_subscribers_;
+
   // When a loop closure occurs, this flag enables a user to unsubscribe from
   // and resubscribe to the incremental map topic in order to re-draw the map.
   bool incremental_unsubscribed_;

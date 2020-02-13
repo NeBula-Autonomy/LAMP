@@ -46,7 +46,6 @@ bool PoseGraphVisualizer::Initialize(const ros::NodeHandle& nh,
   ROS_INFO("PoseGraphVisualizer: Initializing");
   name_ = ros::names::append(pnh.getNamespace(), "PoseGraphVisualizer");
 
-
   if (!LoadParameters(pnh)) {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
     return false;
@@ -69,7 +68,8 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("b_artifacts_in_global", artifacts_in_global_))
     return false;
-
+  if (!pu::Get("b_use_base_reconciliation", b_use_base_reconciliation_))
+    return false;
   // Names of all robots for base station to subscribe to
   if (!pu::Get("robot_names", robot_names_)) {
   ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
@@ -85,6 +85,13 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("proximity_threshold", proximity_threshold_))
     return false;
 
+  if (!pu::Get("use_realistic_artifact_models", use_realistic_artifact_models_))
+    return false;
+
+  if (!pu::Get("b_scale_artifacts_with_confidence", b_scale_artifacts_with_confidence_))
+    return false;
+    
+  
   // Initialize interactive marker server
   if (publish_interactive_markers_) {
     server.reset(new interactive_markers::InteractiveMarkerServer(
@@ -159,15 +166,25 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       this);
 
   // Create subscribers for each robot
-  for (std::string robot : robot_names_) {
+  if (!b_use_base_reconciliation_){
+    ROS_INFO("Using topics directly from the robot");
+    for (std::string robot : robot_names_) {
+  
+      // artifact subs
+      artifact_sub_ = nh.subscribe(
+          "/" + robot + "/artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
 
-    // artifact subs
-    artifact_sub_ = nh.subscribe(
-        "/" + robot + "/artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
-
-    // Store the subscribers
+      // Store the subscribers
+      subscribers_artifacts_.push_back(artifact_sub_);
+    }
+  } else {
+    ROS_INFO("Using the result from base station reconciliation");
+    // Add for case where base station reconciliation is used
+    artifact_sub_ = nh.subscribe("reconciled_artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
     subscribers_artifacts_.push_back(artifact_sub_);
+
   }
+
 
 
   return true;
@@ -295,10 +312,30 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
     return;
   }
 
+  // Update id to parent ID mapping 
+  artifact_ID2ParentID_[msg.id] = msg.parent_id;
+
   ArtifactInfo artifactinfo;
   artifactinfo.msg = msg;
+
+  if (artifacts_.count(msg.parent_id)){
+    ROS_INFO("Have a repeat observation of an existing artifact");
+    if (msg.confidence > artifacts_[msg.parent_id].msg.confidence){
+      ROS_INFO_STREAM("Updating artifact visualization, with larger confidence.\n Increasing from " << msg.confidence << " to " << artifacts_[msg.parent_id].msg.confidence);
+      artifacts_[msg.parent_id] = artifactinfo;
+
+      // Update current parent id to id mapping
+      current_parentID2ID_[msg.parent_id] = msg.id;
+    } else {
+      ROS_INFO_STREAM("Keeping old artifact with confidence " << artifacts_[msg.parent_id].msg.confidence << ", which is more than new confidence: " << msg.confidence);
+    }
+  } else {
+    ROS_INFO("New artifact");
+    artifacts_[msg.parent_id] = artifactinfo;
+    current_parentID2ID_[msg.parent_id] = msg.id;
+  }
+
   ROS_INFO_STREAM("Artifact parent UUID is " << msg.parent_id);
-  artifacts_[msg.parent_id] = artifactinfo;
 
   // // Delay getting graph key until we have it.
   // ROS_INFO_STREAM("Artifact key is " << artifact_id2key_hash_[msg.id]);
@@ -564,11 +601,11 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     uwb_between_edges.id = 4;
     uwb_between_edges.action = visualization_msgs::Marker::ADD;
     uwb_between_edges.type = visualization_msgs::Marker::LINE_LIST;
-    uwb_between_edges.color.r = 1.0;
+    uwb_between_edges.color.r = 0.0;
     uwb_between_edges.color.g = 1.0;
     uwb_between_edges.color.b = 0.0;
     uwb_between_edges.color.a = 0.8;
-    uwb_between_edges.scale.x = 0.05;
+    uwb_between_edges.scale.x = 0.04;
     uwb_edge_between_pub_.publish(uwb_between_edges);
   }
 
@@ -719,8 +756,6 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
       // get the gtsam key
       gtsam::Key key(entry.first);
-      m.id = key;
-      m_id.id = m.id;
 
       // ROS_INFO_STREAM("[Publishing Artifact] Artifact key (raw) is: " << entry.second);
       // ROS_INFO_STREAM("Artifact key is " << key);
@@ -732,26 +767,58 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
         continue;
       }
 
+      // Check that we have recieved the artifact
+      if (artifact_ID2ParentID_.count(entry.second) == 0){
+        ROS_WARN_STREAM("Have not recevied artifact message for artifact " << gtsam::DefaultKeyFormatter(key) << " that is in the graph yet. Have ID: " << entry.second);
+        continue;
+      }
+
+      // Get the parent ID
+      std::string parent_id = artifact_ID2ParentID_[entry.second];
+
+      // Continue only if this ID is what is linked to an ative parent ID
+      if (entry.second != current_parentID2ID_[parent_id]){
+        ROS_INFO_STREAM("Artifact with ID: " << entry.second << " is not the active artifact for parent id: " << parent_id);
+        continue;
+      }
+
       // TODO only publish what has changed
       ROS_INFO_STREAM("Artifact key to publish is "
                       << gtsam::DefaultKeyFormatter(key));
 
-      ROS_INFO_STREAM("ID from key for the artifact is: " << entry.second);
+      ROS_INFO_STREAM("ID from key for the artifact is: " << entry.second << ", with parent id " << parent_id);
 
       // Get the artifact information
-      if (artifacts_.find(entry.second) == artifacts_.end()){
+      if (artifacts_.find(parent_id) == artifacts_.end()){
         ROS_WARN_STREAM("No artifact info for artifact that is in the graph, key: " << gtsam::DefaultKeyFormatter(key));
         continue;
       }
 
-      ArtifactInfo art = artifacts_[entry.second];
+      int id_marker = parent_id2int_(parent_id);
+
+      m.id = id_marker;
+      m_id.id = id_marker;
+
+      ArtifactInfo art = artifacts_[parent_id];
 
       // Update the artifact position from the graph
       art.msg.point.point = GetPositionMsg(gtsam::Symbol(key));
       art.msg.point.header.stamp = ros::Time::now();
 
+      if (art.msg.confidence < 60.0){
+        confidence_scale_ = 0.90;
+      } else {
+        // Scale by confidence
+        confidence_scale_ = 0.90 + (art.msg.confidence - 60.0)*(2.0 - 0.9)/40.0;
+      }
+
       // Populate the artifact marker
-      VisualizeSingleArtifact(m, art);
+      if (use_realistic_artifact_models_) {
+        VisualizeSingleRealisticArtifact(m, art);
+      } else {
+        VisualizeSingleSimpleArtifact(m, art);
+      }
+      
       VisualizeSingleArtifactId(m_id, art);
 
       // Publish
@@ -837,8 +904,8 @@ void PoseGraphVisualizer::VisualizeSingleArtifactId(
   return;
 }
 
-void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
-                                                  const ArtifactInfo& art) {
+void PoseGraphVisualizer::VisualizeSingleRealisticArtifact(visualization_msgs::Marker& m,
+                                                           const ArtifactInfo& art) {
   // Get class of artifact
   std::string artifact_label = art.msg.label;
 
@@ -851,9 +918,85 @@ void PoseGraphVisualizer::VisualizeSingleArtifact(visualization_msgs::Marker& m,
   m.pose.orientation.y = 0.0;
   m.pose.orientation.z = 0.0;
   m.pose.orientation.w = 1.0;
-  m.scale.x = 0.95f;
-  m.scale.y = 0.95f;
-  m.scale.z = 0.95f;
+
+  float scale = 0.95;
+  if (b_scale_artifacts_with_confidence_){
+    scale = confidence_scale_;
+  }
+  m.scale.x = scale;
+  m.scale.y = scale;
+  m.scale.z = scale;
+
+  // Please note: if color is set to anything other than 0,0,0,0 for
+  // the meshes, the meshes will ignore their texture materials and
+  // be tinted with the assigned color and alpha
+  m.mesh_use_embedded_materials = true;
+  m.color.r = 0.0f;
+  m.color.g = 0.0f;
+  m.color.b = 0.0f;
+  m.color.a = 0.0f;
+  m.type = visualization_msgs::Marker::MESH_RESOURCE;
+  
+  if (artifact_label == "Backpack") {
+    std::cout << "Backpack marker" << std::endl;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/backpack/backpack.dae";
+  } else if (artifact_label == "Fire Extinguisher") {
+    std::cout << "fire extinguisher marker" << std::endl;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/extinguisher/extinguisher.dae";
+  } else if (artifact_label == "Drill") {
+    std::cout << "drill marker" << std::endl;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/drill/drill.dae";
+  } else if (artifact_label == "Survivor") {
+    std::cout << "survivor marker" << std::endl;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/survivor/survivor.dae";
+  } else if (artifact_label == "Cell Phone") {
+    std::cout << "cellphone marker" << std::endl;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/phone/phone.dae";
+  } else if (artifact_label == "Gas") {
+    std::cout << "gas marker" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 0.0f;
+    m.color.a = 1.0f;
+    m.type = visualization_msgs::Marker::SPHERE;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/gas.dae";
+  } else if (artifact_label == "Vent") {
+    std::cout << "vent marker" << std::endl;
+    m.mesh_resource = "package://pose_graph_visualizer/meshes/vent/vent.dae";
+  } else {
+    std::cout << "UNDEFINED ARTIFACT" << std::endl;
+    m.color.r = 1.0f;
+    m.color.g = 1.0f;
+    m.color.b = 1.0f;
+    m.scale.x = 1.0f;
+    m.scale.y = 1.0f;
+    m.scale.z = 1.0f;
+    m.type = visualization_msgs::Marker::CUBE;
+  }
+}
+
+
+void PoseGraphVisualizer::VisualizeSingleSimpleArtifact(visualization_msgs::Marker& m,
+                                                        const ArtifactInfo& art) {
+  // Get class of artifact
+  std::string artifact_label = art.msg.label;
+
+  ROS_INFO_STREAM("Artifact label for visualization is: " << artifact_label);
+
+  m.pose.position = art.msg.point.point;
+
+  m.header.frame_id = "world";
+  m.pose.orientation.x = 0.0;
+  m.pose.orientation.y = 0.0;
+  m.pose.orientation.z = 0.0;
+  m.pose.orientation.w = 1.0;
+  float scale = 0.95;
+  if (b_scale_artifacts_with_confidence_){
+    scale = confidence_scale_;
+  }
+  m.scale.x = scale;
+  m.scale.y = scale;
+  m.scale.z = scale;
   m.color.a = 1.0f;
 
   if (artifact_label == "Backpack") {

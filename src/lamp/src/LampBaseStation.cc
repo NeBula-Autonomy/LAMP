@@ -20,6 +20,7 @@ LampBaseStation::LampBaseStation():
 
   // On base station LAMP, republish values after optimization
   b_repub_values_after_optimization_ = true;
+  keyed_scan_candidates_.clear();
 }
 
 //Destructor
@@ -100,8 +101,8 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
   b_run_optimization_ = false;
   b_has_new_factor_ = false;
   b_has_new_scan_ = false;
-
-
+  b_have_received_first_pg_ = true; // True for base station
+  
   return true;
 }
 
@@ -142,7 +143,7 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Base station publishers
-  pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, false);
+  pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, true);
 
   // Robot pose publishers
   ros::Publisher pose_pub_;
@@ -250,7 +251,8 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
       // Optimize on loop closures, IMU factors and artifact loop closures
       if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE || 
           (b_optimize_on_artifacts_ && e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) ||
-          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE)) {
+          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) ||
+          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN)) {
       
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
@@ -293,12 +295,43 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
 
     pcl::fromROSMsg(s->scan, *scan_ptr);
     pose_graph_.InsertKeyedScan(s->key, scan_ptr); // TODO: add overloaded function
-    AddTransformedPointCloudToMap(s->key);
+
+    // Add key to the list of scan candidates to add to the map
+    keyed_scan_candidates_.push_back(s->key);
 
     ROS_INFO_STREAM("Added new point cloud to map, " << scan_ptr->points.size() << " points");
   }
 
+  // Go through the candidates to add to the map'
+  AddKeyedScanCandidatesToMap();
+
+
   return true; 
+}
+
+void LampBaseStation::AddKeyedScanCandidatesToMap(){
+  
+  // Loop through list of candidates
+  auto key_it = keyed_scan_candidates_.begin();
+  int scan_count = 0;
+
+	while (key_it != keyed_scan_candidates_.end()){
+
+    // Add to map if the key exists in the nodes in the pose-graph
+    if (pose_graph_.HasKey(*key_it)){
+      // Add keyed scan to map
+      AddTransformedPointCloudToMap(*key_it);
+
+      // Erase this from the list and increment the iterator
+      key_it = keyed_scan_candidates_.erase(key_it);
+
+      scan_count++;
+    } else {
+      // Increment key_it
+      ++key_it;
+    }
+  }
+  ROS_INFO_STREAM("Added " << scan_count << " scans to the map.");
 }
 
 

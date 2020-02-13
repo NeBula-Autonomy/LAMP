@@ -12,6 +12,7 @@ Interface for ROS and KimeraRPGO
 
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/String.h>
 
 #include <pose_graph_msgs/PoseGraph.h>
@@ -32,18 +33,35 @@ class LampPgo {
  private:
   // define publishers and subscribers
   ros::Publisher optimized_pub_;
+  ros::Publisher ignored_list_pub_;
 
   ros::Subscriber input_sub_;
 
   ros::Subscriber remove_lc_sub_;
+  // ignore all loop closures involving this robot
+  ros::Subscriber ignore_robot_sub_;
+  // revive the loop closures if ignored previously
+  ros::Subscriber revive_robot_sub_;
+
+  ros::Subscriber remove_lc_by_id_sub_;
 
   void PublishValues() const;
 
   void InputCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
 
-  void RemoveLCCallback(const std_msgs::String::ConstPtr& msg);
+  void RemoveLCByIdCallback(const std_msgs::String::ConstPtr& msg);
+
+  void RemoveLCCallback(const std_msgs::Bool::ConstPtr& msg);
 
   void RemoveLastLoopClosure(char prefix_1, char prefix_2);
+
+  void RemoveLastLoopClosure();
+
+  void IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg);
+
+  void ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg);
+
+  void PublishIgnoredList() const; 
 
  private:
   // Optimizer parameters
@@ -58,6 +76,9 @@ class LampPgo {
 
   // Keep track of node IDs for output message (not stored by GTSAM types)
   std::map<gtsam::Key, std::string> key_to_id_map_;
+
+  // Ignored list of robots that is not fused 
+  std::vector<std::string> ignored_list_; 
 };
 
 #endif  // LAMP_PGO_H_

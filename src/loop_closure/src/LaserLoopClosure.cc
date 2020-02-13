@@ -300,6 +300,10 @@ bool LaserLoopClosure::CheckForInterRobotLoopClosure(
     ROS_ERROR_STREAM("Checking for inter robot loop closures on same robot");
     return false;
   }
+
+  // Don't self-check.
+  if (key1 == key2)
+    return false;
   
   if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
     return false;
@@ -315,6 +319,8 @@ bool LaserLoopClosure::PerformLoopClosure(
         bool b_use_prior,
         gtsam::Pose3 prior,
         std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
+
+  if (key1 == key2) return false; // Don't perform loop closure on same node
 
   gu::Transform3 delta = utils::ToGu(prior);  // (Using BetweenFactor)
   gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
@@ -571,6 +577,12 @@ void LaserLoopClosure::SeedCallback(
 
     PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges);
   }
+
+  if (msg->edges[0].type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+    for (auto& edge : loop_closure_edges) {
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN;
+    }
+  } 
 
   // Publish the successful edges if there are any
   if (loop_closure_edges.size() > 0) {

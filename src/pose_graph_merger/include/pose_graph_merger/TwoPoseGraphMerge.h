@@ -68,6 +68,8 @@ class TwoPoseGraphMerge {
 
     // Booleans
     bool first_call_;
+    bool b_publish_on_slow_graph_;
+    bool b_have_first_robot_graph_;
 
     // Symbols
     char robot_prefix_;
@@ -82,6 +84,9 @@ class TwoPoseGraphMerge {
     // Poses
     geometry_msgs::PoseStamped robot_pose_;
     geometry_msgs::PoseStamped merged_pose_;
+
+    // Store latest robot graph
+    pose_graph_msgs::PoseGraphConstPtr last_robot_graph_;
 
   private:
 

@@ -77,6 +77,8 @@ bool PointCloudMapper::LoadParameters(const ros::NodeHandle& n) {
   // Load map parameters.
   if (!pu::Get("map/octree_resolution", octree_resolution_))
     return false;
+  if (!pu::Get("map/b_publish_only_with_subscribers", b_publish_only_with_subscribers_))
+    return false;
 
   // Initialize the map octree.
   map_octree_.reset(new Octree(octree_resolution_));
@@ -91,9 +93,9 @@ bool PointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
 
-  map_pub_ = nl.advertise<PointCloud>("octree_map", 10, false);
+  map_pub_ = nl.advertise<PointCloud>("octree_map", 10, true);
   incremental_map_pub_ =
-      nl.advertise<PointCloud>("octree_map_updates", 10, false);
+      nl.advertise<PointCloud>("octree_map_updates", 10, true);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
 
   return true;
@@ -194,13 +196,16 @@ bool PointCloudMapper::ApproxNearestNeighbors(const PointCloud& points,
 }
 
 void PointCloudMapper::PublishMap() {
-  if (initialized_ && map_updated_ && map_pub_.getNumSubscribers() > 0) {
-    // Use a new thread to publish the map to avoid blocking main thread
-    // on concurrent calls.
-    if (publish_thread_.joinable()) {
-      publish_thread_.join();
+
+  if (map_pub_.getNumSubscribers() > 0 || !b_publish_only_with_subscribers_){
+    if (initialized_ && map_updated_ ) {
+      // Use a new thread to publish the map to avoid blocking main thread
+      // on concurrent calls.
+      if (publish_thread_.joinable()) {
+        publish_thread_.join();
+      }
+      publish_thread_ = std::thread(&PointCloudMapper::PublishMapThread, this);
     }
-    publish_thread_ = std::thread(&PointCloudMapper::PublishMapThread, this);
   }
 }
 
@@ -238,16 +243,5 @@ void PointCloudMapper::PublishMapFrozenThread() {
 
 void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {
   // Publish the incremental points for visualization.
-  if (incremental_map_pub_.getNumSubscribers() > 0) {
-    // Check if the incremental publisher was unsubscribed from recently (a user
-    // might do this if a loop closure occured). If so, first draw the full map.
-    if (incremental_unsubscribed_) {
-      incremental_map_pub_.publish(*map_data_);
-      incremental_unsubscribed_ = false;
-    } else {
-      incremental_map_pub_.publish(incremental_points);
-    }
-  } else {
-    incremental_unsubscribed_ = true;
-  }
+  incremental_map_pub_.publish(incremental_points);
 }
