@@ -6,6 +6,7 @@ Interface for ROS and KimeraRPGO
 
 #include "lamp_pgo/LampPgo.h"
 
+#include <string>
 #include <vector>
 
 #include <gtsam/geometry/Point3.h>
@@ -27,17 +28,27 @@ LampPgo::~LampPgo() {}
 
 bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Create subscriber and publisher
-  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
 
   // Publisher
   optimized_pub_ =
       nl.advertise<pose_graph_msgs::PoseGraph>("optimized_values", 10, false);
   // TODO - make names uniform? - "optimized_values"(here) =
   // "back_end_pose_graph"(lamp)
+  ignored_list_pub_ =
+      nl.advertise<std_msgs::String>("ignored_robots", 10, true);
 
   // Subscriber
   input_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_to_optimize", 1, &LampPgo::InputCallback, this);
+  remove_lc_sub_ = nl.subscribe<std_msgs::Bool>(
+      "remove_loop_closure", 1, &LampPgo::RemoveLCCallback, this);
+  remove_lc_by_id_sub_ = nl.subscribe<std_msgs::String>(
+      "remove_loop_closure_by_id", 1, &LampPgo::RemoveLCByIdCallback, this);
+  ignore_robot_sub_ = nl.subscribe<std_msgs::String>(
+      "ignore_loop_closures", 1, &LampPgo::IgnoreRobotLoopClosures, this);
+  revive_robot_sub_ = nl.subscribe<std_msgs::String>(
+      "revive_loop_closures", 1, &LampPgo::ReviveRobotLoopClosures, this);
 
   // Parse parameters
   // Optimizer backend
@@ -59,7 +70,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
   } else {
     rpgo_params_.setNoRejection(
-        KimeraRPGO::Verbosity::VERBOSE); // set no outlier rejection
+        KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection
   }
 
   // Artifact or UWB keys (l, m, n, ... + u)
@@ -67,8 +78,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // set solver
   int solver_num;
-  if (!pu::Get(param_ns_ + "/solver", solver_num))
-    return false;
+  if (!pu::Get(param_ns_ + "/solver", solver_num)) return false;
 
   if (solver_num == 1) {
     // Levenberg-Marquardt
@@ -82,7 +92,55 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   // Initialize solver
   pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
+
+  // Publish ignored list once 
+  PublishIgnoredList(); 
+
   return true;
+}
+
+void LampPgo::RemoveLastLoopClosure(char prefix_1, char prefix_2) {
+  KimeraRPGO::EdgePtr removed_edge =
+      pgo_solver_->removeLastLoopClosure(prefix_1, prefix_2);
+  // Extract the optimized values
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  ROS_INFO_STREAM("Removed last loop closure between "
+                  << gtsam::DefaultKeyFormatter(removed_edge->from_key)
+                  << " and "
+                  << gtsam::DefaultKeyFormatter(removed_edge->to_key));
+
+  // publish posegraph
+  PublishValues();
+}
+
+void LampPgo::RemoveLastLoopClosure() {
+  KimeraRPGO::EdgePtr removed_edge = pgo_solver_->removeLastLoopClosure();
+  // Extract the optimized values
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  ROS_INFO_STREAM("Removed last loop closure between "
+                  << gtsam::DefaultKeyFormatter(removed_edge->from_key)
+                  << " and "
+                  << gtsam::DefaultKeyFormatter(removed_edge->to_key));
+
+  // publish posegraph
+  PublishValues();
+}
+
+void LampPgo::RemoveLCByIdCallback(const std_msgs::String::ConstPtr& msg) {
+  if (msg->data.length() < 2) {
+    return;  // needs two prefixes (two chars)
+  }
+  RemoveLastLoopClosure(msg->data[0], msg->data[1]);
+  return;
+}
+
+void LampPgo::RemoveLCCallback(const std_msgs::Bool::ConstPtr& msg) {
+  RemoveLastLoopClosure();
+  return;
 }
 
 void LampPgo::InputCallback(
@@ -96,13 +154,12 @@ void LampPgo::InputCallback(
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
 
-  // Track node IDs 
+  // Track node IDs
   for (auto n : graph_msg->nodes) {
     if (!key_to_id_map_.count(n.key)) {
       key_to_id_map_[n.key] = n.ID;
     }
   }
- 
 
   // Extract new values
   // TODO - use the merger here? In case the state of the graph here is
@@ -143,7 +200,6 @@ void LampPgo::InputCallback(
     f->printKeys();
   }
 
-
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
 
@@ -176,8 +232,7 @@ void LampPgo::PublishValues() const {
     node.key = key;
     if (key_to_id_map_.count(key)) {
       node.ID = key_to_id_map_.at(key);
-    }
-    else {
+    } else {
       ROS_ERROR_STREAM("PGO: ID not found for node key");
     }
     // pose - translation
@@ -197,6 +252,84 @@ void LampPgo::PublishValues() const {
     pose_graph_msg.nodes.push_back(node);
   }
 
-  ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size() << " values");
+  ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size()
+                                               << " values");
   optimized_pub_.publish(pose_graph_msg);
+}
+
+void LampPgo::IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
+  // First convert string "huskyn" to char prefix
+  char prefix = utils::GetRobotPrefix(msg->data);
+
+  pgo_solver_->ignorePrefix(prefix);
+
+  // Extract the optimized values
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  // Double check that it is actually ignored
+  std::vector<char> ignored_prefixes = pgo_solver_->getIgnoredPrefixes();
+  if (std::find(ignored_prefixes.begin(), ignored_prefixes.end(), prefix) ==
+      ignored_prefixes.end()) {
+    ROS_ERROR_STREAM("Failed to ignore loop closures involving prefix "
+                     << prefix);
+    return;
+  }
+  ROS_INFO_STREAM("Ignoring all loop closures involving prefix " << prefix);
+  // Add to ignored list
+  if (std::find(ignored_list_.begin(), ignored_list_.end(), msg->data) ==
+      ignored_list_.end()) {
+    ignored_list_.push_back(msg->data);
+  }
+
+  // publish posegraph
+  PublishValues();
+  // publish ignored list 
+  PublishIgnoredList();
+}
+
+void LampPgo::ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
+  // First convert string "huskyn" to char prefix
+  char prefix = utils::GetRobotPrefix(msg->data);
+
+  pgo_solver_->revivePrefix(prefix);
+
+  // Extract the optimized values
+  values_ = pgo_solver_->calculateEstimate();
+  nfg_ = pgo_solver_->getFactorsUnsafe();
+
+  // Double check that it is actually revived
+  std::vector<char> ignored_prefixes = pgo_solver_->getIgnoredPrefixes();
+  if (std::find(ignored_prefixes.begin(), ignored_prefixes.end(), prefix) !=
+      ignored_prefixes.end()) {
+    ROS_ERROR_STREAM("Failed to revive loop closures involving prefix "
+                     << prefix);
+    return;
+  }
+  ROS_INFO_STREAM("Reviving all loop closures involving prefix " << prefix);
+  // Remove from ignored list
+  if (std::find(ignored_list_.begin(), ignored_list_.end(), msg->data) !=
+      ignored_list_.end()) {
+    ignored_list_.erase(
+        std::remove(ignored_list_.begin(), ignored_list_.end(), msg->data),
+        ignored_list_.end());
+  }
+
+  // publish posegraph
+  PublishValues();
+  // publish ignored list
+  PublishIgnoredList();
+}
+
+void LampPgo::PublishIgnoredList() const {
+  std::string list_str = "";
+  for (size_t i = 0; i < ignored_list_.size(); i++) {
+    list_str = list_str + ignored_list_[i] + ", ";
+  }
+
+  std_msgs::String msg; 
+  msg.data = list_str; 
+
+  ignored_list_pub_.publish(list_str);
+  return; 
 }

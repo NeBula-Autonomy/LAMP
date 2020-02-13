@@ -8,7 +8,7 @@
 
 
 
-TwoPoseGraphMerge::TwoPoseGraphMerge() : robot_prefix_('Z') {}
+TwoPoseGraphMerge::TwoPoseGraphMerge() : robot_prefix_('Z'), b_have_first_robot_graph_(false) {}
 
 TwoPoseGraphMerge::~TwoPoseGraphMerge() {}
 
@@ -21,6 +21,8 @@ bool TwoPoseGraphMerge::Initialize(const ros::NodeHandle& n) {
   n.param<std::string>("frame_id_world1", this->world_fid_,  "/world");
   n.param<std::string>("frame_id_world2", this->world2_fid_, "/world_prime");
 
+  n.param<bool>("b_publish_on_slow_graph", this->b_publish_on_slow_graph_, true);
+  
   robot_prefix_ = utils::GetRobotPrefix(GetRobotName(n));
 
   return true;
@@ -39,11 +41,11 @@ std::string TwoPoseGraphMerge::GetRobotName(const ros::NodeHandle& n) {
 bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   merged_graph_pub_ =
-      nl.advertise<pose_graph_msgs::PoseGraph>("merged_pose_graph", 10, false);
+      nl.advertise<pose_graph_msgs::PoseGraph>("merged_pose_graph", 10, true);
   rob_node_pose_pub_ =
-      nl.advertise<geometry_msgs::PoseStamped>("robot_last_node_pose", 10, false);
+      nl.advertise<geometry_msgs::PoseStamped>("robot_last_node_pose", 10, true);
   merged_node_pose_pub_ =
-      nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, false);
+      nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, true);
   merged_pose_pub_ = 
       nl.advertise<geometry_msgs::PoseStamped>("merged_pose", 10, false);
 }
@@ -92,12 +94,25 @@ void TwoPoseGraphMerge::ProcessBaseGraph(const pose_graph_msgs::PoseGraphConstPt
   // Store the graph as the slow graph
   merger_.OnSlowGraphMsg(msg);
   ROS_INFO("Received graph from base station");
+
+  // Process again straight away 
+  if (b_publish_on_slow_graph_){
+    if (last_robot_graph_ != NULL){
+      ProcessRobotGraph(last_robot_graph_);
+    } else {
+      ProcessRobotGraph(msg);
+    }
+  }
   return;
 }
 
 void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   // Combine the graph with the stored base graph and publish result
-  
+  pose_graph_msgs::PoseGraph merged_graph;
+
+  // Store the latest message
+  last_robot_graph_ = msg;
+
   // Add new posegraph
   merger_.OnFastGraphMsg(msg);
 

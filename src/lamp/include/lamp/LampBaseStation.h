@@ -53,6 +53,9 @@ class LampBaseStation : public LampBase {
     // Callback for debugging - put any code inside this
     virtual void DebugCallback(const std_msgs::String msg);
 
+    // Process keyed scan candidates to add to the map
+    void AddKeyedScanCandidatesToMap();
+
     // Robots that the base station subscribes to
     std::vector<std::string> robot_names_;
 
@@ -91,6 +94,9 @@ class LampBaseStation : public LampBase {
 
     // Track latest pose from each robot
     std::map<char, std::pair<gtsam::Key, gtsam::Pose3>> latest_node_pose_;
+
+    // Vector list of keyed scans to add to map
+    std::vector<gtsam::Symbol> keyed_scan_candidates_;
 
     // Test class fixtures
     friend class TestLampBase;

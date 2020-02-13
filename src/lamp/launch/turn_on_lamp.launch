@@ -30,9 +30,11 @@
       <!-- Topics -->
       <remap from="~pcld" to="velodyne_points/transformed"/>
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
-      <!--<remap from="~lio_odom" to="lo_frontend/odometry"/> -->
+      <!-- <remap from="~lio_odom" to="lo_frontend/odometry"/> -->
       <!-- <remap from="~lio_odom" to="hero/lion/odom"/> -->
       <remap from="~lio_odom" to="hero/odometry"/>
+      <remap from="~vio_odom" to="visual_inertial_odometry_topic_currently_not_used"/>
+      <remap from="~wio_odom" to="wheel_inertial_odometry_topic_currently_not_used"/>
       <remap from="~optimized_values" to="lamp_pgo/optimized_values"/>
 
       <remap from="~artifact" to="~artifact_global" />
@@ -70,6 +72,8 @@
       <param name="robot_prefix" value="f" if="$(eval robot_namespace == 'husky4')"/>
       <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'telemax1')"/>
       <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
+      <param name="robot_prefix" value="g" if="$(eval robot_namespace == 'spot1')"/>
+      <param name="robot_prefix" value="h" if="$(eval robot_namespace == 'spot2')"/>
 
       <!-- The artifact prefix dependent of robot_namespace -->
       <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
@@ -78,6 +82,8 @@
       <param name="artifact_prefix" value="q" if="$(eval robot_namespace == 'husky4')"/>
       <param name="artifact_prefix" value="o" if="$(eval robot_namespace == 'telemax1')"/>
       <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
+      <param name="artifact_prefix" value="r" if="$(eval robot_namespace == 'spot1')"/>
+      <param name="artifact_prefix" value="s" if="$(eval robot_namespace == 'spot2')"/>
     </node>
 
     <!-- Pose graph optimizer -->

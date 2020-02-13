@@ -127,8 +127,7 @@ void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
   Eigen::Vector3d R_artifact_position = ComputeTransform(msg);
 
   // Get the artifact id
-  std::string artifact_id =
-      msg.parent_id; // Note that we are looking at the parent id here
+  std::string artifact_id = msg.id;
 
   // Artifact key
   gtsam::Symbol cur_artifact_key;
@@ -268,7 +267,8 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
 
   if (!(artifact_key.chr() == 'l' || artifact_key.chr() == 'm' ||
         artifact_key.chr() == 'n' || artifact_key.chr() == 'o' ||
-        artifact_key.chr() == 'p' || artifact_key.chr() == 'q')) {
+        artifact_key.chr() == 'p' || artifact_key.chr() == 'q' ||
+        artifact_key.chr() == 'r' || artifact_key.chr() == 's')) {
     ROS_WARN("ERROR - have a non-landmark ID");
     ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
     return;

@@ -60,6 +60,9 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get(param_ns_ + "/distance_before_reclosing", distance_before_reclosing_))
     return false;
+  if (!pu::Get(param_ns_ + "/max_rotation_deg", max_rotation_deg_))
+    return false;
+  max_rotation_rad_ = max_rotation_deg_ * M_PI/180;
 
   // Load ICP parameters (from point_cloud localization)
   if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
@@ -297,6 +300,10 @@ bool LaserLoopClosure::CheckForInterRobotLoopClosure(
     ROS_ERROR_STREAM("Checking for inter robot loop closures on same robot");
     return false;
   }
+
+  // Don't self-check.
+  if (key1 == key2)
+    return false;
   
   if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
     return false;
@@ -312,6 +319,8 @@ bool LaserLoopClosure::PerformLoopClosure(
         bool b_use_prior,
         gtsam::Pose3 prior,
         std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
+
+  if (key1 == key2) return false; // Don't perform loop closure on same node
 
   gu::Transform3 delta = utils::ToGu(prior);  // (Using BetweenFactor)
   gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6,6);
@@ -514,6 +523,14 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     return false;
   }
 
+  // reject if the rotation is too big
+  gu::Transform3 odom_delta = utils::ToGu(pose2.between(pose1));
+  gtsam::Pose3 correction = utils::ToGtsam(gu::PoseDelta(*delta, odom_delta));
+  if (fabs(2*acos(correction.rotation().toQuaternion().w()))  > max_rotation_rad_) {
+    ROS_INFO_STREAM("Rejected loop closure - total rotation too large");
+    return false;
+  }  
+
   ROS_INFO_STREAM("ICP: Found loop with score: " << icp.getFitnessScore());
   fitness_score = icp.getFitnessScore();
   
@@ -560,6 +577,12 @@ void LaserLoopClosure::SeedCallback(
 
     PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges);
   }
+
+  if (msg->edges[0].type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+    for (auto& edge : loop_closure_edges) {
+      edge.type = pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN;
+    }
+  } 
 
   // Publish the successful edges if there are any
   if (loop_closure_edges.size() > 0) {

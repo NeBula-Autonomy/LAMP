@@ -10,7 +10,11 @@ author: Yun Chang
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/slam/BetweenFactor.h>
 #include <string>
+#include <vector>
+
+#include "KimeraRPGO/utils/type_utils.h"
 
 namespace KimeraRPGO {
 
@@ -44,6 +48,34 @@ class OutlierRemoval {
   /*! \brief Supressing the print messages to console
    */
   void setQuiet() { debug_ = false; }
+
+  /*! \brief Remove last measured loop closure
+   */
+  virtual EdgePtr removeLastLoopClosure(
+      ObservationId id,
+      gtsam::NonlinearFactorGraph* updated_factors) {}
+
+  /*! \brief Remove last measured loop closure regardless of obs id
+   */
+  virtual EdgePtr removeLastLoopClosure(
+      gtsam::NonlinearFactorGraph* updated_factors) {}
+
+  /*! \brief Ignore all loop closures that involves certain prefix
+   */
+  virtual void ignoreLoopClosureWithPrefix(
+      char prefix,
+      gtsam::NonlinearFactorGraph* updated_factors) {}
+
+  /*! \brief add back all loop closures that involves certain prefix
+   * Basically undos ignore
+   */
+  virtual void reviveLoopClosureWithPrefix(
+      char prefix,
+      gtsam::NonlinearFactorGraph* updated_factors) {}
+
+  /*! \brief Get the vector of currently ignored prefixes
+   */
+  virtual inline std::vector<char> getIgnoredPrefixes() {}
 
  protected:
   bool debug_ = true;

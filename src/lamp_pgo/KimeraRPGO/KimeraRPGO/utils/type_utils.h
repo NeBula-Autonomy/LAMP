@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <gtsam/base/Vector.h>
+#include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include "KimeraRPGO/logger.h"
@@ -32,6 +33,15 @@ struct Measurements {
     dist_matrix = Eigen::MatrixXd::Zero(1, 1);
   }
 };
+
+struct Edge {
+  gtsam::Symbol from_key;
+  gtsam::Symbol to_key;
+
+  Edge(gtsam::Symbol from, gtsam::Symbol to) : from_key(from), to_key(to) {}
+};
+
+typedef std::unique_ptr<const Edge> EdgePtr;
 
 // struct storing the involved parties (ex robot a and robot b)
 struct ObservationId {

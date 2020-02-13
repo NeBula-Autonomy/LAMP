@@ -16,6 +16,7 @@ author: Yun Chang, Luca Carlone
 
 #include "KimeraRPGO/logger.h"
 #include "KimeraRPGO/outlier/pcm.h"
+#include "KimeraRPGO/utils/type_utils.h"
 
 namespace KimeraRPGO {
 
@@ -110,20 +111,85 @@ void RobustSolver::forceUpdate(const gtsam::NonlinearFactorGraph& nfg,
   // optimize
   optimize();
 }
-  
+
 void RobustSolver::update(const gtsam::NonlinearFactorGraph& factors,
                           const gtsam::Values& values) {
   bool do_optimize;
   if (outlier_removal_) {
-    do_optimize = outlier_removal_->removeOutliers(
-        factors, values, nfg_, values_);
+    do_optimize =
+        outlier_removal_->removeOutliers(factors, values, nfg_, values_);
   } else {
     do_optimize = addAndCheckIfOptimize(factors, values);
   }
 
   if (do_optimize) optimize();  // optimize once after loading
   return;
-}  // namespace KimeraRPGO
+}
+
+EdgePtr RobustSolver::removeLastLoopClosure(char prefix_1, char prefix_2) {
+  ObservationId id(prefix_1, prefix_2);
+  EdgePtr removed_edge;
+  if (outlier_removal_) {
+    // removing loop closure so values should not change
+    removed_edge = outlier_removal_->removeLastLoopClosure(id, &nfg_);
+  } else {
+    removed_edge = removeLastFactor();
+  }
+
+  optimize();
+  return removed_edge;
+}
+
+EdgePtr RobustSolver::removeLastLoopClosure() {
+  EdgePtr removed_edge;
+  if (outlier_removal_) {
+    // removing loop closure so values should not change
+    removed_edge = outlier_removal_->removeLastLoopClosure(&nfg_);
+  } else {
+    removed_edge = removeLastFactor();
+  }
+
+  optimize();
+  return removed_edge;
+}
+
+void RobustSolver::ignorePrefix(char prefix) {
+  if (outlier_removal_) {
+    outlier_removal_->ignoreLoopClosureWithPrefix(prefix, &nfg_);
+  } else {
+    log<WARNING>(
+        "'ignorePrefix' currently not implemented for no outlier rejection "
+        "case");
+  }
+
+  optimize();
+  return;
+}
+
+void RobustSolver::revivePrefix(char prefix) {
+  if (outlier_removal_) {
+    outlier_removal_->reviveLoopClosureWithPrefix(prefix, &nfg_);
+  } else {
+    log<WARNING>(
+        "'revivePrefix' and 'ignorePrefix' currently not implemented for no "
+        "outlier rejection case");
+  }
+
+  optimize();
+  return;
+}
+
+std::vector<char> RobustSolver::getIgnoredPrefixes() {
+  if (outlier_removal_) {
+    return outlier_removal_->getIgnoredPrefixes();
+  } else {
+    log<WARNING>(
+        "'revivePrefix' and 'ignorePrefix' currently not implemented for no "
+        "outlier rejection case");
+  }
+  std::vector<char> empty;
+  return empty;
+}
 
 void RobustSolver::saveData(std::string folder_path) const {
   std::string g2o_file_path = folder_path + "/result.g2o";

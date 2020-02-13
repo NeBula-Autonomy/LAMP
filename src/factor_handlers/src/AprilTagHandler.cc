@@ -130,7 +130,7 @@ core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_
   // Fill empty sequence
   artifact_msg.seq = 0;
   // Put empty id 
-  artifact_msg.id = "";
+  artifact_msg.id = msg.id;
   // Fill parent id
   artifact_msg.parent_id = msg.id;
   // Fill empty hostspot name

@@ -89,6 +89,7 @@ private:
                          gtsam::noiseModel::Diagonal::shared_ptr& covariance);
     // Example use:
     // ProcessArtifactData(artifact_handler_.GetData());
+    void AddKeyedScanAndPublish(PointCloud::Ptr new_scan, gtsam::Symbol current_key);
 
   void HandleRelativePoseMeasurement(const ros::Time& time,
                                      const gtsam::Pose3& relative_pose,
@@ -120,10 +121,16 @@ private:
   bool b_artifacts_in_global_;
   bool b_use_uwb_;
   bool b_add_imu_factors_;
+  bool b_init_pg_pub_;
   int factor_count_;
+  int init_count_;
+  float init_wait_time_;
+  float repub_first_wait_time_;
 
   // Test class fixtures
   friend class TestLampRobot;
+  friend class TestLampRobotArtifact;
+
 
   struct Parameters {
     // Apply a voxel grid filter.

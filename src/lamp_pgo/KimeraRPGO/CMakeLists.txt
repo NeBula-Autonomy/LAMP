@@ -5,6 +5,11 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+IF(APPLE)
+    # Fix linking on 10.14+. See https://stackoverflow.com/questions/54068035
+    LINK_DIRECTORIES(/usr/local/lib)
+ENDIF()
+
 ###########################################################################
 # Find GTSAM
 find_package(GTSAM REQUIRED)
@@ -54,6 +59,8 @@ target_include_directories(KimeraRPGO
 # Define executables
 add_executable(RpgoReadG2o examples/RpgoReadG2o.cpp)
 target_link_libraries(RpgoReadG2o KimeraRPGO)
+#add_executable(GenerateTrajectories examples/GenerateTrajectories.cpp)
+#target_link_libraries(GenerateTrajectories gtsam)
 
 ###########################################################################
 # Tests

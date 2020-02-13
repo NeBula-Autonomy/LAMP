@@ -45,6 +45,8 @@ class OdometryHandler : public LampDataHandlerBase{
 
   friend class OdometryHandlerTest;
   friend class TestLampRobot;
+  friend class TestLampRobotArtifact;
+
 
 public:
 
@@ -75,6 +77,11 @@ protected:
 
   // Pointcloud Subscribers
   ros::Subscriber point_cloud_sub_;
+
+  // Subscriptions
+  bool b_register_lidar_sub_; 
+  bool b_register_visual_sub_;
+  bool b_register_wheel_sub_;
 
   // Odometry Callbacks 
   void LidarOdometryCallback(const Odometry::ConstPtr& msg); 

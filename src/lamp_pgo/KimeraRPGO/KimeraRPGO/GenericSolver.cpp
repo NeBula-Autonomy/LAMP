@@ -95,4 +95,12 @@ void GenericSolver::removeFactorsNoUpdate(
   }
 }
 
+EdgePtr GenericSolver::removeLastFactor() {
+  size_t num_factors = nfg_.size();
+  Edge removed_edge =
+      Edge(nfg_[num_factors - 1]->front(), nfg_[num_factors - 1]->back());
+  nfg_.erase(std::prev(nfg_.end()));
+  return make_unique<Edge>(removed_edge);
+}
+
 }  // namespace KimeraRPGO

@@ -229,7 +229,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     
     // Test class
     friend class TestArtifactHandler;
-    friend class TestLampRobot;
+    friend class TestLampRobotArtifact;
 };
 
 #endif // !ARTIFACT_HANDLER_H
