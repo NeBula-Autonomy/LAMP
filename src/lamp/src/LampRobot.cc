@@ -384,8 +384,11 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
         // Get a keyed scan
         PointCloud::Ptr new_scan(new PointCloud);
-        odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan);
-        AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
+        if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan)){
+          AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
+        } else {
+          ROS_WARN("No point clouds from Odom Handler during init in lamp");
+        }
 
         b_init_pg_pub_ = true;
       }
@@ -396,8 +399,11 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
       
       // Publish first point cloud
       PointCloud::Ptr new_scan(new PointCloud);
-      odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan);
-      AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
+      if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan)){
+        AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
+      } else {
+        ROS_WARN("No point clouds from Odom Handler during init in lamp");
+      }
     }
     if ((float)init_count_/update_rate_ > repub_first_wait_time_){
       // Placeholder to move to incremental publishing - TODO - trigger on callback from the base station
@@ -555,9 +561,14 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
       // Store the keyed scan and add it to the map
       // Copy input scan.
       new_scan = odom_factor.point_cloud;
+      
+      if (!new_scan->points.empty() && new_scan != NULL || new_scan->size() != 0){
 
-      // Add to keyed scans and publish
-      AddKeyedScanAndPublish(new_scan, current_key);
+        // Add to keyed scans and publish
+        AddKeyedScanAndPublish(new_scan, current_key);
+      } else {
+        ROS_WARN("No valid point cloud with odom factor in Lamp");
+      }
       
     }
   }
