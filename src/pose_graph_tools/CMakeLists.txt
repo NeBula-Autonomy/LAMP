@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS roscpp roslib dynamic_reconfigure pose_g
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
 
+find_package(Eigen3 REQUIRED)
+
 # ******************************************************************** 
 #           Add system and labrobotica dependencies here
 # ******************************************************************** 
@@ -93,6 +95,7 @@ endif()
 include_directories(include)
 include_directories(${catkin_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${EIGEN3_INCLUDE_DIR})
 # include_directories(${<dependency>_INCLUDE_DIR})
 
 ## Declare a cpp library

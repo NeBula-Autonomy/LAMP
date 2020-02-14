@@ -25,6 +25,9 @@
 
 #include <pthread.h>
 
+// Eigen
+#include <Eigen/Dense>
+
 //include pose_graph_tools_alg main library
 
 namespace pose_graph_tools
@@ -47,6 +50,12 @@ typedef enum {
  * All implementations will then use the same variable type Config.
  */
 typedef pose_graph_tools::PoseGraphToolsConfig Config;
+
+/**
+ * \brief Eigen transform used in this class
+ */
+typedef Eigen::Transform<double, 3, Eigen::Affine> HTransf;
+typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
 /**
  * \brief Mutex class
