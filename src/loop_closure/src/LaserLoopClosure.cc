@@ -416,6 +416,14 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     ROS_ERROR("PerformAlignment: Null point clouds.");
     return false;
   }
+  if (scan1->size() == 0 || scan2->size() == 0) {
+    ROS_ERROR("PerformAlignment: zero points in point clouds.");
+    return false;
+  }
+  if (scan1->points.empty() || scan2->points.empty()) {
+    ROS_ERROR("PerformAlignment: empty point clouds.");
+    return false;
+  }
   // Set up ICP.
   pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
