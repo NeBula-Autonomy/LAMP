@@ -38,21 +38,21 @@ PoseGraphToolsNode::~PoseGraphToolsNode(void) {
 void PoseGraphToolsNode::mainNodeThread(void) {
   if (this->config_.enable && this->node_candidate_key_ != 0) {
     this->pgt_lib_.lock();
-
+    // Get entries from dynamic reconfigure
     double dx = this->config_.dx;
     double dy = this->config_.dy;
     double dz = this->config_.dz;
     double droll = this->config_.droll;
     double dpitch = this->config_.dpitch;
     double dyaw = this->config_.dyaw;
+    // Transform to eigen transform type
     HTransf d_pose = Translation<double, 3>(dx, dy, dz) *
                      AngleAxisd(dyaw, Vector3d::UnitZ()) *
                      AngleAxisd(dpitch, Vector3d::UnitY()) *
                      AngleAxisd(droll, Vector3d::UnitX());
-    std::cout << "Modifying key: "
-              << gtsam::DefaultKeyFormatter(this->node_candidate_key_)
-              << std::endl;
-    std::cout << "With transform matrix: " << d_pose.matrix() << std::endl;
+    ROS_INFO_STREAM("Modifying key: "
+                    << gtsam::DefaultKeyFormatter(this->node_candidate_key_));
+    // Update node and posegraph
     this->pose_graph_out_msg_ = this->pgt_lib_.updateNodePosition(
         this->pose_graph_in_msg_, this->node_candidate_key_, d_pose);
     this->pgt_lib_.unlock();
@@ -69,6 +69,7 @@ void PoseGraphToolsNode::pose_graph_in_callback(
       pose_graph_msgs::PoseGraphConstPtr(
           new pose_graph_msgs::PoseGraph(this->pose_graph_in_msg_));
   this->pgt_lib_.lock();
+  // Merge newly recieved graph with corrected old graph
   this->pose_graph_in_msg_ = this->pgt_lib_.addNewIncomingGraph(msg, old_graph);
   this->pgt_lib_.unlock();
   this->pose_graph_in_mutex_exit();
@@ -94,6 +95,7 @@ void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
     char prefix = utils::GetRobotPrefix(robot);
     int key = config.key;
     uint64_t candidate_key_ = gtsam::Symbol(prefix, key);
+    // When switching to tune another key, update store current correction
     if (candidate_key_ != this->node_candidate_key_) {
       ROS_INFO_STREAM("Reconfiguring key: "
                       << gtsam::DefaultKeyFormatter(this->node_candidate_key_));
