@@ -1,5 +1,11 @@
 #include "pose_graph_tools/PoseGraphTools.h"
 
+#include <utils/PrefixHandling.h>
+
+using Eigen::Translation;
+using Eigen::AngleAxisd; 
+using Eigen::Vector3d; 
+
 namespace pose_graph_tools
 {
 
@@ -66,7 +72,7 @@ void PoseGraphToolsNode::pose_graph_in_callback(const pose_graph_msgs::PoseGraph
 {
   ROS_DEBUG("PoseGraphToolsNode::pose_graph_in_callback: New Message Received");
   this->pose_graph_in_mutex_enter();
-  this->pose_graph_in_msg_ = *msg;
+  *(this->pose_graph_in_msg_) = *msg;
   this->pose_graph_in_mutex_exit();
 }
 
@@ -93,7 +99,27 @@ void PoseGraphToolsNode::DynRecCallback(Config &config, uint32_t level)
   if (!this->config_.enable && config.enable)
     this->pgt_lib_.print("PoseGraphToolsNode", " Enabled.", green);
 
-  this->config_=config;
+  this->config_ = config;
+
+  std::string robot = config.robot;
+  int key = config.key;
+  double dx = config.dx;
+  double dy = config.dy;
+  double dz = config.dz;
+  double droll = config.droll;
+  double dpitch = config.dpitch;
+  double dyaw = config.dyaw;
+
+  char prefix = utils::GetRobotPrefix(robot);
+  uint64_t uint_key = gtsam::Symbol(prefix, key);
+
+  HTransf d_pose =
+      Translation<double, 3>(dx, dy, dz) * AngleAxisd(dyaw, Vector3d::UnitZ()) *
+      AngleAxisd(dpitch, Vector3d::UnitY()) * AngleAxisd(droll, Vector3d::UnitX());
+
+  pose_graph_out_msg_ =
+      pgt_lib_.updateNodePosition(pose_graph_in_msg_, uint_key, d_pose);
+
   this->pgt_lib_.unlock();
 }
 

@@ -23,6 +23,10 @@
 
 #include <pose_graph_tools/PoseGraphToolsConfig.h>
 
+#include <pose_graph_merger/merger.h>
+#include <pose_graph_msgs/PoseGraph.h>
+#include <pose_graph_msgs/PoseGraphNode.h>
+
 #include <pthread.h>
 
 // Eigen
@@ -124,17 +128,17 @@ class PoseGraphToolsLib
   protected:
 
     // private attributes and methods
-
     CMutex alg_mutex_;
+    // Pose graph merger
+    Merger merger_;
 
-  public:
-
-   /**
-    * \brief config variable
-    *
-    * This variable has all the driver parameters defined in the cfg config file.
-    * Is updated everytime function config_update() is called.
-    */
+   public:
+    /**
+     * \brief config variable
+     *
+     * This variable has all the driver parameters defined in the cfg config
+     * file. Is updated everytime function config_update() is called.
+     */
     Config config_;
 
    /**
@@ -178,6 +182,17 @@ class PoseGraphToolsLib
   
     // here define all pose_graph_tools_alg interface methods to retrieve and set
     // the driver parameters
+
+    
+    /**
+     * \brief cupdate node function
+     * Given a delta_pose, and the node to apply to
+     * Update the pose graph
+     */
+    pose_graph_msgs::PoseGraphPtr updateNodePosition(
+        const pose_graph_msgs::PoseGraphConstPtr& msg,
+        uint64_t key,
+        HTransf delta_pose);
 
     /**
      * \brief Print RGB

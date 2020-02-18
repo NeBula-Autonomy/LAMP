@@ -56,10 +56,10 @@ class PoseGraphToolsNode
 
     // [publisher attributes]
     ros::Publisher pose_graph_out_publisher_;
-    pose_graph_msgs::PoseGraph pose_graph_out_msg_;
+    pose_graph_msgs::PoseGraphPtr pose_graph_out_msg_;
 
     // [subscriber attributes]
-    pose_graph_msgs::PoseGraph pose_graph_in_msg_;
+    pose_graph_msgs::PoseGraphPtr pose_graph_in_msg_;
     ros::Subscriber pose_graph_in_subscriber_;
     void pose_graph_in_callback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
     pthread_mutex_t pose_graph_in_mutex_;
@@ -82,6 +82,11 @@ class PoseGraphToolsNode
     * behaviour for all the different implementations from the same algorithm.
     */
     PoseGraphToolsLib pgt_lib_;
+
+    /**
+    * \brief Mapper class
+    */
+    PointCloudMapper mapper_;
 
    /**
     * \brief config variable

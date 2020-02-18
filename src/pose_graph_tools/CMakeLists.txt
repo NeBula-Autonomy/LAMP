@@ -10,7 +10,14 @@ find_package(catkin REQUIRED)
 # ******************************************************************** 
 #                 Add catkin additional components here
 # ******************************************************************** 
-find_package(catkin REQUIRED COMPONENTS roscpp roslib dynamic_reconfigure pose_graph_msgs
+find_package(catkin REQUIRED COMPONENTS 
+	roscpp 
+	roslib 
+	dynamic_reconfigure 
+	pose_graph_msgs 
+	eigen_conversions
+	pose_graph_merger
+	utils
 )
 
 ## System dependencies are found with CMake's conventions
@@ -67,7 +74,7 @@ catkin_package(
 # ******************************************************************** 
 #            Add ROS run time dependencies
 # ******************************************************************** 
- CATKIN_DEPENDS roscpp roslib dynamic_reconfigure pose_graph_msgs
+ CATKIN_DEPENDS roscpp roslib dynamic_reconfigure pose_graph_msgs pose_graph_merger
 # ******************************************************************** 
 #      Add system and labrobotica run time dependencies here
 # ******************************************************************** 
@@ -107,7 +114,7 @@ add_executable(${PROJECT_NAME} src/PoseGraphToolsLib.cc src/PoseGraphTools.cc sr
 # ******************************************************************** 
 #                   Add the libraries
 # ******************************************************************** 
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} gtsam)
 target_link_libraries(${PROJECT_NAME} ${Boost_SYSTEM_LIBRARY})
 
 # target_link_libraries(${PROJECT_NAME} ${<dependency>_LIBRARY})
