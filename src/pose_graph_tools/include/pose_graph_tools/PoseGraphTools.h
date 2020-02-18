@@ -30,10 +30,11 @@
 // boost
 #include <boost/bind.hpp>
 
+// point cloud mapper 
+#include <point_cloud_mapper/PointCloudMapper.h>
 // dynamic reconfigure server include
 #include <dynamic_reconfigure/server.h>
-
-// [publisher subscriber headers]
+// pose graph message 
 #include <pose_graph_msgs/PoseGraph.h>
 
 // [service client headers]
@@ -56,44 +57,22 @@ class PoseGraphToolsNode
 
     // [publisher attributes]
     ros::Publisher pose_graph_out_publisher_;
-    pose_graph_msgs::PoseGraphPtr pose_graph_out_msg_;
+    pose_graph_msgs::PoseGraph pose_graph_out_msg_;
 
     // [subscriber attributes]
-    pose_graph_msgs::PoseGraphPtr pose_graph_in_msg_;
+    pose_graph_msgs::PoseGraph pose_graph_in_msg_;
     ros::Subscriber pose_graph_in_subscriber_;
     void pose_graph_in_callback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
     pthread_mutex_t pose_graph_in_mutex_;
     void pose_graph_in_mutex_enter(void);
     void pose_graph_in_mutex_exit(void);
 
-    // [service attributes]
-
-    // [client attributes]
-
-    // [action server attributes]
-
-    // [action client attributes]
-
-   /**
-    * \brief template algorithm class
-    *
-    * This template class refers to an implementation of an specific algorithm
-    * interface. Will be used in the derivate class to define the common 
-    * behaviour for all the different implementations from the same algorithm.
-    */
+    // Tools and functions for this node 
     PoseGraphToolsLib pgt_lib_;
 
-    /**
-    * \brief Mapper class
-    */
+    // Mapper
     PointCloudMapper mapper_;
 
-   /**
-    * \brief config variable
-    *
-    * This variable has all the driver parameters defined in the cfg config file.
-    * Is updated everytime function config_update() is called.
-    */
     Config config_;
 
   public:

@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
 	eigen_conversions
 	pose_graph_merger
 	utils
+	point_cloud_mapper
 )
 
 ## System dependencies are found with CMake's conventions

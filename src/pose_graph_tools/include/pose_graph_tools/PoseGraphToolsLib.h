@@ -183,14 +183,14 @@ class PoseGraphToolsLib
     // here define all pose_graph_tools_alg interface methods to retrieve and set
     // the driver parameters
 
-    
+
     /**
      * \brief cupdate node function
      * Given a delta_pose, and the node to apply to
      * Update the pose graph
      */
-    pose_graph_msgs::PoseGraphPtr updateNodePosition(
-        const pose_graph_msgs::PoseGraphConstPtr& msg,
+    pose_graph_msgs::PoseGraph updateNodePosition(
+        const pose_graph_msgs::PoseGraph& msg,
         uint64_t key,
         HTransf delta_pose);
 

@@ -70,50 +70,53 @@ std::string PoseGraphToolsLib::print(const float& msg, const color& c = white) {
   return text.str();
 }
 
-pose_graph_msgs::PoseGraphPtr PoseGraphToolsLib::updateNodePosition(
-    const pose_graph_msgs::PoseGraphConstPtr& msg,
+pose_graph_msgs::PoseGraph PoseGraphToolsLib::updateNodePosition(
+    const pose_graph_msgs::PoseGraph& graph,
     uint64_t key,
     HTransf delta_pose) {
-  pose_graph_msgs::PoseGraphPtr new_pose_graph;
-  *new_pose_graph = *msg;
+  pose_graph_msgs::PoseGraphPtr new_pose_graph =
+      pose_graph_msgs::PoseGraphPtr(new pose_graph_msgs::PoseGraph());
+  *new_pose_graph = graph;
+
   // Keep track of the constant part of the pose graph
-  pose_graph_msgs::PoseGraphPtr const_pose_graph;
+  pose_graph_msgs::PoseGraphPtr const_pose_graph =
+      pose_graph_msgs::PoseGraphPtr(new pose_graph_msgs::PoseGraph());
 
   // Change the edge: first calculate new edge transform between the node
   // we want to update and the previous node
   // Search for the edge
-  for (size_t i = 0; i < msg->edges.size(); i++) {
-    if (msg->edges[i].key_from == key - 1 && msg->edges[i].key_to == key) {
+  for (size_t i = 0; i < graph.edges.size(); i++) {
+    if ((graph.edges[i].key_from == key - 1 && graph.edges[i].key_to == key) ||
+        (graph.edges[i].key_from == key && graph.edges[i].key_to == key)) {
       // Get new transform between the two nodes
       HTransf original_tf;
-      tf::poseMsgToEigen(msg->edges[i].pose, original_tf);
+      tf::poseMsgToEigen(graph.edges[i].pose, original_tf);
       geometry_msgs::Pose new_tf;
       tf::poseEigenToMsg(original_tf * delta_pose, new_tf);
       new_pose_graph->edges[i].pose = new_tf;
       break;
+    } else {
+      const_pose_graph->edges.push_back(graph.edges[i]);
     }
-    const_pose_graph->edges.push_back(msg->edges[i]);
   }
-
   // Change the node: modify the node
-  for (size_t i = 0; i < msg->nodes.size(); i++) {
-    if (msg->nodes[i].key == key) {
+  for (size_t i = 0; i < graph.nodes.size(); i++) {
+    if (graph.nodes[i].key == key) {
       HTransf original_pose;
-      tf::poseMsgToEigen(msg->nodes[i].pose, original_pose);
+      tf::poseMsgToEigen(graph.nodes[i].pose, original_pose);
       geometry_msgs::Pose new_pose;
       tf::poseEigenToMsg(original_pose * delta_pose, new_pose);
-      new_pose_graph->edges[i].pose = new_pose;
+      new_pose_graph->nodes[i].pose = new_pose;
       break;
+    } else {
+      const_pose_graph->nodes.push_back(graph.nodes[i]);
     }
-    const_pose_graph->nodes.push_back(msg->nodes[i]);
   }
-
   merger_.OnSlowGraphMsg(const_pose_graph);
   merger_.OnFastGraphMsg(new_pose_graph);
-
-  pose_graph_msgs::PoseGraphPtr processed_graph;
-  *processed_graph = merger_.GetCurrentGraph();
-  return processed_graph;
+  pose_graph_msgs::PoseGraph corrected_graph = merger_.GetCurrentGraph();
+  corrected_graph.header = graph.header;
+  return corrected_graph;
 }
 
 void simple_do_once()
