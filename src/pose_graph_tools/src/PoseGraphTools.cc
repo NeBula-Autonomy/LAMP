@@ -1,18 +1,18 @@
 #include "pose_graph_tools/PoseGraphTools.h"
 
-#include <utils/PrefixHandling.h>
 #include <gtsam/inference/Symbol.h>
+#include <utils/PrefixHandling.h>
 
+using Eigen::AngleAxisd;
 using Eigen::Translation;
-using Eigen::AngleAxisd; 
-using Eigen::Vector3d; 
+using Eigen::Vector3d;
 
-namespace pose_graph_tools
-{
+namespace pose_graph_tools {
 
-PoseGraphToolsNode::PoseGraphToolsNode(ros::NodeHandle &nh, dynamic_reconfigure::Server<Config> &dsrv) :
-node_candidate_key_(0)
-{
+PoseGraphToolsNode::PoseGraphToolsNode(
+    ros::NodeHandle& nh,
+    dynamic_reconfigure::Server<Config>& dsrv)
+    : node_candidate_key_(0) {
   ROS_INFO("Initializing Pose Graph Tools");
   ROS_INFO("Pose Graph Tools: Initializing dynamic reconfigure");
   // Dynamic Reconfigure
@@ -21,15 +21,16 @@ node_candidate_key_(0)
   dsrv.setCallback(dsrv_cb);
   ROS_INFO("Pose Graph Tools: Setting publisher and subscriber");
   // [init publishers]
-  this->pose_graph_out_publisher_ = nh.advertise<pose_graph_msgs::PoseGraph>("pose_graph_out", 1);
-  
+  this->pose_graph_out_publisher_ =
+      nh.advertise<pose_graph_msgs::PoseGraph>("pose_graph_out", 1);
+
   // [init subscribers]
-  this->pose_graph_in_subscriber_ = nh.subscribe("pose_graph_in", 1, &PoseGraphToolsNode::pose_graph_in_callback, this);
-  pthread_mutex_init(&this->pose_graph_in_mutex_,NULL);
+  this->pose_graph_in_subscriber_ = nh.subscribe(
+      "pose_graph_in", 1, &PoseGraphToolsNode::pose_graph_in_callback, this);
+  pthread_mutex_init(&this->pose_graph_in_mutex_, NULL);
 }
 
-PoseGraphToolsNode::~PoseGraphToolsNode(void)
-{
+PoseGraphToolsNode::~PoseGraphToolsNode(void) {
   // [free dynamic memory]
   pthread_mutex_destroy(&this->pose_graph_in_mutex_);
 }
@@ -52,29 +53,32 @@ void PoseGraphToolsNode::mainNodeThread(void) {
               << gtsam::DefaultKeyFormatter(this->node_candidate_key_)
               << std::endl;
     std::cout << "With transform matrix: " << d_pose.matrix() << std::endl;
-    this->pose_graph_out_msg_ = pgt_lib_.updateNodePosition(
+    this->pose_graph_out_msg_ = this->pgt_lib_.updateNodePosition(
         this->pose_graph_in_msg_, this->node_candidate_key_, d_pose);
     this->pgt_lib_.unlock();
-  } 
+  }
   this->pose_graph_out_publisher_.publish(this->pose_graph_out_msg_);
 }
 
 /*  [subscriber callbacks] */
-void PoseGraphToolsNode::pose_graph_in_callback(const pose_graph_msgs::PoseGraph::ConstPtr& msg)
-{
+void PoseGraphToolsNode::pose_graph_in_callback(
+    const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
   ROS_DEBUG("PoseGraphToolsNode::pose_graph_in_callback: New Message Received");
   this->pose_graph_in_mutex_enter();
-  this->pose_graph_in_msg_ = *msg;
+  pose_graph_msgs::PoseGraphConstPtr old_graph =
+      pose_graph_msgs::PoseGraphConstPtr(
+          new pose_graph_msgs::PoseGraph(this->pose_graph_in_msg_));
+  this->pgt_lib_.lock();
+  this->pose_graph_in_msg_ = this->pgt_lib_.addNewIncomingGraph(msg, old_graph);
+  this->pgt_lib_.unlock();
   this->pose_graph_in_mutex_exit();
 }
 
-void PoseGraphToolsNode::pose_graph_in_mutex_enter(void)
-{
+void PoseGraphToolsNode::pose_graph_in_mutex_enter(void) {
   pthread_mutex_lock(&this->pose_graph_in_mutex_);
 }
 
-void PoseGraphToolsNode::pose_graph_in_mutex_exit(void)
-{
+void PoseGraphToolsNode::pose_graph_in_mutex_exit(void) {
   pthread_mutex_unlock(&this->pose_graph_in_mutex_);
 }
 
@@ -99,4 +103,4 @@ void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
   }
 }
 
-} //end of namespace
+}  // namespace pose_graph_tools

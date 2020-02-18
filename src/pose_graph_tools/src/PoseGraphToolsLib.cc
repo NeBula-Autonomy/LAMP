@@ -3,43 +3,38 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <tf_conversions/tf_eigen.h>
 
-namespace pose_graph_tools
-{
+namespace pose_graph_tools {
 
-PoseGraphToolsLib::PoseGraphToolsLib(void)
-{
-}
+PoseGraphToolsLib::PoseGraphToolsLib(void) {}
 
-PoseGraphToolsLib::~PoseGraphToolsLib(void)
-{
-}
+PoseGraphToolsLib::~PoseGraphToolsLib(void) {}
 
 std::string PoseGraphToolsLib::bashColor(const color& c) {
   std::stringstream text;
   switch (c) {
-  case red:
-    text << "\033[1;31m";
-    break;
-  case green:
-    text << "\033[1;32m";
-    break;
-  case yellow:
-    text << "\033[1;33m";
-    break;
-  case blue:
-    text << "\033[1;34m";
-    break;
-  case magenta:
-    text << "\033[1;35m";
-    break;
-  case cyan:
-    text << "\033[1;36m";
-    break;
-  case white:
-    text << "\033[1;37m";
-    break;
-  default:
-    text << "\033[1;37m";
+    case red:
+      text << "\033[1;31m";
+      break;
+    case green:
+      text << "\033[1;32m";
+      break;
+    case yellow:
+      text << "\033[1;33m";
+      break;
+    case blue:
+      text << "\033[1;34m";
+      break;
+    case magenta:
+      text << "\033[1;35m";
+      break;
+    case cyan:
+      text << "\033[1;36m";
+      break;
+    case white:
+      text << "\033[1;37m";
+      break;
+    default:
+      text << "\033[1;37m";
   }
   return text.str();
 }
@@ -54,12 +49,14 @@ std::string PoseGraphToolsLib::print(const std::string& _name,
                                      const std::string& _txt,
                                      const color& _color) {
   std::stringstream text;
-  text << print(_name, _color) << " \e[1m" << _txt << "\e[21m" << restartWhite();
-  ROS_INFO("%s",text.str().c_str());
+  text << print(_name, _color) << " \e[1m" << _txt << "\e[21m"
+       << restartWhite();
+  ROS_INFO("%s", text.str().c_str());
   return text.str();
 }
 
-std::string PoseGraphToolsLib::print(const std::string& msg, const color& c = white) {
+std::string PoseGraphToolsLib::print(const std::string& msg,
+                                     const color& c = white) {
   std::stringstream text;
   text << bashColor(c) << msg << "\033[0m" << restartWhite();
   return text.str();
@@ -119,11 +116,14 @@ pose_graph_msgs::PoseGraph PoseGraphToolsLib::updateNodePosition(
   return corrected_graph;
 }
 
-void simple_do_once()
-{
-    
+pose_graph_msgs::PoseGraph PoseGraphToolsLib::addNewIncomingGraph(
+    const pose_graph_msgs::PoseGraphConstPtr& new_graph,
+    const pose_graph_msgs::PoseGraphConstPtr& old_graph) {
+  merger_.OnSlowGraphMsg(old_graph);
+  merger_.OnFastGraphMsg(new_graph);
+  pose_graph_msgs::PoseGraph processed_graph = merger_.GetCurrentGraph();
+  processed_graph.header = new_graph->header;
+  return processed_graph;
 }
 
-}
-
-// PoseGraphToolsLib Public API
+}  // namespace pose_graph_tools
