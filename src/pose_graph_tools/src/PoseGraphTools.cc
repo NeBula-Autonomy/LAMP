@@ -48,7 +48,7 @@ PoseGraphToolsNode::~PoseGraphToolsNode(void) {
 }
 
 void PoseGraphToolsNode::mainNodeThread(void) {
-  if (this->config_.enable && this->node_candidate_key_ != 0) {
+  if (this->node_candidate_key_ != 0) {
     this->pgt_lib_.lock();
     // Get entries from dynamic reconfigure
     double dx = this->config_.dx;
@@ -99,25 +99,6 @@ void PoseGraphToolsNode::pose_graph_in_mutex_exit(void) {
 }
 
 void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
-  if (!this->config_.enable && config.enable) {
-    this->pgt_lib_.print("PoseGraphToolsNode", " Enabled.", green);
-    // Make new default to be enabled
-    Config new_default_config;
-    this->dsrv_.getConfigDefault(new_default_config);
-    new_default_config.enable = true;
-    this->dsrv_.setConfigDefault(new_default_config);
-  } else if (this->config_.enable && !config.enable) {
-    this->pgt_lib_.print("PoseGraphToolsNode", " Disabled.", red);
-    // Save last update
-    this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
-    // Make new default to be enabled
-    Config new_default_config;
-    this->dsrv_.getConfigDefault(new_default_config);
-    new_default_config.enable = false;
-    this->dsrv_.setConfigDefault(new_default_config);
-    this->dsrv_.updateConfig(new_default_config);
-  }
-
   this->config_ = config;
 }
 
@@ -130,23 +111,21 @@ void PoseGraphToolsNode::KeyedScanCallback(
 
 void PoseGraphToolsNode::SelectNodeCallback(
     const std_msgs::String::ConstPtr& msg) {
-  if (this->config_.enable) {
-    std::string id_string = msg->data;
-    char prefix = id_string[0];
-    id_string.erase(id_string.begin());
-    size_t num_chars = id_string.length();
-    int key_num = std::stoi(id_string);
-    uint64_t candidate_key = gtsam::Symbol(prefix, key_num);
-    // When switching to tune another key, update store current correction
-    if (candidate_key != this->node_candidate_key_) {
-      ROS_INFO_STREAM(
-          "Reconfiguring key: " << gtsam::DefaultKeyFormatter(candidate_key));
-      this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
-      this->node_candidate_key_ = candidate_key;
-      // Reset sliders
-      this->dsrv_.getConfigDefault(this->config_);
-      this->dsrv_.updateConfig(this->config_);
-    }
+  std::string id_string = msg->data;
+  char prefix = id_string[0];
+  id_string.erase(id_string.begin());
+  size_t num_chars = id_string.length();
+  int key_num = std::stoi(id_string);
+  uint64_t candidate_key = gtsam::Symbol(prefix, key_num);
+  // When switching to tune another key, update store current correction
+  if (candidate_key != this->node_candidate_key_) {
+    ROS_INFO_STREAM(
+        "Reconfiguring key: " << gtsam::DefaultKeyFormatter(candidate_key));
+    this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
+    this->node_candidate_key_ = candidate_key;
+    // Reset sliders
+    this->dsrv_.getConfigDefault(this->config_);
+    this->dsrv_.updateConfig(this->config_);
   }
 }
 
