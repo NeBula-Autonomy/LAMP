@@ -86,6 +86,7 @@ void PoseGraphToolsNode::pose_graph_in_callback(
   this->pgt_lib_.lock();
   // Merge newly recieved graph with corrected old graph
   this->pose_graph_in_msg_ = this->pgt_lib_.addNewIncomingGraph(msg, old_graph);
+  this->pose_graph_lamp_ = *msg;
   this->pgt_lib_.unlock();
   this->pose_graph_in_mutex_exit();
 }
@@ -100,6 +101,19 @@ void PoseGraphToolsNode::pose_graph_in_mutex_exit(void) {
 
 void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
   this->config_ = config;
+  if (config.reset) {
+    // Reset sliders
+    this->dsrv_.getConfigDefault(config);
+    this->dsrv_.updateConfig(config);
+    this->config_ = config;
+    // Reset and publish pose graph
+    this->pose_graph_in_msg_ = this->pose_graph_lamp_;
+    this->pose_graph_out_msg_ = this->pose_graph_lamp_;
+    ROS_INFO_STREAM("Reset corrections");
+    this->pgt_lib_.reset();
+    ReGenerateMapPointCloud();
+    this->pose_graph_out_publisher_.publish(this->pose_graph_out_msg_);
+  }
 }
 
 void PoseGraphToolsNode::KeyedScanCallback(

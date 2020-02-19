@@ -113,7 +113,7 @@ pose_graph_msgs::PoseGraph PoseGraphToolsLib::updateNodePosition(
   merger_.OnSlowGraphMsg(const_pose_graph);
   merger_.OnFastGraphMsg(new_pose_graph);
   pose_graph_msgs::PoseGraph corrected_graph = merger_.GetCurrentGraph();
-  merger_ = Merger(); // Again reset merger 
+  merger_ = Merger();  // Again reset merger
   corrected_graph.header = graph.header;
   return corrected_graph;
 }
@@ -126,6 +126,11 @@ pose_graph_msgs::PoseGraph PoseGraphToolsLib::addNewIncomingGraph(
   pose_graph_msgs::PoseGraph processed_graph = merger_.GetCurrentGraph();
   processed_graph.header = new_graph->header;
   return processed_graph;
+}
+
+void PoseGraphToolsLib::reset() {
+  merger_ = Merger();
+  return;
 }
 
 }  // namespace pose_graph_tools

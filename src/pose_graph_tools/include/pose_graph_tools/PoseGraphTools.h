@@ -60,10 +60,8 @@ class PoseGraphToolsNode {
 
   // [publisher attributes]
   ros::Publisher pose_graph_out_publisher_;
-  pose_graph_msgs::PoseGraph pose_graph_out_msg_;
 
   // [subscriber attributes]
-  pose_graph_msgs::PoseGraph pose_graph_in_msg_;
   ros::Subscriber pose_graph_in_subscriber_;
   ros::Subscriber keyed_scan_subscriber_;
   ros::Subscriber selected_node_subscriber_;
@@ -77,6 +75,11 @@ class PoseGraphToolsNode {
 
   // Mapper
   PointCloudMapper mapper_;
+
+  // Pose graphs 
+  pose_graph_msgs::PoseGraph pose_graph_in_msg_;
+  pose_graph_msgs::PoseGraph pose_graph_out_msg_;
+  pose_graph_msgs::PoseGraph pose_graph_lamp_;
 
   Config config_;
   dynamic_reconfigure::Server<Config> dsrv_;

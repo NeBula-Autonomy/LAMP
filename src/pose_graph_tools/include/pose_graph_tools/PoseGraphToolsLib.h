@@ -185,6 +185,8 @@ class PoseGraphToolsLib {
       const pose_graph_msgs::PoseGraphConstPtr& new_graph,
       const pose_graph_msgs::PoseGraphConstPtr& old_graph);
 
+  void reset();  // Reset graphs and merger class
+
   /**
    * \brief Print RGB
    *
