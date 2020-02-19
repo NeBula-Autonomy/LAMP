@@ -49,6 +49,8 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
       "ignore_loop_closures", 1, &LampPgo::IgnoreRobotLoopClosures, this);
   revive_robot_sub_ = nl.subscribe<std_msgs::String>(
       "revive_loop_closures", 1, &LampPgo::ReviveRobotLoopClosures, this);
+  reset_sub_ =
+      nl.subscribe<std_msgs::Bool>("reset", 1, &LampPgo::ResetCallback, this);
 
   // Parse parameters
   // Optimizer backend
@@ -141,6 +143,15 @@ void LampPgo::RemoveLCByIdCallback(const std_msgs::String::ConstPtr& msg) {
 void LampPgo::RemoveLCCallback(const std_msgs::Bool::ConstPtr& msg) {
   RemoveLastLoopClosure();
   return;
+}
+
+void LampPgo::ResetCallback(const std_msgs::Bool::ConstPtr& msg) {
+  if (msg->data) {
+    // Re-initialize solver
+    pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
+    values_ = Values();
+    nfg_ = NonlinearFactorGraph();
+  }
 }
 
 void LampPgo::InputCallback(
