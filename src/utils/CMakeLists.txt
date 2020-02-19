@@ -67,5 +67,7 @@ if (CATKIN_ENABLE_TESTING)
   ## Add gtest based cpp test target and link libraries
   add_rostest_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.test test/test_${PROJECT_NAME}.cc)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_pose_graph test/test_pose_graph.test test/test_pose_graph.cc)
+  target_link_libraries(test_pose_graph ${PROJECT_NAME} ${catkin_LIBRARIES})  
 endif()
 

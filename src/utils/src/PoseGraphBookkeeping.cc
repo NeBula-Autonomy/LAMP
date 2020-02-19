@@ -390,7 +390,7 @@ void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
 }
 
 void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
-  ROS_INFO("Removing edges msg");
+  ROS_DEBUG("Removing edges msg");
   // Remove edge messages
   EdgeSet new_edges;
   auto e = edges_.begin();
@@ -404,7 +404,7 @@ void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
   }
   edges_ = new_edges;
 
-  ROS_INFO("Removing edges gtsam");
+  ROS_DEBUG("Removing edges gtsam");
   // Remove edge factors
   gtsam::NonlinearFactorGraph new_nfg; 
   auto f = nfg_.begin();
@@ -419,11 +419,10 @@ void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
     f++;
   }
   nfg_ = new_nfg; 
-  ROS_INFO("End of remove edges with prefix");
 }
 
 void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
-  ROS_INFO("Removing values msg");
+  ROS_DEBUG("Removing values msg");
   // Remove edge messages
   auto n = nodes_.begin();
 
@@ -434,7 +433,7 @@ void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
     } 
     n++;
   }
-  ROS_INFO("Removing values gtsam");
+  ROS_DEBUG("Removing values gtsam");
   // Remove gtsam values
   auto v = values_.begin();
 
