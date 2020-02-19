@@ -103,18 +103,19 @@ void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
     this->pgt_lib_.print("PoseGraphToolsNode", " Enabled.", green);
     // Make new default to be enabled
     Config new_default_config;
-    dsrv_.getConfigDefault(new_default_config);
+    this->dsrv_.getConfigDefault(new_default_config);
     new_default_config.enable = true;
-    dsrv_.setConfigDefault(new_default_config);
+    this->dsrv_.setConfigDefault(new_default_config);
   } else if (this->config_.enable && !config.enable) {
     this->pgt_lib_.print("PoseGraphToolsNode", " Disabled.", red);
     // Save last update
     this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
     // Make new default to be enabled
     Config new_default_config;
-    dsrv_.getConfigDefault(new_default_config);
+    this->dsrv_.getConfigDefault(new_default_config);
     new_default_config.enable = false;
-    dsrv_.setConfigDefault(new_default_config);
+    this->dsrv_.setConfigDefault(new_default_config);
+    this->dsrv_.updateConfig(new_default_config);
   }
 
   this->config_ = config;
