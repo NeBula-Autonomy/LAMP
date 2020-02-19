@@ -1,6 +1,5 @@
 #include <pose_graph_visualizer/PoseGraphVisualizer.h>
 
-#include <interactive_markers/interactive_marker_server.h>
 #include <interactive_markers/menu_handler.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
@@ -138,6 +137,7 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       pnh.advertise<visualization_msgs::Marker>("artifact_markers", 10, false);
   artifact_id_marker_pub_ = pnh.advertise<visualization_msgs::Marker>(
       "artifact_id_markers", 10, false);
+  selected_node_pub_ = pnh.advertise<std_msgs::String>("selected_node", 10, false);
 
   keyed_scan_sub_ = nh.subscribe<pose_graph_msgs::KeyedScan>(
       "lamp/keyed_scans", 10, &PoseGraphVisualizer::KeyedScanCallback, this);
@@ -488,8 +488,17 @@ void PoseGraphVisualizer::MakeMenuMarker(const gtsam::Pose3& pose,
   int_marker.controls.push_back(control);
 
   menu_handler.insert(id_number);
-  server->insert(int_marker);
+
+  server->insert(int_marker, boost::bind(&PoseGraphVisualizer::MarkerFeedback, this, _1));
   menu_handler.apply(*server, int_marker.name);
+}
+
+void PoseGraphVisualizer::MarkerFeedback(
+    const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback) {
+  // Publish id
+  std_msgs::String msg;
+  msg.data = feedback->marker_name;
+  selected_node_pub_.publish(msg);
 }
 
 void PoseGraphVisualizer::VisualizePoseGraph() {

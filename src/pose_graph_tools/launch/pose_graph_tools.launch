@@ -18,8 +18,9 @@
 
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"
-          name="pose_graph_tools_visualizer"
-          type="pose_graph_visualizer_node">
+          name="pose_graph_visualizer"
+          type="pose_graph_visualizer_node"
+          ns="corrected">
       <!-- LAMP settings -->
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
       <!-- Frames -->
