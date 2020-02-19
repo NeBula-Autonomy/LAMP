@@ -404,6 +404,19 @@ void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
   }
   edges_ = new_edges;
 
+  // Remove prior messages
+  EdgeSet new_priors;
+  auto p = priors_.begin();
+  while (p != priors_.end()) {
+    if (gtsam::Symbol(p->key_from).chr() != prefix &&
+        gtsam::Symbol(p->key_to).chr() != prefix) {
+      // Is an edge to remove
+      new_priors.insert(*p);
+    }
+    p++;
+  }
+  priors_ = new_priors;
+
   ROS_DEBUG("Removing edges gtsam");
   // Remove edge factors
   gtsam::NonlinearFactorGraph new_nfg; 
@@ -424,27 +437,35 @@ void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
 void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
   ROS_DEBUG("Removing values msg");
   // Remove edge messages
+
+  NodeSet new_nodes;
   auto n = nodes_.begin();
 
   while (n != nodes_.end()) {
-    if (gtsam::Symbol(n->key).chr() == prefix){
-      // Is an edge to remove 
-      nodes_.erase(n);
+    if (gtsam::Symbol(n->key).chr() != prefix){
+      // Is an edge to keep 
+      new_nodes.insert(*n);
     } 
     n++;
   }
+
+  nodes_ = new_nodes;
+
   ROS_DEBUG("Removing values gtsam");
   // Remove gtsam values
+  gtsam::Values new_values;
   auto v = values_.begin();
 
   while (v != values_.end()) {
     auto value = *v;
-    if (gtsam::Symbol(value.key).chr() == prefix){
-      // Is an edge to remove 
-      values_.erase(value.key);
+    if (gtsam::Symbol(value.key).chr() != prefix){
+      // Is an edge to keep
+      new_values.insert(value.key, value.value);
     } 
     v++;
   }
+
+  values_ = new_values;
 }
 
 // DEPRECATED!!
