@@ -59,9 +59,9 @@ void PoseGraphToolsNode::mainNodeThread(void) {
     double dyaw = this->config_.dyaw;
     // Transform to eigen transform type
     HTransf d_pose = Translation<double, 3>(dx, dy, dz) *
-                     AngleAxisd(dyaw, Vector3d::UnitZ()) *
-                     AngleAxisd(dpitch, Vector3d::UnitY()) *
-                     AngleAxisd(droll, Vector3d::UnitX());
+                     AngleAxisd(dyaw / 180 * M_PI, Vector3d::UnitZ()) *
+                     AngleAxisd(dpitch / 180 * M_PI, Vector3d::UnitY()) *
+                     AngleAxisd(droll / 180 * M_PI, Vector3d::UnitX());
     ROS_DEBUG_STREAM("Modifying key: "
                      << gtsam::DefaultKeyFormatter(this->node_candidate_key_));
     // Update node and posegraph
