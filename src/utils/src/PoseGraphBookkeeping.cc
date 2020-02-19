@@ -371,6 +371,35 @@ bool PoseGraph::TrackPrior(gtsam::Symbol key,
   return true;
 }
 
+// Removal tools 
+bool PoseGraph::RemoveEdgesWithPrefix(std::string prefix){
+
+  // Remove edge messages
+  auto e = edges_.begin();
+
+  while (e != edges_.end()) {
+    if (gtsam::Symbol(e.key_from).chr() == prefix || gtsam::Symbol(e.key_to).chr() == prefix){
+      // Is an edge to remove 
+      edges_.erase(e);
+    } else {
+      e++;
+    }
+  }
+
+  // Remove edge factors
+  auto f = nfg_.begin();
+
+  while (f != nfg_.end()) {
+    if (gtsam::Symbol(f.key_from).chr() == prefix || gtsam::Symbol(f.key_to).chr() == prefix){
+      // Is an edge to remove 
+      nfg_.erase(f);
+    } else {
+      f++;
+    }
+  }
+
+}
+
 // DEPRECATED!!
 void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
   // Main values variable
