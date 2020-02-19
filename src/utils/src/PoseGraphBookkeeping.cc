@@ -461,11 +461,15 @@ void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
     if (gtsam::Symbol(value.key).chr() != prefix){
       // Is an edge to keep
       new_values.insert(value.key, value.value);
+
+      // Update the latest key
+      key = value.key;
     } 
     v++;
   }
 
   values_ = new_values;
+
 }
 
 // DEPRECATED!!

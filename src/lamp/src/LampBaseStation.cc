@@ -355,19 +355,21 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
     char robot = utils::GetRobotPrefix(pair.first);
     gtsam::Pose3 pose = pair.second.pose;
 
-    gtsam::Pose3 last_pose_base = pose_graph_.LastPose(robot);
-    gtsam::Pose3 last_pose_robot = latest_node_pose_[robot].second;
+    if (latest_node_pose_.count(robot)){
+      gtsam::Pose3 last_pose_base = pose_graph_.LastPose(robot);
+      gtsam::Pose3 last_pose_robot = latest_node_pose_[robot].second;
 
-    gtsam::Pose3 delta = last_pose_robot.between(pose);
-    gtsam::Pose3 new_pose = last_pose_base.compose(delta);
+      gtsam::Pose3 delta = last_pose_robot.between(pose);
+      gtsam::Pose3 new_pose = last_pose_base.compose(delta);
 
-    // Convert to ROS to publish
-    geometry_msgs::PoseStamped msg;
-    msg.pose = utils::GtsamToRosMsg(new_pose);
-    msg.header.frame_id = pose_graph_.fixed_frame_id;
-    msg.header.stamp = pair.second.stamp;
+      // Convert to ROS to publish
+      geometry_msgs::PoseStamped msg;
+      msg.pose = utils::GtsamToRosMsg(new_pose);
+      msg.header.frame_id = pose_graph_.fixed_frame_id;
+      msg.header.stamp = pair.second.stamp;
 
-    publishers_pose_[robot].publish(msg);
+      publishers_pose_[robot].publish(msg);
+    }
   }
 }
 
@@ -453,6 +455,10 @@ void LampBaseStation::RemoveRobotCallback(const std_msgs::String msg){
 
   // Remove the pose graph
   pose_graph_.RemoveRobotFromGraph(msg.data);
+
+
+  // Erase latest_node_pose_
+  latest_node_pose_.erase(utils::GetRobotPrefix(msg.data));
 
   // Send reset to lamp_pgo
   std_msgs::Bool signal;
