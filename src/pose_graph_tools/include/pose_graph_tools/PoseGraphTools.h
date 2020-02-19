@@ -79,6 +79,8 @@ class PoseGraphToolsNode {
   PointCloudMapper mapper_;
 
   Config config_;
+  dynamic_reconfigure::Server<Config> dsrv_;
+
 
  public:
   /**
@@ -87,8 +89,7 @@ class PoseGraphToolsNode {
    * This constructor initializes specific class attributes and all ROS
    * communications variables to enable message exchange.
    */
-  PoseGraphToolsNode(ros::NodeHandle& nh,
-                     dynamic_reconfigure::Server<Config>& dsrv);
+  PoseGraphToolsNode(ros::NodeHandle& nh);
 
   /**
    * \brief Destructor

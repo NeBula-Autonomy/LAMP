@@ -16,16 +16,14 @@ namespace gu = geometry_utils;
 
 namespace pose_graph_tools {
 
-PoseGraphToolsNode::PoseGraphToolsNode(
-    ros::NodeHandle& nh,
-    dynamic_reconfigure::Server<Config>& dsrv)
+PoseGraphToolsNode::PoseGraphToolsNode(ros::NodeHandle& nh)
     : node_candidate_key_(0) {
   ROS_INFO("Initializing Pose Graph Tools");
   ROS_INFO("Pose Graph Tools: Initializing dynamic reconfigure");
   // Dynamic Reconfigure
   dynamic_reconfigure::Server<Config>::CallbackType dsrv_cb;
   dsrv_cb = boost::bind(&PoseGraphToolsNode::DynRecCallback, this, _1, _2);
-  dsrv.setCallback(dsrv_cb);
+  dsrv_.setCallback(dsrv_cb);
   ROS_INFO("Initializing mapper");
   mapper_.Initialize(nh);
 
@@ -65,7 +63,7 @@ void PoseGraphToolsNode::mainNodeThread(void) {
                      AngleAxisd(dpitch, Vector3d::UnitY()) *
                      AngleAxisd(droll, Vector3d::UnitX());
     ROS_DEBUG_STREAM("Modifying key: "
-                    << gtsam::DefaultKeyFormatter(this->node_candidate_key_));
+                     << gtsam::DefaultKeyFormatter(this->node_candidate_key_));
     // Update node and posegraph
     this->pose_graph_out_msg_ = this->pgt_lib_.updateNodePosition(
         this->pose_graph_in_msg_, this->node_candidate_key_, d_pose);
@@ -103,6 +101,20 @@ void PoseGraphToolsNode::pose_graph_in_mutex_exit(void) {
 void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
   if (!this->config_.enable && config.enable) {
     this->pgt_lib_.print("PoseGraphToolsNode", " Enabled.", green);
+    // Make new default to be enabled
+    Config new_default_config;
+    dsrv_.getConfigDefault(new_default_config);
+    new_default_config.enable = true;
+    dsrv_.setConfigDefault(new_default_config);
+  } else if (this->config_.enable && !config.enable) {
+    this->pgt_lib_.print("PoseGraphToolsNode", " Disabled.", red);
+    // Save last update
+    this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
+    // Make new default to be enabled
+    Config new_default_config;
+    dsrv_.getConfigDefault(new_default_config);
+    new_default_config.enable = false;
+    dsrv_.setConfigDefault(new_default_config);
   }
 
   this->config_ = config;
@@ -130,6 +142,9 @@ void PoseGraphToolsNode::SelectNodeCallback(
           "Reconfiguring key: " << gtsam::DefaultKeyFormatter(candidate_key));
       this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
       this->node_candidate_key_ = candidate_key;
+      // Reset sliders
+      this->dsrv_.getConfigDefault(this->config_);
+      this->dsrv_.updateConfig(this->config_);
     }
   }
 }
@@ -204,7 +219,7 @@ bool PoseGraphToolsNode::GetTransformedPointCloudWorld(const uint64_t& key,
   // Check if scan exists for key
   if (keyed_scans.find(key) == keyed_scans.end()) {
     ROS_DEBUG_STREAM("Key " << gtsam::DefaultKeyFormatter(key)
-                           << " does not have a scan");
+                            << " does not have a scan");
     return false;
   }
   // Transform the body-frame scan into world frame.

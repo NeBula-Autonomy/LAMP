@@ -13,9 +13,7 @@ int main(int argc,char *argv[])
   ros::NodeHandle nh(ros::this_node::getName());
   ros::Rate loop_rate(10);
 
-  dynamic_reconfigure::Server<pose_graph_tools::Config> dsrv;    
-
-  pose_graph_tools::PoseGraphToolsNode node(nh, dsrv);
+  pose_graph_tools::PoseGraphToolsNode node(nh);
 
   while (ros::ok()) 
   {
