@@ -390,35 +390,40 @@ void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
 }
 
 void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
-  ROS_DEBUG("Removing edges msg");
+  ROS_INFO("Removing edges msg");
   // Remove edge messages
+  EdgeSet new_edges;
   auto e = edges_.begin();
-
   while (e != edges_.end()) {
-    if (gtsam::Symbol(e->key_from).chr() == prefix || gtsam::Symbol(e->key_to).chr() == prefix){
-      // Is an edge to remove 
-      edges_.erase(e);
-    } else {
-      e++;
+    if (gtsam::Symbol(e->key_from).chr() != prefix &&
+        gtsam::Symbol(e->key_to).chr() != prefix) {
+      // Is an edge to remove
+      new_edges.insert(*e);
     }
+    e++;
   }
-  ROS_DEBUG("Removing edges gtsam");
-  // Remove edge factors
-  auto f = nfg_.begin();
+  edges_ = new_edges;
 
+  ROS_INFO("Removing edges gtsam");
+  // Remove edge factors
+  gtsam::NonlinearFactorGraph new_nfg; 
+  auto f = nfg_.begin();
   while (f != nfg_.end()) {
     auto factor = *f;
-    if (gtsam::Symbol(factor->front()).chr() == prefix || gtsam::Symbol(factor->back()).chr() == prefix){
-      // Is an edge to remove 
-      nfg_.erase(f);
-    } else {
-      f++;
+    if (gtsam::Symbol(factor->front()).chr() != prefix &&
+        gtsam::Symbol(factor->back()).chr() != prefix) {
+      // If this factor does not connect to nodes with prefix
+      // Add to new nonlinear factor graph
+      new_nfg.add(factor);
     }
+    f++;
   }
+  nfg_ = new_nfg; 
+  ROS_INFO("End of remove edges with prefix");
 }
 
 void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
-  ROS_DEBUG("Removing values msg");
+  ROS_INFO("Removing values msg");
   // Remove edge messages
   auto n = nodes_.begin();
 
@@ -426,11 +431,10 @@ void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
     if (gtsam::Symbol(n->key).chr() == prefix){
       // Is an edge to remove 
       nodes_.erase(n);
-    } else {
-      n++;
-    }
+    } 
+    n++;
   }
-  ROS_DEBUG("Removing values gtsam");
+  ROS_INFO("Removing values gtsam");
   // Remove gtsam values
   auto v = values_.begin();
 
@@ -439,9 +443,8 @@ void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
     if (gtsam::Symbol(value.key).chr() == prefix){
       // Is an edge to remove 
       values_.erase(value.key);
-    } else {
-      v++;
-    }
+    } 
+    v++;
   }
 }
 
