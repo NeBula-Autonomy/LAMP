@@ -265,8 +265,8 @@ public:
 
   // Removal tools
   void RemoveRobotFromGraph(std::string robot_name);
-  void RemoveEdgesWithPrefix(char prefix);
-  void RemoveValuesWithPrefix(char prefix);
+  void RemoveEdgesWithPrefix(unsigned char prefix);
+  void RemoveValuesWithPrefix(unsigned char prefix);
 
   // Adds gtsam::Values to internal values and values_new without updating node
   // messages.
