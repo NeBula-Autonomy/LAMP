@@ -35,13 +35,15 @@
 // dynamic reconfigure server include
 #include <dynamic_reconfigure/server.h>
 // pose graph message
+#include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 
-// [service client headers]
-
-// [action server client headers]
+#include <pcl_ros/point_cloud.h>
 
 namespace pose_graph_tools {
+
+// Typedef for stored point clouds.
+typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 
 /**
  * \brief Algorithm PoseGraphToolsNode
@@ -52,6 +54,9 @@ class PoseGraphToolsNode {
   // Candidate node to apply the new transformation
   uint64_t node_candidate_key_;
 
+  // Keyed scans
+  std::map<uint64_t, PointCloud::ConstPtr> keyed_scans;
+
   // [publisher attributes]
   ros::Publisher pose_graph_out_publisher_;
   pose_graph_msgs::PoseGraph pose_graph_out_msg_;
@@ -59,6 +64,7 @@ class PoseGraphToolsNode {
   // [subscriber attributes]
   pose_graph_msgs::PoseGraph pose_graph_in_msg_;
   ros::Subscriber pose_graph_in_subscriber_;
+  ros::Subscriber keyed_scan_subscriber_;
   void pose_graph_in_callback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
   pthread_mutex_t pose_graph_in_mutex_;
   void pose_graph_in_mutex_enter(void);
@@ -114,9 +120,19 @@ class PoseGraphToolsNode {
    */
   void DynRecCallback(Config& config, uint32_t level = 0);
 
-  // [diagnostic functions]
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
 
-  // [test functions]
+  // Map generation functions (regenerating map after modifying posegraph)
+  bool ReGenerateMapPointCloud();
+
+  // For combining all the scans together
+  bool CombineKeyedScansWorld(PointCloud* points);
+
+  // Transform the point cloud to world frame
+  bool GetTransformedPointCloudWorld(const uint64_t& key, PointCloud* points);
+
+  // For adding one scan to the map
+  bool AddTransformedPointCloudToMap(const uint64_t& key);
 };
 
 }  // namespace pose_graph_tools
