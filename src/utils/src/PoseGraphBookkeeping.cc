@@ -372,7 +372,24 @@ bool PoseGraph::TrackPrior(gtsam::Symbol key,
 }
 
 // Removal tools 
-bool PoseGraph::RemoveEdgesWithPrefix(std::string prefix){
+void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
+
+  // Get Prefixes
+  std::string prefix = utils::GetRobotPrefix(robot_name);
+  std::string art_prefix = utils::GetArtifactPrefix(robot_name);
+
+  ROS_WARN_STREAM("Removing all edges and nodes in the graph for robot: " << robot_name << " with prefix " << prefix);
+
+  // Remove robot information
+  RemoveEdgesWithPrefix(prefix);
+  RemoveValuesWithPrefix(prefix);
+
+  // Remove artifacts
+  RemoveEdgesWithPrefix(art_prefix);
+  RemoveValuesWithPrefix(art_prefix);
+}
+
+void PoseGraph::RemoveEdgesWithPrefix(std::string prefix){
 
   // Remove edge messages
   auto e = edges_.begin();
@@ -390,14 +407,40 @@ bool PoseGraph::RemoveEdgesWithPrefix(std::string prefix){
   auto f = nfg_.begin();
 
   while (f != nfg_.end()) {
-    if (gtsam::Symbol(f.key_from).chr() == prefix || gtsam::Symbol(f.key_to).chr() == prefix){
+    if (f.front().chr() == prefix || f.back().chr() == prefix){
       // Is an edge to remove 
       nfg_.erase(f);
     } else {
       f++;
     }
   }
+}
 
+void PoseGraph::RemoveValuesWithPrefix(std::string prefix){
+
+  // Remove edge messages
+  auto n = nodes_.begin();
+
+  while (n != nodes_.end()) {
+    if (gtsam::Symbol(n.key).chr() == prefix){
+      // Is an edge to remove 
+      nodes_.erase(n);
+    } else {
+      e++;
+    }
+  }
+
+  // Remove edge factors
+  auto v = values_.begin();
+
+  while (v != values_.end()) {
+    if (v.key.chr() == prefix){
+      // Is an edge to remove 
+      values_.erase(v);
+    } else {
+      v++;
+    }
+  }
 }
 
 // DEPRECATED!!

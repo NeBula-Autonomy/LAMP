@@ -125,6 +125,10 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                          &LampBaseStation::LaserLoopClosureCallback,
                                          dynamic_cast<LampBase*>(this));
 
+  remove_robot_sub = nl.subscribe("remove_robot_from_graph",
+                                         1,
+                                         &LampBaseStation::RemoveRobotCallback);
+
   // Uncomment when needed for debugging
   debug_sub_ = nl.subscribe("debug",
                             1,
@@ -441,6 +445,20 @@ bool LampBaseStation::ProcessArtifactGT() {
   }
 
   return true;
+}
+
+void LampBaseStation::RemoveRobotCallback(const std_msgs::String msg){
+  ROS_INFO_STREAM("Recieved remove robot message for robot " << msg.data);
+
+  // Remove the pose graph
+  pose_graph_.RemoveRobotFromGraph(msg.data);
+
+  // Send reset to lamp_pgo
+  std_msgs::Bool signal;
+  signal.data = true;
+
+  // Publish graph to optimize
+  
 }
 
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {

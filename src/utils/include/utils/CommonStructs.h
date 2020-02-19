@@ -263,6 +263,11 @@ public:
                   const gtsam::SharedNoiseModel& covariance,
                   bool create_msg = true);
 
+  // Removal tools
+  void RemoveRobotFromGraph(std::string robot_name);
+  void RemoveEdgesWithPrefix(std::string prefix);
+  void RemoveValuesWithPrefix(std::string prefix);
+
   // Adds gtsam::Values to internal values and values_new without updating node
   // messages.
   void AddNewValues(const gtsam::Values& new_values);
