@@ -109,13 +109,13 @@ void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
     std::string robot = config.robot;
     char prefix = utils::GetRobotPrefix(robot);
     int key = config.key;
-    uint64_t candidate_key_ = gtsam::Symbol(prefix, key);
+    uint64_t candidate_key = gtsam::Symbol(prefix, key);
     // When switching to tune another key, update store current correction
-    if (candidate_key_ != this->node_candidate_key_) {
+    if (candidate_key != this->node_candidate_key_) {
       ROS_INFO_STREAM("Reconfiguring key: "
-                      << gtsam::DefaultKeyFormatter(this->node_candidate_key_));
+                      << gtsam::DefaultKeyFormatter(candidate_key));
       this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
-      this->node_candidate_key_ = candidate_key_;
+      this->node_candidate_key_ = candidate_key;
     }
   }
 }

@@ -71,6 +71,8 @@ pose_graph_msgs::PoseGraph PoseGraphToolsLib::updateNodePosition(
     const pose_graph_msgs::PoseGraph& graph,
     uint64_t key,
     HTransf delta_pose) {
+  // Reset the merger
+  merger_ = Merger();
   pose_graph_msgs::PoseGraphPtr new_pose_graph =
       pose_graph_msgs::PoseGraphPtr(new pose_graph_msgs::PoseGraph());
   *new_pose_graph = graph;
@@ -83,8 +85,7 @@ pose_graph_msgs::PoseGraph PoseGraphToolsLib::updateNodePosition(
   // we want to update and the previous node
   // Search for the edge
   for (size_t i = 0; i < graph.edges.size(); i++) {
-    if ((graph.edges[i].key_from == key - 1 && graph.edges[i].key_to == key) ||
-        (graph.edges[i].key_from == key && graph.edges[i].key_to == key)) {
+    if (graph.edges[i].key_to == key) {
       // Get new transform between the two nodes
       HTransf original_tf;
       tf::poseMsgToEigen(graph.edges[i].pose, original_tf);
@@ -112,6 +113,7 @@ pose_graph_msgs::PoseGraph PoseGraphToolsLib::updateNodePosition(
   merger_.OnSlowGraphMsg(const_pose_graph);
   merger_.OnFastGraphMsg(new_pose_graph);
   pose_graph_msgs::PoseGraph corrected_graph = merger_.GetCurrentGraph();
+  merger_ = Merger(); // Again reset merger 
   corrected_graph.header = graph.header;
   return corrected_graph;
 }
