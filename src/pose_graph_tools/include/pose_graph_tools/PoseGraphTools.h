@@ -37,6 +37,7 @@
 // pose graph message
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
+#include <std_msgs/String.h>
 
 #include <pcl_ros/point_cloud.h>
 
@@ -65,6 +66,7 @@ class PoseGraphToolsNode {
   pose_graph_msgs::PoseGraph pose_graph_in_msg_;
   ros::Subscriber pose_graph_in_subscriber_;
   ros::Subscriber keyed_scan_subscriber_;
+  ros::Subscriber selected_node_subscriber_;
   void pose_graph_in_callback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
   pthread_mutex_t pose_graph_in_mutex_;
   void pose_graph_in_mutex_enter(void);
@@ -121,6 +123,8 @@ class PoseGraphToolsNode {
   void DynRecCallback(Config& config, uint32_t level = 0);
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
+
+  void SelectNodeCallback(const std_msgs::String::ConstPtr& msg);
 
   // Map generation functions (regenerating map after modifying posegraph)
   bool ReGenerateMapPointCloud();

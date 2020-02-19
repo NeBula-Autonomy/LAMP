@@ -14,6 +14,7 @@
       <remap from="~pose_graph_in" to="/$(arg robot_namespace)/lamp/pose_graph"/>
       <remap from="~pose_graph_out" to="/$(arg robot_namespace)/lamp/pose_graph_corrected"/>
       <remap from="~keyed_scan" to="/$(arg robot_namespace)/lamp/keyed_scans"/>
+      <remap from="~selected_node" to="/$(arg robot_namespace)/corrected/pose_graph_visualizer/selected_node" />
     </node>
 
     <!-- Pose graph visualization -->

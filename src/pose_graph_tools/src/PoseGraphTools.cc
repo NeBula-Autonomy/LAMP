@@ -39,6 +39,8 @@ PoseGraphToolsNode::PoseGraphToolsNode(
       "pose_graph_in", 1, &PoseGraphToolsNode::pose_graph_in_callback, this);
   this->keyed_scan_subscriber_ = nh.subscribe(
       "keyed_scan", 1, &PoseGraphToolsNode::KeyedScanCallback, this);
+  this->selected_node_subscriber_ = nh.subscribe(
+      "selected_node", 1, &PoseGraphToolsNode::SelectNodeCallback, this);
   pthread_mutex_init(&this->pose_graph_in_mutex_, NULL);
 }
 
@@ -104,20 +106,6 @@ void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
   }
 
   this->config_ = config;
-
-  if (config.enable) {
-    std::string robot = config.robot;
-    char prefix = utils::GetRobotPrefix(robot);
-    int key = config.key;
-    uint64_t candidate_key = gtsam::Symbol(prefix, key);
-    // When switching to tune another key, update store current correction
-    if (candidate_key != this->node_candidate_key_) {
-      ROS_INFO_STREAM("Reconfiguring key: "
-                      << gtsam::DefaultKeyFormatter(candidate_key));
-      this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
-      this->node_candidate_key_ = candidate_key;
-    }
-  }
 }
 
 void PoseGraphToolsNode::KeyedScanCallback(
@@ -125,6 +113,25 @@ void PoseGraphToolsNode::KeyedScanCallback(
   PointCloud::Ptr scan_ptr(new PointCloud);
   pcl::fromROSMsg(msg->scan, *scan_ptr);
   keyed_scans[msg->key] = scan_ptr;
+}
+
+void PoseGraphToolsNode::SelectNodeCallback(
+    const std_msgs::String::ConstPtr& msg) {
+  if (this->config_.enable) {
+    std::string id_string = msg->data;
+    char prefix = id_string[0];
+    id_string.erase(id_string.begin());
+    size_t num_chars = id_string.length();
+    int key_num = std::stoi(id_string);
+    uint64_t candidate_key = gtsam::Symbol(prefix, key_num);
+    // When switching to tune another key, update store current correction
+    if (candidate_key != this->node_candidate_key_) {
+      ROS_INFO_STREAM(
+          "Reconfiguring key: " << gtsam::DefaultKeyFormatter(candidate_key));
+      this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
+      this->node_candidate_key_ = candidate_key;
+    }
+  }
 }
 
 //------------------------------------------------------------------------------------------
