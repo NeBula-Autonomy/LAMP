@@ -21,6 +21,7 @@
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>roslib</build_export_depend>
   <build_export_depend>pose_graph_msgs</build_export_depend>
+  <build_export_depend>pose_graph_merger</build_export_depend>
   <build_depend>eigen_conversions</build_depend>
   <build_depend>pose_graph_merger</build_depend>
   <build_depend>utils</build_depend>

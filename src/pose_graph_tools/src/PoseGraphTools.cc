@@ -64,7 +64,7 @@ void PoseGraphToolsNode::mainNodeThread(void) {
                      AngleAxisd(dyaw, Vector3d::UnitZ()) *
                      AngleAxisd(dpitch, Vector3d::UnitY()) *
                      AngleAxisd(droll, Vector3d::UnitX());
-    ROS_INFO_STREAM("Modifying key: "
+    ROS_DEBUG_STREAM("Modifying key: "
                     << gtsam::DefaultKeyFormatter(this->node_candidate_key_));
     // Update node and posegraph
     this->pose_graph_out_msg_ = this->pgt_lib_.updateNodePosition(
@@ -203,7 +203,7 @@ bool PoseGraphToolsNode::GetTransformedPointCloudWorld(const uint64_t& key,
   b2w.block(0, 0, 3, 3) = quat.matrix();
   // Check if scan exists for key
   if (keyed_scans.find(key) == keyed_scans.end()) {
-    ROS_WARN_STREAM("Key " << gtsam::DefaultKeyFormatter(key)
+    ROS_DEBUG_STREAM("Key " << gtsam::DefaultKeyFormatter(key)
                            << " does not have a scan");
     return false;
   }
