@@ -390,19 +390,22 @@ void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
 }
 
 void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
-  ROS_DEBUG("Removing edges msg");
+  ROS_INFO("Removing edges msg");
   // Remove edge messages
   auto e = edges_.begin();
-
+  ROS_INFO("369");
   while (e != edges_.end()) {
+    ROS_INFO("398");
     if (gtsam::Symbol(e->key_from).chr() == prefix || gtsam::Symbol(e->key_to).chr() == prefix){
       // Is an edge to remove 
+      ROS_INFO("401");
       edges_.erase(e);
     } else {
+      ROS_INFO("404");
       e++;
     }
   }
-  ROS_DEBUG("Removing edges gtsam");
+  ROS_INFO("Removing edges gtsam");
   // Remove edge factors
   auto f = nfg_.begin();
 
@@ -418,7 +421,7 @@ void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
 }
 
 void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
-  ROS_DEBUG("Removing values msg");
+  ROS_INFO("Removing values msg");
   // Remove edge messages
   auto n = nodes_.begin();
 
@@ -430,7 +433,7 @@ void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
       n++;
     }
   }
-  ROS_DEBUG("Removing values gtsam");
+  ROS_INFO("Removing values gtsam");
   // Remove gtsam values
   auto v = values_.begin();
 
