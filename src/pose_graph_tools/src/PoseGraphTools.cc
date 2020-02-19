@@ -1,5 +1,8 @@
 #include "pose_graph_tools/PoseGraphTools.h"
 
+#include <limits>
+
+#include <geometry_msgs/Point.h>
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 #include <gtsam/inference/Symbol.h>
@@ -37,8 +40,8 @@ PoseGraphToolsNode::PoseGraphToolsNode(ros::NodeHandle& nh)
       "pose_graph_in", 1, &PoseGraphToolsNode::pose_graph_in_callback, this);
   this->keyed_scan_subscriber_ = nh.subscribe(
       "keyed_scan", 1, &PoseGraphToolsNode::KeyedScanCallback, this);
-  this->selected_node_subscriber_ = nh.subscribe(
-      "selected_node", 1, &PoseGraphToolsNode::SelectNodeCallback, this);
+  this->clicked_point_subscriber_ = nh.subscribe(
+      "clicked_point", 1, &PoseGraphToolsNode::ClickedPointCallback, this);
   pthread_mutex_init(&this->pose_graph_in_mutex_, NULL);
 }
 
@@ -123,14 +126,25 @@ void PoseGraphToolsNode::KeyedScanCallback(
   keyed_scans[msg->key] = scan_ptr;
 }
 
-void PoseGraphToolsNode::SelectNodeCallback(
-    const std_msgs::String::ConstPtr& msg) {
-  std::string id_string = msg->data;
-  char prefix = id_string[0];
-  id_string.erase(id_string.begin());
-  size_t num_chars = id_string.length();
-  int key_num = std::stoi(id_string);
-  uint64_t candidate_key = gtsam::Symbol(prefix, key_num);
+void PoseGraphToolsNode::ClickedPointCallback(
+    const geometry_msgs::PointStamped::ConstPtr& msg) {
+  geometry_msgs::Point p = msg->point;
+  // Search for the closest node based on the x, y, selected
+  std::cout << "x: " << p.x << " y: " << p.y << " z: " << p.z << std::endl;
+  double closest_dist = std::numeric_limits<double>::infinity();
+  size_t idx_closest = 0; 
+  for (size_t i = 0; i < this->pose_graph_out_msg_.nodes.size(); i++) {
+    geometry_msgs::Point node_position =
+        this->pose_graph_out_msg_.nodes[i].pose.position;
+    double dist = std::sqrt((node_position.x - p.x) * (node_position.y - p.y) +
+                            (node_position.y - p.y) * (node_position.y - p.y) +
+                            (node_position.z - p.z) * (node_position.z - p.z));
+    if (dist < closest_dist) {
+      idx_closest = i; 
+      closest_dist = dist;
+    }
+  }
+  uint64_t candidate_key = this->pose_graph_out_msg_.nodes[idx_closest].key;
   // When switching to tune another key, update store current correction
   if (candidate_key != this->node_candidate_key_) {
     ROS_INFO_STREAM(
