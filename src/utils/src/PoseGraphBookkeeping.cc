@@ -375,8 +375,8 @@ bool PoseGraph::TrackPrior(gtsam::Symbol key,
 void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
 
   // Get Prefixes
-  std::string prefix = utils::GetRobotPrefix(robot_name);
-  std::string art_prefix = utils::GetArtifactPrefix(robot_name);
+  char prefix = utils::GetRobotPrefix(robot_name);
+  char art_prefix = utils::GetArtifactPrefix(robot_name);
 
   ROS_WARN_STREAM("Removing all edges and nodes in the graph for robot: " << robot_name << " with prefix " << prefix);
 
@@ -389,13 +389,13 @@ void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
   RemoveValuesWithPrefix(art_prefix);
 }
 
-void PoseGraph::RemoveEdgesWithPrefix(std::string prefix){
+void PoseGraph::RemoveEdgesWithPrefix(char prefix){
 
   // Remove edge messages
   auto e = edges_.begin();
 
   while (e != edges_.end()) {
-    if (gtsam::Symbol(e.key_from).chr() == prefix || gtsam::Symbol(e.key_to).chr() == prefix){
+    if (gtsam::Symbol(e->key_from).chr() == prefix || gtsam::Symbol(e->key_to).chr() == prefix){
       // Is an edge to remove 
       edges_.erase(e);
     } else {
@@ -407,7 +407,8 @@ void PoseGraph::RemoveEdgesWithPrefix(std::string prefix){
   auto f = nfg_.begin();
 
   while (f != nfg_.end()) {
-    if (f.front().chr() == prefix || f.back().chr() == prefix){
+    auto factor = *f;
+    if (gtsam::Symbol(factor->front()).chr() == prefix || gtsam::Symbol(factor->back()).chr() == prefix){
       // Is an edge to remove 
       nfg_.erase(f);
     } else {
@@ -416,17 +417,17 @@ void PoseGraph::RemoveEdgesWithPrefix(std::string prefix){
   }
 }
 
-void PoseGraph::RemoveValuesWithPrefix(std::string prefix){
+void PoseGraph::RemoveValuesWithPrefix(char prefix){
 
   // Remove edge messages
   auto n = nodes_.begin();
 
   while (n != nodes_.end()) {
-    if (gtsam::Symbol(n.key).chr() == prefix){
+    if (gtsam::Symbol(n->key).chr() == prefix){
       // Is an edge to remove 
       nodes_.erase(n);
     } else {
-      e++;
+      n++;
     }
   }
 
@@ -434,9 +435,10 @@ void PoseGraph::RemoveValuesWithPrefix(std::string prefix){
   auto v = values_.begin();
 
   while (v != values_.end()) {
-    if (v.key.chr() == prefix){
+    auto value = *v;
+    if (gtsam::Symbol(value.key).chr() == prefix){
       // Is an edge to remove 
-      values_.erase(v);
+      values_.erase(value.key);
     } else {
       v++;
     }

@@ -125,9 +125,9 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                          &LampBaseStation::LaserLoopClosureCallback,
                                          dynamic_cast<LampBase*>(this));
 
-  remove_robot_sub = nl.subscribe("remove_robot_from_graph",
+  remove_robot_sub_ = nl.subscribe("remove_robot_from_graph",
                                          1,
-                                         &LampBaseStation::RemoveRobotCallback);
+                                         &LampBaseStation::RemoveRobotCallback, this);
 
   // Uncomment when needed for debugging
   debug_sub_ = nl.subscribe("debug",
