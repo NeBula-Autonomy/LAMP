@@ -78,6 +78,7 @@ class LampBaseStation : public LampBase {
 
     // Publishers
     std::map<char, ros::Publisher> publishers_pose_;
+    ros::Publisher lamp_pgo_reset_pub_;
 
 
     // Booleans

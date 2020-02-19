@@ -148,6 +148,7 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
 
   // Base station publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, true);
+  lamp_pgo_reset_pub_ = nl.advertise<std_msgs::Bool>("reset_pgo", 10, true);
 
   // Robot pose publishers
   ros::Publisher pose_pub_;
@@ -456,9 +457,12 @@ void LampBaseStation::RemoveRobotCallback(const std_msgs::String msg){
   // Send reset to lamp_pgo
   std_msgs::Bool signal;
   signal.data = true;
+  lamp_pgo_reset_pub_.publish(signal);
 
   // Publish graph to optimize
-  
+  ROS_INFO_STREAM("Sending pose graph to optimizer");
+  PublishPoseGraphForOptimizer();
+
 }
 
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {
