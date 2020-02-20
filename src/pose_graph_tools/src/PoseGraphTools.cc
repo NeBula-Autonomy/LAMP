@@ -73,11 +73,10 @@ void PoseGraphToolsNode::mainNodeThread(void) {
         this->pose_graph_in_msg_, this->node_candidate_key_, d_pose);
     this->pose_graph_in_mutex_exit();
     this->pgt_lib_.unlock();
-    ReGenerateMapPointCloud();
   } else {
     this->pose_graph_out_msg_ = this->pose_graph_in_msg_;
-    mapper_.PublishMap();
   }
+  ReGenerateMapPointCloud();
   this->pose_graph_out_publisher_.publish(this->pose_graph_out_msg_);
 }
 
@@ -128,7 +127,6 @@ void PoseGraphToolsNode::KeyedScanCallback(
   PointCloud::Ptr scan_ptr(new PointCloud);
   pcl::fromROSMsg(msg->scan, *scan_ptr);
   keyed_scans[msg->key] = scan_ptr;
-  AddTransformedPointCloudToMap(msg->key);
 }
 
 void PoseGraphToolsNode::ClickedPointCallback(

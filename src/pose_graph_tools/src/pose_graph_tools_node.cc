@@ -11,7 +11,7 @@ int main(int argc,char *argv[])
 {
   ros::init(argc, argv, "pose_graph_tools");
   ros::NodeHandle nh(ros::this_node::getName());
-  ros::Rate loop_rate(10);
+  ros::Rate loop_rate(3);
 
   pose_graph_tools::PoseGraphToolsNode node(nh);
 
