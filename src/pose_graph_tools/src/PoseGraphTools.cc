@@ -68,13 +68,16 @@ void PoseGraphToolsNode::mainNodeThread(void) {
     ROS_DEBUG_STREAM("Modifying key: "
                      << gtsam::DefaultKeyFormatter(this->node_candidate_key_));
     // Update node and posegraph
+    this->pose_graph_in_mutex_enter();
     this->pose_graph_out_msg_ = this->pgt_lib_.updateNodePosition(
         this->pose_graph_in_msg_, this->node_candidate_key_, d_pose);
+    this->pose_graph_in_mutex_exit();
     this->pgt_lib_.unlock();
+    ReGenerateMapPointCloud();
   } else {
     this->pose_graph_out_msg_ = this->pose_graph_in_msg_;
+    mapper_.PublishMap();
   }
-  ReGenerateMapPointCloud();
   this->pose_graph_out_publisher_.publish(this->pose_graph_out_msg_);
 }
 
@@ -110,9 +113,10 @@ void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
     this->dsrv_.updateConfig(config);
     this->config_ = config;
     // Reset and publish pose graph
+    this->pose_graph_in_mutex_enter();
     this->pose_graph_in_msg_ = this->pose_graph_lamp_;
     this->pose_graph_out_msg_ = this->pose_graph_lamp_;
-    ROS_INFO_STREAM("Reset corrections");
+    this->pose_graph_in_mutex_exit();
     this->pgt_lib_.reset();
     ReGenerateMapPointCloud();
     this->pose_graph_out_publisher_.publish(this->pose_graph_out_msg_);
@@ -124,15 +128,16 @@ void PoseGraphToolsNode::KeyedScanCallback(
   PointCloud::Ptr scan_ptr(new PointCloud);
   pcl::fromROSMsg(msg->scan, *scan_ptr);
   keyed_scans[msg->key] = scan_ptr;
+  AddTransformedPointCloudToMap(msg->key);
 }
 
 void PoseGraphToolsNode::ClickedPointCallback(
     const geometry_msgs::PointStamped::ConstPtr& msg) {
   geometry_msgs::Point p = msg->point;
   // Search for the closest node based on the x, y, selected
-  std::cout << "x: " << p.x << " y: " << p.y << " z: " << p.z << std::endl;
   double closest_dist = std::numeric_limits<double>::infinity();
   size_t idx_closest = 0; 
+  this->pose_graph_in_mutex_enter();
   for (size_t i = 0; i < this->pose_graph_out_msg_.nodes.size(); i++) {
     geometry_msgs::Point node_position =
         this->pose_graph_out_msg_.nodes[i].pose.position;
@@ -144,12 +149,15 @@ void PoseGraphToolsNode::ClickedPointCallback(
       closest_dist = dist;
     }
   }
+  this->pose_graph_in_mutex_exit();
   uint64_t candidate_key = this->pose_graph_out_msg_.nodes[idx_closest].key;
   // When switching to tune another key, update store current correction
   if (candidate_key != this->node_candidate_key_) {
     ROS_INFO_STREAM(
         "Reconfiguring key: " << gtsam::DefaultKeyFormatter(candidate_key));
+    this->pose_graph_in_mutex_enter();
     this->pose_graph_in_msg_ = this->pose_graph_out_msg_;
+    this->pose_graph_in_mutex_exit();
     this->node_candidate_key_ = candidate_key;
     // Reset sliders
     this->dsrv_.getConfigDefault(this->config_);
@@ -240,7 +248,7 @@ bool PoseGraphToolsNode::AddTransformedPointCloudToMap(const uint64_t& key) {
 
   GetTransformedPointCloudWorld(key, points.get());
 
-  ROS_INFO_STREAM("Points size is: " << points->points.size()
+  ROS_DEBUG_STREAM("Points size is: " << points->points.size()
                                      << ", in AddTransformedPointCloudToMap");
 
   // Add to the map
