@@ -95,8 +95,8 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Initialize solver
   pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
 
-  // Publish ignored list once 
-  PublishIgnoredList(); 
+  // Publish ignored list once
+  PublishIgnoredList();
 
   return true;
 }
@@ -104,32 +104,40 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 void LampPgo::RemoveLastLoopClosure(char prefix_1, char prefix_2) {
   KimeraRPGO::EdgePtr removed_edge =
       pgo_solver_->removeLastLoopClosure(prefix_1, prefix_2);
-  // Extract the optimized values
-  values_ = pgo_solver_->calculateEstimate();
-  nfg_ = pgo_solver_->getFactorsUnsafe();
+  if (removed_edge != NULL) {
+    // Extract the optimized values
+    values_ = pgo_solver_->calculateEstimate();
+    nfg_ = pgo_solver_->getFactorsUnsafe();
 
-  ROS_INFO_STREAM("Removed last loop closure between "
-                  << gtsam::DefaultKeyFormatter(removed_edge->from_key)
-                  << " and "
-                  << gtsam::DefaultKeyFormatter(removed_edge->to_key));
+    ROS_INFO_STREAM("Removed last loop closure between "
+                    << gtsam::DefaultKeyFormatter(removed_edge->from_key)
+                    << " and "
+                    << gtsam::DefaultKeyFormatter(removed_edge->to_key));
 
-  // publish posegraph
-  PublishValues();
+    // publish posegraph
+    PublishValues();
+  } else {
+    ROS_WARN("No more loop closure to remove");
+  }
 }
 
 void LampPgo::RemoveLastLoopClosure() {
   KimeraRPGO::EdgePtr removed_edge = pgo_solver_->removeLastLoopClosure();
-  // Extract the optimized values
-  values_ = pgo_solver_->calculateEstimate();
-  nfg_ = pgo_solver_->getFactorsUnsafe();
+  if (removed_edge != NULL) {
+    // Extract the optimized values
+    values_ = pgo_solver_->calculateEstimate();
+    nfg_ = pgo_solver_->getFactorsUnsafe();
 
-  ROS_INFO_STREAM("Removed last loop closure between "
-                  << gtsam::DefaultKeyFormatter(removed_edge->from_key)
-                  << " and "
-                  << gtsam::DefaultKeyFormatter(removed_edge->to_key));
+    ROS_INFO_STREAM("Removed last loop closure between "
+                    << gtsam::DefaultKeyFormatter(removed_edge->from_key)
+                    << " and "
+                    << gtsam::DefaultKeyFormatter(removed_edge->to_key));
 
-  // publish posegraph
-  PublishValues();
+    // publish posegraph
+    PublishValues();
+  } else {
+    ROS_WARN("No more loop closure to remove");
+  }
 }
 
 void LampPgo::RemoveLCByIdCallback(const std_msgs::String::ConstPtr& msg) {
@@ -295,7 +303,7 @@ void LampPgo::IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
 
   // publish posegraph
   PublishValues();
-  // publish ignored list 
+  // publish ignored list
   PublishIgnoredList();
 }
 
@@ -338,9 +346,9 @@ void LampPgo::PublishIgnoredList() const {
     list_str = list_str + ignored_list_[i] + ", ";
   }
 
-  std_msgs::String msg; 
-  msg.data = list_str; 
+  std_msgs::String msg;
+  msg.data = list_str;
 
   ignored_list_pub_.publish(list_str);
-  return; 
+  return;
 }
