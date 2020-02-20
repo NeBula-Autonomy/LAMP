@@ -17,10 +17,8 @@
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 #include <std_msgs/Bool.h>
-#include <std_msgs/String.h>
 
 #include <visualization_msgs/Marker.h>
-#include <interactive_markers/interactive_marker_server.h>
 
 #include <core_msgs/Artifact.h>
 
@@ -109,9 +107,6 @@ private:
   HighlightEdgeService(pose_graph_visualizer::HighlightEdgeRequest& request,
                        pose_graph_visualizer::HighlightEdgeResponse& response);
 
-  void MarkerFeedback(
-      const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
-
   geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
 
   // Node name.
@@ -145,7 +140,6 @@ private:
   ros::Publisher highlight_pub_;
   ros::Publisher artifact_marker_pub_;
   ros::Publisher artifact_id_marker_pub_;
-  ros::Publisher selected_node_pub_;
 
   // Subscribers.
   ros::Subscriber keyed_scan_sub_;
