@@ -44,6 +44,8 @@ class LampPgo {
   ros::Subscriber revive_robot_sub_;
 
   ros::Subscriber remove_lc_by_id_sub_;
+  // reset subscriber 
+  ros::Subscriber reset_sub_;
 
   void PublishValues() const;
 
@@ -56,6 +58,8 @@ class LampPgo {
   void RemoveLastLoopClosure(char prefix_1, char prefix_2);
 
   void RemoveLastLoopClosure();
+
+  void ResetCallback(const std_msgs::Bool::ConstPtr& msg);
 
   void IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg);
 

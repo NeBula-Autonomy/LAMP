@@ -14,6 +14,7 @@
 #include <factor_handlers/RobotPoseHandler.h>
 #include <factor_handlers/ArtifactHandler.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Bool.h>
 
 
 // Services
@@ -50,6 +51,9 @@ class LampBaseStation : public LampBase {
     // Main update timer callback
     virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
 
+    // Callback to remove a robot from the posegraph
+    void RemoveRobotCallback(const std_msgs::String msg);
+
     // Callback for debugging - put any code inside this
     virtual void DebugCallback(const std_msgs::String msg);
 
@@ -75,9 +79,11 @@ class LampBaseStation : public LampBase {
 
     // Subscribers
     ros::Subscriber debug_sub_;
+    ros::Subscriber remove_robot_sub_;
 
     // Publishers
     std::map<char, ros::Publisher> publishers_pose_;
+    ros::Publisher lamp_pgo_reset_pub_;
 
 
     // Booleans
