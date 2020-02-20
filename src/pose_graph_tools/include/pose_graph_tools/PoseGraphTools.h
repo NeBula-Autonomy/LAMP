@@ -35,9 +35,9 @@
 // dynamic reconfigure server include
 #include <dynamic_reconfigure/server.h>
 // pose graph message
+#include <geometry_msgs/PointStamped.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
-#include <geometry_msgs/PointStamped.h>
 
 #include <pcl_ros/point_cloud.h>
 
@@ -76,7 +76,7 @@ class PoseGraphToolsNode {
   // Mapper
   PointCloudMapper mapper_;
 
-  // Pose graphs 
+  // Pose graphs
   pose_graph_msgs::PoseGraph pose_graph_in_msg_;
   pose_graph_msgs::PoseGraph pose_graph_out_msg_;
   pose_graph_msgs::PoseGraph pose_graph_lamp_;
@@ -84,6 +84,8 @@ class PoseGraphToolsNode {
   Config config_;
   dynamic_reconfigure::Server<Config> dsrv_;
 
+  bool graph_modified_;
+  HTransf last_d_pose_;
 
  public:
   /**
