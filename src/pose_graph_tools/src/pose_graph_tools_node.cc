@@ -7,16 +7,14 @@
 #include "pose_graph_tools/PoseGraphTools.h"
 
 /* main function */
-int main(int argc,char *argv[])
-{
+int main(int argc, char* argv[]) {
   ros::init(argc, argv, "pose_graph_tools");
   ros::NodeHandle nh(ros::this_node::getName());
-  ros::Rate loop_rate(30);
+  ros::Rate loop_rate(5);
 
   pose_graph_tools::PoseGraphToolsNode node(nh);
 
-  while (ros::ok()) 
-  {
+  while (ros::ok()) {
     node.mainNodeThread();
     ros::spinOnce();
     loop_rate.sleep();

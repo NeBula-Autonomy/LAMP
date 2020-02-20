@@ -42,6 +42,8 @@ PoseGraphToolsNode::PoseGraphToolsNode(ros::NodeHandle& nh)
       "keyed_scan", 1, &PoseGraphToolsNode::KeyedScanCallback, this);
   clicked_point_subscriber_ = nh.subscribe(
       "clicked_point", 1, &PoseGraphToolsNode::ClickedPointCallback, this);
+
+  // Initialize pose graph mutex
   pthread_mutex_init(&pose_graph_in_mutex_, NULL);
 }
 
@@ -66,22 +68,19 @@ void PoseGraphToolsNode::mainNodeThread(void) {
                      AngleAxisd(droll / 180 * M_PI, Vector3d::UnitX());
     ROS_DEBUG_STREAM(
         "Modifying key: " << gtsam::DefaultKeyFormatter(node_candidate_key_));
-    if (d_pose.matrix() != last_d_pose_.matrix()) {
-      // Only update if the change applied is different from last time
-      pgt_lib_.lock();
-      // Update node and posegraph
-      pose_graph_in_mutex_enter();
-      pose_graph_out_msg_ = pgt_lib_.updateNodePosition(
-          pose_graph_in_msg_, node_candidate_key_, d_pose);
-      graph_modified_ = true;
-      pose_graph_in_mutex_exit();
-      pgt_lib_.unlock();
-    }
+    // Update node and posegraph
+    pgt_lib_.lock();
+    pose_graph_in_mutex_enter();
+    pose_graph_out_msg_ = pgt_lib_.updateNodePosition(
+        pose_graph_in_msg_, node_candidate_key_, d_pose);
+    graph_modified_ = true;
+    pose_graph_in_mutex_exit();
+    pgt_lib_.unlock();
+    // Track if graph modified (and update map if yes)
+    if (d_pose.matrix() != last_d_pose_.matrix()) graph_modified_ = true;
     // Update last d_pose
     last_d_pose_ = d_pose;
   } else {
-    if (pose_graph_out_msg_.edges.size() != pose_graph_in_msg_.edges.size())
-      graph_modified_ = true;
     pose_graph_out_msg_ = pose_graph_in_msg_;
   }
   if (graph_modified_) {
@@ -104,6 +103,8 @@ void PoseGraphToolsNode::pose_graph_in_callback(
   pose_graph_in_msg_ = pgt_lib_.addNewIncomingGraph(msg, old_graph);
   pose_graph_lamp_ = *msg;
   pgt_lib_.unlock();
+  if (old_graph->edges.size() != pose_graph_in_msg_.edges.size())
+    graph_modified_ = true;
   pose_graph_in_mutex_exit();
 }
 
@@ -124,11 +125,14 @@ void PoseGraphToolsNode::DynRecCallback(Config& config, uint32_t level) {
     config_ = config;
     // Reset and publish pose graph
     pose_graph_in_mutex_enter();
+    // Update graphs according to lamp graph
     pose_graph_in_msg_ = pose_graph_lamp_;
     pose_graph_out_msg_ = pose_graph_lamp_;
     pose_graph_in_mutex_exit();
     pgt_lib_.reset();
+    // Regenerate map after reset
     ReGenerateMapPointCloud();
+    // Republish graph ater reset
     pose_graph_out_publisher_.publish(pose_graph_out_msg_);
   }
 }
@@ -137,6 +141,7 @@ void PoseGraphToolsNode::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
   PointCloud::Ptr scan_ptr(new PointCloud);
   pcl::fromROSMsg(msg->scan, *scan_ptr);
+  // Store keyed scans
   keyed_scans[msg->key] = scan_ptr;
 }
 
@@ -159,6 +164,7 @@ void PoseGraphToolsNode::ClickedPointCallback(
     }
   }
   pose_graph_in_mutex_exit();
+  // Update candidate key
   uint64_t candidate_key = pose_graph_out_msg_.nodes[idx_closest].key;
   // When switching to tune another key, update store current correction
   if (candidate_key != node_candidate_key_) {
