@@ -960,6 +960,13 @@ void PoseGraphVisualizer::VisualizeSingleRealisticArtifact(visualization_msgs::M
     m.color.a = 1.0f;
     m.type = visualization_msgs::Marker::SPHERE;
     m.mesh_resource = "package://pose_graph_visualizer/meshes/gas.dae";
+  } else if (artifact_label == "Negative Obstacle") {
+    std::cout << "negative obstacle marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 0.8f;
+    m.color.b = 1.0f;
+    m.color.a = 1.0f;
+    m.type = visualization_msgs::Marker::CUBE;
   } else if (artifact_label == "Vent") {
     std::cout << "vent marker" << std::endl;
     m.mesh_resource = "package://pose_graph_visualizer/meshes/vent/vent.dae";
