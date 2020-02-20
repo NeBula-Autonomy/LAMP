@@ -1048,6 +1048,13 @@ void PoseGraphVisualizer::VisualizeSingleSimpleArtifact(visualization_msgs::Mark
     m.color.g = 1.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::SPHERE;
+  } else if (artifact_label == "Negative Obstacle") {
+    std::cout << "negative obstacle marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 0.8f;
+    m.color.b = 1.0f;
+    m.color.a = 1.0f;
+    m.type = visualization_msgs::Marker::CUBE;
   } else if (artifact_label == "Vent") {
     std::cout << "vent marker" << std::endl;
     m.color.r = 0.0f;
