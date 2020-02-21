@@ -85,5 +85,7 @@
     <!-- Loop Closure  -->
     <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
 
+    <!-- Pose Graph Tools -->
+    <include file="$(find pose_graph_tools)/launch/pose_graph_tools.launch" />
   </group>
 </launch>

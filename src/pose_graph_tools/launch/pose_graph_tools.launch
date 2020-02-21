@@ -20,7 +20,7 @@
 
     <!-- Pose graph visualization -->
     <node pkg="pose_graph_visualizer"
-          name="pose_graph_visualizer"
+          name="pose_graph_visualizer_corrected"
           type="pose_graph_visualizer_node"
           ns="corrected">
       <!-- LAMP settings -->
