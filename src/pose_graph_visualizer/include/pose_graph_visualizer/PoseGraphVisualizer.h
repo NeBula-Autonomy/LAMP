@@ -140,6 +140,7 @@ private:
   ros::Publisher highlight_pub_;
   ros::Publisher artifact_marker_pub_;
   ros::Publisher artifact_id_marker_pub_;
+  ros::Publisher stair_marker_pub_;
 
   // Subscribers.
   ros::Subscriber keyed_scan_sub_;

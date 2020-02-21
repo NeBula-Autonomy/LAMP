@@ -136,6 +136,8 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       pnh.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
   artifact_marker_pub_ =
       pnh.advertise<visualization_msgs::Marker>("artifact_markers", 10, false);
+  stair_marker_pub_ =
+      pnh.advertise<visualization_msgs::Marker>("stair_markers", 10, false);      
   artifact_id_marker_pub_ = pnh.advertise<visualization_msgs::Marker>(
       "artifact_id_markers", 10, false);
 
@@ -742,7 +744,8 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
   // Publish Artifacts
   if (artifact_marker_pub_.getNumSubscribers() > 0 ||
-      artifact_id_marker_pub_.getNumSubscribers() > 0) {
+      artifact_id_marker_pub_.getNumSubscribers() > 0 || 
+      stair_marker_pub_.getNumSubscribers() > 0) {
     visualization_msgs::Marker m, m_id;
     m.header.frame_id = pose_graph_.fixed_frame_id;
     m_id.header.frame_id = m.header.frame_id;
@@ -822,8 +825,12 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       VisualizeSingleArtifactId(m_id, art);
 
       // Publish
-      artifact_marker_pub_.publish(m);
-      artifact_id_marker_pub_.publish(m_id);
+      if (art.msg.label == "Negative Obstacle") {
+        stair_marker_pub_.publish(m);
+      } else {
+        artifact_marker_pub_.publish(m);
+        artifact_id_marker_pub_.publish(m_id);
+      }
     }
   }
 
@@ -960,6 +967,13 @@ void PoseGraphVisualizer::VisualizeSingleRealisticArtifact(visualization_msgs::M
     m.color.a = 1.0f;
     m.type = visualization_msgs::Marker::SPHERE;
     m.mesh_resource = "package://pose_graph_visualizer/meshes/gas.dae";
+  } else if (artifact_label == "Negative Obstacle") {
+    std::cout << "negative obstacle marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 0.8f;
+    m.color.b = 1.0f;
+    m.color.a = 1.0f;
+    m.type = visualization_msgs::Marker::CUBE;
   } else if (artifact_label == "Vent") {
     std::cout << "vent marker" << std::endl;
     m.mesh_resource = "package://pose_graph_visualizer/meshes/vent/vent.dae";
@@ -1041,6 +1055,13 @@ void PoseGraphVisualizer::VisualizeSingleSimpleArtifact(visualization_msgs::Mark
     m.color.g = 1.0f;
     m.color.b = 0.0f;
     m.type = visualization_msgs::Marker::SPHERE;
+  } else if (artifact_label == "Negative Obstacle") {
+    std::cout << "negative obstacle marker" << std::endl;
+    m.color.r = 0.0f;
+    m.color.g = 0.8f;
+    m.color.b = 1.0f;
+    m.color.a = 1.0f;
+    m.type = visualization_msgs::Marker::CUBE;
   } else if (artifact_label == "Vent") {
     std::cout << "vent marker" << std::endl;
     m.color.r = 0.0f;
