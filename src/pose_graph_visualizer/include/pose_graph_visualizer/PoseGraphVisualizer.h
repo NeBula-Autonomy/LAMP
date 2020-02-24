@@ -17,6 +17,7 @@
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/String.h>
 
 #include <visualization_msgs/Marker.h>
 
@@ -99,6 +100,8 @@ private:
   void
   PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr& msg);
   void ArtifactCallback(const core_msgs::Artifact& msg);
+  void IgnoreArtifactCallback(const std_msgs::String::ConstPtr& msg);
+  void ReviveArtifactCallback(const std_msgs::String::ConstPtr& msg);
 
   bool
   HighlightNodeService(pose_graph_visualizer::HighlightNodeRequest& request,
@@ -108,6 +111,15 @@ private:
                        pose_graph_visualizer::HighlightEdgeResponse& response);
 
   geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
+
+  bool IsArtifactBlacklisted(const std::string &parent_id) {
+    if (std::find(artifact_parentID_blacklist_.begin(),
+                  artifact_parentID_blacklist_.end(),
+                  parent_id) != artifact_parentID_blacklist_.end())
+      return true;
+    else
+      return false;
+  }
 
   // Node name.
   std::string name_;
@@ -124,6 +136,7 @@ private:
   std::unordered_map<std::string, std::string> artifact_ID2ParentID_;
   std::unordered_map<std::string, std::string> current_parentID2ID_;
   std::hash<std::string> parent_id2int_;
+  std::vector<std::string> artifact_parentID_blacklist_;
   Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
 
   // Visualization publishers.
@@ -150,6 +163,8 @@ private:
   ros::Subscriber artifact_sub_;
   ros::Subscriber erase_posegraph_sub_;
   ros::Subscriber remove_factor_viz_sub_;
+  ros::Subscriber ignore_artifact_sub_;
+  ros::Subscriber revive_artifact_sub_;
   std::vector<ros::Subscriber> subscribers_artifacts_;
 
   // Robots that the base station subscribes to
