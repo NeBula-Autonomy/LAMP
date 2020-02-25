@@ -84,7 +84,6 @@ class PoseGraphToolsNode {
   Config config_;
   dynamic_reconfigure::Server<Config> dsrv_;
 
-  bool graph_modified_;
   HTransf last_d_pose_;
 
  public:
