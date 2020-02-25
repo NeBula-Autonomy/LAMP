@@ -15,7 +15,7 @@
       <remap from="~pose_graph_out" to="/$(arg robot_namespace)/lamp/pose_graph_corrected"/>
       <remap from="~keyed_scan" to="/$(arg robot_namespace)/lamp/keyed_scans"/>
       <remap from="~octree_map" to="/$(arg robot_namespace)/lamp/octree_map_corrected"/>
-      <remap from="~clicked_point" to="/clicked_point"/>
+      <remap from="~clicked_point" to="clicked_point"/>
     </node>
 
     <!-- Pose graph visualization -->
