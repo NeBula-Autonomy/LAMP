@@ -20,7 +20,7 @@ namespace gu = geometry_utils;
 namespace pose_graph_tools {
 
 PoseGraphToolsNode::PoseGraphToolsNode(ros::NodeHandle& nh)
-    : node_candidate_key_(0), graph_modified_(false) {
+    : node_candidate_key_(0) {
   ROS_INFO("Initializing Pose Graph Tools");
   ROS_INFO("Pose Graph Tools: Initializing dynamic reconfigure");
   // Dynamic Reconfigure
@@ -73,20 +73,18 @@ void PoseGraphToolsNode::mainNodeThread(void) {
     pose_graph_in_mutex_enter();
     pose_graph_out_msg_ = pgt_lib_.updateNodePosition(
         pose_graph_in_msg_, node_candidate_key_, d_pose);
-    graph_modified_ = true;
     pose_graph_in_mutex_exit();
     pgt_lib_.unlock();
     // Track if graph modified (and update map if yes)
-    if (d_pose.matrix() != last_d_pose_.matrix()) graph_modified_ = true;
+    if (d_pose.matrix() != last_d_pose_.matrix()) {
+      pose_graph_out_publisher_.publish(pose_graph_out_msg_);
+      ReGenerateMapPointCloud();
+    }
     // Update last d_pose
     last_d_pose_ = d_pose;
+
   } else {
     pose_graph_out_msg_ = pose_graph_in_msg_;
-  }
-  if (graph_modified_) {
-    ReGenerateMapPointCloud();
-    pose_graph_out_publisher_.publish(pose_graph_out_msg_);
-    graph_modified_ = false;
   }
 }
 
@@ -103,8 +101,6 @@ void PoseGraphToolsNode::pose_graph_in_callback(
   pose_graph_in_msg_ = pgt_lib_.addNewIncomingGraph(msg, old_graph);
   pose_graph_lamp_ = *msg;
   pgt_lib_.unlock();
-  if (old_graph->edges.size() != pose_graph_in_msg_.edges.size())
-    graph_modified_ = true;
   pose_graph_in_mutex_exit();
 }
 
