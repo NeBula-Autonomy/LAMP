@@ -135,11 +135,11 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
   highlight_pub_ =
       pnh.advertise<visualization_msgs::Marker>("confirm_edge", 10, false);
   artifact_marker_pub_ =
-      pnh.advertise<visualization_msgs::Marker>("artifact_markers", 10, false);
+      pnh.advertise<visualization_msgs::Marker>("artifact_markers", 10, true);
   stair_marker_pub_ =
       pnh.advertise<visualization_msgs::Marker>("stair_markers", 10, false);      
   artifact_id_marker_pub_ = pnh.advertise<visualization_msgs::Marker>(
-      "artifact_id_markers", 10, false);
+      "artifact_id_markers", 10, true);
 
   keyed_scan_sub_ = nh.subscribe<pose_graph_msgs::KeyedScan>(
       "lamp/keyed_scans", 10, &PoseGraphVisualizer::KeyedScanCallback, this);
@@ -165,6 +165,17 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       "lamp/remove_factor_viz",
       10,
       &PoseGraphVisualizer::RemoveFactorVizCallback,
+      this);
+
+  ignore_artifact_sub_ = nh.subscribe<std_msgs::String>(
+      "lamp/ignore_artifact",
+      10,
+      &PoseGraphVisualizer::IgnoreArtifactCallback,
+      this);
+  revive_artifact_sub_ = nh.subscribe<std_msgs::String>(
+      "lamp/revive_artifact",
+      10,
+      &PoseGraphVisualizer::ReviveArtifactCallback,
       this);
 
   // Create subscribers for each robot
@@ -343,6 +354,22 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
   // ROS_INFO_STREAM("Artifact key is " << artifact_id2key_hash_[msg.id]);
   // artifacts_[artifact_id2key_hash_[msg.id]] = artifactinfo;
   // VisualizeArtifacts();
+}
+
+void PoseGraphVisualizer::IgnoreArtifactCallback(const std_msgs::String::ConstPtr& msg) {
+  ROS_INFO("Remove artifact %s from markers", msg->data.c_str());
+  if (!IsArtifactBlacklisted(msg->data)) {
+    artifact_parentID_blacklist_.push_back(msg->data);
+  }
+}
+
+void PoseGraphVisualizer::ReviveArtifactCallback(const std_msgs::String::ConstPtr& msg) {
+  ROS_INFO("Revert artifact %s to markers", msg->data.c_str());
+  artifact_parentID_blacklist_.erase(
+      std::remove(artifact_parentID_blacklist_.begin(),
+                  artifact_parentID_blacklist_.end(),
+                  msg->data),
+      artifact_parentID_blacklist_.end());
 }
 
 bool PoseGraphVisualizer::HighlightEdge(gtsam::Key key1, gtsam::Key key2) {
@@ -751,6 +778,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     m_id.header.frame_id = m.header.frame_id;
     m.ns = "artifact";
     m_id.ns = "artifact_id";
+
     // ROS_INFO("Publishing artifacts!");
     // TODO - use the pose from the pose-graph for the artifacts
     for (const auto& entry : artifact_key2id_hash_) {
@@ -823,6 +851,15 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       }
       
       VisualizeSingleArtifactId(m_id, art);
+
+      // Add or delete markers depending on user rejection status
+      if (IsArtifactBlacklisted(art.msg.parent_id)) {
+        m.action = visualization_msgs::Marker::DELETE;
+        m_id.action = visualization_msgs::Marker::DELETE;
+      } else {
+        m.action = visualization_msgs::Marker::ADD;
+        m_id.action = visualization_msgs::Marker::ADD;
+      }
 
       // Publish
       if (art.msg.label == "Negative Obstacle") {
