@@ -478,7 +478,10 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   {
     double sac_fitness_score = sac_fitness_score_threshold_;
     GetInitialAlignment(scan1, accumulated_target, &initial_guess, sac_fitness_score);
-    if (sac_fitness_score >= sac_fitness_score_threshold_) return false;
+    if (sac_fitness_score >= sac_fitness_score_threshold_) {
+      ROS_INFO("SAC fitness score is too high");
+      return false;
+    }
   } break;
   
   default: // identity as default (default in ICP anyways)
