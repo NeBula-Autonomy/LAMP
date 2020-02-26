@@ -591,7 +591,9 @@ void LaserLoopClosure::SeedCallback(
       prior = utils::ToGtsam(e.pose);
     }
 
-    PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges);
+    if (!PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges)){
+      return false;
+    }
   }
 
   if (msg->edges[0].type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
