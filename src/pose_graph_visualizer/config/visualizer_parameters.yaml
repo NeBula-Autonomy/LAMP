@@ -8,4 +8,4 @@ b_scale_artifacts_with_confidence: false
 b_use_base_reconciliation: true
 
 # Confidence limit above which to show artifacts
-artifcact_confidence_limit: 0.95
+artifact_confidence_limit: 0.95
