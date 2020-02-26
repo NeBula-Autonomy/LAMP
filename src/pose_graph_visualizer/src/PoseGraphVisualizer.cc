@@ -321,7 +321,7 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
   // std::cout << "\t Label: " << msg.label << std::endl;
 
   // Ignore if the confidence is too low
-  if (msg.confidence > artifcact_confidence_limit_){
+  if (msg.confidence < artifcact_confidence_limit_){
     ROS_WARN("Artifact below confidence limit, not showing in rviz");
     return;
   }
