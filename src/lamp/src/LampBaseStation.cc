@@ -193,7 +193,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Send data to optimizer - pose graph and map publishing happens in 
   // callback when data is received back from optimizer
   if (b_run_optimization_) {
-    ROS_INFO_STREAM("Publishing pose graph to optimizer");
+    ROS_DEBUG_STREAM("Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
 
     b_run_optimization_ = false; 
@@ -230,7 +230,6 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   b_has_new_factor_ = true;
 
   pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>);
 
   gtsam::Values new_values;
 
@@ -294,11 +293,16 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
 
   // Update from stored keyed scans 
   for (auto s : pose_graph_data->scans) {
-
+    
     // Register new data - this will cause map to publish
     b_has_new_scan_ = true;
 
+    // Create new PCL pointer
+    pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>);
+
+    // Copy from ROS to PCL
     pcl::fromROSMsg(s->scan, *scan_ptr);
+    
     pose_graph_.InsertKeyedScan(s->key, scan_ptr); // TODO: add overloaded function
 
     // Add key to the list of scan candidates to add to the map
