@@ -129,12 +129,12 @@ void LampBase::OptimizerUpdateCallback(
                   "-----------------------------------------------------");
   b_received_optimizer_update_ = true;
 
-  ROS_INFO_STREAM("New pose graph nodes: ");
-  for (auto n : msg->nodes) {
-    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
-                    << "(" << n.pose.position.x << ", " << n.pose.position.y
-                    << ", " << n.pose.position.z << ")");
-  }
+  // ROS_INFO_STREAM("New pose graph nodes: ");
+  // for (auto n : msg->nodes) {
+  //   ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
+  //                   << "(" << n.pose.position.x << ", " << n.pose.position.y
+  //                   << ", " << n.pose.position.z << ")");
+  // }
 
   // Merge the optimizer result into the internal pose graph
   // Note that the edges should not have changed (only values)
@@ -169,12 +169,12 @@ void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
 
-  ROS_INFO_STREAM("Pose graph after update: ");
-  for (auto n : pose_graph_.GetNodes()) {
-    ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
-                    << "(" << n.pose.position.x << ", " << n.pose.position.y
-                    << ", " << n.pose.position.z << ")");
-  }
+  ROS_DEBUG_STREAM("Pose graph after update: ");
+  // for (auto n : pose_graph_.GetNodes()) {
+  //   ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
+  //                   << "(" << n.pose.position.x << ", " << n.pose.position.y
+  //                   << ", " << n.pose.position.z << ")");
+  // }
 
   if (b_repub_values_after_optimization_) {
     ROS_INFO("Republishing all values on incremental pose graph");
@@ -390,12 +390,12 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   // Convert master pose-graph to messages
   pose_graph_msgs::PoseGraphConstPtr g = pose_graph_.ToMsg();
 
-  ROS_INFO_STREAM("Publishing pose graph for optimizer with "
-                  << g->nodes.size() << " nodes and " << g->edges.size()
-                  << " edges");
-  for (auto v : g->nodes) {
-    ROS_INFO_STREAM("Key : " << gtsam::DefaultKeyFormatter(v.key));
-  }
+  // ROS_DEBUG_STREAM("Publishing pose graph for optimizer with "
+  //                 << g->nodes.size() << " nodes and " << g->edges.size()
+  //                 << " edges");
+  // for (auto v : g->nodes) {
+  //   ROS_DEBUG_STREAM("Key : " << gtsam::DefaultKeyFormatter(v.key));
+  // }
 
   // Publish
   pose_graph_to_optimize_pub_.publish(*g);
