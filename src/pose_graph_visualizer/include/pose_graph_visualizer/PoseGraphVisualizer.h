@@ -184,6 +184,7 @@ private:
   bool use_realistic_artifact_models_;
   bool b_scale_artifacts_with_confidence_;
   float confidence_scale_{1.0};
+  double artifact_confidence_limit_;
 };
 
 #endif
