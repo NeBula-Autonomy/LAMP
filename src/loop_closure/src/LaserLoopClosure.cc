@@ -75,6 +75,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/num_next_scans", sac_num_next_scans_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/features_radius", sac_features_radius_)) return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold", sac_fitness_score_threshold_)) return false;
   
   // Hard coded covariances
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
@@ -170,7 +171,8 @@ void LaserLoopClosure::ComputeFeatures(
 void LaserLoopClosure::GetInitialAlignment(
     PointCloud::ConstPtr source,
     PointCloud::ConstPtr target,
-    Eigen::Matrix4f* tf_out) {
+    Eigen::Matrix4f* tf_out,
+    double& sac_fitness_score) {
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
@@ -192,7 +194,8 @@ void LaserLoopClosure::GetInitialAlignment(
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
   sac_ia.align(*aligned_output);
-  ROS_INFO_STREAM("SAC fitness score" << sac_ia.getFitnessScore());
+  sac_fitness_score = sac_ia.getFitnessScore();
+  ROS_INFO_STREAM("SAC fitness score" << sac_fitness_score);
 
   *tf_out = sac_ia.getFinalTransformation();
 }
@@ -473,7 +476,9 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
 
   case IcpInitMethod::FEATURES:
   {
-    GetInitialAlignment(scan1, accumulated_target, &initial_guess);
+    double sac_fitness_score = sac_fitness_score_threshold_;
+    GetInitialAlignment(scan1, accumulated_target, &initial_guess, sac_fitness_score);
+    if (sac_fitness_score >= sac_fitness_score_threshold_) return false;
   } break;
   
   default: // identity as default (default in ICP anyways)

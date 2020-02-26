@@ -66,6 +66,9 @@ robot:
     normals_radius: 1.0
     features_radius: 2.0
 
+    # If SAC fitness score is more than the following value, it will be rejected
+    fitness_score_threshold: 0.30
+
 
 #############################################
 # PARAMETERS FOR LASER LOOP CLOSURES (BASE)
@@ -135,4 +138,7 @@ base:
     # Radii of area to consider when computing normals and features
     normals_radius: 1.0
     features_radius: 2.0
+
+    # If SAC fitness score is more than the following value, it will be rejected
+    fitness_score_threshold: 0.30
 
