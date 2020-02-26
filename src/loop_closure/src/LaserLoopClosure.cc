@@ -592,7 +592,7 @@ void LaserLoopClosure::SeedCallback(
     }
 
     if (!PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges)){
-      return false;
+      continue;
     }
   }
 
