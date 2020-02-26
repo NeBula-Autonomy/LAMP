@@ -39,13 +39,13 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 
   // Subscribers
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
-      "keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback, this);
+      "keyed_scans", 100000, &LaserLoopClosure::KeyedScanCallback, this);
   loop_closure_seed_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
-      "seed_loop_closure", 10, &LaserLoopClosure::SeedCallback, this);
+      "seed_loop_closure", 100000, &LaserLoopClosure::SeedCallback, this);
 
   // Publishers
   loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
-      "laser_loop_closures", 10, false);
+      "laser_loop_closures", 100000, false);
 
   // Parameters
   double distance_to_skip_recent_poses;

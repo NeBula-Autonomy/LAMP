@@ -723,7 +723,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
   Pose3 temp_transform;
   Pose3 global_pose;
   gtsam::SharedNoiseModel covariance;
-  ros::Time timestamp;
+  ros::Time timestamp = ros::Time::now();
   gtsam::Symbol pose_key;
   gtsam::Symbol cur_artifact_key;
 
