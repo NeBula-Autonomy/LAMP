@@ -91,6 +91,8 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("b_scale_artifacts_with_confidence", b_scale_artifacts_with_confidence_))
     return false;
     
+  if (!pu::Get("artifcact_confidence_limit", artifcact_confidence_limit_))
+    return false;
   
   // Initialize interactive marker server
   if (publish_interactive_markers_) {
@@ -309,14 +311,20 @@ PoseGraphVisualizer::GetArtifactPosition(const gtsam::Key artifact_key) const {
 void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
   // Subscribe to artifact messages, include in pose graph, publish global
   // position
-  ROS_WARN("HAVE ARTIFACT IN PGV");
-  std::cout << "[PoseGraphVisualizer] Artifact message received is for id " << msg.id << std::endl;
-  std::cout << "\t Parent id: " << msg.parent_id << std::endl;
-  std::cout << "\t Confidence: " << msg.confidence << std::endl;
-  std::cout << "\t Position:\n[" << msg.point.point.x << ", "
-            << msg.point.point.y << ", " << msg.point.point.z << "]"
-            << std::endl;
-  std::cout << "\t Label: " << msg.label << std::endl;
+  // ROS_WARN("HAVE ARTIFACT IN PGV");
+  // std::cout << "[PoseGraphVisualizer] Artifact message received is for id " << msg.id << std::endl;
+  // std::cout << "\t Parent id: " << msg.parent_id << std::endl;
+  // std::cout << "\t Confidence: " << msg.confidence << std::endl;
+  // std::cout << "\t Position:\n[" << msg.point.point.x << ", "
+  //           << msg.point.point.y << ", " << msg.point.point.z << "]"
+  //           << std::endl;
+  // std::cout << "\t Label: " << msg.label << std::endl;
+
+  // Ignore if the confidence is too low
+  if (msg.confidence > artifcact_confidence_limit_){
+    ROS_WARN("Artifact below confidence limit, not showing in rviz");
+    return;
+  }
 
   // Check for NaNs and reject
   if (std::isnan(msg.point.point.x) || std::isnan(msg.point.point.y) ||
@@ -332,9 +340,9 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
   artifactinfo.msg = msg;
 
   if (artifacts_.count(msg.parent_id)){
-    ROS_INFO("Have a repeat observation of an existing artifact");
+    ROS_DEBUG("Have a repeat observation of an existing artifact");
     if (msg.confidence > artifacts_[msg.parent_id].msg.confidence){
-      ROS_INFO_STREAM("Updating artifact visualization, with larger confidence.\n Increasing from " << msg.confidence << " to " << artifacts_[msg.parent_id].msg.confidence);
+      ROS_DEBUG_STREAM("Updating artifact visualization, with larger confidence.\n Increasing from " << msg.confidence << " to " << artifacts_[msg.parent_id].msg.confidence);
       artifacts_[msg.parent_id] = artifactinfo;
 
       // Update current parent id to id mapping
