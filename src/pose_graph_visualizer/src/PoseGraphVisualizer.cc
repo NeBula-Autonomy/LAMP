@@ -91,7 +91,7 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("b_scale_artifacts_with_confidence", b_scale_artifacts_with_confidence_))
     return false;
     
-  if (!pu::Get("artifcact_confidence_limit", artifcact_confidence_limit_))
+  if (!pu::Get("artifact_confidence_limit", artifact_confidence_limit_))
     return false;
   
   // Initialize interactive marker server
@@ -321,7 +321,7 @@ void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
   // std::cout << "\t Label: " << msg.label << std::endl;
 
   // Ignore if the confidence is too low
-  if (msg.confidence > artifcact_confidence_limit_){
+  if (msg.confidence > artifact_confidence_limit_){
     ROS_WARN("Artifact below confidence limit, not showing in rviz");
     return;
   }
