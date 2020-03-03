@@ -371,6 +371,107 @@ bool PoseGraph::TrackPrior(gtsam::Symbol key,
   return true;
 }
 
+// Removal tools 
+void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
+
+  // Get Prefixes
+  unsigned char prefix = utils::GetRobotPrefix(robot_name);
+  unsigned char art_prefix = utils::GetArtifactPrefix(robot_name);
+
+  ROS_WARN_STREAM("Removing all edges and nodes in the graph for robot: " << robot_name << " with prefix " << prefix);
+
+  // Remove robot information
+  RemoveEdgesWithPrefix(prefix);
+  RemoveValuesWithPrefix(prefix);
+
+  // Remove artifacts
+  RemoveEdgesWithPrefix(art_prefix);
+  RemoveValuesWithPrefix(art_prefix);
+}
+
+void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
+  ROS_DEBUG("Removing edges msg");
+  // Remove edge messages
+  EdgeSet new_edges;
+  auto e = edges_.begin();
+  while (e != edges_.end()) {
+    if (gtsam::Symbol(e->key_from).chr() != prefix &&
+        gtsam::Symbol(e->key_to).chr() != prefix) {
+      // Is an edge to remove
+      new_edges.insert(*e);
+    }
+    e++;
+  }
+  edges_ = new_edges;
+
+  // Remove prior messages
+  EdgeSet new_priors;
+  auto p = priors_.begin();
+  while (p != priors_.end()) {
+    if (gtsam::Symbol(p->key_from).chr() != prefix &&
+        gtsam::Symbol(p->key_to).chr() != prefix) {
+      // Is an edge to remove
+      new_priors.insert(*p);
+    }
+    p++;
+  }
+  priors_ = new_priors;
+
+  ROS_DEBUG("Removing edges gtsam");
+  // Remove edge factors
+  gtsam::NonlinearFactorGraph new_nfg; 
+  auto f = nfg_.begin();
+  while (f != nfg_.end()) {
+    auto factor = *f;
+    if (gtsam::Symbol(factor->front()).chr() != prefix &&
+        gtsam::Symbol(factor->back()).chr() != prefix) {
+      // If this factor does not connect to nodes with prefix
+      // Add to new nonlinear factor graph
+      new_nfg.add(factor);
+    }
+    f++;
+  }
+  nfg_ = new_nfg; 
+}
+
+void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
+  ROS_DEBUG("Removing values msg");
+  // Remove edge messages
+
+  NodeSet new_nodes;
+  auto n = nodes_.begin();
+
+  while (n != nodes_.end()) {
+    if (gtsam::Symbol(n->key).chr() != prefix){
+      // Is an edge to keep 
+      new_nodes.insert(*n);
+    } 
+    n++;
+  }
+
+  nodes_ = new_nodes;
+
+  ROS_DEBUG("Removing values gtsam");
+  // Remove gtsam values
+  gtsam::Values new_values;
+  auto v = values_.begin();
+
+  while (v != values_.end()) {
+    auto value = *v;
+    if (gtsam::Symbol(value.key).chr() != prefix){
+      // Is an edge to keep
+      new_values.insert(value.key, value.value);
+
+      // Update the latest key
+      key = value.key;
+    } 
+    v++;
+  }
+
+  values_ = new_values;
+
+}
+
 // DEPRECATED!!
 void PoseGraph::AddNewValues(const gtsam::Values& new_values) {
   // Main values variable

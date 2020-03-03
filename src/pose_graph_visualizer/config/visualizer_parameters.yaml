@@ -6,3 +6,6 @@ use_realistic_artifact_models: true
 b_scale_artifacts_with_confidence: false
 # Option for whether or not to subscribe to the reconciled artifacts 
 b_use_base_reconciliation: true
+
+# Confidence limit above which to show artifacts
+artifact_confidence_limit: 0.95

@@ -362,6 +362,24 @@ TEST(RobustSolver, RemoveLastLoopClosurePcm_NoObsId) {
       gtsam::Pose3(gtsam::Rot3(0, 0, 0, 1), gtsam::Point3(4, 1, 0)),
       est.at<gtsam::Pose3>(gtsam::Symbol('a', 5)),
       10e-6));
+
+  // Remove loop closure 3
+  // But no loop closures left so shouldn't doo anything
+  EdgePtr removed_edge_3 = pgo->removeLastLoopClosure();
+  nfg = pgo->getFactorsUnsafe();
+  est = pgo->calculateEstimate();
+  EXPECT(nfg.size() == size_t(12));
+  EXPECT(est.size() == size_t(12));
+  EXPECT(removed_edge_3 == NULL);
+  EXPECT(removed_edge_3 == NULL);
+  EXPECT(
+      gtsam::assert_equal(gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, -1, 0)),
+                          est.at<gtsam::Pose3>(gtsam::Symbol('b', 0)),
+                          0.01));
+  EXPECT(gtsam::assert_equal(
+      gtsam::Pose3(gtsam::Rot3(0, 0, 0, 1), gtsam::Point3(4, 1, 0)),
+      est.at<gtsam::Pose3>(gtsam::Symbol('a', 5)),
+      10e-6));
 }
 
 /* ************************************************************************* */
