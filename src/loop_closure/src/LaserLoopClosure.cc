@@ -39,13 +39,13 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 
   // Subscribers
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
-      "keyed_scans", 10, &LaserLoopClosure::KeyedScanCallback, this);
+      "keyed_scans", 100000, &LaserLoopClosure::KeyedScanCallback, this);
   loop_closure_seed_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
-      "seed_loop_closure", 10, &LaserLoopClosure::SeedCallback, this);
+      "seed_loop_closure", 100000, &LaserLoopClosure::SeedCallback, this);
 
   // Publishers
   loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
-      "laser_loop_closures", 10, false);
+      "laser_loop_closures", 100000, false);
 
   // Parameters
   double distance_to_skip_recent_poses;
@@ -75,6 +75,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/num_next_scans", sac_num_next_scans_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/features_radius", sac_features_radius_)) return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold", sac_fitness_score_threshold_)) return false;
   
   // Hard coded covariances
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
@@ -170,7 +171,8 @@ void LaserLoopClosure::ComputeFeatures(
 void LaserLoopClosure::GetInitialAlignment(
     PointCloud::ConstPtr source,
     PointCloud::ConstPtr target,
-    Eigen::Matrix4f* tf_out) {
+    Eigen::Matrix4f* tf_out,
+    double& sac_fitness_score) {
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
@@ -192,7 +194,8 @@ void LaserLoopClosure::GetInitialAlignment(
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
   sac_ia.align(*aligned_output);
-  ROS_INFO_STREAM("SAC fitness score" << sac_ia.getFitnessScore());
+  sac_fitness_score = sac_ia.getFitnessScore();
+  ROS_INFO_STREAM("SAC fitness score" << sac_fitness_score);
 
   *tf_out = sac_ia.getFinalTransformation();
 }
@@ -416,6 +419,14 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     ROS_ERROR("PerformAlignment: Null point clouds.");
     return false;
   }
+  if (scan1->size() == 0 || scan2->size() == 0) {
+    ROS_ERROR("PerformAlignment: zero points in point clouds.");
+    return false;
+  }
+  if (scan1->points.empty() || scan2->points.empty()) {
+    ROS_ERROR("PerformAlignment: empty point clouds.");
+    return false;
+  }
   // Set up ICP.
   pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
@@ -465,7 +476,12 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
 
   case IcpInitMethod::FEATURES:
   {
-    GetInitialAlignment(scan1, accumulated_target, &initial_guess);
+    double sac_fitness_score = sac_fitness_score_threshold_;
+    GetInitialAlignment(scan1, accumulated_target, &initial_guess, sac_fitness_score);
+    if (sac_fitness_score >= sac_fitness_score_threshold_) {
+      ROS_INFO("SAC fitness score is too high");
+      return false;
+    }
   } break;
   
   default: // identity as default (default in ICP anyways)
@@ -575,7 +591,9 @@ void LaserLoopClosure::SeedCallback(
       prior = utils::ToGtsam(e.pose);
     }
 
-    PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges);
+    if (!PerformLoopClosure(key1, key2, b_use_prior, prior, &loop_closure_edges)){
+      continue;
+    }
   }
 
   if (msg->edges[0].type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {

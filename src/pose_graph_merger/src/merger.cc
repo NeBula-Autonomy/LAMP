@@ -75,7 +75,7 @@ std::set<char> Merger::GetNewRobots(const pose_graph_msgs::PoseGraphConstPtr& ms
 }
 
 void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
-  ROS_INFO_STREAM("Received slow graph, size " << msg->nodes.size());
+  ROS_DEBUG_STREAM("Received slow graph, size " << msg->nodes.size());
   
   // Clear existing nodes
   ClearNodes();
@@ -89,7 +89,7 @@ void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
 }
 
 void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
-  ROS_INFO_STREAM("Received fast graph, size " << msg->nodes.size());
+  ROS_DEBUG_STREAM("Received fast graph, size " << msg->nodes.size());
 
   // NOTE: Assuming these messages are only from one robot
 
@@ -175,7 +175,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     InsertNode(new_merged_graph_node);
   }
 
-  ROS_INFO_STREAM("Finished merging graph, size "
+  ROS_DEBUG_STREAM("Finished merging graph, size "
                   << merged_graph_.nodes.size());
 }
 

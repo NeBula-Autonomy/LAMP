@@ -1,0 +1,50 @@
+<!--DOCTYPE html-->
+<launch>
+
+  <arg name="robot_namespace" default="robot"/>
+
+  <group ns="$(arg robot_namespace)">
+
+    <node pkg="pose_graph_tools" type="pose_graph_tools" name="pose_graph_tools" output="screen">
+	  <!-- Mapper -->
+	  <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
+	  <!-- Frames -->
+	  <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>   
+
+      <remap from="~pose_graph_in" to="/$(arg robot_namespace)/lamp/pose_graph"/>
+      <remap from="~pose_graph_out" to="/$(arg robot_namespace)/lamp/pose_graph_corrected"/>
+      <remap from="~keyed_scan" to="/$(arg robot_namespace)/lamp/keyed_scans"/>
+      <remap from="~octree_map" to="/$(arg robot_namespace)/lamp/octree_map_corrected"/>
+      <remap from="~clicked_point" to="clicked_point"/>
+    </node>
+
+    <!-- Pose graph visualization -->
+    <node pkg="pose_graph_visualizer"
+          name="pose_graph_visualizer_corrected"
+          type="pose_graph_visualizer_node"
+          ns="corrected">
+      <!-- LAMP settings -->
+      <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
+      <!-- Frames -->
+      <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>      
+      <!-- Config - TODO move the proximity_threshold param elsewhere -->
+      <rosparam file="$(find pose_graph_visualizer)/config/visualizer_parameters.yaml" subst_value="true"/>      
+      <!-- Robots -->
+      <rosparam file="$(find lamp)/config/robot_names.yaml" subst_value="true"/>
+
+      <!-- Topics -->
+      <remap from="lamp/pose_graph" to="/$(arg robot_namespace)/lamp/pose_graph_corrected"/>
+      <remap from="lamp/pose_graph_edge" to="/$(arg robot_namespace)/lamp/pose_graph_edge_corrected"/>
+      <remap from="lamp/pose_graph_node" to="/$(arg robot_namespace)/lamp/pose_graph_node_corrected"/>
+      <remap from="/husky1/artifact" to="/husky1/lamp/artifact_global"/>
+      <remap from="/husky2/artifact" to="/husky2/lamp/artifact_global"/>
+      <remap from="/husky3/artifact" to="/husky3/lamp/artifact_global"/>
+      <remap from="/husky4/artifact" to="/husky4/lamp/artifact_global"/>
+      <remap from="/telemax1/artifact" to="/telemax1/lamp/artifact_global"/>
+      <remap from="/spot1/artifact" to="/spot1/lamp/artifact_global"/>
+      <remap from="/spot2/artifact" to="/spot2/lamp/artifact_global"/>
+    </node>
+
+  </group>
+
+</launch>

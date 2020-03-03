@@ -353,8 +353,10 @@ std::shared_ptr<FactorData> OdometryHandler::GetData() {
 bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
                                          PointCloud::Ptr& msg) {
 
-  if (point_cloud_buffer_.size() == 0)
+  if (point_cloud_buffer_.size() == 0){
+    ROS_WARN("Have no point clouds in buffer, not returning any keyed scan");
     return false;
+  }
 
   // Search for lower-bound (first entry that is not less than the input timestamp)
   auto itrTime = point_cloud_buffer_.lower_bound(stamp.toSec());
@@ -367,7 +369,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
     time_diff = itrTime->first - stamp.toSec();
     if (time_diff > keyed_scan_time_diff_limit_){
       ROS_WARN("Time diff between point cloud and node larger than 0.1. Using earliest scan in buffer [GetKeyedScanAtTime]");
-      ROS_INFO_STREAM("time diff is: " << time_diff << ". [GetKeyedScanAtTime]");
+      ROS_INFO_STREAM("time diff is: " << time_diff << ". [GetKeyedScanAtTime]")  ;
     }
   } else if (itrTime == point_cloud_buffer_.end()) {
       // Check if it is past the end of the buffer - if so, take the last point cloud
@@ -414,7 +416,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
     return false;
   }
 
-  ROS_INFO_STREAM("Time difference between query and point cloud is " << time_diff << "s. [OdometryHandler::GetKeyedScanAtTime]");
+  // ROS_INFO_STREAM("Time difference between query and point cloud is " << time_diff << "s. [OdometryHandler::GetKeyedScanAtTime]");
 
   // Return true - have a point cloud for the timestamp
   return true;

@@ -32,7 +32,8 @@
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
       <!-- <remap from="~lio_odom" to="lo_frontend/odometry"/> -->
       <!-- <remap from="~lio_odom" to="hero/lion/odom"/> -->
-      <remap from="~lio_odom" to="hero/odometry"/>
+      <remap from="~lio_odom" to="hero/odometry" unless="$(eval robot_namespace.startswith('spot'))"/>
+      <remap from="~lio_odom" to="spot_frontend/odometry" if="$(eval robot_namespace.startswith('spot'))"/>
       <remap from="~vio_odom" to="visual_inertial_odometry_topic_currently_not_used"/>
       <remap from="~wio_odom" to="wheel_inertial_odometry_topic_currently_not_used"/>
       <remap from="~optimized_values" to="lamp_pgo/optimized_values"/>

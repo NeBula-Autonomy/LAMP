@@ -48,7 +48,8 @@ private:
   void GetInitialAlignment(
       PointCloud::ConstPtr source,
       PointCloud::ConstPtr target,
-      Eigen::Matrix4f* tf_out);
+      Eigen::Matrix4f* tf_out,
+      double& sac_fitness_score);
   
   bool FindLoopClosures(
       gtsam::Key new_key,
@@ -115,6 +116,7 @@ private:
   unsigned int sac_num_next_scans_;
   double sac_normals_radius_;
   double sac_features_radius_;
+  double sac_fitness_score_threshold_;
 
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;

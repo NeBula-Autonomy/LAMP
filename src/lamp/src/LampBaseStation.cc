@@ -125,6 +125,10 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                                          &LampBaseStation::LaserLoopClosureCallback,
                                          dynamic_cast<LampBase*>(this));
 
+  remove_robot_sub_ = nl.subscribe("remove_robot_from_graph",
+                                         1,
+                                         &LampBaseStation::RemoveRobotCallback, this);
+
   // Uncomment when needed for debugging
   debug_sub_ = nl.subscribe("debug",
                             1,
@@ -144,6 +148,7 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
 
   // Base station publishers
   pose_graph_to_optimize_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph_to_optimize", 10, true);
+  lamp_pgo_reset_pub_ = nl.advertise<std_msgs::Bool>("reset_pgo", 10, true);
 
   // Robot pose publishers
   ros::Publisher pose_pub_;
@@ -188,7 +193,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Send data to optimizer - pose graph and map publishing happens in 
   // callback when data is received back from optimizer
   if (b_run_optimization_) {
-    ROS_INFO_STREAM("Publishing pose graph to optimizer");
+    ROS_DEBUG_STREAM("Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
 
     b_run_optimization_ = false; 
@@ -225,7 +230,6 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   b_has_new_factor_ = true;
 
   pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>);
 
   gtsam::Values new_values;
 
@@ -289,11 +293,16 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
 
   // Update from stored keyed scans 
   for (auto s : pose_graph_data->scans) {
-
+    
     // Register new data - this will cause map to publish
     b_has_new_scan_ = true;
 
+    // Create new PCL pointer
+    pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>);
+
+    // Copy from ROS to PCL
     pcl::fromROSMsg(s->scan, *scan_ptr);
+    
     pose_graph_.InsertKeyedScan(s->key, scan_ptr); // TODO: add overloaded function
 
     // Add key to the list of scan candidates to add to the map
@@ -350,19 +359,21 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
     char robot = utils::GetRobotPrefix(pair.first);
     gtsam::Pose3 pose = pair.second.pose;
 
-    gtsam::Pose3 last_pose_base = pose_graph_.LastPose(robot);
-    gtsam::Pose3 last_pose_robot = latest_node_pose_[robot].second;
+    if (latest_node_pose_.count(robot)){
+      gtsam::Pose3 last_pose_base = pose_graph_.LastPose(robot);
+      gtsam::Pose3 last_pose_robot = latest_node_pose_[robot].second;
 
-    gtsam::Pose3 delta = last_pose_robot.between(pose);
-    gtsam::Pose3 new_pose = last_pose_base.compose(delta);
+      gtsam::Pose3 delta = last_pose_robot.between(pose);
+      gtsam::Pose3 new_pose = last_pose_base.compose(delta);
 
-    // Convert to ROS to publish
-    geometry_msgs::PoseStamped msg;
-    msg.pose = utils::GtsamToRosMsg(new_pose);
-    msg.header.frame_id = pose_graph_.fixed_frame_id;
-    msg.header.stamp = pair.second.stamp;
+      // Convert to ROS to publish
+      geometry_msgs::PoseStamped msg;
+      msg.pose = utils::GtsamToRosMsg(new_pose);
+      msg.header.frame_id = pose_graph_.fixed_frame_id;
+      msg.header.stamp = pair.second.stamp;
 
-    publishers_pose_[robot].publish(msg);
+      publishers_pose_[robot].publish(msg);
+    }
   }
 }
 
@@ -441,6 +452,27 @@ bool LampBaseStation::ProcessArtifactGT() {
   }
 
   return true;
+}
+
+void LampBaseStation::RemoveRobotCallback(const std_msgs::String msg){
+  ROS_INFO_STREAM("Recieved remove robot message for robot " << msg.data);
+
+  // Remove the pose graph
+  pose_graph_.RemoveRobotFromGraph(msg.data);
+
+
+  // Erase latest_node_pose_
+  latest_node_pose_.erase(utils::GetRobotPrefix(msg.data));
+
+  // Send reset to lamp_pgo
+  std_msgs::Bool signal;
+  signal.data = true;
+  lamp_pgo_reset_pub_.publish(signal);
+
+  // Publish graph to optimize
+  ROS_INFO_STREAM("Sending pose graph to optimizer");
+  PublishPoseGraphForOptimizer();
+
 }
 
 void LampBaseStation::DebugCallback(const std_msgs::String msg) {
