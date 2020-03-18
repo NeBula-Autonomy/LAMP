@@ -491,6 +491,8 @@ void LampBase::PublishAllKeyedScans() {
     pcl::toROSMsg(*it->second, keyed_scan_msg.scan);
     keyed_scan_pub_.publish(keyed_scan_msg);
 
-  }
+    ros::Duration(0.01).sleep();
 
+  }
+  ROS_INFO("Finished Publishing All Keyed Scans");
 }

@@ -5,11 +5,11 @@ session_name: husky_refactor
 # Default environment variables; Overwrite from command line
 environment:
   # LOG_PATH: /home/costar/data/parking_oct28/husky3_t3/rosbag
-  ROBOT_NAME: husky1
+  ROBOT_NAME: husky4
   BASE_NAME: base1
 
-  DATA_FILE: pose_graph_data.zip # saved pose graph in ~/.ros directory
-  GT_FILE: pose_graph_gt.zip
+  DATA_FILE: h4_s2_pg_full.zip # saved pose graph in ~/.ros directory
+  GT_FILE: h4_s2_pose_graph_gt_02.zip
 
 options:
   default-command: /bin/bash
@@ -19,14 +19,14 @@ windows:
   focus: true
   layout: tiled
   panes:
-    - roscore
     - sleep 3; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
     - sleep 1; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME 
-    - rosparam rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$BASE_NAME/map # base station
-    - sleep 2; rosrun rviz rviz
+    - sleep 2; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$BASE_NAME/map # base station
+    - sleep 2; rviz -d /home/costar/urban_ws/src/base_station_core/visualizer_rviz/rviz_config/cfg/ops.rviz
 
     # load PG, apply GT correction, and save
-    - sleep 5; rostopic pub /base1/lamp/debug std_msgs/String "load $DATA_FILE"
-    - sleep 6; rostopic pub /base1/lamp/debug std_msgs/String "artifact_gt" 
-    - sleep 7; rostopic pub /base1/lamp/debug std_msgs/String "save $GT_FILE" 
-    - sleep 8; tmux kill-window;
+    - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "load $DATA_FILE" \
+    - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "artifact_gt" \
+    - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "optimize" \
+    - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "save $GT_FILE" \
+    - sleep 1; tmux kill-window \
