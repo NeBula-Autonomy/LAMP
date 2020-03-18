@@ -12,13 +12,16 @@ Lidar pointcloud based loop closure
 #include <unordered_map>
 
 #include <pcl_ros/point_cloud.h>
+#include <pcl/io/pcd_io.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <std_msgs/String>
 
 #include <gtsam/inference/Symbol.h>
 
 #include <geometry_utils/Transform3.h>
+#include <geometry_utils/GeometryUtilsROS.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 
 #include <map>
@@ -31,6 +34,7 @@ public:
   bool Initialize(const ros::NodeHandle& n);
 
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+  typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
 
@@ -90,9 +94,14 @@ private:
           geometry_utils::Transform3& delta, 
           gtsam::Matrix66& covariance);
 
+  void GenerateGTFromPC(std::string gt_pc_filename);
+
+  void TriggerGTCallback(const std_msgs::String::ConstPtr& msg);
+
 private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
+  ros::Subscriber pc_gt_trigger_sub_;
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
 
@@ -121,7 +130,14 @@ private:
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
 
+  double gt_rot_sigma_;
+  double gt_trans_sigma_;
+  double gt_prior_covar_;
+
   PointCloudFilter filter_;
+  
+  // Mapper (for GT)
+  PointCloudMapper gt_mapper_;
 
   enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES };
 
