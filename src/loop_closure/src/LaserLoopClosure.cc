@@ -44,7 +44,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   loop_closure_seed_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "seed_loop_closure", 100000, &LaserLoopClosure::SeedCallback, this);
   pc_gt_trigger_sub_ = nl.subscribe<std_msgs::String>(
-      "seed_loop_closure", 1, &LaserLoopClosure::TriggerGTCallback, this);
+      "trigger_pc_gt", 1, &LaserLoopClosure::TriggerGTCallback, this);
 
   // Publishers
   loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
