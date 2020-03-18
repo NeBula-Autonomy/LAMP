@@ -102,7 +102,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 
   // Init gt mapper
   if (!gt_mapper_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize mapper.", name_.c_str());
+    ROS_ERROR("Failed to initialize mapper.");
   }  
 
   return true;
@@ -637,7 +637,7 @@ void LaserLoopClosure::KeyedScanCallback(
 }
 
 void LaserLoopClosure::TriggerGTCallback(const std_msgs::String::ConstPtr& msg){
-  std::String filename = msg->data;
+  std::string filename = msg->data;
 
   ROS_INFO_STREAM("Generating point cloud ground truth using point cloud from " << filename);
 
@@ -666,12 +666,12 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   PointCloud::Ptr keyed_scan_world(new PointCloud);
   PointCloud::Ptr gt_neighbors(new PointCloud);
   gu::Transform3 delta;
-  gtsam::Matrix66 covariance
+  gtsam::Matrix66 covariance;
   // TODO - set our own covariances for GT
   for (int i = 0; i < 3; ++i)
-    (*covariance)(i, i) = gt_rot_sigma_ * gt_rot_sigma_;
+    covariance(i, i) = gt_rot_sigma_ * gt_rot_sigma_;
   for (int i = 3; i < 6; ++i)
-    (*covariance)(i, i) = gt_trans_sigma * gt_trans_sigma;
+    covariance(i, i) = gt_trans_sigma_ * gt_trans_sigma_;
 
   // ---------------------------------------------------------
   // Loop through keyed poses
@@ -686,14 +686,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     gu::Transform3 transform = utils::ToGu(it->second);
 
     // Get scan and transform to the world frame
-    const Eigen::Matrix<double, 3, 3> R = transform.rotation.Eigen();
-    const Eigen::Matrix<double, 3, 1> T = transform.translation.Eigen();
+    const Eigen::Matrix<double, 3, 3> Rot = transform.rotation.Eigen();
+    const Eigen::Matrix<double, 3, 1> Trans = transform.translation.Eigen();
 
     Eigen::Matrix4d tf;
-    tf.block(0, 0, 3, 3) = R;
-    tf.block(0, 3, 3, 1) = T;
+    tf.block(0, 0, 3, 3) = Rot;
+    tf.block(0, 3, 3, 1) = Trans;
 
-    pcl::transformPointCloud(keyed_scans_(it->first), *keyed_scan_world, tf);
+    pcl::transformPointCloud(*keyed_scans_[it->first], *keyed_scan_world, tf);
 
     // Get NN from the GT map
     gt_mapper_.ApproxNearestNeighbors(*keyed_scan_world, gt_neighbors.get());
@@ -743,7 +743,7 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     const gtsam::Pose3 pose1(gtsam::Rot3(), gtsam::Point3(0.0,0.0,0.0));
     const gtsam::Pose3 pose2 = keyed_poses_.at(it->first); 
     gu::Transform3 odom_delta = utils::ToGu(pose2.between(pose1));
-    gtsam::Pose3 correction = utils::ToGtsam(gu::PoseDelta(*delta, odom_delta));
+    gtsam::Pose3 correction = utils::ToGtsam(gu::PoseDelta(delta, odom_delta));
     if (fabs(2*acos(correction.rotation().toQuaternion().w()))  > max_rotation_rad_) {
       ROS_INFO_STREAM("Rejected GT loop closure - total rotation too large, key " << gtsam::DefaultKeyFormatter(it->first));
       continue;
@@ -754,18 +754,24 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
 
     pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(origin_key, it->first, delta, covariance);
 
-    loop_closure_edges->push_back(edge);
+    gt_edges.push_back(edge);
 
   }
 
 
 
   // Publish the new edges and a node with prior for the origin
-  if (loop_closure_edges.size() > 0) {
+  if (gt_edges.size() > 0) {
     pose_graph_msgs::PoseGraphNode node;
     node.key = origin_key;
     node.ID = "origin";
-    // Default is 0? - check 
+    node.pose.position.x = 0.0;
+    node.pose.position.y = 0.0;
+    node.pose.position.z = 0.0;
+    node.pose.orientation.x = 0.0;
+    node.pose.orientation.y = 0.0;
+    node.pose.orientation.z = 0.0;
+    node.pose.orientation.w = 1.0;
 
     pose_graph_msgs::PoseGraphEdge prior;
     prior.key_from = origin_key;
@@ -790,9 +796,9 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   
     // Publish Loop Closures
     pose_graph_msgs::PoseGraph graph;
-    graph.edges = loop_closure_edges;
-    graph.nodes = node;
-    graph.edges.append(prior);
+    graph.edges = gt_edges;
+    graph.nodes.push_back(node);
+    graph.edges.push_back(prior);
 
     loop_closure_pub_.publish(graph);
   

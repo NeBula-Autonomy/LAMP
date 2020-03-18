@@ -16,13 +16,14 @@ Lidar pointcloud based loop closure
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
-#include <std_msgs/String>
+#include <std_msgs/String.h>
 
 #include <gtsam/inference/Symbol.h>
 
 #include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <point_cloud_filter/PointCloudFilter.h>
+#include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <map>
 
