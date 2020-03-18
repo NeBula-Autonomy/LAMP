@@ -526,6 +526,7 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     
     PublishPoseGraph(); 
     ReGenerateMapPointCloud();
+    PublishAllKeyedScans(); // So the loop closure module has all the keyed scans
   }
 
   // Read in artifact ground truth data
