@@ -708,6 +708,7 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     icp.setInputSource(keyed_scan_world);
 
     icp.setInputTarget(gt_neighbors);
+    // icp.setInputTarget(gt_pc_ptr);
 
     // Perform ICP.
     PointCloud unused_result;
@@ -740,19 +741,23 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     }
 
     // reject if the rotation is too big
-    const gtsam::Pose3 pose1(gtsam::Rot3(), gtsam::Point3(0.0,0.0,0.0));
-    const gtsam::Pose3 pose2 = keyed_poses_.at(it->first); 
-    gu::Transform3 odom_delta = utils::ToGu(pose2.between(pose1));
-    gtsam::Pose3 correction = utils::ToGtsam(gu::PoseDelta(delta, odom_delta));
-    if (fabs(2*acos(correction.rotation().toQuaternion().w()))  > max_rotation_rad_) {
+    if (fabs(2*acos(utils::ToGtsam(delta).rotation().toQuaternion().w()))  > max_rotation_rad_) {
       ROS_INFO_STREAM("Rejected GT loop closure - total rotation too large, key " << gtsam::DefaultKeyFormatter(it->first));
       continue;
     }
 
     // Prepare new factor - place in vector of new factors
-    delta = gu::PoseInverse(delta);
+    delta = gu::PoseInverse(delta);// NOTE: gtsam need 2_Transform_1 while
+                                    // ICP output 1_Transform_2
 
-    pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(origin_key, it->first, delta, covariance);
+
+    const gtsam::Pose3 odom_pose = keyed_poses_.at(it->first); 
+
+    // Compose transform to make factor for optimization
+    gtsam::Pose3 gc_factor = utils::ToGtsam(delta).compose(odom_pose);
+    gu::Transform3 gc_factor_gu = utils::ToGu(gc_factor);
+    
+    pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(origin_key, it->first, gc_factor_gu, covariance);
 
     gt_edges.push_back(edge);
 
