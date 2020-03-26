@@ -13,9 +13,11 @@
 
   <build_depend>roscpp</build_depend>
   <build_depend>parameter_utils</build_depend>
+  <build_depend>std_msgs</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>parameter_utils</run_depend>
+  <run_depend>std_msgs</run_depend>
 
   <test_depend>rostest</test_depend>
   <test_depend>rosunit</test_depend>

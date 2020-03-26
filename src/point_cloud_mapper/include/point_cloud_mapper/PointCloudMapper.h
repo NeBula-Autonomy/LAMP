@@ -77,6 +77,9 @@ public:
   void PublishMap();
   void PublishMapFrozen();
 
+  // Publish map info for analysis
+  void PublishMapInfo();
+
   // Getter for the point cloud
   PointCloud::Ptr GetMapData() {
     return map_data_;
@@ -123,6 +126,7 @@ private:
   ros::Publisher map_pub_;
   ros::Publisher map_frozen_pub_;
   ros::Publisher incremental_map_pub_;
+  ros::Publisher map_info_pub_;
   std::thread publish_thread_;
   std::thread publish_frozen_thread_;
   mutable std::mutex map_mutex_;

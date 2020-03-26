@@ -37,6 +37,7 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/search/impl/search.hpp>
 #include <point_cloud_mapper/PointCloudMapper.h>
+#include <std_msgs/String.h>
 
 namespace pu = parameter_utils;
 
@@ -97,6 +98,7 @@ bool PointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
   incremental_map_pub_ =
       nl.advertise<PointCloud>("octree_map_updates", 10, true);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
+  map_info_pub_ = nl.advertise<std_msgs::String>("map_data", 10, false);
 
   return true;
 }
@@ -244,4 +246,17 @@ void PointCloudMapper::PublishMapFrozenThread() {
 void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {
   // Publish the incremental points for visualization.
   incremental_map_pub_.publish(incremental_points);
+}
+
+void PointCloudMapper::PublishMapInfo(){
+  // Collect data for the output
+
+  double point_cloud_size = map_data_->size();
+  std::string message; 
+
+  message = "size " + std::to_string(point_cloud_size);
+
+  std_msgs::String map_info;
+  map_info.data = message;
+  map_info_pub_.publish(map_info);
 }
