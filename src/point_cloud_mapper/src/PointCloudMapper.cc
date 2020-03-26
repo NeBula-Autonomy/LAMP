@@ -249,13 +249,18 @@ void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {
 }
 
 void PointCloudMapper::PublishMapInfo(){
+  // When do we want to publish: When points are inserted or the one done in Base station. Why is it so in base station
+  // 
   core_msgs::MapInfo map_info;
 
-  // Collect map properties
-  map_info.header.frame_id = map_data_->header.frame_id;
-  map_info.size = map_data_->size();
-  map_info.initialized = initialized_;
-
-  // Publish
-  map_info_pub_.publish(map_info);
+  // If the map has been recently updated
+  if (map_info_.updated) {
+    // Collect map properties
+    map_info.header.stamp = map_info_.stamp;
+    map_info.header.frame_id = map_data_->header.frame_id;
+    map_info.size = map_info_.size;
+    map_info.initialized = initialized_;
+    // Publish
+    map_info_pub_.publish(map_info);
+  }
 }

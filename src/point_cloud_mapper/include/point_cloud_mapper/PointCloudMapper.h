@@ -124,6 +124,21 @@ private:
   // Map parameters.
   double octree_resolution_;
 
+  // Map information
+  struct MapInformation{
+    int64_t num_points_added;
+    bool updated;
+    ros::Time stamp;
+    int64_t size;
+
+    MapInformation() :num_points_added(0),
+                      updated(false),
+                      stamp(ros::Time(0.0)),
+                      size(0)
+    {}
+  };
+  MapInformation map_info_;
+
   // Map publisher.
   ros::Publisher map_pub_;
   ros::Publisher map_frozen_pub_;
