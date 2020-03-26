@@ -207,6 +207,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   if (b_has_new_scan_) {
     mapper_.PublishMap();
+    mapper_.PublishMapInfo();
 
     b_has_new_scan_ = false;
   }
