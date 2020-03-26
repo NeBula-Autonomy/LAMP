@@ -8,8 +8,8 @@ environment:
   ROBOT_NAME: husky4
   BASE_NAME: base1
 
-  DATA_FILE: h4_s2_pg_full.zip # saved pose graph in ~/.ros directory
-  GT_FILE: h4_s2_pose_graph_gt_02.zip
+  DATA_FILE: /home/costar/data/lc_eval/base_b2_pg_no_lc.zip # saved pose graph in ~/.ros directory
+  GT_FILE: pose_graph_gt.zip
 
 options:
   default-command: /bin/bash
@@ -29,4 +29,5 @@ windows:
     - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "artifact_gt" \
     - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "optimize" \
     - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "save $GT_FILE" \
-    - sleep 1; tmux kill-window \
+    - rosbag record -O map.bag /$BASE_NAME/lamp/octree_map \
+    # - sleep 1; tmux kill-window \
