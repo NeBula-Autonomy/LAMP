@@ -98,7 +98,7 @@ bool PointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
   incremental_map_pub_ =
       nl.advertise<PointCloud>("octree_map_updates", 10, true);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
-  map_info_pub_ = nl.advertise<std_msgs::String>("map_data", 10, false);
+  map_info_pub_ = nl.advertise<core_msgs::MapInfo>("map_info", 10, false);
 
   return true;
 }
@@ -249,14 +249,13 @@ void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {
 }
 
 void PointCloudMapper::PublishMapInfo(){
-  // Collect data for the output
+  core_msgs::MapInfo map_info;
 
-  double point_cloud_size = map_data_->size();
-  std::string message; 
+  // Collect map properties
+  map_info.header.frame_id = map_data_->header.frame_id;
+  map_info.size = map_data_->size();
+  map_info.initialized = initialized_;
 
-  message = "size " + std::to_string(point_cloud_size);
-
-  std_msgs::String map_info;
-  map_info.data = message;
+  // Publish
   map_info_pub_.publish(map_info);
 }

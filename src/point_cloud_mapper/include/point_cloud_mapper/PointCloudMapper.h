@@ -45,6 +45,8 @@
 #include <mutex>
 #include <thread>
 
+#include <core_msgs/MapInfo.h>
+
 class PointCloudMapper {
 public:
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
