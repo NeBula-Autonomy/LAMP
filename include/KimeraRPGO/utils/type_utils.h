@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Symbol.h>
