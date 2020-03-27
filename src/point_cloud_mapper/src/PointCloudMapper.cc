@@ -37,6 +37,7 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/search/impl/search.hpp>
 #include <point_cloud_mapper/PointCloudMapper.h>
+#include <std_msgs/String.h>
 
 namespace pu = parameter_utils;
 
@@ -97,6 +98,7 @@ bool PointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
   incremental_map_pub_ =
       nl.advertise<PointCloud>("octree_map_updates", 10, true);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
+  map_info_pub_ = nl.advertise<core_msgs::MapInfo>("map_info", 10, false);
 
   return true;
 }
@@ -244,4 +246,22 @@ void PointCloudMapper::PublishMapFrozenThread() {
 void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {
   // Publish the incremental points for visualization.
   incremental_map_pub_.publish(incremental_points);
+}
+
+void PointCloudMapper::PublishMapInfo(){
+  // When do we want to publish: When points are inserted or the one done in Base station. Why is it so in base station
+  // 
+  core_msgs::MapInfo map_info;
+
+  // If the map has been recently updated
+  if (initialized_ && map_updated_) {
+    // Collect map properties
+    map_info.header.stamp = ros::Time (map_data_->header.stamp/((uint64_t) 1e6), (map_data_->header.stamp%((uint64_t) 1e6))*1e3);
+    map_info.header.frame_id = map_data_->header.frame_id;
+    map_info.size = map_data_->size();
+    map_info.initialized = initialized_;
+    
+    // Publish
+    map_info_pub_.publish(map_info);
+  }
 }
