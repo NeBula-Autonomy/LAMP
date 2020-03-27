@@ -50,3 +50,6 @@ internal/.catkin_tools
 
 # VS code
 *.vscode
+
+# log file 
+src/lamp_pgo/log/*

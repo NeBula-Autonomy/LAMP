@@ -95,6 +95,11 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Initialize solver
   pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
 
+  std::string log_path;
+  if (pu::Get("log_path", log_path)) {
+    pgo_solver_->enableLogging(log_path);
+    ROS_INFO("Enabled logging in Kimera-RPGO");
+  }
   // Publish ignored list once
   PublishIgnoredList();
 
