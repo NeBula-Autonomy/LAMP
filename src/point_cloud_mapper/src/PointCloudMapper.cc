@@ -254,12 +254,13 @@ void PointCloudMapper::PublishMapInfo(){
   core_msgs::MapInfo map_info;
 
   // If the map has been recently updated
-  if (map_info_.updated) {
+  if (initialized_ && map_updated_) {
     // Collect map properties
-    map_info.header.stamp = map_info_.stamp;
+    map_info.header.stamp = ros::Time (map_data_->header.stamp / 1e6, map_data_->header.stamp % 1e6);
     map_info.header.frame_id = map_data_->header.frame_id;
-    map_info.size = map_info_.size;
+    map_info.size = map_data_->size();
     map_info.initialized = initialized_;
+    
     // Publish
     map_info_pub_.publish(map_info);
   }
