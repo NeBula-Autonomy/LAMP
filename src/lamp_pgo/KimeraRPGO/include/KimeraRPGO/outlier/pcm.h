@@ -61,6 +61,7 @@ class Pcm : public OutlierRemoval {
         threshold2_(threshold2),
         special_symbols_(special_symbols),
         total_lc_(0),
+        total_lc_odom_cons_(0),
         total_lc_inliers_(0),
         total_landmark_measurements_(0),
         total_landmark_inliers_(0),
@@ -102,7 +103,8 @@ class Pcm : public OutlierRemoval {
 
   size_t total_lc_, total_lc_inliers_, total_landmark_measurements_,
       total_landmark_inliers_, total_multirobot_lc_,
-      total_multirobot_lc_inliers_;
+      total_multirobot_lc_inliers_, total_lc_odom_cons_;
+  std::vector<double> consistency_error_;
 
   // store the vector of ignored prefixes (loop closures to ignore)
   std::vector<char> ignored_prefixes_;
@@ -114,10 +116,12 @@ class Pcm : public OutlierRemoval {
   Stats getRejectionStats() {
     return Stats(total_lc_,
                  total_lc_inliers_,
+                 total_lc_odom_cons_,
                  total_multirobot_lc_,
                  total_multirobot_lc_inliers_,
                  total_landmark_measurements_,
-                 total_landmark_inliers_);
+                 total_landmark_inliers_,
+                 consistency_error_);
   }
 
   /*! \brief Process new measurements and reject outliers
@@ -662,6 +666,7 @@ class Pcm : public OutlierRemoval {
         // check consistency
         double mah_distance;
         bool consistent = areLoopsConsistent(factor_i, factor, &mah_distance);
+        consistency_error_.push_back(mah_distance);
         new_dst_matrix(num_lc - 1, i) = mah_distance;
         new_dst_matrix(i, num_lc - 1) = mah_distance;
         if (consistent) {
@@ -759,6 +764,7 @@ class Pcm : public OutlierRemoval {
   void findInliers() {
     if (debug_) log<INFO>("total loop closures registered: %1%") % total_lc_;
     total_lc_inliers_ = 0;
+    total_lc_odom_cons_ = 0;
     total_multirobot_lc_inliers_ = 0;
     // iterate through loop closures and find inliers
     std::unordered_map<ObservationId, Measurements>::iterator it =
@@ -773,6 +779,7 @@ class Pcm : public OutlierRemoval {
       for (size_t i = 0; i < num_inliers; i++) {
         it->second.consistent_factors.add(it->second.factors[inliers_idx[i]]);
       }
+      total_lc_odom_cons_ = total_lc_odom_cons_ + it->second.adj_matrix.rows();
       total_lc_inliers_ = total_lc_inliers_ + num_inliers;
       if (it->first.id1 != it->first.id2)
         total_multirobot_lc_inliers_ =

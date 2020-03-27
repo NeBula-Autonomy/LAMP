@@ -128,14 +128,21 @@ void RobustSolver::update(const gtsam::NonlinearFactorGraph& factors,
     Stats stats = outlier_removal_->getRejectionStats();
     double error = nfg_.error(values_);
     // Write/append to file
-    std::string file_name = log_path_ + "/log.txt";
+    std::string log_file = log_path_ + "/log.txt";
     std::ofstream logfile;
-    logfile.open(file_name, std::ios::app);  // append instead of overwrite
-    logfile << stats.lc << " " << stats.good_lc << " " << stats.multirobot_lc
-            << " " << stats.good_multirobot_lc << " "
-            << stats.landmark_measurements << " "
-            << stats.good_landmark_measurements << " " << error << std::endl;
+    logfile.open(log_file, std::ios::app);  // append instead of overwrite
+    logfile << stats.lc << " " << stats.good_lc << " "
+            << stats.odom_consistent_lc << " " << stats.multirobot_lc << " "
+            << stats.good_multirobot_lc << " " << stats.landmark_measurements
+            << " " << stats.good_landmark_measurements << " " << error
+            << std::endl;
     logfile.close();
+    std::string error_file = log_path_ + "/error.txt";
+    std::ofstream errorfile;
+    errorfile.open(error_file, std::ios::app);  // append instead of overwrite
+    for (const double e : stats.consistency_error) errorfile << e << " ";
+    errorfile << std::endl;
+    errorfile.close();
   }
   return;
 }
@@ -217,13 +224,20 @@ void RobustSolver::enableLogging(std::string path) {
   log_ = true;
   log_path_ = path;
   // Initialize log file
-  std::string file_name = path + "/log.txt";
+  std::string log_file = path + "/log.txt";
   std::ofstream logfile;
-  logfile.open(file_name);  // append instead of overwrite
-  logfile << "#lc #good-lc #multirobot-lc #good-multirobot-lc "
-             "#ldmrk-measurements #good-ldmrk-measurements #error"
-          << std::endl;
+  logfile.open(log_file);  // append instead of overwrite
+  logfile
+      << "#lc #good-lc #odom-consistent-lc #multirobot-lc #good-multirobot-lc "
+         "#ldmrk-measurements #good-ldmrk-measurements #error"
+      << std::endl;
   logfile.close();
+  // Initialize data file
+  std::string data_file = path + "/error.txt";
+  std::ofstream datafile;
+  datafile.open(data_file);  // append instead of overwrite
+  datafile << "#consistency-error" << std::endl;
+  datafile.close();
 }
 
 }  // namespace KimeraRPGO
