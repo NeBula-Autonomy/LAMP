@@ -16,7 +16,10 @@
 #include "KimeraRPGO/utils/type_utils.h"
 #include "test_config.h"
 
-using namespace KimeraRPGO;
+using KimeraRPGO::EdgePtr;
+using KimeraRPGO::RobustSolver;
+using KimeraRPGO::RobustSolverParams;
+using KimeraRPGO::Verbosity;
 
 void buildTestGraph(gtsam::NonlinearFactorGraph* factors,
                     gtsam::Values* values) {
