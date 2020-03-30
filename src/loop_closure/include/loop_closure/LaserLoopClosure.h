@@ -95,6 +95,11 @@ private:
           geometry_utils::Transform3& delta, 
           gtsam::Matrix66& covariance);
 
+  pose_graph_msgs::PoseGraphEdge CreatePriorEdge(
+          gtsam::Symbol key,
+          geometry_utils::Transform3& delta, 
+          gtsam::Matrix66& covariance);
+
   void GenerateGTFromPC(std::string gt_pc_filename);
 
   void TriggerGTCallback(const std_msgs::String::ConstPtr& msg);

@@ -7,9 +7,10 @@ environment:
   # LOG_PATH: /home/costar/data/parking_oct28/husky3_t3/rosbag
   ROBOT_NAME: husky4
   BASE_NAME: base1
+  WSPACE: /home/abhishek/catkin_ws
 
-  DATA_FILE: /home/costar/data/lc_eval/base_b2_pg_no_lc.zip # saved pose graph in ~/.ros directory
-  GT_FILE: pose_graph_gt.zip
+  DATA_FILE: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/Example_LAMP_PG_file_h4_s2_pg_full_run.zip # saved pose graph in ~/.ros directory
+  GT_FILE: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/pose_graph_gt.zip
 
 options:
   default-command: /bin/bash
@@ -19,15 +20,18 @@ windows:
   focus: true
   layout: tiled
   panes:
-    - sleep 3; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
-    - sleep 1; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME 
+    - sleep 3; source $WSPACE/devel/setup.bash; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME > ~/Desktop/log.txt
+    - sleep 1; source $WSPACE/devel/setup.bash; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME > ~/Desktop/log1.txt
     - sleep 2; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$BASE_NAME/map # base station
-    - sleep 2; rviz -d /home/costar/urban_ws/src/base_station_core/visualizer_rviz/rviz_config/cfg/ops.rviz
+    - sleep 2; rviz -d /home/abhishek/wspace/src/base_station_core/visualizer_rviz/rviz_config/cfg/ops.rviz
 
     # load PG, apply GT correction, and save
     - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "load $DATA_FILE" \
-    - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "artifact_gt" \
+    - sleep 1; rostopic pub /base1/laser_loop_closure/trigger_pc_gt std_msgs/String "/home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/Urban/beta_both_floors.pcd" \
     - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "optimize" \
     - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "save $GT_FILE" \
     - rosbag record -O map.bag /$BASE_NAME/lamp/octree_map \
     # - sleep 1; tmux kill-window \
+
+# max_tolerable_fitness is low
+# optimization says warning with cannot decrease error with max lambda

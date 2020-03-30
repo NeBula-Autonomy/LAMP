@@ -525,8 +525,13 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     }
     
     PublishPoseGraph(); 
+    ROS_INFO_STREAM("Done Loading pose graph");
+    
     ReGenerateMapPointCloud();
+    ROS_INFO_STREAM("Done regenerating Map Pointcloud");
+   
     PublishAllKeyedScans(); // So the loop closure module has all the keyed scans
+    ROS_INFO_STREAM("Done publishing keyed scans");
   }
 
   // Read in artifact ground truth data

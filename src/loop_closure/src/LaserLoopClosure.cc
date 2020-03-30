@@ -644,8 +644,14 @@ void LaserLoopClosure::TriggerGTCallback(const std_msgs::String::ConstPtr& msg){
   GenerateGTFromPC(filename);
 }
 
+// WHo is publishing to trigger_gt_pc
+// I suppose the flow is: We tell lamp_base to load, optimize and save . LampBase then takes the keyscans from the nodes and publishes them every 0.01 secs. 
+// In triggerGtCallback we take all poses and generate the revised graph with gt info included.
+// I have to oublish on trigger_gt_pc the gt map filename
+// SO I load the pg, optimize and save as in tmux sequentialy, publish on trigger_pc_gt which gives out
+// new pg, optimizer optimizes
 void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
-
+  ROS_INFO("Triggering ground truth.\n");
   // Read ground truth from file
   pcl::PCDReader pcd_reader;
   PointCloud gt_point_cloud;
@@ -676,6 +682,7 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   // ---------------------------------------------------------
   // Loop through keyed poses
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
+    ROS_INFO_STREAM("Processing key " << gtsam::DefaultKeyFormatter(it->first) << "\n");
     // Check if the keyed scan exists
     if (!keyed_scans_.count(it->first)){
       ROS_WARN_STREAM("No keyed scan for key " << gtsam::DefaultKeyFormatter(it->first));
@@ -694,7 +701,7 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     tf.block(0, 3, 3, 1) = Trans;
 
     pcl::transformPointCloud(*keyed_scans_[it->first], *keyed_scan_world, tf);
-
+    // Try putting the whole point cloud in the ICP as source
     // Get NN from the GT map
     gt_mapper_.ApproxNearestNeighbors(*keyed_scan_world, gt_neighbors.get());
 
@@ -747,7 +754,12 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     }
 
     // Prepare new factor - place in vector of new factors
-    delta = gu::PoseInverse(delta);// NOTE: gtsam need 2_Transform_1 while
+    // ICP gives transformation that converts node keyscan to gt map neighbors
+    // Normally in ICP from LaserLoopcCLosure it provides transformation
+    // from new to old and hence they inverse it.
+    // Here delta provides us transform from node to ground truth scan
+    // I dont think it needs to be inverted.
+    // delta = gu::PoseInverse(delta);// NOTE: gtsam need 2_Transform_1 while
                                     // ICP output 1_Transform_2
 
 
@@ -756,56 +768,46 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     // Compose transform to make factor for optimization
     gtsam::Pose3 gc_factor = utils::ToGtsam(delta).compose(odom_pose);
     gu::Transform3 gc_factor_gu = utils::ToGu(gc_factor);
-    
-    pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(origin_key, it->first, gc_factor_gu, covariance);
-
+    // Make prior here
+    pose_graph_msgs::PoseGraphEdge edge = CreatePriorEdge(it->first, gc_factor_gu, covariance);
+    ROS_INFO_STREAM("The added edge is " << gtsam::DefaultKeyFormatter(edge.key_from));
+    // Push to gt_prior
     gt_edges.push_back(edge);
-
   }
-
-
 
   // Publish the new edges and a node with prior for the origin
   if (gt_edges.size() > 0) {
-    pose_graph_msgs::PoseGraphNode node;
-    node.key = origin_key;
-    node.ID = "origin";
-    node.pose.position.x = 0.0;
-    node.pose.position.y = 0.0;
-    node.pose.position.z = 0.0;
-    node.pose.orientation.x = 0.0;
-    node.pose.orientation.y = 0.0;
-    node.pose.orientation.z = 0.0;
-    node.pose.orientation.w = 1.0;
+    // Publish Loop Closures
+    ROS_INFO_STREAM("Publishing " << gt_edges.size() << " edges.\n");
+    pose_graph_msgs::PoseGraph graph;
+    graph.edges = gt_edges; //gt_prior
+    loop_closure_pub_.publish(graph);
+  }
+}
 
-    pose_graph_msgs::PoseGraphEdge prior;
-    prior.key_from = origin_key;
-    prior.key_to = origin_key;
-    prior.type = pose_graph_msgs::PoseGraphEdge::PRIOR;
-    prior.pose.position.x = 0.0;
-    prior.pose.position.y = 0.0;
-    prior.pose.position.z = 0.0;
-    prior.pose.orientation.x = 0.0;
-    prior.pose.orientation.y = 0.0;
-    prior.pose.orientation.z = 0.0;
-    prior.pose.orientation.w = 1.0;
+pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreatePriorEdge(
+                gtsam::Symbol key,
+                geometry_utils::Transform3& delta, 
+                gtsam::Matrix66& covariance) {
+  pose_graph_msgs::PoseGraphEdge prior;
+  prior.key_from = key;
+  prior.key_to = key;
+  prior.type = pose_graph_msgs::PoseGraphEdge::PRIOR;
+  prior.pose.position.x = delta.translation.X();
+  prior.pose.position.y = delta.translation.Y();
+  prior.pose.position.z = delta.translation.Z();
+  prior.pose.orientation.x = utils::ToGtsam(delta).rotation().quaternion().x();
+  prior.pose.orientation.y = utils::ToGtsam(delta).rotation().quaternion().y();
+  prior.pose.orientation.z = utils::ToGtsam(delta).rotation().quaternion().z();
+  prior.pose.orientation.w = utils::ToGtsam(delta).rotation().quaternion().w();
 
-    // Convert matrix covariance to vector
-    for (size_t i = 0; i < 6; ++i) {
-      for (size_t j = 0; j < 6; ++j) {
-        if (i = j){
-          prior.covariance[6 * i + j] = gt_prior_covar_;
-        }
+  // Convert matrix covariance to vector
+  for (size_t i = 0; i < 6; ++i) {
+    for (size_t j = 0; j < 6; ++j) {
+      if (i = j){
+        prior.covariance[6 * i + j] = covariance(i,j);
       }
     }
-  
-    // Publish Loop Closures
-    pose_graph_msgs::PoseGraph graph;
-    graph.edges = gt_edges;
-    graph.nodes.push_back(node);
-    graph.edges.push_back(prior);
-
-    loop_closure_pub_.publish(graph);
-  
   }
+  return prior;
 }
