@@ -81,6 +81,10 @@ bool PointCloudMapper::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("map/b_publish_only_with_subscribers", b_publish_only_with_subscribers_))
     return false;
+  if (!pu::Get("map/b_publish_map_info", b_publish_map_info_))
+    return false;
+  if (!pu::Get("map/volume_voxel_size", volume_voxel_size))
+    return false;
 
   // Initialize the map octree.
   map_octree_.reset(new Octree(octree_resolution_));
@@ -251,7 +255,10 @@ void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {
 
 void PointCloudMapper::PublishMapInfo(){
   // When do we want to publish: When points are inserted or the one done in Base station. Why is it so in base station
-  // 
+  if (!b_publish_map_info_){
+    return;
+  }
+
   core_msgs::MapInfo map_info;
 
   // If the map has been recently updated
@@ -262,11 +269,6 @@ void PointCloudMapper::PublishMapInfo(){
     map_info.size = map_data_->size();
     map_info.initialized = initialized_;
 
-    // Get iterator to the octree
-    // pcl::octree::OctreeBreadthFirstIterator<pcl::octree::OctreePointCloud> octree_itr = map_octree_.breadth_begin();
-
-    
-
     // Start stepping through 
     int current_depth = -1;
     int depth = -1;
@@ -275,26 +277,20 @@ void PointCloudMapper::PublishMapInfo(){
     std::vector<int> count_per_depth;
     double voxel_side_at_depth; 
 
-    int tree_depth = map_octree_->getTreeDepth();
-
     // find the depth that we want - depth first search
-    auto df_itr = map_octree_->depth_begin();
-    while (df_itr != map_octree_->depth_end()){
+    for (auto df_itr = map_octree_->depth_begin(); df_itr != map_octree_->depth_end(); df_itr++){
       depth = df_itr.getCurrentOctreeDepth();
       voxel_side_at_depth = std::sqrt(map_octree_->getVoxelSquaredSideLen(depth));
 
-      if (voxel_side_at_depth > 0.4 && voxel_side_at_depth < 0.7){
+      if (voxel_side_at_depth > volume_voxel_size-0.2 && voxel_side_at_depth < volume_voxel_size+0.2){
         // If the side length is around 0.5
         target_depth = depth;
         break;
       }
-      df_itr++;
     }
 
-    // Reset iterator
-    auto octree_itr = map_octree_->breadth_begin();
 
-    while (octree_itr != map_octree_->breadth_end()){
+    for (auto octree_itr = map_octree_->breadth_begin(); octree_itr != map_octree_->breadth_end(); octree_itr++){
       // Check the current depth 
       depth = octree_itr.getCurrentOctreeDepth();
       if (depth < target_depth){
@@ -304,10 +300,9 @@ void PointCloudMapper::PublishMapInfo(){
       } else if (depth > target_depth){
         break;
       }
-      // Else is a leaf node
 
       depth_count++;
-      octree_itr++;
+      
     }
 
     // Compute volume
@@ -320,21 +315,3 @@ void PointCloudMapper::PublishMapInfo(){
     map_info_pub_.publish(map_info);
   }
 }    
-
-
-    //   if (depth != current_depth){
-    //     if (current_depth > -1){
-    //       ROS_INFO_STREAM("Count from depth " << current_depth << " is " << depth_count);
-    //       count_per_depth.push_back(depth_count);
-    //     }
-    //     current_depth = depth;
-    //     voxel_side_at_depth = std::sqrt(map_octree_->getVoxelSquaredSideLen(depth));
-    //     ROS_INFO_STREAM("Depth is " << depth << ". Side length at depth is " << voxel_side_at_depth);
-    //     // At a new depth 
-    //     depth_count = 1;
-    //   } else {
-    //     depth_count++;
-    //   }
-    //   octree_itr++;
-    // }
-    // Need to check with this octree_resolution_
