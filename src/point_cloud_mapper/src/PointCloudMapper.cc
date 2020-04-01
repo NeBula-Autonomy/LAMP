@@ -36,6 +36,7 @@
 
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/search/impl/search.hpp>
+#include <pcl/octree/octree_iterator.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 #include <std_msgs/String.h>
 
@@ -260,8 +261,80 @@ void PointCloudMapper::PublishMapInfo(){
     map_info.header.frame_id = map_data_->header.frame_id;
     map_info.size = map_data_->size();
     map_info.initialized = initialized_;
+
+    // Get iterator to the octree
+    // pcl::octree::OctreeBreadthFirstIterator<pcl::octree::OctreePointCloud> octree_itr = map_octree_.breadth_begin();
+
+    
+
+    // Start stepping through 
+    int current_depth = -1;
+    int depth = -1;
+    int target_depth;
+    int depth_count = 0;
+    std::vector<int> count_per_depth;
+    double voxel_side_at_depth; 
+
+    int tree_depth = map_octree_->getTreeDepth();
+
+    // find the depth that we want - depth first search
+    auto df_itr = map_octree_->depth_begin();
+    while (df_itr != map_octree_->depth_end()){
+      depth = df_itr.getCurrentOctreeDepth();
+      voxel_side_at_depth = std::sqrt(map_octree_->getVoxelSquaredSideLen(depth));
+
+      if (voxel_side_at_depth > 0.4 && voxel_side_at_depth < 0.7){
+        // If the side length is around 0.5
+        target_depth = depth;
+        break;
+      }
+      df_itr++;
+    }
+
+    // Reset iterator
+    auto octree_itr = map_octree_->breadth_begin();
+
+    while (octree_itr != map_octree_->breadth_end()){
+      // Check the current depth 
+      depth = octree_itr.getCurrentOctreeDepth();
+      if (depth < target_depth){
+        // Skip this - doesn't contain what we want
+        octree_itr++;
+        continue;
+      } else if (depth > target_depth){
+        break;
+      }
+      // Else is a leaf node
+
+      depth_count++;
+      octree_itr++;
+    }
+
+    // Compute volume
+    double volume = depth_count*std::pow(voxel_side_at_depth,3.0);
+
+    ROS_INFO_STREAM("Point cloud Volume is: " << volume << ", from " << depth_count << " voxels with side length " << voxel_side_at_depth);
+    map_info.volume = volume;
     
     // Publish
     map_info_pub_.publish(map_info);
   }
-}
+}    
+
+
+    //   if (depth != current_depth){
+    //     if (current_depth > -1){
+    //       ROS_INFO_STREAM("Count from depth " << current_depth << " is " << depth_count);
+    //       count_per_depth.push_back(depth_count);
+    //     }
+    //     current_depth = depth;
+    //     voxel_side_at_depth = std::sqrt(map_octree_->getVoxelSquaredSideLen(depth));
+    //     ROS_INFO_STREAM("Depth is " << depth << ". Side length at depth is " << voxel_side_at_depth);
+    //     // At a new depth 
+    //     depth_count = 1;
+    //   } else {
+    //     depth_count++;
+    //   }
+    //   octree_itr++;
+    // }
+    // Need to check with this octree_resolution_
