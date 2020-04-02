@@ -148,6 +148,15 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
     return false;
   }
 
+  // Wait for the first clock message to be received
+  ros::Rate r(2);
+  while (ros::Time::now().toSec() == 0.0){
+    ROS_INFO_ONCE("Waiting for clock...");
+    ROS_DEBUG("Waiting for clock...");
+    r.sleep();
+  }
+  ROS_INFO("Have clock");
+
   // Timestamp to keys initialization (initilization is particular to the robot
   // version of lamp)
   ros::Time stamp = ros::Time::now();
