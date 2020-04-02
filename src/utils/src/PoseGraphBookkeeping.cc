@@ -499,6 +499,7 @@ void PoseGraph::Initialize(gtsam::Symbol initial_key,
   b_first_ = true;
 
   Node prior;
+  prior.stamp = ros::Time::now();
   prior.key = initial_key;
   prior.pose = pose;
   prior.covariance = covariance;

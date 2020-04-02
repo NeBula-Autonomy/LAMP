@@ -22,14 +22,16 @@ GraphMsgPtr PoseGraph::ToMsg_(const EdgeSet& edges,
   // Create the Pose Graph Message
   auto* msg = new pose_graph_msgs::PoseGraph;
   msg->header.frame_id = fixed_frame_id;
-  // Get timestamp from latest keyed pose
-  if (HasStamp(key - 1))
-    msg->header.stamp = keyed_stamps.at(key - 1);
-  else {
-    ROS_WARN_STREAM("No time stamp exists for latest key ("
-                    << (key - 1)
-                    << ") while converting pose graph to message.");
-  }
+  // Set timestamp to now
+  msg->header.stamp = ros::Time::now();
+  // // Get timestamp from latest keyed pose
+  // if (HasStamp(key - 1))
+  //   msg->header.stamp = keyed_stamps.at(key - 1);
+  // else {
+  //   ROS_WARN_STREAM("No time stamp exists for latest key ("
+  //                   << (key - 1)
+  //                   << ") while converting pose graph to message.");
+  // }
 
   msg->nodes.reserve(nodes.size());
   for (const auto& node : nodes)
