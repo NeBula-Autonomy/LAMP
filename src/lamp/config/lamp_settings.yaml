@@ -40,7 +40,7 @@ robot:
 #######################################
 base: 
   # Turn laser loop closures on or off
-  b_find_laser_loop_closures: true
+  b_find_laser_loop_closures: false
 
   # if true, optimize every time a new artifact edge is received
   # if false, currently won't optimize for artifact loop closures
