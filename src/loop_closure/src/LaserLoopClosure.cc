@@ -49,7 +49,14 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   // Publishers
   loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
       "laser_loop_closures", 100000, false);
-
+  gt_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
+      "ground_truth", 100000, false);
+  current_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
+      "current_scan", 100000, false);
+  neighbor_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
+      "neighbor_scan", 100000, false);
+  aligned_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
+      "aligned_scan", 100000, false);
   // Parameters
   double distance_to_skip_recent_poses;
   // Load loop closing parameters.
@@ -644,12 +651,6 @@ void LaserLoopClosure::TriggerGTCallback(const std_msgs::String::ConstPtr& msg){
   GenerateGTFromPC(filename);
 }
 
-// WHo is publishing to trigger_gt_pc
-// I suppose the flow is: We tell lamp_base to load, optimize and save . LampBase then takes the keyscans from the nodes and publishes them every 0.01 secs. 
-// In triggerGtCallback we take all poses and generate the revised graph with gt info included.
-// I have to oublish on trigger_gt_pc the gt map filename
-// SO I load the pg, optimize and save as in tmux sequentialy, publish on trigger_pc_gt which gives out
-// new pg, optimizer optimizes
 void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   ROS_INFO("Triggering ground truth.\n");
   // Read ground truth from file
@@ -659,10 +660,15 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   PointCloudConstPtr gt_pc_ptr(new PointCloud(gt_point_cloud));
 
   // Create octree map to select only the parts needed
-  // TODO - consider changing settings on init
   PointCloud::Ptr unused(new PointCloud);
   gt_mapper_.InsertPoints(gt_pc_ptr, unused.get());
-  // makes an octree for quicker NN search
+
+  // Publish gt pointcloud
+  sensor_msgs::PointCloud2 gt_cloud;
+  pcl::toROSMsg(gt_point_cloud, gt_cloud);
+  gt_cloud.header.stamp = ros::Time::now();
+  gt_cloud.header.frame_id = "world";
+  gt_pub_.publish(gt_cloud);
 
   // Init pose-graph output
   std::vector<pose_graph_msgs::PoseGraphEdge> gt_edges;
@@ -678,6 +684,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     covariance(i, i) = gt_rot_sigma_ * gt_rot_sigma_;
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = gt_trans_sigma_ * gt_trans_sigma_;
+
+  // Set up ICP.
+  pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
+  icp.setTransformationEpsilon(icp_tf_epsilon_);
+  icp.setMaxCorrespondenceDistance(icp_corr_dist_);
+  icp.setMaximumIterations(icp_iterations_);
+  icp.setRANSACIterations(0);
+  icp.setInputTarget(gt_pc_ptr);
 
   // ---------------------------------------------------------
   // Loop through keyed poses
@@ -700,22 +714,31 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     tf.block(0, 0, 3, 3) = Rot;
     tf.block(0, 3, 3, 1) = Trans;
 
+    // Check this
     pcl::transformPointCloud(*keyed_scans_[it->first], *keyed_scan_world, tf);
+    
+    // Publish current point cloud
+    sensor_msgs::PointCloud2 current_scan;
+    pcl::toROSMsg(*keyed_scan_world, current_scan);
+    current_scan.header.stamp = ros::Time::now();
+    current_scan.header.frame_id = "world";
+    current_scan_pub_.publish(current_scan);
+    gt_pub_.publish(gt_cloud);
+    
     // Try putting the whole point cloud in the ICP as source
     // Get NN from the GT map
     gt_mapper_.ApproxNearestNeighbors(*keyed_scan_world, gt_neighbors.get());
 
-    // Set up ICP.
-    pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
-    icp.setTransformationEpsilon(icp_tf_epsilon_);
-    icp.setMaxCorrespondenceDistance(icp_corr_dist_);
-    icp.setMaximumIterations(icp_iterations_);
-    icp.setRANSACIterations(0);
+    // Publish neighbors
+    sensor_msgs::PointCloud2 neighbor_scan;
+    pcl::toROSMsg(*gt_neighbors, neighbor_scan);
+    neighbor_scan.header.stamp = ros::Time::now();
+    neighbor_scan.header.frame_id = "world";
+    neighbor_scan_pub_.publish(neighbor_scan);
 
     icp.setInputSource(keyed_scan_world);
 
-    icp.setInputTarget(gt_neighbors);
-    // icp.setInputTarget(gt_pc_ptr);
+    // icp.setInputTarget(gt_neighbors);
 
     // Perform ICP.
     PointCloud unused_result;
@@ -752,6 +775,16 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
       ROS_INFO_STREAM("Rejected GT loop closure - total rotation too large, key " << gtsam::DefaultKeyFormatter(it->first));
       continue;
     }
+    // TODO Add translation check as well
+    // // Publish aligned scan
+    // sensor_msgs::PointCloud2 aligned_scan;
+    // PointCloud aligned_cloud;
+    // pcl::transformPointCloud(*keyed_scans_[it->first], *keyed_scan_world, tf);
+    // pcl::transformPointCloud(*keyed_scan_world, aligned_cloud, T);
+    // pcl::toROSMsg(aligned_cloud, aligned_scan);
+    // aligned_scan.header.stamp = ros::Time::now();
+    // aligned_scan.header.frame_id = "world";
+    // aligned_scan_pub_.publish(aligned_scan);
 
     // Prepare new factor - place in vector of new factors
     // ICP gives transformation that converts node keyscan to gt map neighbors
@@ -762,12 +795,37 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     // delta = gu::PoseInverse(delta);// NOTE: gtsam need 2_Transform_1 while
                                     // ICP output 1_Transform_2
 
-
+    // Check covariances
     const gtsam::Pose3 odom_pose = keyed_poses_.at(it->first); 
 
     // Compose transform to make factor for optimization
     gtsam::Pose3 gc_factor = utils::ToGtsam(delta).compose(odom_pose);
     gu::Transform3 gc_factor_gu = utils::ToGu(gc_factor);
+
+    Eigen::Matrix4d tf_align;
+    const Eigen::Matrix<double, 3, 3> Rot_gu = gc_factor_gu.rotation.Eigen();
+    const Eigen::Matrix<double, 3, 1> Trans_gu = gc_factor_gu.translation.Eigen();
+
+    tf_align.block(0, 0, 3, 3) = Rot_gu;
+    tf_align.block(0, 3, 3, 1) = Trans_gu;
+    ROS_INFO_STREAM("The final factor going in CreatePriorEdges is " << utils::ToGtsam(gc_factor_gu).rotation().quaternion().x() << ", "
+                    << utils::ToGtsam(gc_factor_gu).rotation().quaternion().y() << ", "
+                    << utils::ToGtsam(gc_factor_gu).rotation().quaternion().z() << ", "
+                    << utils::ToGtsam(gc_factor_gu).rotation().quaternion().w());
+    gu::Transform3 odom_gu = utils::ToGu(odom_pose);
+    ROS_INFO_STREAM("The odom pose is " << utils::ToGtsam(odom_gu).rotation().quaternion().x() << ", "
+                << utils::ToGtsam(odom_gu).rotation().quaternion().y() << ", "
+                << utils::ToGtsam(odom_gu).rotation().quaternion().z() << ", "
+                << utils::ToGtsam(odom_gu).rotation().quaternion().w());
+    // Publish aligned scan
+    sensor_msgs::PointCloud2 aligned_scan;
+    PointCloud aligned_cloud;
+    pcl::transformPointCloud(*keyed_scans_[it->first], aligned_cloud, tf_align);
+    pcl::toROSMsg(aligned_cloud, aligned_scan);
+    aligned_scan.header.stamp = ros::Time::now();
+    aligned_scan.header.frame_id = "world";
+    aligned_scan_pub_.publish(aligned_scan);
+
     // Make prior here
     pose_graph_msgs::PoseGraphEdge edge = CreatePriorEdge(it->first, gc_factor_gu, covariance);
     ROS_INFO_STREAM("The added edge is " << gtsam::DefaultKeyFormatter(edge.key_from));
@@ -796,15 +854,15 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreatePriorEdge(
   prior.pose.position.x = delta.translation.X();
   prior.pose.position.y = delta.translation.Y();
   prior.pose.position.z = delta.translation.Z();
-  prior.pose.orientation.x = utils::ToGtsam(delta).rotation().quaternion().x();
-  prior.pose.orientation.y = utils::ToGtsam(delta).rotation().quaternion().y();
-  prior.pose.orientation.z = utils::ToGtsam(delta).rotation().quaternion().z();
-  prior.pose.orientation.w = utils::ToGtsam(delta).rotation().quaternion().w();
+  prior.pose.orientation.x = utils::ToGtsam(delta).rotation().quaternion().y();
+  prior.pose.orientation.y = utils::ToGtsam(delta).rotation().quaternion().z();
+  prior.pose.orientation.z = utils::ToGtsam(delta).rotation().quaternion().w();
+  prior.pose.orientation.w = utils::ToGtsam(delta).rotation().quaternion().x();
 
   // Convert matrix covariance to vector
   for (size_t i = 0; i < 6; ++i) {
     for (size_t j = 0; j < 6; ++j) {
-      if (i = j){
+      if (i == j){
         prior.covariance[6 * i + j] = covariance(i,j);
       }
     }

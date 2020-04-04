@@ -9,7 +9,8 @@ environment:
   BASE_NAME: base1
   WSPACE: /home/abhishek/catkin_ws
 
-  DATA_FILE: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/Example_LAMP_PG_file_h4_s2_pg_full_run.zip # saved pose graph in ~/.ros directory
+  RESULTS: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/Results
+  DATA_FILE: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/base_b2_pg.zip # saved pose graph in ~/.ros directory
   GT_FILE: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/pose_graph_gt.zip
 
 options:
@@ -20,10 +21,10 @@ windows:
   focus: true
   layout: tiled
   panes:
-    - sleep 3; source $WSPACE/devel/setup.bash; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME > ~/Desktop/log.txt
-    - sleep 1; source $WSPACE/devel/setup.bash; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME > ~/Desktop/log1.txt
+    # - sleep 3; source $WSPACE/devel/setup.bash; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME > $RESULTS/log_.txt
+    - sleep 1; source $WSPACE/devel/setup.bash; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME > $RESULTS/log_base_.txt
     - sleep 2; rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 /world /$BASE_NAME/map # base station
-    - sleep 2; rviz -d /home/abhishek/wspace/src/base_station_core/visualizer_rviz/rviz_config/cfg/ops.rviz
+    - sleep 2; rviz -d /home/abhishek/wspace/src/base_station_core/visualizer_rviz/rviz_config/cfg/gt.rviz
 
     # load PG, apply GT correction, and save
     - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "load $DATA_FILE" \
@@ -32,6 +33,17 @@ windows:
     - sleep 1; rostopic pub /base1/lamp/debug std_msgs/String "save $GT_FILE" \
     - rosbag record -O map.bag /$BASE_NAME/lamp/octree_map \
     # - sleep 1; tmux kill-window \
+    - rosbag record -O $RESULTS/pose_graph_opt.bag /$BASE_NAME/lamp/pose_graph_to_optimize /$BASE_NAME/lamp_pgo/optimized_values /base1/lamp/pose_graph /base1/lamp/pose_graph_corrected /base1/lamp/pose_graph_edge /base1/lamp/pose_graph_edge_corrected /base1/lamp/pose_graph_incremental /base1/lamp/pose_graph_node /base1/lamp/pose_graph_node_corrected
 
-# max_tolerable_fitness is low
-# optimization says warning with cannot decrease error with max lambda
+# max_tolerable_fitness is low  Replacing the map with whole point cloud is better
+# Check the keyscan frame Its husky2/base_link
+# optimization says warning with cannot decrease error with max 
+# Always load pose graph just after lamp starts so that lamp initializes with the pose graph or else it would
+# add some initialize node that distorts everything
+# Pose graph handler is not properly initialized. GetData makes a
+# shared pointer every time and sometime the factor has new data on
+# [todo] Check this feature based initialization from Laser loop closure to gt
+# [todo] Using multicore gicp to speed it up (can be used to accelerate and clean map on base)
+# [todo] Check point cloud mapper settings and parameters
+# [TODO] CHeck attitude_sigma and lc_sigmas in precision_parameters.yaml
+# Higher precision means higher cost or higher confidence

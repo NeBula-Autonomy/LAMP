@@ -114,6 +114,10 @@ private:
   // last_closure_key_<a,b> stores the last key for robot a on which there was a 
   // loop closure between robots a and b
   std::map< std::pair<char,char>, gtsam::Key> last_closure_key_;
+  ros::Publisher gt_pub_;
+  ros::Publisher current_scan_pub_;
+  ros::Publisher neighbor_scan_pub_;
+  ros::Publisher aligned_scan_pub_;
 
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;

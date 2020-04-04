@@ -75,7 +75,6 @@ robot:
 #############################################
 
 base: 
-
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES }
   icp_initialization_method: 3
 
@@ -89,7 +88,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.05
+  max_tolerable_fitness: 0.02
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -120,7 +119,8 @@ base:
     corr_dist: 0.3
 
     # Iterate ICP this many times.
-    iterations: 5 # Default from original branch is 20: 
+    # Check this
+    iterations: 100 # Default from original branch is 20: 
 
   #--------------------------------------------------------------------------------
   # SAC-IA Settings for feature-based initialization
