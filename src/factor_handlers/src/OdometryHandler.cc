@@ -197,6 +197,7 @@ bool OdometryHandler::InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg,
   PoseCovStamped current_msg;
   current_msg.header = odom_msg->header;
   current_msg.pose = odom_msg->pose;
+  current_msg.pose.covariance = odom_msg->pose.covariance;
   auto current_time = odom_msg->header.stamp.toSec();
   buffer.insert({current_time, current_msg});
   auto final_size = buffer.size();
@@ -496,10 +497,13 @@ void OdometryHandler::FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
   fills the GtsamPosCov struct
   */
   PoseCovStampedPair poses;
-  if (GetPosesAtTimes(t1, t2, odom_buffer, poses, odom_buffer_id)) {
+  if (GetTransformBetweenTimes(t1,
+                               t2,
+                               odom_buffer,
+                               &measurement.pose,
+                               &measurement.covariance,
+                               odom_buffer_id)) {
     measurement.b_has_value = true;
-    measurement.pose = GetTransform(poses);
-    measurement.covariance = GetCovariance(poses);
   } else {
     measurement.b_has_value = false;
   }
@@ -627,42 +631,83 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
   return true;
 }
 
-bool OdometryHandler::GetPosesAtTimes(const ros::Time t1,
-                                      const ros::Time t2,
-                                      const OdomPoseBuffer& odom_buffer,
-                                      PoseCovStampedPair& output_poses, 
-                                      const int odom_buffer_id) const {
+bool OdometryHandler::GetTransformBetweenTimes(
+    const ros::Time t1,
+    const ros::Time t2,
+    const OdomPoseBuffer& odom_buffer,
+    gtsam::Pose3* transform,
+    gtsam::SharedNoiseModel* covariance,
+    const int odom_buffer_id) const {
   PoseCovStamped first_pose, second_pose;
 
   // If unable to retrieve data of interest given query timestamp t1,
-  // store in first_pose the value contained by the correspondant protected class member
+  // store in first_pose the value contained by the correspondant protected
+  // class member
   if (!GetPoseAtTime(t1, odom_buffer, first_pose)) {
     switch (odom_buffer_id) {
       case LIDAR_ODOM_BUFFER_ID:
-        first_pose = lidar_odom_value_at_key_; 
+        first_pose = lidar_odom_value_at_key_;
         ROS_INFO("correct lidar odom buffer id");
         break;
       case VISUAL_ODOM_BUFFER_ID:
-        first_pose = visual_odom_value_at_key_;      
+        first_pose = visual_odom_value_at_key_;
         break;
       case WHEEL_ODOM_BUFFER_ID:
-        first_pose = wheel_odom_value_at_key_; 
+        first_pose = wheel_odom_value_at_key_;
         break;
       default:
-        ROS_ERROR("Invalid odometry buffer id in OdometryHandler::GetPosesAtTimes");
+        ROS_ERROR(
+            "Invalid odometry buffer id in "
+            "OdometryHandler::GetTransformBetweenTimes");
         return false;
-        break; 
-    }    
-  }
-   
-  if (GetPoseAtTime(t2, odom_buffer, second_pose)) {
-    output_poses = std::make_pair(first_pose, second_pose);
-    return true;
-  } else {
-    ROS_ERROR("Second time in GetPosesAtTimes failed to successfully get a pose");
-    return false;
+        break;
+    }
   }
 
+  if (GetPoseAtTime(t2, odom_buffer, second_pose)) {
+    // Get between pose
+    auto pose_first = gr::FromROS(first_pose.pose.pose);
+    auto pose_end = gr::FromROS(second_pose.pose.pose);
+    auto pose_delta = gu::PoseDelta(pose_first, pose_end);
+    *transform = ToGtsam(pose_delta);
+    // Concatenate the covariance
+    OdomPoseBuffer::const_iterator it;
+    it = odom_buffer.find(first_pose.header.stamp.toSec());
+    if (it == odom_buffer.end()) {
+      ROS_ERROR(
+          "Failed to retrieve first pose when concatenating covariance in "
+          "OdometryHandler::GetTransformBetweenTimes");
+      return false;
+    }
+    // Initiate total covariance
+    gtsam::Matrix66 total_covariance =
+        utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
+            it->second.pose);
+    gtsam::Pose3 last_pose = ToGtsam(gr::FromROS(it->second.pose.pose));
+    it++;
+    while (it->first <= second_pose.header.stamp.toSec()) {
+      // Compose covariances
+      gtsam::Matrix66 covariance_to_add =
+          utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
+              it->second.pose);
+      gtsam::Matrix66 Ha, Hb;
+      gtsam::Pose3 pose = ToGtsam(gr::FromROS(it->second.pose.pose));
+      Ha = last_pose.between(pose).inverse().AdjointMap();
+      Hb = Eigen::Matrix<double, 6, 6>::Identity();
+      total_covariance = Ha * total_covariance * Ha.transpose() +
+                         Hb * covariance_to_add * Hb.transpose();
+      // Update and increment
+      last_pose = pose;
+      it++;
+    }
+    *covariance = gtsam::noiseModel::Gaussian::Covariance(total_covariance);
+    return true;
+  } else {
+    ROS_ERROR(
+        "Second time in GetTransformBetweenTimes failed to successfully get a "
+        "pose");
+    return false;
+  }
 }
 
 bool OdometryHandler::GetClosestLidarTime(const ros::Time stamp,

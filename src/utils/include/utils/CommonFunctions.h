@@ -58,10 +58,10 @@ gtsam::Pose3 MessageToPose(const MessageT& msg) {
   return delta;
 }
 
-// Extract the covariance (as Gaussian Covariance in Shared Noise Model) from
+// Extract the covariance (as Matrix) from
 // edge or node message
 template <typename MessageT>
-Gaussian::shared_ptr MessageToCovariance(const MessageT& msg) {
+gtsam::Matrix66 MessageToCovarianceMatrix(const MessageT& msg) {
   // TODO: unit test
   gtsam::Matrix66 covariance;
   for (size_t i = 0; i < msg.covariance.size(); i++) {
@@ -69,6 +69,15 @@ Gaussian::shared_ptr MessageToCovariance(const MessageT& msg) {
     size_t col = i % 6;
     covariance(row, col) = msg.covariance[i];
   }
+  return covariance;
+}
+
+// Extract the covariance (as Gaussian Covariance in Shared Noise Model) from
+// edge or node message
+template <typename MessageT>
+Gaussian::shared_ptr MessageToCovariance(const MessageT& msg) {
+  // TODO: unit test
+  gtsam::Matrix66 covariance = MessageToCovarianceMatrix<MessageT>(msg);
   Gaussian::shared_ptr noise = Gaussian::Covariance(covariance);
 
   return noise;
