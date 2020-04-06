@@ -685,7 +685,7 @@ bool OdometryHandler::GetTransformBetweenTimes(
             it->second.pose);
     gtsam::Pose3 last_pose = ToGtsam(gr::FromROS(it->second.pose.pose));
     it++;
-    while (it->first <= second_pose.header.stamp.toSec()) {
+    while (it->first <= second_pose.header.stamp.toSec() && it != odom_buffer.end()) {
       // Compose covariances
       gtsam::Matrix66 covariance_to_add =
           utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
