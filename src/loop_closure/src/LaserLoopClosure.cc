@@ -82,6 +82,8 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_))
     return false;
+  if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
+    return false;
 
   int icp_init_method;
   if (!pu::Get(param_ns_ + "/icp_initialization_method", icp_init_method))
@@ -556,10 +558,14 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
                                     // ICP output 1_Transform_2
 
   // TODO: Use real ICP covariance.
-  for (int i = 0; i < 3; ++i)
-    (*covariance)(i, i) = laser_lc_rot_sigma_ * laser_lc_rot_sigma_;
-  for (int i = 3; i < 6; ++i)
-    (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
+  if (b_use_fixed_covariances_){
+    for (int i = 0; i < 3; ++i)
+      (*covariance)(i, i) = laser_lc_rot_sigma_ * laser_lc_rot_sigma_;
+    for (int i = 3; i < 6; ++i)
+      (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
+  } else {
+    ComputeICPCovariance(unused_result, T, fitness_score, *covariance);
+  }
 
   return true;
 }
@@ -623,4 +629,138 @@ void LaserLoopClosure::KeyedScanCallback(
 
   // Add the key and scan.
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
+}
+
+
+bool LaserLoopClosure::ComputeICPCovariance(
+    const PointCloud& pointCloud,
+    const Eigen::Matrix4f& T,
+    const double& icp_fitness,
+    Eigen::Matrix<double, 6, 6>& covariance) {
+  geometry_utils::Transform3 ICP_transformation;
+
+  // Extract translation values from T
+  double t_x = T(0, 3);
+  double t_y = T(1, 3);
+  double t_z = T(2, 3);
+
+  // Extract roll, pitch and yaw from T
+  ICP_transformation.rotation = gu::Rot3(T(0, 0),
+                                         T(0, 1),
+                                         T(0, 2),
+                                         T(1, 0),
+                                         T(1, 1),
+                                         T(1, 2),
+                                         T(2, 0),
+                                         T(2, 1),
+                                         T(2, 2));
+  double r = ICP_transformation.rotation.Roll();
+  double p = ICP_transformation.rotation.Pitch();
+  double y = ICP_transformation.rotation.Yaw();
+
+  // Symbolic expression of the Jacobian matrix
+  double J11, J12, J13, J14, J15, J16, J21, J22, J23, J24, J25, J26, J31, J32,
+      J33, J34, J35, J36;
+
+  Eigen::Matrix<double, 6, 6> H;
+  H = Eigen::MatrixXd::Zero(6, 6);
+
+  // Compute the entries of Jacobian
+  // Entries of Jacobian matrix are obtained from MATLAB Symbolic Toolbox
+  for (size_t i = 0; i < pointCloud.points.size(); ++i) {
+    double p_x = pointCloud.points[i].x;
+    double p_y = pointCloud.points[i].y;
+    double p_z = pointCloud.points[i].z;
+
+    J11 = 0.0;
+    J12 = -2.0 *
+          (p_z * sin(p) + p_x * cos(p) * cos(y) - p_y * cos(p) * sin(y)) *
+          (t_x - p_x + p_z * cos(p) - p_x * cos(y) * sin(p) +
+           p_y * sin(p) * sin(y));
+    J13 = 2.0 * (p_y * cos(y) * sin(p) + p_x * sin(p) * sin(y)) *
+          (t_x - p_x + p_z * cos(p) - p_x * cos(y) * sin(p) +
+           p_y * sin(p) * sin(y));
+    J14 = 2.0 * t_x - 2.0 * p_x + 2.0 * p_z * cos(p) -
+          2.0 * p_x * cos(y) * sin(p) + 2.0 * p_y * sin(p) * sin(y);
+    J15 = 0.0;
+    J16 = 0.0;
+
+    J21 = 2.0 *
+          (p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+           p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+           p_z * sin(p) * sin(r)) *
+          (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
+           p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+           p_z * cos(r) * sin(p));
+    J22 = -2.0 *
+          (p_z * cos(p) * cos(r) - p_x * cos(r) * cos(y) * sin(p) +
+           p_y * cos(r) * sin(p) * sin(y)) *
+          (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
+           p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+           p_z * cos(r) * sin(p));
+    J23 = 2.0 *
+          (p_x * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+           p_y * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y))) *
+          (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
+           p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+           p_z * cos(r) * sin(p));
+    J24 = 0.0;
+    J25 = 2.0 * t_y - 2.0 * p_y -
+          2.0 * p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) -
+          2.0 * p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) +
+          2.0 * p_z * cos(r) * sin(p);
+    J26 = 0.0;
+
+    J31 = -2.0 *
+          (p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
+           p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+           p_z * cos(r) * sin(p)) *
+          (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+           p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+           p_z * sin(p) * sin(r));
+    J32 = 2.0 *
+          (p_z * cos(p) * sin(r) - p_x * cos(y) * sin(p) * sin(r) +
+           p_y * sin(p) * sin(r) * sin(y)) *
+          (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+           p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+           p_z * sin(p) * sin(r));
+    J33 = 2.0 *
+          (p_x * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) -
+           p_y * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r))) *
+          (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+           p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+           p_z * sin(p) * sin(r));
+    J34 = 0.0;
+    J35 = 0.0;
+    J36 = 2.0 * t_z - 2.0 * p_z +
+          2.0 * p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+          2.0 * p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+          2.0 * p_z * sin(p) * sin(r);
+
+    // Form the 3X6 Jacobian matrix
+    Eigen::Matrix<double, 3, 6> J;
+    J << J11, J12, J13, J14, J15, J16, J21, J22, J23, J24, J25, J26, J31, J32,
+        J33, J34, J35, J36;
+    // Compute J'XJ (6X6) matrix and keep adding for all the points in the point
+    // cloud
+    H += J.transpose() * J;
+  }
+  
+  covariance = H.inverse() * icp_fitness;
+
+  // Here bound the covariance using eigen values
+  Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;
+  eigensolver.compute(covariance);
+  Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
+  Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
+  double lower_bound = 0;     // Should be positive semidef
+  double upper_bound = 1000;  // Arbitrary upper bound TODO (Yun) make param
+  for (size_t i = 0; i < eigen_values.size(); i++) {
+    if (eigen_values(i) < lower_bound) eigen_values(i) = lower_bound;
+    if (eigen_values(i) > upper_bound) eigen_values(i) = upper_bound;
+  }
+  // Update covariance matrix after bound
+  covariance =
+      eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
+  return true;
 }

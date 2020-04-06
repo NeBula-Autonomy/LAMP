@@ -3,7 +3,7 @@
 #######################################
 
 # Use fixed covariances, rather than computed
-b_use_fixed_covariances: true
+b_use_fixed_covariances: false
 
 # Flag for whether or not to do loop closure with the artifacts
 use_artifact_loop_closure: false
