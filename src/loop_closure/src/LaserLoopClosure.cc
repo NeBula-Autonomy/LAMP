@@ -19,6 +19,7 @@ Lidar pointcloud based loop closure
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
+#include <multithreaded_gicp/gicp.h>
 #include <utils/CommonFunctions.h>
 
 namespace pu = parameter_utils;
@@ -672,7 +673,6 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
 
   // Init pose-graph output
   std::vector<pose_graph_msgs::PoseGraphEdge> gt_edges;
-  gtsam::Symbol origin_key(0);
 
   // Initialize variables
   PointCloud::Ptr keyed_scan_world(new PointCloud);
@@ -686,11 +686,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     covariance(i, i) = gt_trans_sigma_ * gt_trans_sigma_;
 
   // Set up ICP.
-  pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
+  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
   icp.setTransformationEpsilon(icp_tf_epsilon_);
   icp.setMaxCorrespondenceDistance(icp_corr_dist_);
   icp.setMaximumIterations(icp_iterations_);
   icp.setRANSACIterations(0);
+  icp.setMaximumOptimizerIterations(50);
+  icp.setNumThreads(4);
+  icp.enableTimingOutput(true);
   icp.setInputTarget(gt_pc_ptr);
 
   // ---------------------------------------------------------
