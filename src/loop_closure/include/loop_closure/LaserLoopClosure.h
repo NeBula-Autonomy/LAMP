@@ -24,6 +24,7 @@ Lidar pointcloud based loop closure
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
+#include <multithreaded_gicp/gicp.h>
 
 #include <map>
 
@@ -104,6 +105,9 @@ private:
 
   void TriggerGTCallback(const std_msgs::String::ConstPtr& msg);
 
+  bool SetupICP(pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI>& icp);
+
+  void PublishPointCloud(ros::Publisher&, PointCloud&);
 private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
@@ -129,6 +133,7 @@ private:
   double icp_tf_epsilon_;
   double icp_corr_dist_;
   unsigned int icp_iterations_;
+  unsigned int icp_threads_;
 
   unsigned int sac_iterations_;
   unsigned int sac_num_prev_scans_;

@@ -10,7 +10,7 @@ environment:
   WSPACE: /home/abhishek/catkin_ws
 
   RESULTS: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/Results
-  DATA_FILE: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/base_b2_pg.zip # saved pose graph in ~/.ros directory
+  DATA_FILE: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/h4_b2_dense_ks_with_lc.zip # saved pose graph in ~/.ros directory
   GT_FILE: /home/abhishek/Desktop/Project/SubT/data/GrountTruth/Perception_GroundTruthDataProducts/pose_graph_gt.zip
 
 options:
