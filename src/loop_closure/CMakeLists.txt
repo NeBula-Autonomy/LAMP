@@ -36,8 +36,14 @@ find_package(catkin REQUIRED COMPONENTS
   core_msgs
   pose_graph_msgs
   geometry_msgs
+  multithreaded_gicp
 )
 
+find_package(OpenMP)
+# if (OpenMP_FOUND)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} -fopenmp")
+# endif()
 
 catkin_package(
   INCLUDE_DIRS include
@@ -49,6 +55,7 @@ catkin_package(
     parameter_utils
     point_cloud_filter
     point_cloud_mapper
+    multithreaded_gicp
     pcl_ros
     pcl_conversions
     std_msgs

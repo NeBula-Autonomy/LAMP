@@ -20,8 +20,9 @@ Lidar pointcloud based loop closure
 
 #include <gtsam/inference/Symbol.h>
 
-#include <geometry_utils/Transform3.h>
 #include <geometry_utils/GeometryUtilsROS.h>
+#include <geometry_utils/Transform3.h>
+#include <multithreaded_gicp/gicp.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
@@ -104,6 +105,12 @@ private:
 
   void TriggerGTCallback(const std_msgs::String::ConstPtr& msg);
 
+  bool SetupICP(
+      pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
+                                                         pcl::PointXYZI>& icp);
+
+  void PublishPointCloud(ros::Publisher&, PointCloud&);
+
 private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
@@ -116,7 +123,6 @@ private:
   std::map< std::pair<char,char>, gtsam::Key> last_closure_key_;
   ros::Publisher gt_pub_;
   ros::Publisher current_scan_pub_;
-  ros::Publisher neighbor_scan_pub_;
   ros::Publisher aligned_scan_pub_;
 
   double max_tolerable_fitness_;
@@ -129,6 +135,7 @@ private:
   double icp_tf_epsilon_;
   double icp_corr_dist_;
   unsigned int icp_iterations_;
+  unsigned int icp_threads_;
 
   unsigned int sac_iterations_;
   unsigned int sac_num_prev_scans_;
@@ -145,9 +152,6 @@ private:
   double gt_prior_covar_;
 
   PointCloudFilter filter_;
-  
-  // Mapper (for GT)
-  PointCloudMapper gt_mapper_;
 
   enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES };
 

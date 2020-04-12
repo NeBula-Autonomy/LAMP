@@ -53,8 +53,6 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
       "ground_truth", 100000, false);
   current_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
       "current_scan", 100000, false);
-  neighbor_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
-      "neighbor_scan", 100000, false);
   aligned_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
       "aligned_scan", 100000, false);
   // Parameters
@@ -78,6 +76,8 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
   if (!pu::Get(param_ns_ + "/icp_lc/corr_dist", icp_corr_dist_)) return false;
   if (!pu::Get(param_ns_ + "/icp_lc/iterations", icp_iterations_)) return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/threads", icp_threads_))
+    return false;
 
   // Load SAC parameters
   if (!pu::Get(param_ns_ + "/sac_ia/iterations", sac_iterations_)) return false;
@@ -106,11 +106,6 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 
   skip_recent_poses_ =
       (int)(distance_to_skip_recent_poses / translation_threshold_nodes_);
-
-  // Init gt mapper
-  if (!gt_mapper_.Initialize(n)) {
-    ROS_ERROR("Failed to initialize mapper.");
-  }  
 
   return true;
 }
@@ -449,12 +444,11 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     return false;
   }
   // Set up ICP.
-  pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
+  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
+                                                     pcl::PointXYZI>
+      icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
-  icp.setTransformationEpsilon(icp_tf_epsilon_);
-  icp.setMaxCorrespondenceDistance(icp_corr_dist_);
-  icp.setMaximumIterations(icp_iterations_);
-  icp.setRANSACIterations(0);
+  SetupICP(icp);
 
   PointCloud::Ptr accumulated_target(new PointCloud);
   *accumulated_target = *scan2;
@@ -653,44 +647,32 @@ void LaserLoopClosure::TriggerGTCallback(const std_msgs::String::ConstPtr& msg){
 
 void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   ROS_INFO("Triggering ground truth.\n");
+
   // Read ground truth from file
   pcl::PCDReader pcd_reader;
   PointCloud gt_point_cloud;
   pcd_reader.read(gt_pc_filename, gt_point_cloud);
   PointCloudConstPtr gt_pc_ptr(new PointCloud(gt_point_cloud));
 
-  // Create octree map to select only the parts needed
-  PointCloud::Ptr unused(new PointCloud);
-  gt_mapper_.InsertPoints(gt_pc_ptr, unused.get());
-
-  // Publish gt pointcloud
-  sensor_msgs::PointCloud2 gt_cloud;
-  pcl::toROSMsg(gt_point_cloud, gt_cloud);
-  gt_cloud.header.stamp = ros::Time::now();
-  gt_cloud.header.frame_id = "world";
-  gt_pub_.publish(gt_cloud);
-
   // Init pose-graph output
   std::vector<pose_graph_msgs::PoseGraphEdge> gt_edges;
-  gtsam::Symbol origin_key(0);
 
   // Initialize variables
   PointCloud::Ptr keyed_scan_world(new PointCloud);
-  PointCloud::Ptr gt_neighbors(new PointCloud);
   gu::Transform3 delta;
   gtsam::Matrix66 covariance;
-  // TODO - set our own covariances for GT
+
   for (int i = 0; i < 3; ++i)
     covariance(i, i) = gt_rot_sigma_ * gt_rot_sigma_;
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = gt_trans_sigma_ * gt_trans_sigma_;
 
   // Set up ICP.
-  pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
-  icp.setTransformationEpsilon(icp_tf_epsilon_);
-  icp.setMaxCorrespondenceDistance(icp_corr_dist_);
-  icp.setMaximumIterations(icp_iterations_);
-  icp.setRANSACIterations(0);
+  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
+                                                     pcl::PointXYZI>
+      icp;
+  SetupICP(icp);
+
   icp.setInputTarget(gt_pc_ptr);
 
   // ---------------------------------------------------------
@@ -718,27 +700,16 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     pcl::transformPointCloud(*keyed_scans_[it->first], *keyed_scan_world, tf);
     
     // Publish current point cloud
-    sensor_msgs::PointCloud2 current_scan;
-    pcl::toROSMsg(*keyed_scan_world, current_scan);
-    current_scan.header.stamp = ros::Time::now();
-    current_scan.header.frame_id = "world";
-    current_scan_pub_.publish(current_scan);
-    gt_pub_.publish(gt_cloud);
-    
-    // Try putting the whole point cloud in the ICP as source
-    // Get NN from the GT map
-    gt_mapper_.ApproxNearestNeighbors(*keyed_scan_world, gt_neighbors.get());
+    if (current_scan_pub_.getNumSubscribers() > 0) {
+      PublishPointCloud(current_scan_pub_, *keyed_scan_world);
+    }
 
-    // Publish neighbors
-    sensor_msgs::PointCloud2 neighbor_scan;
-    pcl::toROSMsg(*gt_neighbors, neighbor_scan);
-    neighbor_scan.header.stamp = ros::Time::now();
-    neighbor_scan.header.frame_id = "world";
-    neighbor_scan_pub_.publish(neighbor_scan);
+    // Publish ground truth point cloud
+    if (gt_pub_.getNumSubscribers() > 0) {
+      PublishPointCloud(gt_pub_, gt_point_cloud);
+    }
 
     icp.setInputSource(keyed_scan_world);
-
-    // icp.setInputTarget(gt_neighbors);
 
     // Perform ICP.
     PointCloud unused_result;
@@ -775,26 +746,8 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
       ROS_INFO_STREAM("Rejected GT loop closure - total rotation too large, key " << gtsam::DefaultKeyFormatter(it->first));
       continue;
     }
+
     // TODO Add translation check as well
-    // // Publish aligned scan
-    // sensor_msgs::PointCloud2 aligned_scan;
-    // PointCloud aligned_cloud;
-    // pcl::transformPointCloud(*keyed_scans_[it->first], *keyed_scan_world, tf);
-    // pcl::transformPointCloud(*keyed_scan_world, aligned_cloud, T);
-    // pcl::toROSMsg(aligned_cloud, aligned_scan);
-    // aligned_scan.header.stamp = ros::Time::now();
-    // aligned_scan.header.frame_id = "world";
-    // aligned_scan_pub_.publish(aligned_scan);
-
-    // Prepare new factor - place in vector of new factors
-    // ICP gives transformation that converts node keyscan to gt map neighbors
-    // Normally in ICP from LaserLoopcCLosure it provides transformation
-    // from new to old and hence they inverse it.
-    // Here delta provides us transform from node to ground truth scan
-    // I dont think it needs to be inverted.
-    // delta = gu::PoseInverse(delta);// NOTE: gtsam need 2_Transform_1 while
-                                    // ICP output 1_Transform_2
-
     // Check covariances
     const gtsam::Pose3 odom_pose = keyed_poses_.at(it->first); 
 
@@ -802,29 +755,21 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     gtsam::Pose3 gc_factor = utils::ToGtsam(delta).compose(odom_pose);
     gu::Transform3 gc_factor_gu = utils::ToGu(gc_factor);
 
-    Eigen::Matrix4d tf_align;
-    const Eigen::Matrix<double, 3, 3> Rot_gu = gc_factor_gu.rotation.Eigen();
-    const Eigen::Matrix<double, 3, 1> Trans_gu = gc_factor_gu.translation.Eigen();
+    if (aligned_scan_pub_.getNumSubscribers() > 0) {
+      // Publish aligned scan
+      Eigen::Matrix4d tf_align;
+      const Eigen::Matrix<double, 3, 3> Rot_gu = gc_factor_gu.rotation.Eigen();
+      const Eigen::Matrix<double, 3, 1> Trans_gu =
+          gc_factor_gu.translation.Eigen();
 
-    tf_align.block(0, 0, 3, 3) = Rot_gu;
-    tf_align.block(0, 3, 3, 1) = Trans_gu;
-    ROS_INFO_STREAM("The final factor going in CreatePriorEdges is " << utils::ToGtsam(gc_factor_gu).rotation().quaternion().x() << ", "
-                    << utils::ToGtsam(gc_factor_gu).rotation().quaternion().y() << ", "
-                    << utils::ToGtsam(gc_factor_gu).rotation().quaternion().z() << ", "
-                    << utils::ToGtsam(gc_factor_gu).rotation().quaternion().w());
-    gu::Transform3 odom_gu = utils::ToGu(odom_pose);
-    ROS_INFO_STREAM("The odom pose is " << utils::ToGtsam(odom_gu).rotation().quaternion().x() << ", "
-                << utils::ToGtsam(odom_gu).rotation().quaternion().y() << ", "
-                << utils::ToGtsam(odom_gu).rotation().quaternion().z() << ", "
-                << utils::ToGtsam(odom_gu).rotation().quaternion().w());
-    // Publish aligned scan
-    sensor_msgs::PointCloud2 aligned_scan;
-    PointCloud aligned_cloud;
-    pcl::transformPointCloud(*keyed_scans_[it->first], aligned_cloud, tf_align);
-    pcl::toROSMsg(aligned_cloud, aligned_scan);
-    aligned_scan.header.stamp = ros::Time::now();
-    aligned_scan.header.frame_id = "world";
-    aligned_scan_pub_.publish(aligned_scan);
+      tf_align.block(0, 0, 3, 3) = Rot_gu;
+      tf_align.block(0, 3, 3, 1) = Trans_gu;
+
+      PointCloud aligned_cloud;
+      pcl::transformPointCloud(
+          *keyed_scans_[it->first], aligned_cloud, tf_align);
+      PublishPointCloud(aligned_scan_pub_, aligned_cloud);
+    }
 
     // Make prior here
     pose_graph_msgs::PoseGraphEdge edge = CreatePriorEdge(it->first, gc_factor_gu, covariance);
@@ -854,10 +799,10 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreatePriorEdge(
   prior.pose.position.x = delta.translation.X();
   prior.pose.position.y = delta.translation.Y();
   prior.pose.position.z = delta.translation.Z();
-  prior.pose.orientation.x = utils::ToGtsam(delta).rotation().quaternion().y();
-  prior.pose.orientation.y = utils::ToGtsam(delta).rotation().quaternion().z();
-  prior.pose.orientation.z = utils::ToGtsam(delta).rotation().quaternion().w();
-  prior.pose.orientation.w = utils::ToGtsam(delta).rotation().quaternion().x();
+  prior.pose.orientation.w = utils::ToGtsam(delta).rotation().quaternion()[0];
+  prior.pose.orientation.x = utils::ToGtsam(delta).rotation().quaternion()[1];
+  prior.pose.orientation.y = utils::ToGtsam(delta).rotation().quaternion()[2];
+  prior.pose.orientation.z = utils::ToGtsam(delta).rotation().quaternion()[3];
 
   // Convert matrix covariance to vector
   for (size_t i = 0; i < 6; ++i) {
@@ -868,4 +813,26 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreatePriorEdge(
     }
   }
   return prior;
+}
+
+bool LaserLoopClosure::SetupICP(
+    pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
+                                                       pcl::PointXYZI>& icp) {
+  icp.setTransformationEpsilon(icp_tf_epsilon_);
+  icp.setMaxCorrespondenceDistance(icp_corr_dist_);
+  icp.setMaximumIterations(icp_iterations_);
+  icp.setRANSACIterations(0);
+  icp.setMaximumOptimizerIterations(50);
+  icp.setNumThreads(icp_threads_);
+  icp.enableTimingOutput(true);
+  return true;
+}
+
+void LaserLoopClosure::PublishPointCloud(ros::Publisher& pub,
+                                         PointCloud& cloud) {
+  sensor_msgs::PointCloud2 msg;
+  pcl::toROSMsg(cloud, msg);
+  msg.header.stamp = ros::Time::now();
+  msg.header.frame_id = "world";
+  pub.publish(msg);
 }
