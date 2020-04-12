@@ -753,6 +753,10 @@ bool LaserLoopClosure::ComputeICPCovariance(
   eigensolver.compute(covariance);
   Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
   Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
+  if (eigen_values.size() < 6) {
+    ROS_ERROR("Failed to find eigen values when computing icp covariance");
+    return false;
+  }
   double lower_bound = 0;     // Should be positive semidef
   double upper_bound = 1000;  // Arbitrary upper bound TODO (Yun) make param
   for (size_t i = 0; i < eigen_values.size(); i++) {
