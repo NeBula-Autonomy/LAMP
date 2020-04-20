@@ -661,7 +661,6 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   PointCloud::Ptr keyed_scan_world(new PointCloud);
   gu::Transform3 delta;
   gtsam::Matrix66 covariance;
-
   for (int i = 0; i < 3; ++i)
     covariance(i, i) = gt_rot_sigma_ * gt_rot_sigma_;
   for (int i = 3; i < 6; ++i)
@@ -672,31 +671,28 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
                                                      pcl::PointXYZI>
       icp;
   SetupICP(icp);
-
   icp.setInputTarget(gt_pc_ptr);
 
   // ---------------------------------------------------------
   // Loop through keyed poses
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     ROS_INFO_STREAM("Processing key " << gtsam::DefaultKeyFormatter(it->first) << "\n");
+
     // Check if the keyed scan exists
     if (!keyed_scans_.count(it->first)){
       ROS_WARN_STREAM("No keyed scan for key " << gtsam::DefaultKeyFormatter(it->first));
       continue;
     }
 
-    // Transform scan to world frame
-    gu::Transform3 transform = utils::ToGu(it->second);
-
     // Get scan and transform to the world frame
+    gu::Transform3 transform = utils::ToGu(it->second);
     const Eigen::Matrix<double, 3, 3> Rot = transform.rotation.Eigen();
     const Eigen::Matrix<double, 3, 1> Trans = transform.translation.Eigen();
-
     Eigen::Matrix4d tf;
     tf.block(0, 0, 3, 3) = Rot;
     tf.block(0, 3, 3, 1) = Trans;
 
-    // Check this
+    // Transform point cloud to world frame
     pcl::transformPointCloud(*keyed_scans_[it->first], *keyed_scan_world, tf);
     
     // Publish current point cloud
@@ -709,6 +705,7 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
       PublishPointCloud(gt_pub_, gt_point_cloud);
     }
 
+    // Set source
     icp.setInputSource(keyed_scan_world);
 
     // Perform ICP.
@@ -755,8 +752,8 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     gtsam::Pose3 gc_factor = utils::ToGtsam(delta).compose(odom_pose);
     gu::Transform3 gc_factor_gu = utils::ToGu(gc_factor);
 
+    // Publish aligned scan
     if (aligned_scan_pub_.getNumSubscribers() > 0) {
-      // Publish aligned scan
       Eigen::Matrix4d tf_align;
       const Eigen::Matrix<double, 3, 3> Rot_gu = gc_factor_gu.rotation.Eigen();
       const Eigen::Matrix<double, 3, 1> Trans_gu =
