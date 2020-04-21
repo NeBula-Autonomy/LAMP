@@ -486,13 +486,11 @@ void LampBase::PublishAllKeyedScans() {
   pose_graph_msgs::KeyedScan keyed_scan_msg;
 
   for (auto it = pose_graph_.keyed_scans.begin() ; it != pose_graph_.keyed_scans.end() ; ++it){
-    ROS_INFO("Publishing the Keyed Scans");
+    ROS_INFO_ONCE("Publishing Keyed Scans... WAIT UNTIL DONE");
     keyed_scan_msg.key = it->first;
     pcl::toROSMsg(*it->second, keyed_scan_msg.scan);
     keyed_scan_pub_.publish(keyed_scan_msg);
 
     ros::Duration(0.01).sleep();
-
   }
-  ROS_INFO("Finished Publishing All Keyed Scans");
 }
