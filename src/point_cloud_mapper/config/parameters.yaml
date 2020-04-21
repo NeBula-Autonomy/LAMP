@@ -1,3 +1,5 @@
 map:
   octree_resolution: 0.001
   b_publish_only_with_subscribers: true
+  b_publish_map_info: true # only for lamp base station
+  volume_voxel_size: 1.024 #(0.001 * 2^10)

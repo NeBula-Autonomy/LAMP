@@ -18,6 +18,8 @@ add_definitions(${PCL_DEFINITIONS})
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  std_msgs
+  core_msgs
   parameter_utils
 )
 
@@ -26,6 +28,7 @@ catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS
     roscpp
+    std_msgs
     parameter_utils
 )
 
