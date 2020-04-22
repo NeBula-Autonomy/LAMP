@@ -52,9 +52,9 @@ void LoopClosure::InputCallback(
     // add new key and pose to keyed_poses_
     keyed_poses_[new_key] = new_pose;
 
-    // Exit if not checking for loop closures
+    // Skip next part if not checking for loop closures
     if (!b_check_for_loop_closures_) {
-      return;
+      continue;
     }
 
     std::vector<pose_graph_msgs::PoseGraphEdge> loop_closure_edges;
