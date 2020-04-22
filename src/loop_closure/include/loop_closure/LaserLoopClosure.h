@@ -149,6 +149,16 @@ private:
   double gt_trans_sigma_;
   double gt_prior_covar_;
 
+  std::ofstream stats_;
+  int total_closures_;
+  double aligning_time_;
+  double sac_time;
+  int align_count;
+  int sac_count;
+  double normal_time;
+  double feature_time;
+  double sac_align_time;
+
   PointCloudFilter filter_;
   
   // Mapper (for GT)
