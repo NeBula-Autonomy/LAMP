@@ -124,6 +124,7 @@ base:
     # Iterate ICP this many times.
     # Check this
     iterations: 5 # Default from original branch is 20: 
+                  # For ground truth generation set it to a high number (100)
     
     # Number of threads for multithreaded GICP
     threads: 3
