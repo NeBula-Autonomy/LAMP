@@ -13,6 +13,8 @@ Lidar pointcloud based loop closure
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/keypoints/harris_3d.h>
+#include <pcl/point_representation.h>
 #include <pcl/registration/ia_ransac.h>
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -88,7 +90,19 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/features_radius", sac_features_radius_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold", sac_fitness_score_threshold_)) return false;
-  
+
+  // Load Harris parameters
+  if (!pu::Get(param_ns_ + "/harris3D/harris_threshold_", harris_threshold_))
+    return false;
+  if (!pu::Get(param_ns_ + "/harris3D/harris_suppression", harris_suppression_))
+    return false;
+  if (!pu::Get(param_ns_ + "/harris3D/harris_radius", harris_radius_))
+    return false;
+  if (!pu::Get(param_ns_ + "/harris3D/harris_refine", harris_refine_))
+    return false;
+  if (!pu::Get(param_ns_ + "/harris3D/harris_response", harris_response_))
+    return false;
+
   // Hard coded covariances
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
     return false;
@@ -115,7 +129,8 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   }
   stats_.open("stats.csv");
   stats_ << "Full loop closure time, Total Alignment time, #Aligns, Total SAC "
-            "Time, #Sacs, Feature time, Normal time, SAC align time, Loop "
+            "Time, #Sacs, Feature time, Normal time, SAC align time, Keypoint "
+            "detection, Feature Compute time, Loop "
             "closures\n";
   total_closures_ = 0;
   return true;
@@ -183,19 +198,33 @@ void LaserLoopClosure::ComputeNormals(
   norm_est.compute(*normals);
 }
 
-void LaserLoopClosure::ComputeFeatures(
-    PointCloud::ConstPtr input,
-    Normals::Ptr normals,
-    Features::Ptr features) {
+void LaserLoopClosure::ComputeFeatures(PointCloud::ConstPtr keypoints,
+                                       PointCloud::ConstPtr input,
+                                       Normals::Ptr normals,
+                                       Features::Ptr features) {
   pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(new pcl::search::KdTree<pcl::PointXYZI>);
   pcl::FPFHEstimationOMP<pcl::PointXYZI, pcl::Normal, pcl::FPFHSignature33>
       fpfh_est;
-  fpfh_est.setInputCloud(input);
+  fpfh_est.setInputCloud(keypoints);
+  fpfh_est.setSearchSurface(input);
   fpfh_est.setInputNormals(normals);
   fpfh_est.setSearchMethod(search_method);
   fpfh_est.setRadiusSearch(sac_features_radius_);
   fpfh_est.setNumberOfThreads(icp_threads_);
+  // The problem with time increase with surface is that
+  // they involve one more nearest neighbor search that
+  // takes a lot of time. I feel the time wuld depend on the
+  // number of keypoints a lot because the algorithm just takes the
+  // neighbors of keypoints and adds it to the downsampled
+  // cloud in a sense(not exactly).
+  auto start_feature_compute = std::chrono::steady_clock::now();
   fpfh_est.compute(*features);
+  auto end_feature_compute = std::chrono::steady_clock::now();
+  compute_time = compute_time +
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+                              end_feature_compute - start_feature_compute)
+                              .count()) *
+          1.0e-6;
 }
 
 // Check with odometry only for alignment times
@@ -221,12 +250,77 @@ void LaserLoopClosure::GetInitialAlignment(
                               .count()) *
           1.0e-6;
 
-  // Get Features
+  // Get Harris keypoints for source
+  auto start_harris = std::chrono::steady_clock::now();
+
+  pcl::HarrisKeypoint3D<pcl::PointXYZI, pcl::PointXYZI> harris_detector;
+  pcl::PointCloud<pcl::PointXYZI>::Ptr source_keypoints(
+      new pcl::PointCloud<pcl::PointXYZI>);
+  harris_detector.setNonMaxSupression(harris_suppression_);
+  harris_detector.setRefine(harris_refine_);
+  harris_detector.setInputCloud(source);
+  harris_detector.setNormals(source_normals);
+  harris_detector.setNumberOfThreads(icp_threads_);
+  harris_detector.setRadius(harris_radius_);
+  harris_detector.setThreshold(harris_threshold_);
+  harris_detector.setMethod(
+      static_cast<pcl::HarrisKeypoint3D<pcl::PointXYZI,
+                                        pcl::PointXYZI>::ResponseMethod>(
+          harris_response_));
+  harris_detector.compute(*source_keypoints);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr target_keypoints(
+      new pcl::PointCloud<pcl::PointXYZI>);
+  harris_detector.setNonMaxSupression(harris_suppression_);
+  harris_detector.setInputCloud(target);
+  harris_detector.setNormals(target_normals);
+  harris_detector.setNumberOfThreads(icp_threads_);
+  harris_detector.setRadius(harris_radius_);
+  harris_detector.setThreshold(harris_threshold_);
+  harris_detector.setRefine(harris_refine_);
+  harris_detector.setMethod(
+      static_cast<pcl::HarrisKeypoint3D<pcl::PointXYZI,
+                                        pcl::PointXYZI>::ResponseMethod>(
+          harris_response_));
+  harris_detector.compute(*target_keypoints);
+
+  auto end_harris = std::chrono::steady_clock::now();
+  harris_time = harris_time +
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+                              end_harris - start_harris)
+                              .count()) *
+          1.0e-6;
+
+  source_key = source_keypoints;
+  target_key = target_keypoints;
+
+  // for (int index = 0; index < source_keypoints->size(); index++) {
+  //   if (!std::isfinite(source_keypoints->points[index].x) ||
+  //       !std::isfinite(source_keypoints->points[index].y) ||
+  //       !std::isfinite(source_keypoints->points[index].z) ||
+  //       !std::isfinite(source_keypoints->points[index].intensity)){
+  //     std::cout << "The source fails at: " <<
+  //     source_keypoints->points[index];
+  //   }
+  // }
+
+  // for (int index = 0; index < target_keypoints->size(); index++) {
+  //   if (!std::isfinite(target_keypoints->points[index].x) ||
+  //       !std::isfinite(target_keypoints->points[index].y) ||
+  //       !std::isfinite(target_keypoints->points[index].z) ||
+  //       !std::isfinite(target_keypoints->points[index].intensity)){
+  //     std::cout << "The target fails at: " <<
+  //     target_keypoints->points[index];
+  //   }
+  // }
+
+  // Get
+  // DefaultPointRepresentationDefaultPointRepresentationDefaultPointRepresentation
   auto start_feature = std::chrono::steady_clock::now();
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
-  ComputeFeatures(source, source_normals, source_features);
-  ComputeFeatures(target, target_normals, target_features);
+  ComputeFeatures(source_keypoints, source, source_normals, source_features);
+  ComputeFeatures(target_keypoints, target, target_normals, target_features);
   auto end_feature = std::chrono::steady_clock::now();
   feature_time = feature_time +
       static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
@@ -234,13 +328,42 @@ void LaserLoopClosure::GetInitialAlignment(
                               .count()) *
           1.0e-6;
 
+  // for (int index = 0; index < source_features->points.size(); index++) {
+  //   bool result = false;
+  //   for (int j = 0; j<33 ; j++) {
+  //     result = result ||
+  //     (!std::isfinite(source_features->points[index].histogram[j]));
+  //   }
+  //   if (result) {
+  //     std::cout << "The source fails at: " << source_features->points[index];
+  //   }
+  // }
+
+  // for (int index = 0; index < target_features->points.size(); index++) {
+  //   bool result = false;
+  //   for (int j = 0; j<33 ; j++) {
+  //     result = result ||
+  //     (!std::isfinite(target_features->points[index].histogram[j]));
+  //   }
+  //   if (result) {
+  //     std::cout << "The target fails at: " << target_features->points[index];
+  //   }
+  // }
+  // Debug statements
+  // ROS_INFO_STREAM("Source cloud: " << *source << "\n"
+  //                 << "Target cloud: " << *target << "\n"
+  //                 << "Source keypoints: " << *source_keypoints << "\n"
+  //                 << "Target keypoints: " << *target_keypoints << "\n"
+  //                 << "Source Normals: " << *source_normals << "\n"
+  //                 << "Target Normals: " << *target_normals);
+
   // Align
   auto start_sac_align = std::chrono::steady_clock::now();
   pcl::SampleConsensusInitialAlignment<pcl::PointXYZI, pcl::PointXYZI, pcl::FPFHSignature33> sac_ia;
   sac_ia.setMaximumIterations(sac_iterations_);
-  sac_ia.setInputSource(source);
+  sac_ia.setInputSource(source_keypoints);
   sac_ia.setSourceFeatures(source_features);
-  sac_ia.setInputTarget(target);
+  sac_ia.setInputTarget(target_keypoints);
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
   sac_ia.align(*aligned_output);
@@ -293,6 +416,8 @@ bool LaserLoopClosure::FindLoopClosures(
   feature_time = 0.0;
   sac_align_time = 0.0;
   normal_time = 0.0;
+  harris_time = 0.0;
+  compute_time = 0.0;
 
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
@@ -336,7 +461,8 @@ bool LaserLoopClosure::FindLoopClosures(
          << std::to_string(static_cast<double>(sac_count)) << ","
          << std::to_string(feature_time) << "," << std::to_string(normal_time)
          << "," << std::to_string(sac_align_time) << ","
-         << std::to_string(total_closures_) << "\n";
+         << std::to_string(harris_time) << "," << std::to_string(compute_time)
+         << "," << std::to_string(total_closures_) << "\n";
   return closed_loop;
 }
 
@@ -595,6 +721,41 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     initial_guess.block(0, 0, 3, 3) = quat.matrix();    
     initial_guess.block(0, 3, 3, 1) = guess.translation.Eigen().cast<float>();
   }
+
+  // Publish scan1 keypoints Transform scan to world frame
+  gu::Transform3 transform = utils::ToGu(pose1);
+
+  // Get scan and transform to the world frame
+  Eigen::Matrix<double, 3, 3> Rot = transform.rotation.Eigen();
+  Eigen::Matrix<double, 3, 1> Trans = transform.translation.Eigen();
+
+  Eigen::Matrix4d tf;
+  tf.block(0, 0, 3, 3) = Rot;
+  tf.block(0, 3, 3, 1) = Trans;
+
+  PointCloud::Ptr keyed_scan_world(new PointCloud);
+
+  // Check this
+  pcl::transformPointCloud(*source_key, *keyed_scan_world, tf);
+
+  // Publish current point cloud
+  PublishPointCloud(current_scan_pub_, *keyed_scan_world);
+
+  // Publish scan1 keypoints Transform scan to world frame
+  transform = utils::ToGu(pose2);
+
+  // Get scan and transform to the world frame
+  Rot = transform.rotation.Eigen();
+  Trans = transform.translation.Eigen();
+
+  tf.block(0, 0, 3, 3) = Rot;
+  tf.block(0, 3, 3, 1) = Trans;
+
+  // Check this
+  pcl::transformPointCloud(*target_key, *keyed_scan_world, tf);
+
+  // Publish current point cloud
+  PublishPointCloud(neighbor_scan_pub_, *keyed_scan_world);
 
   // Perform ICP.
   PointCloud unused_result;

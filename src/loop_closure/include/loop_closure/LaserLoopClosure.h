@@ -47,10 +47,10 @@ private:
   void ComputeNormals(
       PointCloud::ConstPtr input,
       Normals::Ptr normals);
-  void ComputeFeatures(
-      PointCloud::ConstPtr input,
-      Normals::Ptr normals,
-      Features::Ptr features);
+  void ComputeFeatures(PointCloud::ConstPtr keypoints,
+                       PointCloud::ConstPtr input,
+                       Normals::Ptr normals,
+                       Features::Ptr features);
   void GetInitialAlignment(
       PointCloud::ConstPtr source,
       PointCloud::ConstPtr target,
@@ -142,6 +142,12 @@ private:
   double sac_features_radius_;
   double sac_fitness_score_threshold_;
 
+  double harris_threshold_;
+  bool harris_suppression_;
+  double harris_radius_;
+  bool harris_refine_;
+  int harris_response_;
+
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
 
@@ -158,6 +164,11 @@ private:
   double normal_time;
   double feature_time;
   double sac_align_time;
+  double harris_time;
+  double compute_time;
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr source_key;
+  pcl::PointCloud<pcl::PointXYZI>::Ptr target_key;
 
   PointCloudFilter filter_;
   

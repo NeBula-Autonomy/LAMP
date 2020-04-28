@@ -72,6 +72,12 @@ robot:
     # If SAC fitness score is more than the following value, it will be rejected
     fitness_score_threshold: 0.30
 
+  harris3D:
+    harris_threshold_: 1
+    harris_suppression: true
+    harris_radius: 2.0
+    harris_refine: true
+    harris_response: 1
 
 #############################################
 # PARAMETERS FOR LASER LOOP CLOSURES (BASE)
@@ -126,7 +132,7 @@ base:
     iterations: 5 # Default from original branch is 20: 
     
     # Number of threads for multithreaded GICP
-    threads: 3
+    threads: 2
 
   #--------------------------------------------------------------------------------
   # SAC-IA Settings for feature-based initialization
@@ -138,7 +144,7 @@ base:
 
     # Number of previous scans to accumulate for target pointcloud
     # 0 means no accumulation
-    num_prev_scans: 3
+    num_prev_scans: 1
     num_next_scans: 0
     
     # Radii of area to consider when computing normals and features
@@ -148,3 +154,10 @@ base:
     # If SAC fitness score is more than the following value, it will be rejected
     fitness_score_threshold: 0.30
 
+
+  harris3D:
+    harris_threshold_: 0.000000005
+    harris_suppression: true
+    harris_radius: 0.1
+    harris_refine: false
+    harris_response: 1
