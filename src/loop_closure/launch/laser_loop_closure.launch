@@ -4,7 +4,7 @@
   <node pkg="loop_closure"
         name="laser_loop_closure"
         type="laser_loop_closure_node"
-        output="log">
+        output="screen">
     <remap from="~laser_loop_closures" to="lamp/laser_loop_closures" />
     <remap from="~seed_loop_closure" to="lamp/seed_loop_closure" />
     <remap from="~pose_graph_incremental" to="lamp/pose_graph_incremental" />

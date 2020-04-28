@@ -28,7 +28,6 @@ LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
   : LoopClosure(n) {}
 
 LaserLoopClosure::~LaserLoopClosure() {
-  stats_.close();
 }
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
@@ -113,11 +112,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!gt_mapper_.Initialize(n)) {
     ROS_ERROR("Failed to initialize mapper.");
   }
-  stats_.open("stats.csv");
-  stats_ << "Full loop closure time, Total Alignment time, #Aligns, Total SAC "
-            "Time, #Sacs, Feature time, Normal time, SAC align time, Loop "
-            "closures\n";
-  total_closures_ = 0;
+
   return true;
 }
 
@@ -198,44 +193,24 @@ void LaserLoopClosure::ComputeFeatures(
   fpfh_est.compute(*features);
 }
 
-// Check with odometry only for alignment times
-// What is slow feature based or alignment
-// pose graph opt from run_frontend_analysis_husky and then run pose graph
-// loopcosure analyzer
-
 void LaserLoopClosure::GetInitialAlignment(
     PointCloud::ConstPtr source,
     PointCloud::ConstPtr target,
     Eigen::Matrix4f* tf_out,
     double& sac_fitness_score) {
   // Get Normals
-  auto start_normal = std::chrono::steady_clock::now();
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
   ComputeNormals(source, source_normals);
   ComputeNormals(target, target_normals);
-  auto end_normal = std::chrono::steady_clock::now();
-  normal_time = normal_time +
-      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                              end_normal - start_normal)
-                              .count()) *
-          1.0e-6;
 
   // Get Features
-  auto start_feature = std::chrono::steady_clock::now();
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
   ComputeFeatures(source, source_normals, source_features);
   ComputeFeatures(target, target_normals, target_features);
-  auto end_feature = std::chrono::steady_clock::now();
-  feature_time = feature_time +
-      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                              end_feature - start_feature)
-                              .count()) *
-          1.0e-6;
 
   // Align
-  auto start_sac_align = std::chrono::steady_clock::now();
   pcl::SampleConsensusInitialAlignment<pcl::PointXYZI, pcl::PointXYZI, pcl::FPFHSignature33> sac_ia;
   sac_ia.setMaximumIterations(sac_iterations_);
   sac_ia.setInputSource(source);
@@ -244,12 +219,6 @@ void LaserLoopClosure::GetInitialAlignment(
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
   sac_ia.align(*aligned_output);
-  auto end_sac_align = std::chrono::steady_clock::now();
-  sac_align_time = sac_align_time +
-      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                              end_sac_align - start_sac_align)
-                              .count()) *
-          1.0e-6;
 
   sac_fitness_score = sac_ia.getFitnessScore();
   ROS_INFO_STREAM("SAC fitness score" << sac_fitness_score);
@@ -284,16 +253,6 @@ bool LaserLoopClosure::FindLoopClosures(
   // Set to true if we find a loop closure (single or inter robot)
   bool closed_loop = false;
 
-  auto start_lc = std::chrono::steady_clock::now();
-  total_closures_ = 0;
-  aligning_time_ = 0.0;
-  sac_time = 0;
-  align_count = 0;
-  sac_count = 0;
-  feature_time = 0.0;
-  sac_align_time = 0.0;
-  normal_time = 0.0;
-
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
 
@@ -322,21 +281,6 @@ bool LaserLoopClosure::FindLoopClosures(
     }
   }
 
-  auto end_lc = std::chrono::steady_clock::now();
-  double lookups_time =
-      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                              end_lc - start_lc)
-                              .count()) *
-      1.0e-6;
-  ROS_INFO_STREAM("The loop closure took " << lookups_time << " time.");
-  stats_ << std::to_string(lookups_time) << ","
-         << std::to_string(aligning_time_) << ","
-         << std::to_string(static_cast<double>(align_count)) << ","
-         << std::to_string(sac_time) << ","
-         << std::to_string(static_cast<double>(sac_count)) << ","
-         << std::to_string(feature_time) << "," << std::to_string(normal_time)
-         << "," << std::to_string(sac_align_time) << ","
-         << std::to_string(total_closures_) << "\n";
   return closed_loop;
 }
 
@@ -430,7 +374,6 @@ bool LaserLoopClosure::PerformLoopClosure(
     // Add the edge
     pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(key1, key2, delta, covariance);
     loop_closure_edges->push_back(edge);
-    total_closures_ = total_closures_ + 1;
     return true;
   }
   
@@ -527,8 +470,6 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   // initializing with odom measurement
   // or initialize with 0 translation byt rotation from odom
   Eigen::Matrix4f initial_guess;
-  auto start_sac = std::chrono::steady_clock::now();
-  auto end_sac = std::chrono::steady_clock::now();
 
   switch (icp_init_method_) {
   case IcpInitMethod::IDENTITY: // initialize with idientity
@@ -556,17 +497,8 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   } break;
   case IcpInitMethod::FEATURES:
   {
-    start_sac = std::chrono::steady_clock::now();
     double sac_fitness_score = sac_fitness_score_threshold_;
     GetInitialAlignment(scan1, accumulated_target, &initial_guess, sac_fitness_score);
-    end_sac = std::chrono::steady_clock::now();
-    sac_count = sac_count + 1;
-    sac_time = sac_time +
-        static_cast<double>(
-            std::chrono::duration_cast<std::chrono::microseconds>(end_sac -
-                                                                  start_sac)
-                .count()) *
-            1.0e-6;
     if (sac_fitness_score >= sac_fitness_score_threshold_) {
       ROS_INFO("SAC fitness score is too high");
       return false;
@@ -598,15 +530,8 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
 
   // Perform ICP.
   PointCloud unused_result;
-  auto start_align = std::chrono::steady_clock::now();
   icp.align(unused_result, initial_guess);
-  auto end_align = std::chrono::steady_clock::now();
-  aligning_time_ = aligning_time_ +
-      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                              end_align - start_align)
-                              .count()) *
-          1.0e-6;
-  align_count = align_count + 1;
+
   // Get resulting transform.
   const Eigen::Matrix4f T = icp.getFinalTransformation();
 
