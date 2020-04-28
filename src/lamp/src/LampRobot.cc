@@ -150,7 +150,7 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
   // Wait for the first clock message to be received
   ros::Rate r(2);
-  while (ros::Time::now().toSec() == 0.0){
+  while (ros::Time::now().toSec() == 0.0) {
     ROS_INFO_ONCE("Waiting for clock...");
     ROS_DEBUG("Waiting for clock...");
     r.sleep();
@@ -550,7 +550,9 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
         times.second, current_key, last_pose.compose(transform), covariance);
 
     // add  node/keyframe to keyed stamps
-    pose_graph_.InsertKeyedStamp(current_key, times.second); // TODO - check - can remove as duplicates TrackNode
+    pose_graph_.InsertKeyedStamp(
+        current_key,
+        times.second); // TODO - check - can remove as duplicates TrackNode
     pose_graph_.InsertStampedOdomKey(times.second.toSec(), current_key);
 
     // Track the edges that have been added

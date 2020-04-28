@@ -119,9 +119,10 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   std::map<long unsigned int, const GraphNode*> fastKeyToNode;
 
   for (const GraphNode& node : msg->nodes) {
-    if (merged_graph_KeyToIndex_.count(node.key) != 0){
+    if (merged_graph_KeyToIndex_.count(node.key) != 0) {
       // Replace the stamp with the fast graph stamp (most correct)
-      merged_graph_.nodes[merged_graph_KeyToIndex_[node.key]].header = node.header;
+      merged_graph_.nodes[merged_graph_KeyToIndex_[node.key]].header =
+          node.header;
       continue; // Then skip
     }
 
