@@ -624,9 +624,9 @@ void LaserLoopClosure::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
-    ROS_ERROR_STREAM("KeyedScanCallback: Key "
+    ROS_DEBUG_STREAM("KeyedScanCallback: Key "
                      << gtsam::DefaultKeyFormatter(key)
-                     << " already has a scan");
+                     << " already has a scan. Not adding.");
     return;
   }
 
