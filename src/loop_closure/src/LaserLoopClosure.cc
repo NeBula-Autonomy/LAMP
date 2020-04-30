@@ -9,13 +9,12 @@ Lidar pointcloud based loop closure
 #include <pcl/io/pcd_io.h>
 #include <pcl/registration/gicp.h>
 // #include <multithreaded_gicp/gicp.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/registration/ia_ransac.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/features/fpfh.h>
-#include <pcl/features/fpfh.h>
-#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/features/fpfh_omp.h>
+#include <pcl/features/normal_3d_omp.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/registration/ia_ransac.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
@@ -28,7 +27,8 @@ namespace gr = gu::ros;
 LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
   : LoopClosure(n) {}
 
-LaserLoopClosure::~LaserLoopClosure() {}
+LaserLoopClosure::~LaserLoopClosure() {
+}
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
@@ -164,10 +164,11 @@ void LaserLoopClosure::ComputeNormals(
     PointCloud::ConstPtr input,
     Normals::Ptr normals) {
   pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(new pcl::search::KdTree<pcl::PointXYZI>);
-  pcl::NormalEstimation<pcl::PointXYZI, pcl::Normal> norm_est;
+  pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> norm_est;
   norm_est.setInputCloud(input);
   norm_est.setSearchMethod(search_method);
   norm_est.setRadiusSearch(sac_normals_radius_);
+  norm_est.setNumberOfThreads(icp_threads_);
   norm_est.compute(*normals);
 }
 
@@ -176,11 +177,13 @@ void LaserLoopClosure::ComputeFeatures(
     Normals::Ptr normals,
     Features::Ptr features) {
   pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(new pcl::search::KdTree<pcl::PointXYZI>);
-  pcl::FPFHEstimation<pcl::PointXYZI, pcl::Normal, pcl::FPFHSignature33> fpfh_est;
+  pcl::FPFHEstimationOMP<pcl::PointXYZI, pcl::Normal, pcl::FPFHSignature33>
+      fpfh_est;
   fpfh_est.setInputCloud(input);
   fpfh_est.setInputNormals(normals);
   fpfh_est.setSearchMethod(search_method);
   fpfh_est.setRadiusSearch(sac_features_radius_);
+  fpfh_est.setNumberOfThreads(icp_threads_);
   fpfh_est.compute(*features);
 }
 
@@ -210,6 +213,7 @@ void LaserLoopClosure::GetInitialAlignment(
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
   sac_ia.align(*aligned_output);
+
   sac_fitness_score = sac_ia.getFitnessScore();
   ROS_INFO_STREAM("SAC fitness score" << sac_fitness_score);
 
@@ -269,7 +273,7 @@ bool LaserLoopClosure::FindLoopClosures(
     else {
       closed_loop |= CheckForInterRobotLoopClosure(new_key, other_key, loop_closure_edges);
     }
-  } 
+  }
 
   return closed_loop;
 }
@@ -364,7 +368,6 @@ bool LaserLoopClosure::PerformLoopClosure(
     // Add the edge
     pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(key1, key2, delta, covariance);
     loop_closure_edges->push_back(edge);
-
     return true;
   }
   
@@ -488,7 +491,6 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
   } break;
-
   case IcpInitMethod::FEATURES:
   {
     double sac_fitness_score = sac_fitness_score_threshold_;
