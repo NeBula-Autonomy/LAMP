@@ -45,6 +45,8 @@
 #include <mutex>
 #include <thread>
 
+#include <core_msgs/MapInfo.h>
+
 class PointCloudMapper {
 public:
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
@@ -77,6 +79,9 @@ public:
   void PublishMap();
   void PublishMapFrozen();
 
+  // Publish map info for analysis
+  void PublishMapInfo();
+
   // Getter for the point cloud
   PointCloud::Ptr GetMapData() {
     return map_data_;
@@ -105,7 +110,6 @@ private:
 
   // Boolean to only publish the map if it has been updated recently.
   bool map_updated_;
-
   bool b_publish_only_with_subscribers_;
 
   // When a loop closure occurs, this flag enables a user to unsubscribe from
@@ -119,10 +123,15 @@ private:
   // Map parameters.
   double octree_resolution_;
 
+  // Map info pub paramters
+  bool b_publish_map_info_;
+  double volume_voxel_size;
+
   // Map publisher.
   ros::Publisher map_pub_;
   ros::Publisher map_frozen_pub_;
   ros::Publisher incremental_map_pub_;
+  ros::Publisher map_info_pub_;
   std::thread publish_thread_;
   std::thread publish_frozen_thread_;
   mutable std::mutex map_mutex_;
