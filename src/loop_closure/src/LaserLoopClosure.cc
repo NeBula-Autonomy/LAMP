@@ -30,7 +30,6 @@ LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
   : LoopClosure(n) {}
 
 LaserLoopClosure::~LaserLoopClosure() {
-  stats_.close();
 }
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
@@ -56,8 +55,6 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
       "ground_truth", 100000, false);
   current_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
       "current_scan", 100000, false);
-  neighbor_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
-      "neighbor_scan", 100000, false);
   aligned_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
       "aligned_scan", 100000, false);
   // Parameters
@@ -81,7 +78,8 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
   if (!pu::Get(param_ns_ + "/icp_lc/corr_dist", icp_corr_dist_)) return false;
   if (!pu::Get(param_ns_ + "/icp_lc/iterations", icp_iterations_)) return false;
-  if (!pu::Get(param_ns_ + "/icp_lc/threads", icp_threads_)) return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/threads", icp_threads_))
+    return false;
 
   // Load SAC parameters
   if (!pu::Get(param_ns_ + "/sac_ia/iterations", sac_iterations_)) return false;
@@ -123,10 +121,6 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   skip_recent_poses_ =
       (int)(distance_to_skip_recent_poses / translation_threshold_nodes_);
 
-  // Init gt mapper
-  if (!gt_mapper_.Initialize(n)) {
-    ROS_ERROR("Failed to initialize mapper.");
-  }
   stats_.open("stats.csv");
   stats_ << "Full loop closure time, Total Alignment time, #Aligns, Total SAC "
             "Time, #Sacs, Feature time, Normal time, SAC align time, Keypoint "
@@ -227,28 +221,16 @@ void LaserLoopClosure::ComputeFeatures(PointCloud::ConstPtr keypoints,
           1.0e-6;
 }
 
-// Check with odometry only for alignment times
-// What is slow feature based or alignment
-// pose graph opt from run_frontend_analysis_husky and then run pose graph
-// loopcosure analyzer
-
 void LaserLoopClosure::GetInitialAlignment(
     PointCloud::ConstPtr source,
     PointCloud::ConstPtr target,
     Eigen::Matrix4f* tf_out,
     double& sac_fitness_score) {
   // Get Normals
-  auto start_normal = std::chrono::steady_clock::now();
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
   ComputeNormals(source, source_normals);
   ComputeNormals(target, target_normals);
-  auto end_normal = std::chrono::steady_clock::now();
-  normal_time = normal_time +
-      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                              end_normal - start_normal)
-                              .count()) *
-          1.0e-6;
 
   // Get Harris keypoints for source
   auto start_harris = std::chrono::steady_clock::now();
@@ -358,7 +340,6 @@ void LaserLoopClosure::GetInitialAlignment(
   //                 << "Target Normals: " << *target_normals);
 
   // Align
-  auto start_sac_align = std::chrono::steady_clock::now();
   pcl::SampleConsensusInitialAlignment<pcl::PointXYZI, pcl::PointXYZI, pcl::FPFHSignature33> sac_ia;
   sac_ia.setMaximumIterations(sac_iterations_);
   sac_ia.setInputSource(source_keypoints);
@@ -367,12 +348,6 @@ void LaserLoopClosure::GetInitialAlignment(
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
   sac_ia.align(*aligned_output);
-  auto end_sac_align = std::chrono::steady_clock::now();
-  sac_align_time = sac_align_time +
-      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                              end_sac_align - start_sac_align)
-                              .count()) *
-          1.0e-6;
 
   sac_fitness_score = sac_ia.getFitnessScore();
   ROS_INFO_STREAM("SAC fitness score" << sac_fitness_score);
@@ -556,7 +531,6 @@ bool LaserLoopClosure::PerformLoopClosure(
     // Add the edge
     pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(key1, key2, delta, covariance);
     loop_closure_edges->push_back(edge);
-    total_closures_ = total_closures_ + 1;
     return true;
   }
   
@@ -636,7 +610,9 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     return false;
   }
   // Set up ICP.
-  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
+  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
+                                                     pcl::PointXYZI>
+      icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
   SetupICP(icp);
 
@@ -653,8 +629,6 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   // initializing with odom measurement
   // or initialize with 0 translation byt rotation from odom
   Eigen::Matrix4f initial_guess;
-  auto start_sac = std::chrono::steady_clock::now();
-  auto end_sac = std::chrono::steady_clock::now();
 
   switch (icp_init_method_) {
   case IcpInitMethod::IDENTITY: // initialize with idientity
@@ -682,17 +656,8 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   } break;
   case IcpInitMethod::FEATURES:
   {
-    start_sac = std::chrono::steady_clock::now();
     double sac_fitness_score = sac_fitness_score_threshold_;
     GetInitialAlignment(scan1, accumulated_target, &initial_guess, sac_fitness_score);
-    end_sac = std::chrono::steady_clock::now();
-    sac_count = sac_count + 1;
-    sac_time = sac_time +
-        static_cast<double>(
-            std::chrono::duration_cast<std::chrono::microseconds>(end_sac -
-                                                                  start_sac)
-                .count()) *
-            1.0e-6;
     if (sac_fitness_score >= sac_fitness_score_threshold_) {
       ROS_INFO("SAC fitness score is too high");
       return false;
@@ -754,20 +719,13 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   // Check this
   pcl::transformPointCloud(*target_key, *keyed_scan_world, tf);
 
-  // Publish current point cloud
-  PublishPointCloud(neighbor_scan_pub_, *keyed_scan_world);
+  // // Publish current point cloud
+  // PublishPointCloud(neighbor_scan_pub_, *keyed_scan_world);
 
   // Perform ICP.
   PointCloud unused_result;
-  auto start_align = std::chrono::steady_clock::now();
   icp.align(unused_result, initial_guess);
-  auto end_align = std::chrono::steady_clock::now();
-  aligning_time_ = aligning_time_ +
-      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                              end_align - start_align)
-                              .count()) *
-          1.0e-6;
-  align_count = align_count + 1;
+
   // Get resulting transform.
   const Eigen::Matrix4f T = icp.getFinalTransformation();
 
@@ -866,9 +824,9 @@ void LaserLoopClosure::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
-    ROS_ERROR_STREAM("KeyedScanCallback: Key "
+    ROS_DEBUG_STREAM("KeyedScanCallback: Key "
                      << gtsam::DefaultKeyFormatter(key)
-                     << " already has a scan");
+                     << " already has a scan. Not adding.");
     return;
   }
 
@@ -896,77 +854,59 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   pcd_reader.read(gt_pc_filename, gt_point_cloud);
   PointCloudConstPtr gt_pc_ptr(new PointCloud(gt_point_cloud));
 
-  // Create octree map to select only the parts needed
-  PointCloud::Ptr unused(new PointCloud);
-  gt_mapper_.InsertPoints(gt_pc_ptr, unused.get());
-
-  // Publish gt pointcloud
-  PublishPointCloud(gt_pub_, gt_point_cloud);
-
   // Init pose-graph output
   std::vector<pose_graph_msgs::PoseGraphEdge> gt_edges;
 
   // Initialize variables
   PointCloud::Ptr keyed_scan_world(new PointCloud);
-  PointCloud::Ptr gt_neighbors(new PointCloud);
   gu::Transform3 delta;
   gtsam::Matrix66 covariance;
-  // TODO - set our own covariances for GT
   for (int i = 0; i < 3; ++i)
     covariance(i, i) = gt_rot_sigma_ * gt_rot_sigma_;
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = gt_trans_sigma_ * gt_trans_sigma_;
 
   // Set up ICP.
-  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
+  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
+                                                     pcl::PointXYZI>
+      icp;
   SetupICP(icp);
-  
   icp.setInputTarget(gt_pc_ptr);
 
   // ---------------------------------------------------------
   // Loop through keyed poses
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     ROS_INFO_STREAM("Processing key " << gtsam::DefaultKeyFormatter(it->first) << "\n");
+
     // Check if the keyed scan exists
     if (!keyed_scans_.count(it->first)){
       ROS_WARN_STREAM("No keyed scan for key " << gtsam::DefaultKeyFormatter(it->first));
       continue;
     }
 
-    // Transform scan to world frame
-    gu::Transform3 transform = utils::ToGu(it->second);
-
     // Get scan and transform to the world frame
+    gu::Transform3 transform = utils::ToGu(it->second);
     const Eigen::Matrix<double, 3, 3> Rot = transform.rotation.Eigen();
     const Eigen::Matrix<double, 3, 1> Trans = transform.translation.Eigen();
-
     Eigen::Matrix4d tf;
     tf.block(0, 0, 3, 3) = Rot;
     tf.block(0, 3, 3, 1) = Trans;
 
-    // Check this
+    // Transform point cloud to world frame
     pcl::transformPointCloud(*keyed_scans_[it->first], *keyed_scan_world, tf);
     
     // Publish current point cloud
-    PublishPointCloud(current_scan_pub_, *keyed_scan_world);
+    if (current_scan_pub_.getNumSubscribers() > 0) {
+      PublishPointCloud(current_scan_pub_, *keyed_scan_world);
+    }
 
     // Publish ground truth point cloud
-    PublishPointCloud(gt_pub_, gt_point_cloud);
-    
-    // Try putting the whole point cloud in the ICP as source
-    // Get NN from the GT map
-    gt_mapper_.ApproxNearestNeighbors(*keyed_scan_world, gt_neighbors.get());
+    if (gt_pub_.getNumSubscribers() > 0) {
+      PublishPointCloud(gt_pub_, gt_point_cloud);
+    }
 
-    // Publish neighbors
-    PublishPointCloud(neighbor_scan_pub_, *gt_neighbors);
-
-    // Get initial alignment
-    // Eigen::Matrix4f initial_guess;
-    // double sac_fitness_score = sac_fitness_score_threshold_;
-    // GetInitialAlignment(keyed_scan_world, gt_pc_ptr, &initial_guess, sac_fitness_score);
-
+    // Set source
     icp.setInputSource(keyed_scan_world);
-    // icp.setInputTarget(gt_neighbors);
 
     // Perform ICP.
     PointCloud unused_result;
@@ -1013,16 +953,20 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     gu::Transform3 gc_factor_gu = utils::ToGu(gc_factor);
 
     // Publish aligned scan
-    Eigen::Matrix4d tf_align;
-    const Eigen::Matrix<double, 3, 3> Rot_gu = gc_factor_gu.rotation.Eigen();
-    const Eigen::Matrix<double, 3, 1> Trans_gu = gc_factor_gu.translation.Eigen();
+    if (aligned_scan_pub_.getNumSubscribers() > 0) {
+      Eigen::Matrix4d tf_align;
+      const Eigen::Matrix<double, 3, 3> Rot_gu = gc_factor_gu.rotation.Eigen();
+      const Eigen::Matrix<double, 3, 1> Trans_gu =
+          gc_factor_gu.translation.Eigen();
 
-    tf_align.block(0, 0, 3, 3) = Rot_gu;
-    tf_align.block(0, 3, 3, 1) = Trans_gu;
+      tf_align.block(0, 0, 3, 3) = Rot_gu;
+      tf_align.block(0, 3, 3, 1) = Trans_gu;
 
-    PointCloud aligned_cloud;
-    pcl::transformPointCloud(*keyed_scans_[it->first], aligned_cloud, tf_align);
-    PublishPointCloud(aligned_scan_pub_, aligned_cloud);
+      PointCloud aligned_cloud;
+      pcl::transformPointCloud(
+          *keyed_scans_[it->first], aligned_cloud, tf_align);
+      PublishPointCloud(aligned_scan_pub_, aligned_cloud);
+    }
 
     // Make prior here
     pose_graph_msgs::PoseGraphEdge edge = CreatePriorEdge(it->first, gc_factor_gu, covariance);
@@ -1068,7 +1012,9 @@ pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreatePriorEdge(
   return prior;
 }
 
-bool LaserLoopClosure::SetupICP(pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI>& icp) {
+bool LaserLoopClosure::SetupICP(
+    pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
+                                                       pcl::PointXYZI>& icp) {
   icp.setTransformationEpsilon(icp_tf_epsilon_);
   icp.setMaxCorrespondenceDistance(icp_corr_dist_);
   icp.setMaximumIterations(icp_iterations_);
@@ -1079,7 +1025,8 @@ bool LaserLoopClosure::SetupICP(pcl::MultithreadedGeneralizedIterativeClosestPoi
   return true;
 }
 
-void LaserLoopClosure::PublishPointCloud(ros::Publisher& pub, PointCloud& cloud) {
+void LaserLoopClosure::PublishPointCloud(ros::Publisher& pub,
+                                         PointCloud& cloud) {
   sensor_msgs::PointCloud2 msg;
   pcl::toROSMsg(cloud, msg);
   msg.header.stamp = ros::Time::now();

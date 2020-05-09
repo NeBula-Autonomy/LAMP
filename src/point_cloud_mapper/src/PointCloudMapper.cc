@@ -35,8 +35,10 @@
  */
 
 #include <parameter_utils/ParameterUtils.h>
+#include <pcl/octree/octree_iterator.h>
 #include <pcl/search/impl/search.hpp>
 #include <point_cloud_mapper/PointCloudMapper.h>
+#include <std_msgs/String.h>
 
 namespace pu = parameter_utils;
 
@@ -79,6 +81,10 @@ bool PointCloudMapper::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("map/b_publish_only_with_subscribers", b_publish_only_with_subscribers_))
     return false;
+  if (!pu::Get("map/b_publish_map_info", b_publish_map_info_))
+    return false;
+  if (!pu::Get("map/volume_voxel_size", volume_voxel_size))
+    return false;
 
   // Initialize the map octree.
   map_octree_.reset(new Octree(octree_resolution_));
@@ -97,6 +103,7 @@ bool PointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
   incremental_map_pub_ =
       nl.advertise<PointCloud>("octree_map_updates", 10, true);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
+  map_info_pub_ = nl.advertise<core_msgs::MapInfo>("map_info", 10, false);
 
   return true;
 }
@@ -244,4 +251,76 @@ void PointCloudMapper::PublishMapFrozenThread() {
 void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {
   // Publish the incremental points for visualization.
   incremental_map_pub_.publish(incremental_points);
+}
+
+void PointCloudMapper::PublishMapInfo() {
+  // When do we want to publish: When points are inserted or the one done in
+  // Base station. Why is it so in base station
+  if (!b_publish_map_info_) {
+    return;
+  }
+
+  core_msgs::MapInfo map_info;
+
+  // If the map has been recently updated
+  if (initialized_ && map_updated_) {
+    // Collect map properties
+    map_info.header.stamp =
+        ros::Time(map_data_->header.stamp / ((uint64_t)1e6),
+                  (map_data_->header.stamp % ((uint64_t)1e6)) * 1e3);
+    map_info.header.frame_id = map_data_->header.frame_id;
+    map_info.size = map_data_->size();
+    map_info.initialized = initialized_;
+
+    // Start stepping through
+    int current_depth = -1;
+    int depth = -1;
+    int target_depth;
+    int depth_count = 0;
+    std::vector<int> count_per_depth;
+    double voxel_side_at_depth;
+
+    // find the depth that we want - depth first search
+    for (auto df_itr = map_octree_->depth_begin();
+         df_itr != map_octree_->depth_end();
+         df_itr++) {
+      depth = df_itr.getCurrentOctreeDepth();
+      voxel_side_at_depth =
+          std::sqrt(map_octree_->getVoxelSquaredSideLen(depth));
+
+      if (voxel_side_at_depth > volume_voxel_size - 0.2 &&
+          voxel_side_at_depth < volume_voxel_size + 0.2) {
+        // If the side length is around 0.5
+        target_depth = depth;
+        break;
+      }
+    }
+
+    for (auto octree_itr = map_octree_->breadth_begin();
+         octree_itr != map_octree_->breadth_end();
+         octree_itr++) {
+      // Check the current depth
+      depth = octree_itr.getCurrentOctreeDepth();
+      if (depth < target_depth) {
+        // Skip this - doesn't contain what we want
+        octree_itr++;
+        continue;
+      } else if (depth > target_depth) {
+        break;
+      }
+
+      depth_count++;
+    }
+
+    // Compute volume
+    double volume = depth_count * std::pow(voxel_side_at_depth, 3.0);
+
+    ROS_INFO_STREAM("Point cloud Volume is: "
+                    << volume << ", from " << depth_count
+                    << " voxels with side length " << voxel_side_at_depth);
+    map_info.volume = volume;
+
+    // Publish
+    map_info_pub_.publish(map_info);
+  }
 }
