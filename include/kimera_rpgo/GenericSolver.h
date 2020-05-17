@@ -3,8 +3,7 @@ Generic backend solver class
 author: Yun Chang, Luca Carlone
 */
 
-#ifndef INCLUDE_KIMERARPGO_GENERICSOLVER_H_
-#define INCLUDE_KIMERARPGO_GENERICSOLVER_H_
+#pragma once
 
 #include <vector>
 
@@ -13,12 +12,11 @@ author: Yun Chang, Luca Carlone
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include "kimera_rpgo/SolverParams.h"
+#include "kimera_rpgo/logger.h"
+#include "kimera_rpgo/utils/type_utils.h"
 
-#include "KimeraRPGO/SolverParams.h"
-#include "KimeraRPGO/logger.h"
-#include "KimeraRPGO/utils/type_utils.h"
-
-namespace KimeraRPGO {
+namespace kimera_rpgo {
 
 class GenericSolver {
  public:
@@ -64,6 +62,4 @@ class GenericSolver {
   bool debug_;
 };
 
-}  // namespace KimeraRPGO
-
-#endif  // INCLUDE_KIMERARPGO_GENERICSOLVER_H_
+}  // namespace kimera_rpgo

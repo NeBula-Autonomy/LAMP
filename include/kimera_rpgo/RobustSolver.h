@@ -3,8 +3,7 @@ Backend solver class (Robust Pose Graph Optimizer)
 author: Yun Chang, Luca Carlone
 */
 
-#ifndef INCLUDE_KIMERARPGO_ROBUSTSOLVER_H_
-#define INCLUDE_KIMERARPGO_ROBUSTSOLVER_H_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -15,11 +14,11 @@ author: Yun Chang, Luca Carlone
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include "KimeraRPGO/GenericSolver.h"
-#include "KimeraRPGO/SolverParams.h"
-#include "KimeraRPGO/outlier/OutlierRemoval.h"
+#include "kimera_rpgo/GenericSolver.h"
+#include "kimera_rpgo/SolverParams.h"
+#include "kimera_rpgo/outlier/OutlierRemoval.h"
 
-namespace KimeraRPGO {
+namespace kimera_rpgo {
 
 /*! \brief RobustSolver type.
  *  Main backend solver that can do outlier rejection
@@ -102,6 +101,4 @@ class RobustSolver : public GenericSolver {
   void saveData(std::string folder_path) const;
 };
 
-}  // namespace KimeraRPGO
-
-#endif  // INCLUDE_KIMERARPGO_ROBUSTSOLVER_H_
+}  // namespace kimera_rpgo

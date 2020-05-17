@@ -1,12 +1,11 @@
 /*
 Outlier removal class
 Provide a set of outlier removal methods
-along with interface to KimeraRPGO
+along with interface to kimera_rpgo
 author: Yun Chang
 */
 
-#ifndef INCLUDE_KIMERARPGO_OUTLIER_OUTLIERREMOVAL_H_
-#define INCLUDE_KIMERARPGO_OUTLIER_OUTLIERREMOVAL_H_
+#pragma once
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -14,9 +13,9 @@ author: Yun Chang
 #include <string>
 #include <vector>
 
-#include "KimeraRPGO/utils/type_utils.h"
+#include "kimera_rpgo/utils/type_utils.h"
 
-namespace KimeraRPGO {
+namespace kimera_rpgo {
 
 class OutlierRemoval {
  public:
@@ -82,5 +81,4 @@ class OutlierRemoval {
   bool debug_ = true;
 };
 
-}  // namespace KimeraRPGO
-#endif  // INCLUDE_KIMERARPGO_OUTLIER_OUTLIERREMOVAL_H_
+}  // namespace kimera_rpgo
