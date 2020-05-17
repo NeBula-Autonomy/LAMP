@@ -113,6 +113,10 @@ bool LampBase::CreatePublishers(const ros::NodeHandle& n) {
       nl.advertise<pose_graph_msgs::PoseGraph>("pose_graph", 10, true);
   pose_graph_incremental_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
       "pose_graph_incremental", 10, true);
+
+  // Published keyed scans (for GT processing)
+  keyed_scan_pub_ =
+      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, true);
 }
 
 bool LampBase::InitializeHandlers(const ros::NodeHandle& n) {
@@ -468,5 +472,25 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
     // Artifact
     // return artifact_handler_.GetArtifactID(key);// TODO
     return "Artifact"; // TEMPORARY
+  }
+}
+
+
+void LampBase::PublishAllKeyedScans() {
+  if (pose_graph_.keyed_scans.size() == 0) {
+    ROS_WARN("No keyed scans and you are trying to publish all keyed scans");
+    return;
+  }
+
+  ROS_INFO("Publishing All Keyed Scans");
+  pose_graph_msgs::KeyedScan keyed_scan_msg;
+
+  for (auto it = pose_graph_.keyed_scans.begin() ; it != pose_graph_.keyed_scans.end() ; ++it){
+    ROS_INFO_ONCE("Publishing Keyed Scans... WAIT UNTIL DONE");
+    keyed_scan_msg.key = it->first;
+    pcl::toROSMsg(*it->second, keyed_scan_msg.scan);
+    keyed_scan_pub_.publish(keyed_scan_msg);
+
+    ros::Duration(0.01).sleep();
   }
 }

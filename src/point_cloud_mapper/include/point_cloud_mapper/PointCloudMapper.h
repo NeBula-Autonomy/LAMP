@@ -110,7 +110,6 @@ private:
 
   // Boolean to only publish the map if it has been updated recently.
   bool map_updated_;
-
   bool b_publish_only_with_subscribers_;
 
   // When a loop closure occurs, this flag enables a user to unsubscribe from
@@ -123,6 +122,10 @@ private:
 
   // Map parameters.
   double octree_resolution_;
+
+  // Map info pub paramters
+  bool b_publish_map_info_;
+  double volume_voxel_size;
 
   // Map publisher.
   ros::Publisher map_pub_;

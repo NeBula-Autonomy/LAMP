@@ -127,14 +127,10 @@ core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_
   artifact_msg.name = msg.name;
   // Put empty label
   artifact_msg.label = "";
-  // Fill empty sequence
-  artifact_msg.seq = 0;
   // Put empty id 
   artifact_msg.id = msg.id;
   // Fill parent id
   artifact_msg.parent_id = msg.id;
-  // Fill empty hostspot name
-  artifact_msg.hotspot_name = "";
   // Fill pose value
   artifact_msg.point = msg.point;
   // Fill confidence with 1

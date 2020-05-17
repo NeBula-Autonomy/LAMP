@@ -25,6 +25,8 @@ LoopClosure::~LoopClosure(){};
 void LoopClosure::InputCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
 
+  bool b_is_new_node = true;
+
   // Loop through each node (but expect only one at a time)
   ROS_INFO_STREAM("In Input Callback of loop closure (" << graph_msg->nodes.size() <<
       " nodes received)");
@@ -33,6 +35,12 @@ void LoopClosure::InputCallback(
     gtsam::Key new_key = node_msg.key;            // extract new key
     ros::Time timestamp = node_msg.header.stamp;  // extract new timestamp
 
+    // Check if the node is new 
+    if (keyed_poses_.count(new_key) > 0){
+      b_is_new_node = false;
+    } else { 
+      b_is_new_node = true;
+    }
 
     // also extract poses (NOTE(Yun) this pose will not be updated...)
     gtsam::Pose3 new_pose;
@@ -52,9 +60,9 @@ void LoopClosure::InputCallback(
     // add new key and pose to keyed_poses_
     keyed_poses_[new_key] = new_pose;
 
-    // Exit if not checking for loop closures
-    if (!b_check_for_loop_closures_) {
-      return;
+    // Skip next part if not checking for loop closures
+    if (!b_check_for_loop_closures_ || !b_is_new_node) {
+      continue;
     }
 
     std::vector<pose_graph_msgs::PoseGraphEdge> loop_closure_edges;

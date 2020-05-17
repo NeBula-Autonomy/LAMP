@@ -12,14 +12,19 @@ Lidar pointcloud based loop closure
 #include <unordered_map>
 
 #include <pcl_ros/point_cloud.h>
+#include <pcl/io/pcd_io.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <std_msgs/String.h>
 
 #include <gtsam/inference/Symbol.h>
 
+#include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
+#include <multithreaded_gicp/gicp.h>
 #include <point_cloud_filter/PointCloudFilter.h>
+#include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <map>
 
@@ -31,6 +36,7 @@ public:
   bool Initialize(const ros::NodeHandle& n);
 
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+  typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
 
@@ -90,15 +96,34 @@ private:
           geometry_utils::Transform3& delta, 
           gtsam::Matrix66& covariance);
 
+  pose_graph_msgs::PoseGraphEdge CreatePriorEdge(
+          gtsam::Symbol key,
+          geometry_utils::Transform3& delta, 
+          gtsam::Matrix66& covariance);
+
+  void GenerateGTFromPC(std::string gt_pc_filename);
+
+  void TriggerGTCallback(const std_msgs::String::ConstPtr& msg);
+
+  bool SetupICP(
+      pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
+                                                         pcl::PointXYZI>& icp);
+
+  void PublishPointCloud(ros::Publisher&, PointCloud&);
+
 private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
+  ros::Subscriber pc_gt_trigger_sub_;
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
 
   // last_closure_key_<a,b> stores the last key for robot a on which there was a 
   // loop closure between robots a and b
   std::map< std::pair<char,char>, gtsam::Key> last_closure_key_;
+  ros::Publisher gt_pub_;
+  ros::Publisher current_scan_pub_;
+  ros::Publisher aligned_scan_pub_;
 
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;
@@ -110,6 +135,7 @@ private:
   double icp_tf_epsilon_;
   double icp_corr_dist_;
   unsigned int icp_iterations_;
+  unsigned int icp_threads_;
 
   unsigned int sac_iterations_;
   unsigned int sac_num_prev_scans_;
@@ -120,6 +146,10 @@ private:
 
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
+
+  double gt_rot_sigma_;
+  double gt_trans_sigma_;
+  double gt_prior_covar_;
 
   PointCloudFilter filter_;
 

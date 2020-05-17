@@ -2,14 +2,10 @@
   <arg name="robot_namespace" default="husky"/>
   <arg name="base_namespace" default="base1"/>
 
-  <!-- Velodyne topic throttle params -->
-  <arg name="vlp_throttle_freq" default="5.0"/><!-- Hz -->
+  <arg name="b_use_hero" default="true"/>
 
-  <!-- Map processing params -->
-  <arg name="process_map" default="true"/>
-  <arg name="map_update_freq" default="1.0"/><!-- Hz -->
-  <arg name="map_topic_input" default="lamp/octree_map"/>
-  <arg name="map_topic_output" default="lamp/octree_map_downsampled"/>
+  <arg if="$(arg b_use_hero)" name="odom_input_husky" value="hero/odometry"/>
+  <arg unless="$(arg b_use_hero)" name="odom_input_husky" value="lo_frontend/odometry"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default="" /> 
@@ -32,7 +28,7 @@
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
       <!-- <remap from="~lio_odom" to="lo_frontend/odometry" unless="$(eval robot_namespace.startswith('spot'))"/> -->
       <!-- <remap from="~lio_odom" to="hero/lion/odom"/> -->
-      <remap from="~lio_odom" to="hero/odometry" unless="$(eval robot_namespace.startswith('spot'))"/>
+      <remap from="~lio_odom" to="$(arg odom_input_husky)" unless="$(eval robot_namespace.startswith('spot'))"/>
       <remap from="~lio_odom" to="spot_frontend/odometry" if="$(eval robot_namespace.startswith('spot'))"/>
       <remap from="~vio_odom" to="visual_inertial_odometry_topic_currently_not_used"/>
       <remap from="~wio_odom" to="wheel_inertial_odometry_topic_currently_not_used"/>
@@ -96,16 +92,6 @@
       <!-- Config - TODO move the proximity_threshold param elsewhere -->
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/> 
     </node>
-
-    <!-- PC throttling and filtering -->
-    <group if="$(arg process_map)">
-      <include file="$(find lamp)/launch/map_processing.launch">
-        <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-        <arg name="map_update_freq" value="$(arg map_update_freq)"/>
-        <arg name="map_topic_input" value="$(arg map_topic_input)"/>
-        <arg name="map_topic_output" value="$(arg map_topic_output)"/>
-      </include>
-    </group>
 
     <!-- Loop Closure  -->
     <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>

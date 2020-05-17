@@ -151,14 +151,10 @@ TEST_F(TestAprilTagHandler, ConvertAprilTagMsgToArtifactMsg) {
   EXPECT_EQ(artifact_msg.name, msg.name);
   // Check label
   EXPECT_EQ(artifact_msg.label, "");
-  // Check sequence
-  EXPECT_EQ(artifact_msg.seq, 0);
   // Check id 
   EXPECT_EQ(artifact_msg.id, msg.id);
   // Check parent id
   EXPECT_EQ(artifact_msg.parent_id, msg.id);
-  // Check hostspot name
-  EXPECT_EQ(artifact_msg.hotspot_name, "");
   // Check pose value
   EXPECT_EQ(artifact_msg.point.point.x, msg.point.point.x);
   EXPECT_EQ(artifact_msg.point.point.y, msg.point.point.y);

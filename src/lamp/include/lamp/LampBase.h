@@ -144,6 +144,8 @@ protected:
   // Set artifact positions
   virtual void UpdateArtifactPositions();
 
+  void PublishAllKeyedScans();
+
   // Pose graph structure storing values, factors and meta data.
   PoseGraph pose_graph_;
 
