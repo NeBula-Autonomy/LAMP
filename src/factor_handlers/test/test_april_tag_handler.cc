@@ -64,7 +64,8 @@ class TestAprilTagHandler : public ::testing::Test{
       return apt_handle.GetData();
     }
 
-    core_msgs::Artifact ConvertAprilTagMsgToArtifactMsg(core_msgs::AprilTag msg) {
+    artifact_msgs::Artifact
+    ConvertAprilTagMsgToArtifactMsg(core_msgs::AprilTag msg) {
       return apt_handle.ConvertAprilTagMsgToArtifactMsg(msg);
     }
 
@@ -143,8 +144,8 @@ TEST_F(TestAprilTagHandler, AprilTagCallback) {
 
 // Check if April tag message is being converted into artifacts correctly
 TEST_F(TestAprilTagHandler, ConvertAprilTagMsgToArtifactMsg) {
-  core_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
-  
+  artifact_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
+
   // Check header
   EXPECT_EQ(artifact_msg.header.stamp, msg.header.stamp);
   // Check april tags name

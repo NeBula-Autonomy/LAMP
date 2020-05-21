@@ -49,8 +49,9 @@ class AprilTagHandler : public ArtifactHandler {
     /*! \brief  Convert April tag message to Artifact message.
      * Returns  Artifacts message
      */
-    core_msgs::Artifact ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg) const;
-    
+    artifact_msgs::Artifact
+    ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg) const;
+
     /*! \brief  Add artifact data
      * Returns  Void
      */

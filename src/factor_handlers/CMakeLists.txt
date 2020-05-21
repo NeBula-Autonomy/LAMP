@@ -38,6 +38,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   tf_conversions
   eigen_conversions
+  artifact_msgs
 )
 
 
@@ -57,6 +58,7 @@ catkin_package(
     mesh_msgs
     geometry_msgs
     nav_msgs
+    artifact_msgs
   DEPENDS
     Boost
 )

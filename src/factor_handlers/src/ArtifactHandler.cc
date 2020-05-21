@@ -74,7 +74,7 @@ bool ArtifactHandler::RegisterCallbacks(const ros::NodeHandle& n,
  * Returns Transform
  */
 Eigen::Vector3d
-ArtifactHandler::ComputeTransform(const core_msgs::Artifact& msg) const {
+ArtifactHandler::ComputeTransform(const artifact_msgs::Artifact& msg) const {
   // Get artifact position
   Eigen::Vector3d artifact_position;
   artifact_position << msg.point.point.x, msg.point.point.y, msg.point.point.z;
@@ -105,7 +105,7 @@ std::string ArtifactHandler::GetArtifactID(const gtsam::Symbol artifact_key) {
 /*! \brief  Callback for Artifacts.
  * Returns  Void
  */
-void ArtifactHandler::ArtifactCallback(const core_msgs::Artifact& msg) {
+void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
   // Subscribe to artifact messages, include in pose graph, publish global
   // position Artifact information
   PrintArtifactInputMessage(msg);
@@ -206,7 +206,7 @@ bool ArtifactHandler::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Create publisher for artifact
-  artifact_pub_ = nl.advertise<core_msgs::Artifact>("artifact", 10);
+  artifact_pub_ = nl.advertise<artifact_msgs::Artifact>("artifact", 10);
 
   return true;
 }
@@ -299,8 +299,9 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
   //           << std::endl;
 
   // Fill artifact message
-  core_msgs::Artifact new_msg = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg;
-  
+  artifact_msgs::Artifact new_msg =
+      artifact_key2info_hash_[gtsam::Key(artifact_key)].msg;
+
   // Update the time
   new_msg.header.stamp = ros::Time::now();
 
@@ -326,7 +327,7 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
  * Returns  Void
  */
 void ArtifactHandler::PrintArtifactInputMessage(
-    const core_msgs::Artifact& artifact) const {
+    const artifact_msgs::Artifact& artifact) const {
   std::cout << "Artifact position in world is: " << artifact.point.point.x
             << ", " << artifact.point.point.y << ", " << artifact.point.point.z
             << std::endl;
@@ -401,8 +402,8 @@ void ArtifactHandler::AddArtifactData(
 /*! \brief  Stores/Updated artifactInfo Hash
   * Returns  Void
   */
-void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key, 
-                                        const core_msgs::Artifact& msg) {
+void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
+                                        const artifact_msgs::Artifact& msg) {
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) == artifact_key2info_hash_.end()) {
     ROS_INFO_STREAM("New artifact detected with key " << gtsam::DefaultKeyFormatter(artifact_key));

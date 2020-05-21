@@ -308,7 +308,7 @@ PoseGraphVisualizer::GetArtifactPosition(const gtsam::Key artifact_key) const {
   return v;
 }
 
-void PoseGraphVisualizer::ArtifactCallback(const core_msgs::Artifact& msg) {
+void PoseGraphVisualizer::ArtifactCallback(const artifact_msgs::Artifact& msg) {
   // Subscribe to artifact messages, include in pose graph, publish global
   // position
   // ROS_WARN("HAVE ARTIFACT IN PGV");
