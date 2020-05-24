@@ -30,6 +30,7 @@ LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
   : LoopClosure(n) {}
 
 LaserLoopClosure::~LaserLoopClosure() {
+  stats_.close();
 }
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
@@ -340,12 +341,13 @@ void LaserLoopClosure::GetInitialAlignment(
   //   }
   // }
   // Debug statements
-  // ROS_INFO_STREAM("Source cloud: " << *source << "\n"
-  //                 << "Target cloud: " << *target << "\n"
-  //                 << "Source keypoints: " << *source_keypoints << "\n"
-  //                 << "Target keypoints: " << *target_keypoints << "\n"
-  //                 << "Source Normals: " << *source_normals << "\n"
-  //                 << "Target Normals: " << *target_normals);
+  ROS_INFO_STREAM("Source cloud: "
+                  << *source << "\n"
+                  << "Target cloud: " << *target << "\n"
+                  << "Source keypoints: " << *source_keypoints << "\n"
+                  << "Target keypoints: " << *target_keypoints << "\n"
+                  << "Source Normals: " << *source_normals << "\n"
+                  << "Target Normals: " << *target_normals);
 
   // Align
   auto start_sac_align = std::chrono::steady_clock::now();
@@ -455,6 +457,20 @@ bool LaserLoopClosure::FindLoopClosures(
          << "," << std::to_string(total_closures_) << "\n";
   return closed_loop;
 }
+/* "Node Key, Full loop closure time, Total Alignment time, #Aligns, "
+    "Total SAC "
+    "Time, #Sacs, Feature time, Normal time, SAC align time, Keypoint "
+    "detection, Feature Compute time, Loop "
+    "closures\n"*/
+// Total Alignment time is time for aligning nodes that pass feature alignment
+// stage #Aligns is total number of nodes that pass feature alignment stage
+// Total SAC Time : Total time for all feature based initial alignement
+// #Sacs: total number of feature based initial alignement
+// Feature time: feature_time is calculation of descriptor
+// Normal time: normal_time is calculation of normal
+// SAC align time: sac_align_time aligning for initial guess
+// Keypoint detection: harris_time is time for keypoint detection
+// Feature Compute time: compute_time is same as feature time
 
 double LaserLoopClosure::DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol key2) {
 
@@ -672,10 +688,10 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   } break;
   case IcpInitMethod::FEATURES:
   {
-    start_sac = std::chrono::steady_clock::now();
+    auto start_sac = std::chrono::steady_clock::now();
     double sac_fitness_score = sac_fitness_score_threshold_;
     GetInitialAlignment(scan1, accumulated_target, &initial_guess, sac_fitness_score);
-    end_sac = std::chrono::steady_clock::now();
+    auto end_sac = std::chrono::steady_clock::now();
     sac_count = sac_count + 1;
     sac_time = sac_time +
         static_cast<double>(
