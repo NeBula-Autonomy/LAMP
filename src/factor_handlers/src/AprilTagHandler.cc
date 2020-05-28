@@ -80,7 +80,7 @@ bool AprilTagHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
   */
 void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
   // Convert April tag message into Artifact message
-  core_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
+  artifact_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
 
   // Check if a new key arrived
   bool new_april_tag = false;
@@ -118,8 +118,9 @@ void AprilTagHandler::AprilTagCallback(const core_msgs::AprilTag& msg) {
 /*! \brief  Convert April tag message to Artifact message.
   * Returns  Artifacts message
   */
-core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_msgs::AprilTag& msg) const {
-  core_msgs::Artifact artifact_msg;
+artifact_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(
+    const core_msgs::AprilTag& msg) const {
+  artifact_msgs::Artifact artifact_msg;
 
   // Fill the header
   artifact_msg.header = msg.header;
@@ -127,14 +128,10 @@ core_msgs::Artifact AprilTagHandler::ConvertAprilTagMsgToArtifactMsg(const core_
   artifact_msg.name = msg.name;
   // Put empty label
   artifact_msg.label = "";
-  // Fill empty sequence
-  artifact_msg.seq = 0;
   // Put empty id 
   artifact_msg.id = msg.id;
   // Fill parent id
   artifact_msg.parent_id = msg.id;
-  // Fill empty hostspot name
-  artifact_msg.hotspot_name = "";
   // Fill pose value
   artifact_msg.point = msg.point;
   // Fill confidence with 1

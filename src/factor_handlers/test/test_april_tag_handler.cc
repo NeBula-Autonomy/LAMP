@@ -64,7 +64,8 @@ class TestAprilTagHandler : public ::testing::Test{
       return apt_handle.GetData();
     }
 
-    core_msgs::Artifact ConvertAprilTagMsgToArtifactMsg(core_msgs::AprilTag msg) {
+    artifact_msgs::Artifact
+    ConvertAprilTagMsgToArtifactMsg(core_msgs::AprilTag msg) {
       return apt_handle.ConvertAprilTagMsgToArtifactMsg(msg);
     }
 
@@ -143,22 +144,18 @@ TEST_F(TestAprilTagHandler, AprilTagCallback) {
 
 // Check if April tag message is being converted into artifacts correctly
 TEST_F(TestAprilTagHandler, ConvertAprilTagMsgToArtifactMsg) {
-  core_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
-  
+  artifact_msgs::Artifact artifact_msg = ConvertAprilTagMsgToArtifactMsg(msg);
+
   // Check header
   EXPECT_EQ(artifact_msg.header.stamp, msg.header.stamp);
   // Check april tags name
   EXPECT_EQ(artifact_msg.name, msg.name);
   // Check label
   EXPECT_EQ(artifact_msg.label, "");
-  // Check sequence
-  EXPECT_EQ(artifact_msg.seq, 0);
   // Check id 
   EXPECT_EQ(artifact_msg.id, msg.id);
   // Check parent id
   EXPECT_EQ(artifact_msg.parent_id, msg.id);
-  // Check hostspot name
-  EXPECT_EQ(artifact_msg.hotspot_name, "");
   // Check pose value
   EXPECT_EQ(artifact_msg.point.point.x, msg.point.point.x);
   EXPECT_EQ(artifact_msg.point.point.y, msg.point.point.y);

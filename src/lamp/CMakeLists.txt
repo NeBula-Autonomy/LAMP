@@ -44,6 +44,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   eigen_conversions
   pose_graph_merger
+  artifact_msgs
 )
 
 
@@ -69,6 +70,7 @@ catkin_package(
     geometry_msgs
     nav_msgs
     pose_graph_merger
+    artifact_msgs
   DEPENDS
     Boost
 )

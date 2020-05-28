@@ -26,6 +26,11 @@ point_estimate_precision: 25.0
 artifact_gt_rot_precision: 0.00000000000000000001
 artifact_gt_trans_precision: 25.0
 
+# PC Ground Truth sigmas
+gt_rot_sigma: 0.01
+gt_trans_sigma: 0.01
+gt_prior_covar: 0.0001
+
 # Noise parameter for uwb range factor [m]
 uwb_range_sigma: 1.0
 

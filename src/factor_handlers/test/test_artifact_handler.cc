@@ -22,13 +22,17 @@ class TestArtifactHandler : public ::testing::Test{
     };
     ArtifactData& GetArtifactData() {return art_handle.artifact_data_;};
     std::shared_ptr<FactorData> GetData() {return art_handle.GetData();};
-    bool ArtifactCallback(core_msgs::Artifact msg) {art_handle.ArtifactCallback(msg);};
+    bool ArtifactCallback(artifact_msgs::Artifact msg) {
+      art_handle.ArtifactCallback(msg);
+    };
     std::unordered_map<long unsigned int, ArtifactInfo> GetKeyInfoMap() {return art_handle.artifact_key2info_hash_;};
     std::unordered_map<std::string, gtsam::Symbol> GetStringKeyMap() {return art_handle.artifact_id2key_hash;};
     void AddArtifactKey(gtsam::Symbol key) {art_handle.artifact_id2key_hash["distal"] = key;};
     std::string getID(gtsam::Symbol key) {return art_handle.GetArtifactID(key);};
     void AddArtifact(const gtsam::Symbol artifact_key, ros::Time time_stamp, const gtsam::Point3 position, const gtsam::SharedNoiseModel noise) {art_handle.AddArtifactData(artifact_key, time_stamp, position, noise);};
-    Eigen::Vector3d ComputeTrans(const core_msgs::Artifact& msg) {return art_handle.ComputeTransform(msg);};
+    Eigen::Vector3d ComputeTrans(const artifact_msgs::Artifact& msg) {
+      return art_handle.ComputeTransform(msg);
+    };
     void ClearData() {art_handle.ClearArtifactData();};
     void setInitialize() {art_handle.SetPgoInitialized(true);};
     bool getInitialize() {return art_handle.is_pgo_initialized;};
@@ -74,7 +78,7 @@ TEST_F(TestArtifactHandler, UpdateGlobalPosition) {
 
 TEST_F(TestArtifactHandler, ComputeTransform) {
   // Construct the message
-  core_msgs::Artifact msg;
+  artifact_msgs::Artifact msg;
   msg.parent_id = "distal";
   msg.confidence = 0.9;
   msg.id = "distal";
@@ -168,7 +172,7 @@ TEST_F(TestArtifactHandler, AddArtifactData) {
 
 TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Construct the message
-  core_msgs::Artifact msg;
+  artifact_msgs::Artifact msg;
   msg.header.stamp = ros::Time(0.1);
   msg.point.header.stamp = ros::Time(0.1);
   msg.parent_id = "distal";
@@ -286,7 +290,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
 
 TEST_F(TestArtifactHandler, IsPgoIntialized) {
   // Construct the message
-  core_msgs::Artifact msg;
+  artifact_msgs::Artifact msg;
   msg.header.stamp = ros::Time(0.1);
   msg.point.header.stamp = ros::Time(0.1); 
   msg.parent_id = "distal";
