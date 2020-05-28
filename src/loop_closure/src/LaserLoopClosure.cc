@@ -779,6 +779,7 @@ bool LaserLoopClosure::ComputeICPCovariance(
   covariance =
       eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
   return true;
+}
 
 void LaserLoopClosure::TriggerGTCallback(const std_msgs::String::ConstPtr& msg){
   std::string filename = msg->data;
