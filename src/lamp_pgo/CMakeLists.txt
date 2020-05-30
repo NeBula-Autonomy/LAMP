@@ -50,6 +50,13 @@ target_link_libraries(${PROJECT_NAME}_node
   gtsam
 )
 
+add_executable(load_and_save_as_g2o src/load_and_save_as_g2o.cc)
+target_link_libraries(load_and_save_as_g2o
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  gtsam
+)
+
 if (CATKIN_ENABLE_TESTING)
   add_subdirectory(test)
 endif()
