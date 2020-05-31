@@ -27,6 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
   interactive_markers
   message_generation
   utils
+  artifact_msgs
 )
 
 add_service_files(FILES HighlightEdge.srv HighlightNode.srv)

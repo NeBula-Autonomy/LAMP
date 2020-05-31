@@ -95,6 +95,7 @@ protected:
                      PoseCovStamped& output) {
     return oh.GetPoseAtTime(stamp, odom_buffer, output);
   }
+  /*
   bool GetPosesAtTimes(const ros::Time t1,
                        const ros::Time t2,
                        const OdomPoseBuffer& odom_buffer,
@@ -102,6 +103,7 @@ protected:
                        const int odom_buffer_id) {
     return oh.GetPosesAtTimes(t1, t2, odom_buffer, output_poses, odom_buffer_id);
   }
+  */
   bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose) {
     return oh.GetOdomDelta(t_now, delta_pose);
   }
@@ -1006,7 +1008,7 @@ TEST_F(OdometryHandlerTest, TestGetCovariance) {
       gtsam::noiseModel::Gaussian::Covariance(covariance_expected);
   ASSERT_TRUE((*noise_actual).equals(*noise_expected));
 }
-
+/*
 TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
@@ -1031,7 +1033,7 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
   bool result = GetPosesAtTimes(t1_ros, t2_ros, myBuffer, myOutput, LIDAR_ODOM_BUFFER_ID);
   ASSERT_TRUE(result);
 }
-
+*/
 TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
