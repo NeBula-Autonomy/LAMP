@@ -87,6 +87,10 @@ class Artifact(object):
         self.y = y
         self.z = z
 
+def EuclideanDistance(a, b):
+    ''' a and b must each have x, y, z attributes '''
+    return np.sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2) + pow(b.z - a.z, 2))
+
 
 def GetClosestPoseGraphNodes(nodes, artifact_stamp):
     # https://www.quora.com/How-do-I-iterate-through-a-list-in-python-while-comparing-the-values-at-adjacent-indices
@@ -208,8 +212,8 @@ def PlotPoseGraphs2D(nodes_data, artifacts_data, artifacts_gt):
     y1 = [g.y for g in nodes_data]
 
     ax.plot(x1, y1, label='LAMP Trajectory')
-    coords_art = {'Backpack': ['r', [], []], 'Survivor': ['y', [], []], 'Helmet': ['k', [], []], 'Rope': ['b', [], []]}
-    coords_gt = {'Backpack': ['r', [], []], 'Survivor': ['y', [], []], 'Helmet': ['k', [], []], 'Rope': ['b', [], []]}
+    coords_art = {'Backpack': ['r', [], []], 'Survivor': ['y', [], []], 'Helmet': ['k', [], []], 'Rope': ['b', [], []], 'Cell Phone': ['m', [], []]}
+    coords_gt = {'Backpack': ['r', [], []], 'Survivor': ['y', [], []], 'Helmet': ['k', [], []], 'Rope': ['b', [], []], 'Cell Phone': ['m', [], []]}
     for a in artifacts_data:
         coords_art[a.label][1].append(a.x)
         coords_art[a.label][2].append(a.y)
@@ -226,6 +230,20 @@ def PlotPoseGraphs2D(nodes_data, artifacts_data, artifacts_gt):
     plt.axis('equal')
 
     plt.legend()
+
+
+def GetTimestampClosestToArtifact(artifact, nodes):
+    ''' Given an artifact, loops through all pose graph nodes
+    to find the timestamp of the closest one. If robot did not 
+    go within min_dist of it, returns None '''
+    min_dist = 15 # m
+    closest_timestamp = None
+    for n in nodes:
+        distance = EuclideanDistance(artifact, n)
+        if distance < min_dist:
+            min_dist = distance
+            closest_timestamp = RosTimeToSecs(n.stamp)
+    return closest_timestamp
 
 
 def Analyze(nodes, artifacts, fid_cal_file):
@@ -268,10 +286,17 @@ def PerformAnalysis(abspath, sim_world_path, pg_file, artifact_file, artifacts_g
             if 'name' in x:
                 if IsArtifact(x['name']):
                     new_artifact = Artifact()
-                    label = ArtifactLabelFromName(name.encode('ascii'))
+                    label = ArtifactLabelFromName(x['name'].encode('ascii'))
                     coords = [float(c) for c in x['pose'].encode('ascii').split(' ')[0:3]]
                     new_artifact.InitFromLabelXYZ(label, coords[0], coords[1], coords[2])
-                    artifacts_gt.append(new_artifact)                
+                    artifacts_gt.append(new_artifact)
+
+    # Get time of closest approach to each GT artifact, if within 10m
+    artifact_times = []
+    for a in artifacts_gt:
+        timestamp = GetTimestampClosestToArtifact(a, nodes)
+        if timestamp is not None:
+            print(a.label + ' at ' + str(timestamp))
 
     PlotPoseGraphs2D(nodes, artifacts_world, artifacts_gt)
 
