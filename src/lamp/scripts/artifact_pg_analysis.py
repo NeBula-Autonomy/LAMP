@@ -18,6 +18,8 @@ import key_handling
 import tf2_geometry_msgs
 import tf
 import yaml
+import json
+import xmltodict
 
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 
@@ -99,10 +101,10 @@ def GetClosestPoseGraphNodes(nodes, artifact_stamp):
 
 def GetArtifactWorld(prev, curr, fract, artifact, world_T_map):
     # spherical interpolation of quaternion
-    q = tf.transformations.quaternion_slerp([prev.qx, prev.qy, prev.qz, prev.qw],[curr.qx, curr.qy, curr.qz, curr.qw], fract)
+    q = tf.transformations.quaternion_slerp([prev.qx, prev.qy, prev.qz, prev.qw], [curr.qx, curr.qy, curr.qz, curr.qw], fract)
     map_T_base_link_rot = tf.transformations.quaternion_matrix(q)
     # linear interpolation of position
-    t = [fract*prev.x+(1-fract)*curr.x, fract*prev.y+(1-fract)*curr.y, fract*prev.z+(1-fract)*curr.z]
+    t = [fract * prev.x + (1 - fract) * curr.x, fract * prev.y + (1 - fract) * curr.y, fract * prev.z + (1 - fract) * curr.z]
     map_T_base_link_tr = tf.transformations.translation_matrix(t)
     map_T_base_link = tf.transformations.concatenate_matrices(map_T_base_link_tr, map_T_base_link_rot)
 
@@ -116,6 +118,27 @@ def GetArtifactWorld(prev, curr, fract, artifact, world_T_map):
     artifact_node.InitFromLabelXYZ(artifact.label, world_T_artifact_tr[0], world_T_artifact_tr[1], world_T_artifact_tr[2])
     return artifact_node
 
+
+def IsArtifact(name):
+    ''' Assumes name is in the format rescue_randy_3, phone_2, etc. '''
+    artifact_names = ['rescue', 'backpack', 'phone', 'helmet', 'rope']
+    if name.split('_')[0] in artifact_names:
+        return True
+    else:
+        return False
+
+
+def ArtifactLabelFromName(name):
+    if name.startswith('rescue'):
+        return 'Survivor'
+    elif name.startswith('backpack'):
+        return 'Backpack'
+    elif name.startswith('phone'):
+        return 'Cell Phone'
+    elif name.startswith('helmet'):
+        return 'Helmet'
+    elif name.startswith('rope'):
+        return 'Rope'                        
 
 def IsRobotKey(key):
     return key_handling.split_pg_key(key)[0] in 'abcdef'
@@ -229,20 +252,26 @@ def RosTimeToSecs(stamp_rospy):
     return stamp_rospy.to_sec()
 
 
-def PerformAnalysis(abspath, pg_file, artifact_file, artifacts_gt_file, robot_namespace, fid_cal_data):
+def PerformAnalysis(abspath, sim_world_path, pg_file, artifact_file, artifacts_gt_file, robot_namespace, fid_cal_data, sim_world_file):
 
     nodes = ReadPoseGraphFromBagfile(abspath + pg_file, robot_namespace)
     artifacts = ReadArtifactsFromBagfile(abspath + artifact_file, robot_namespace)
 
     artifacts_world = Analyze(nodes, artifacts, abspath + fid_cal_file)
-    with open(abspath + artifacts_gt_file, 'r') as f:
-        data = yaml.safe_load(f)
+
+    # get GT from world file
+    with open(sim_world_path + sim_world_file, 'r') as f:
+        data = xmltodict.parse(f)
         artifacts_gt = []
-        for label, coords in data.iteritems():
-            new_artifact = Artifact()
-            print coords
-            new_artifact.InitFromLabelXYZ(label, coords[0], coords[1], coords[2])
-            artifacts_gt.append(new_artifact)
+        objects = json.loads(json.dumps(data))['sdf']['world']['include']
+        for x in objects: 
+            if 'name' in x:
+                if IsArtifact(x['name']):
+                    new_artifact = Artifact()
+                    label = ArtifactLabelFromName(name.encode('ascii'))
+                    coords = [float(c) for c in x['pose'].encode('ascii').split(' ')[0:3]]
+                    new_artifact.InitFromLabelXYZ(label, coords[0], coords[1], coords[2])
+                    artifacts_gt.append(new_artifact)                
 
     PlotPoseGraphs2D(nodes, artifacts_world, artifacts_gt)
 
@@ -253,10 +282,12 @@ def PerformAnalysis(abspath, pg_file, artifact_file, artifacts_gt_file, robot_na
 if __name__ == '__main__':
 
     abspath = '/data/ros/april-milestone-r3/'
+    sim_world_path = '/home/costar/Projects/husky_ws/src/husky_sim/simulation_world/subt_custom_gazebo/worlds/'
     pg_file = 'rosbag/husky1_lamp_2020-04-30-21-25-40_0.bag'
     robot_namespace = 'husky1'
     artifact_file = 'rosbag/artifacts.bag'
     artifact_gt_file = 'artifact_gt.yaml'
     fid_cal_file = robot_namespace + '_rosparam.yaml'
+    sim_world_file = 'simple_cave_02.world'
 
-    PerformAnalysis(abspath, pg_file, artifact_file, artifact_gt_file, robot_namespace, fid_cal_file)
+    PerformAnalysis(abspath, sim_world_path, pg_file, artifact_file, artifact_gt_file, robot_namespace, fid_cal_file, sim_world_file)
