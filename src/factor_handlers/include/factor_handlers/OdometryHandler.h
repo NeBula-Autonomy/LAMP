@@ -123,12 +123,14 @@ protected:
   bool GetPoseAtTime(const ros::Time stamp,
                      const OdomPoseBuffer& odom_buffer,
                      PoseCovStamped& output) const;
-  bool GetPosesAtTimes(const ros::Time t1,
-                       const ros::Time t2,
-                       const OdomPoseBuffer& odom_buffer,
-                       PoseCovStampedPair& output_poses, 
-                       const int odom_buffer_id) const;
-  gtsam::Pose3 GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const;        
+  bool GetTransformBetweenTimes(const ros::Time t1,
+                                const ros::Time t2,
+                                const OdomPoseBuffer& odom_buffer,
+                                gtsam::Pose3* transform,
+                                gtsam::SharedNoiseModel* covariance,
+                                const int odom_buffer_id) const;
+  gtsam::Pose3 GetTransform(
+      const PoseCovStampedPair pose_cov_stamped_pair) const;
   gtsam::SharedNoiseModel GetCovariance(const PoseCovStampedPair pose_cov_stamped_pair) const; 
   bool GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const;
 

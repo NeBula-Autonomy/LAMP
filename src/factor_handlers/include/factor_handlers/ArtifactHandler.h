@@ -7,7 +7,7 @@
 
 // For common datastructures
 #include "utils/CommonStructs.h"
-#include <core_msgs/Artifact.h>
+#include <artifact_msgs/Artifact.h>
 #include <tf2_ros/transform_listener.h>
 #include <utils/PrefixHandling.h>
 
@@ -23,7 +23,8 @@ struct ArtifactInfo {
   std::string id;                       // this corresponds to parent_id
   int num_updates;                      // how many times the optimizer has updated this
   gtsam::Point3 global_position;        // Global pose of the artifact
-  core_msgs::Artifact msg;              // All fields in the artifact message that we need
+  artifact_msgs::Artifact
+      msg; // All fields in the artifact message that we need
   ArtifactInfo(std::string art_id = "")
     : id(art_id), num_updates(0), global_position(gtsam::Point3()) {}
 };
@@ -144,14 +145,13 @@ class ArtifactHandler : public LampDataHandlerBase {
      * Not sure how necessary this is ????
      * Returns Transform
      */
-    Eigen::Vector3d ComputeTransform(const core_msgs::Artifact& msg) const;
-
+    Eigen::Vector3d ComputeTransform(const artifact_msgs::Artifact& msg) const;
 
     /*! \brief  Callback for Artifacts.
      * Returns  Void
      */
-    void ArtifactCallback(const core_msgs::Artifact& msg);
-    
+    void ArtifactCallback(const artifact_msgs::Artifact& msg);
+
     /*! \brief  Create publisher for the artifacts.
      * Returns  Void
      */
@@ -160,7 +160,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Print Artifact input message for debugging
      * Returns  Void
      */
-    void PrintArtifactInputMessage(const core_msgs::Artifact& msg) const;
+    void PrintArtifactInputMessage(const artifact_msgs::Artifact& msg) const;
 
     /*! \brief  Extracts covariance from artifact message and converts to gtsam::SharedNoiseModel
      * Returns  gtsam::SharedNoiseModel
@@ -186,7 +186,8 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Stores/Updated artifactInfo Hash
      * Returns  Void
      */
-    void StoreArtifactInfo(const gtsam::Symbol artifact_key, const core_msgs::Artifact& msg);
+    void StoreArtifactInfo(const gtsam::Symbol artifact_key,
+                           const artifact_msgs::Artifact& msg);
 
     // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
     // from the pose graph

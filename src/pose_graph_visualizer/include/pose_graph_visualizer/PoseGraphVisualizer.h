@@ -21,7 +21,7 @@
 
 #include <visualization_msgs/Marker.h>
 
-#include <core_msgs/Artifact.h>
+#include <artifact_msgs/Artifact.h>
 
 #include <pcl_ros/point_cloud.h>
 
@@ -75,7 +75,7 @@ public:
   // Artifacts and labels.
   struct ArtifactInfo {
     // gtsam::Key pose_key;
-    core_msgs::Artifact msg;
+    artifact_msgs::Artifact msg;
   };
 
   void VisualizeSingleRealisticArtifact(visualization_msgs::Marker& m,
@@ -99,7 +99,7 @@ private:
   PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr& msg);
   void
   PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr& msg);
-  void ArtifactCallback(const core_msgs::Artifact& msg);
+  void ArtifactCallback(const artifact_msgs::Artifact& msg);
   void IgnoreArtifactCallback(const std_msgs::String::ConstPtr& msg);
   void ReviveArtifactCallback(const std_msgs::String::ConstPtr& msg);
 
