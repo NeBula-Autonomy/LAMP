@@ -78,7 +78,7 @@ robot:
   
   harris3D:
     # Set the threshold value to filter out weak corners. This is only evaluated if non maxima suppression is turned on.
-    harris_threshold_: 0.000000005
+    harris_threshold: 0.000000005
 
     # Whether non maxima suppression should be applied or the response for each point should be returned
     harris_suppression: true
@@ -174,7 +174,7 @@ base:
   
   harris3D:
     # Set the threshold value to filter out weak corners. This is only evaluated if non maxima suppression is turned on.
-    harris_threshold_: 0.000000005
+    harris_threshold: 0.000000005
 
     # Whether non maxima suppression should be applied or the response for each point should be returned
     harris_suppression: true

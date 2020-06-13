@@ -89,7 +89,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold", sac_fitness_score_threshold_)) return false;
 
   // Load Harris parameters
-  if (!pu::Get(param_ns_ + "/harris3D/harris_threshold_", harris_threshold_))
+  if (!pu::Get(param_ns_ + "/harris3D/harris_threshold", harris_threshold_))
     return false;
   if (!pu::Get(param_ns_ + "/harris3D/harris_suppression", harris_suppression_))
     return false;
