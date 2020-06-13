@@ -9,7 +9,7 @@ b_use_fixed_covariances: true
 use_artifact_loop_closure: false
 
 # Flag for whether of not to use uwb data for range-based loop closure
-b_use_uwb: false
+b_use_uwb: true
 
 # Flag for whether of not to use imu data for roll and pitch constraints
 b_add_imu_factors: false

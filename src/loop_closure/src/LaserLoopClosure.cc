@@ -14,7 +14,6 @@ Lidar pointcloud based loop closure
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/keypoints/harris_3d.h>
-#include <pcl/point_representation.h>
 #include <pcl/registration/ia_ransac.h>
 #include <pcl_conversions/pcl_conversions.h>
 
