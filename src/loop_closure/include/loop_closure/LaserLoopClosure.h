@@ -47,6 +47,9 @@ private:
   void ComputeNormals(
       PointCloud::ConstPtr input,
       Normals::Ptr normals);
+  void ComputeKeypoints(PointCloud::ConstPtr source,
+                        Normals::Ptr source_normals,
+                        PointCloud::Ptr source_keypoints);
   void ComputeFeatures(PointCloud::ConstPtr keypoints,
                        PointCloud::ConstPtr input,
                        Normals::Ptr normals,
@@ -156,21 +159,6 @@ private:
   double gt_rot_sigma_;
   double gt_trans_sigma_;
   double gt_prior_covar_;
-
-  std::ofstream stats_;
-  int total_closures_;
-  double aligning_time_;
-  double sac_time;
-  int align_count;
-  int sac_count;
-  double normal_time;
-  double feature_time;
-  double sac_align_time;
-  double harris_time;
-  double compute_time;
-
-  pcl::PointCloud<pcl::PointXYZI>::Ptr source_key;
-  pcl::PointCloud<pcl::PointXYZI>::Ptr target_key;
 
   PointCloudFilter filter_;
 
