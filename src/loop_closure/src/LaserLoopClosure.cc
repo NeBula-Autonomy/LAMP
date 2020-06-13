@@ -234,9 +234,7 @@ void LaserLoopClosure::GetInitialAlignment(
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
-
   PointCloud::Ptr target_keypoints(new PointCloud);
-
   ComputeKeypoints(source, source_normals, source_keypoints);
   ComputeKeypoints(target, target_normals, target_keypoints);
 
