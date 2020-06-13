@@ -92,7 +92,7 @@ bool PoseGraph::Save(const std::string& zipFilename) const {
 
   int i = 0;
   for (const auto& entry : keyed_scans) {
-    keys_file << entry.first << ",";
+    keys_file << gtsam::Key(entry.first) << ",";
     // save point cloud as binary PCD file
     const std::string pcd_filename = path + "/pc_" + std::to_string(i) + ".pcd";
     pcl::io::savePCDFile(pcd_filename, *entry.second, true);
