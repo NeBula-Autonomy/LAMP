@@ -1,7 +1,7 @@
 /*
 LampPgo.h
 Author: Yun Chang
-Interface for ROS and KimeraRPGO
+Interface for ROS and kimera_rpgo
 */
 
 #ifndef LAMP_PGO_H_
@@ -20,7 +20,7 @@ Interface for ROS and KimeraRPGO
 
 #include <utils/PrefixHandling.h>
 
-#include "KimeraRPGO/RobustSolver.h"
+#include "kimera_rpgo/RobustSolver.h"
 
 class LampPgo {
  public:
@@ -69,8 +69,8 @@ class LampPgo {
 
  private:
   // Optimizer parameters
-  KimeraRPGO::RobustSolverParams rpgo_params_;
-  std::unique_ptr<KimeraRPGO::RobustSolver> pgo_solver_;  // actual solver
+  kimera_rpgo::RobustSolverParams rpgo_params_;
+  std::unique_ptr<kimera_rpgo::RobustSolver> pgo_solver_;  // actual solver
 
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
