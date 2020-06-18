@@ -78,7 +78,10 @@ private:
           bool b_use_prior,
           gtsam::Pose3 prior,
           std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
-
+  bool ComputeICPCovariance(const PointCloud& pointCloud,
+                            const Eigen::Matrix4f& T,
+                            const double& icp_fitness,
+                            Eigen::Matrix<double, 6, 6>& covariance);
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
   void SeedCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
@@ -155,6 +158,7 @@ private:
 
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
+  bool b_use_fixed_covariances_;
 
   double gt_rot_sigma_;
   double gt_trans_sigma_;

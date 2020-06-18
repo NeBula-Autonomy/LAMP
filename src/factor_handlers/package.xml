@@ -25,6 +25,7 @@
   <build_depend>nav_msgs</build_depend>
   <build_depend>tf_conversions</build_depend>
   <build_depend>eigen_conversions</build_depend>
+  <build_depend>artifact_msgs</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>message_runtime</run_depend>
@@ -40,6 +41,7 @@
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>eigen_conversions</run_depend>
+  <run_depend>artifact_msgs</run_depend>
 
   <test_depend>rostest</test_depend>
   <test_depend>rosunit</test_depend>  
