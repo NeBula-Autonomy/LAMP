@@ -13,6 +13,7 @@ Lidar pointcloud based loop closure
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/keypoints/harris_3d.h>
 #include <pcl/registration/ia_ransac.h>
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -86,7 +87,19 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/features_radius", sac_features_radius_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold", sac_fitness_score_threshold_)) return false;
-  
+
+  // Load Harris parameters
+  if (!pu::Get(param_ns_ + "/harris3D/harris_threshold", harris_threshold_))
+    return false;
+  if (!pu::Get(param_ns_ + "/harris3D/harris_suppression", harris_suppression_))
+    return false;
+  if (!pu::Get(param_ns_ + "/harris3D/harris_radius", harris_radius_))
+    return false;
+  if (!pu::Get(param_ns_ + "/harris3D/harris_refine", harris_refine_))
+    return false;
+  if (!pu::Get(param_ns_ + "/harris3D/harris_response", harris_response_))
+    return false;
+
   // Hard coded covariances
   if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
     return false;
@@ -173,14 +186,34 @@ void LaserLoopClosure::ComputeNormals(
   norm_est.compute(*normals);
 }
 
-void LaserLoopClosure::ComputeFeatures(
-    PointCloud::ConstPtr input,
-    Normals::Ptr normals,
-    Features::Ptr features) {
+void LaserLoopClosure::ComputeKeypoints(PointCloud::ConstPtr source,
+                                        Normals::Ptr source_normals,
+                                        PointCloud::Ptr source_keypoints) {
+  pcl::HarrisKeypoint3D<pcl::PointXYZI, pcl::PointXYZI> harris_detector;
+
+  harris_detector.setNonMaxSupression(harris_suppression_);
+  harris_detector.setRefine(harris_refine_);
+  harris_detector.setInputCloud(source);
+  harris_detector.setNormals(source_normals);
+  harris_detector.setNumberOfThreads(icp_threads_);
+  harris_detector.setRadius(harris_radius_);
+  harris_detector.setThreshold(harris_threshold_);
+  harris_detector.setMethod(
+      static_cast<pcl::HarrisKeypoint3D<pcl::PointXYZI,
+                                        pcl::PointXYZI>::ResponseMethod>(
+          harris_response_));
+  harris_detector.compute(*source_keypoints);
+}
+
+void LaserLoopClosure::ComputeFeatures(PointCloud::ConstPtr keypoints,
+                                       PointCloud::ConstPtr input,
+                                       Normals::Ptr normals,
+                                       Features::Ptr features) {
   pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(new pcl::search::KdTree<pcl::PointXYZI>);
   pcl::FPFHEstimationOMP<pcl::PointXYZI, pcl::Normal, pcl::FPFHSignature33>
       fpfh_est;
-  fpfh_est.setInputCloud(input);
+  fpfh_est.setInputCloud(keypoints);
+  fpfh_est.setSearchSurface(input);
   fpfh_est.setInputNormals(normals);
   fpfh_est.setSearchMethod(search_method);
   fpfh_est.setRadiusSearch(sac_features_radius_);
@@ -199,18 +232,23 @@ void LaserLoopClosure::GetInitialAlignment(
   ComputeNormals(source, source_normals);
   ComputeNormals(target, target_normals);
 
-  // Get Features
+  // Get Harris keypoints for source and target
+  PointCloud::Ptr source_keypoints(new PointCloud);
+  PointCloud::Ptr target_keypoints(new PointCloud);
+  ComputeKeypoints(source, source_normals, source_keypoints);
+  ComputeKeypoints(target, target_normals, target_keypoints);
+
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
-  ComputeFeatures(source, source_normals, source_features);
-  ComputeFeatures(target, target_normals, target_features);
+  ComputeFeatures(source_keypoints, source, source_normals, source_features);
+  ComputeFeatures(target_keypoints, target, target_normals, target_features);
 
   // Align
   pcl::SampleConsensusInitialAlignment<pcl::PointXYZI, pcl::PointXYZI, pcl::FPFHSignature33> sac_ia;
   sac_ia.setMaximumIterations(sac_iterations_);
-  sac_ia.setInputSource(source);
+  sac_ia.setInputSource(source_keypoints);
   sac_ia.setSourceFeatures(source_features);
-  sac_ia.setInputTarget(target);
+  sac_ia.setInputTarget(target_keypoints);
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
   sac_ia.align(*aligned_output);
@@ -765,12 +803,13 @@ bool LaserLoopClosure::ComputeICPCovariance(
   eigensolver.compute(covariance);
   Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
   Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
+  double lower_bound = 0;     // Should be positive semidef
+  double upper_bound = 10000;
   if (eigen_values.size() < 6) {
+    covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
     ROS_ERROR("Failed to find eigen values when computing icp covariance");
     return false;
   }
-  double lower_bound = 0;     // Should be positive semidef
-  double upper_bound = 1000;  // Arbitrary upper bound TODO (Yun) make param
   for (size_t i = 0; i < eigen_values.size(); i++) {
     if (eigen_values(i) < lower_bound) eigen_values(i) = lower_bound;
     if (eigen_values(i) > upper_bound) eigen_values(i) = upper_bound;
