@@ -104,10 +104,7 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
 
   // Switch on/off flag for IMU
   if (!pu::Get("b_add_imu_factors", b_add_imu_factors_))
-    return false;
-  if (!pu::Get("imu_factors_per_opt", imu_factors_per_opt_))
-    return false;
-    
+    return false;    
 
   // Load frame ids.
   if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
@@ -339,7 +336,7 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
     return false;
   }
 
-  if (!imu_handler_.Initialize(n)) {
+  if (!stationary_handler_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize the imu handler.", name_.c_str());
     return false;
   }
@@ -374,8 +371,14 @@ bool LampRobot::CheckHandlers() {
   // Check for april tags
   b_have_new_april_tags = ProcessAprilTagData(april_tag_handler_.GetData());
   // Check for UWB data
-  if (b_use_uwb_)
-    b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
+  if (b_use_uwb_) b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
+
+  if (b_add_imu_factors_ && stationary_handler_.has_data_) {
+    // Force new odometry node
+    ProcessOdomData(odometry_handler_.GetData(false));
+    stationary_handler_.SetKeyForImuAttitude(pose_graph_.key);
+    ProcessStationaryData(stationary_handler_.GetData());
+  }
   return true;
 }
 
@@ -559,12 +562,6 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     int type = pose_graph_msgs::PoseGraphEdge::ODOM;
     pose_graph_.TrackFactor(prev_key, current_key, type, transform, covariance);
 
-    if (b_add_imu_factors_){
-      imu_handler_.SetTimeForImuAttitude(times.second);
-      imu_handler_.SetKeyForImuAttitude(current_key);
-      ProcessImuData(imu_handler_.GetData());
-    }
-
     // Get keyed scan from odom handler
     PointCloud::Ptr new_scan(new PointCloud);
 
@@ -663,17 +660,16 @@ void LampRobot::UpdateAndPublishOdom() {
 }
 
 /*!
-  \brief  Wrapper for the imu class interactions
-  Creates factors from the imu output - called when there is a new odom message
+  \brief  Wrapper for the stationary class interactions
+  Creates factors from the imu output - called when there the robot stops
   \param   data - the output data struct from the ImuHandler class
   \warning ...time sync
   \author Benjamin Morrell
   \date 22 Nov 2019
 */
-bool LampRobot::ProcessImuData(std::shared_ptr<FactorData> data) {
+bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
   // Extract odom data
-  std::shared_ptr<ImuData> imu_data =
-      std::dynamic_pointer_cast<ImuData>(data);
+  std::shared_ptr<ImuData> imu_data = std::dynamic_pointer_cast<ImuData>(data);
 
   // Check if there are new factors
   if (!imu_data->b_has_data) {
@@ -686,26 +682,19 @@ bool LampRobot::ProcessImuData(std::shared_ptr<FactorData> data) {
   meas.y = meas_unit.point3().y();
   meas.z = meas_unit.point3().z();
 
-  // gtsam::noiseModel::Isotropic noise = boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(imu_data->factors[0].attitude.noiseModel());
+  // gtsam::noiseModel::Isotropic noise =
+  // boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(imu_data->factors[0].attitude.noiseModel());
   double noise_sigma =
-        boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(
-            imu_data->factors[0].attitude.noiseModel())
-            ->sigma();
+      boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(
+          imu_data->factors[0].attitude.noiseModel())
+          ->sigma();
 
-  pose_graph_.TrackIMUFactor(imu_data->factors[0].attitude.front(),
-                               meas,
-                               noise_sigma,
-                               true);
+  pose_graph_.TrackIMUFactor(
+      imu_data->factors[0].attitude.front(), meas, noise_sigma, true);
 
   // Optimize every "imu_factors_per_opt"
-  imu_factor_count_++;
-
-  if (imu_factor_count_ % imu_factors_per_opt_ == 0){
-    b_run_optimization_ = true;
-  }
-
+  b_run_optimization_ = true;
   return true;
-
 }
 
 /*!
