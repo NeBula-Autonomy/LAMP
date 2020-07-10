@@ -33,10 +33,8 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampRobot::LampRobot() : 
-  is_artifact_initialized(false),
-  b_init_pg_pub_(false),
-  init_count_(0) {
+LampRobot::LampRobot()
+    : is_artifact_initialized(false), b_init_pg_pub_(false), init_count_(0) {
   b_run_optimization_ = false;
 }
 
@@ -87,43 +85,31 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
 
 bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Rates
-  if (!pu::Get("rate/update_rate", update_rate_))
-    return false;
-  if (!pu::Get("init_wait_time", init_wait_time_))
-    return false;
-  if (!pu::Get("repub_first_wait_time", repub_first_wait_time_))
-    return false;
-    
+  if (!pu::Get("rate/update_rate", update_rate_)) return false;
+  if (!pu::Get("init_wait_time", init_wait_time_)) return false;
+  if (!pu::Get("repub_first_wait_time", repub_first_wait_time_)) return false;
+
   // Settings for precisions
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
 
   // Switch on/off flag for UWB
-  if (!pu::Get("b_use_uwb", b_use_uwb_))
-    return false;
+  if (!pu::Get("b_use_uwb", b_use_uwb_)) return false;
 
   // Switch on/off flag for IMU
-  if (!pu::Get("b_add_imu_factors", b_add_imu_factors_))
-    return false;    
+  if (!pu::Get("b_add_imu_factors", b_add_imu_factors_)) return false;
 
   // Load frame ids.
-  if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
-    return false;
-  if (!pu::Get("frame_id/base", base_frame_id_))
-    return false;
+  if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id)) return false;
+  if (!pu::Get("frame_id/base", base_frame_id_)) return false;
 
-  if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
-    return false;
+  if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_)) return false;
 
-  if (!pu::Get("time_threshold", pose_graph_.time_threshold))
-    return false;
+  if (!pu::Get("time_threshold", pose_graph_.time_threshold)) return false;
   // Load filtering parameters.
-  if (!pu::Get("filtering/grid_filter", params_.grid_filter))
-    return false;
-  if (!pu::Get("filtering/grid_res", params_.grid_res))
-    return false;
-  if (!pu::Get("filtering/random_filter", params_.random_filter))
-    return false;
+  if (!pu::Get("filtering/grid_filter", params_.grid_filter)) return false;
+  if (!pu::Get("filtering/grid_res", params_.grid_res)) return false;
+  if (!pu::Get("filtering/random_filter", params_.random_filter)) return false;
   if (!pu::Get("filtering/decimate_percentage", params_.decimate_percentage))
     return false;
   // Cap to [0.0, 1.0].
@@ -170,7 +156,6 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   }
 
   b_has_new_factor_ = false;
-
 
   return true;
 }
@@ -263,18 +248,12 @@ bool LampRobot::SetInitialPosition() {
   // Load initial position and orientation noise.
   double sigma_x = 0.0, sigma_y = 0.0, sigma_z = 0.0;
   double sigma_roll = 0.0, sigma_pitch = 0.0, sigma_yaw = 0.0;
-  if (!pu::Get("init/position_sigma/x", sigma_x))
-    return false;
-  if (!pu::Get("init/position_sigma/y", sigma_y))
-    return false;
-  if (!pu::Get("init/position_sigma/z", sigma_z))
-    return false;
-  if (!pu::Get("init/orientation_sigma/roll", sigma_roll))
-    return false;
-  if (!pu::Get("init/orientation_sigma/pitch", sigma_pitch))
-    return false;
-  if (!pu::Get("init/orientation_sigma/yaw", sigma_yaw))
-    return false;
+  if (!pu::Get("init/position_sigma/x", sigma_x)) return false;
+  if (!pu::Get("init/position_sigma/y", sigma_y)) return false;
+  if (!pu::Get("init/position_sigma/z", sigma_z)) return false;
+  if (!pu::Get("init/orientation_sigma/roll", sigma_roll)) return false;
+  if (!pu::Get("init/orientation_sigma/pitch", sigma_pitch)) return false;
+  if (!pu::Get("init/orientation_sigma/yaw", sigma_yaw)) return false;
 
   // convert initial quaternion to Roll/Pitch/Yaw
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
@@ -306,7 +285,8 @@ bool LampRobot::SetInitialPosition() {
 }
 
 bool LampRobot::InitializeGraph(
-    gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
+    gtsam::Pose3& pose,
+    gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
   pose_graph_.Initialize(GetInitialKey(), pose, covariance);
 
   // // Publish the first pose
@@ -376,7 +356,7 @@ bool LampRobot::CheckHandlers() {
   if (b_add_imu_factors_ && stationary_handler_.has_data_) {
     // Force new odometry node
     ProcessOdomData(odometry_handler_.GetData(false));
-    stationary_handler_.SetKeyForImuAttitude(pose_graph_.key);
+    stationary_handler_.SetKeyForImuAttitude(pose_graph_.key - 1);
     ProcessStationaryData(stationary_handler_.GetData());
   }
   return true;
@@ -387,16 +367,16 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // ROS_INFO_STREAM("Checking for new data");
 
   // Publish initial node again if we haven't moved in 5s
-  if (!b_have_received_first_pg_){
+  if (!b_have_received_first_pg_) {
     init_count_++;
-    if (!b_init_pg_pub_){
-      if ((float)init_count_/update_rate_ > init_wait_time_){
+    if (!b_init_pg_pub_) {
+      if ((float)init_count_ / update_rate_ > init_wait_time_) {
         // Publish the pose graph
         PublishPoseGraph(true);
 
         // Get a keyed scan
         PointCloud::Ptr new_scan(new PointCloud);
-        if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan)){
+        if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan)) {
           AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
         } else {
           ROS_WARN("No point clouds from Odom Handler during init in lamp");
@@ -405,20 +385,21 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
         b_init_pg_pub_ = true;
       }
     }
-    if (init_count_ % 100 == 0){
+    if (init_count_ % 100 == 0) {
       // Republish every 5 seconds (with 20 hz rate)
       PublishPoseGraph(true);
-      
+
       // Publish first point cloud
       PointCloud::Ptr new_scan(new PointCloud);
-      if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan)){
+      if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan)) {
         AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
       } else {
         ROS_WARN("No point clouds from Odom Handler during init in lamp");
       }
     }
-    if ((float)init_count_/update_rate_ > repub_first_wait_time_){
-      // Placeholder to move to incremental publishing - TODO - trigger on callback from the base station
+    if ((float)init_count_ / update_rate_ > repub_first_wait_time_) {
+      // Placeholder to move to incremental publishing - TODO - trigger on
+      // callback from the base station
       b_have_received_first_pg_ = true;
     }
   }
@@ -438,8 +419,12 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     mapper_.PublishMap();
 
     b_has_new_factor_ = false;
-    if (!b_init_pg_pub_) {b_init_pg_pub_ = true;}
-    if (!b_have_received_first_pg_) {b_have_received_first_pg_ = true;}
+    if (!b_init_pg_pub_) {
+      b_init_pg_pub_ = true;
+    }
+    if (!b_have_received_first_pg_) {
+      b_have_received_first_pg_ = true;
+    }
   }
 
   // Start optimize, if needed
@@ -485,8 +470,8 @@ void LampRobot::UpdateArtifactPositions() {
         pose_graph_.GetPose(artifact_key).translation();
 
     // Update global pose just for what has changed. returns bool
-    result = result ||
-        artifact_handler_.UpdateGlobalPosition(artifact_key, artifact_position);
+    result = result || artifact_handler_.UpdateGlobalPosition(
+                           artifact_key, artifact_position);
   }
 }
 
@@ -521,7 +506,7 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     // Get the transforms - odom transforms
     Pose3 transform = odom_factor.transform;
     gtsam::SharedNoiseModel covariance =
-        odom_factor.covariance; // TODO - check format
+        odom_factor.covariance;  // TODO - check format
 
     if (b_use_fixed_covariances_) {
       covariance = SetFixedNoiseModels("odom");
@@ -541,12 +526,14 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
 
     // Compute the new value with a normalized transform
     Pose3 last_pose = pose_graph_.GetPose(prev_key);
-    ROS_INFO_STREAM("Last pose det: " << last_pose.rotation().matrix().determinant());
+    ROS_INFO_STREAM(
+        "Last pose det: " << last_pose.rotation().matrix().determinant());
     Eigen::Quaterniond quat(last_pose.rotation().matrix());
     quat = quat.normalized();
-    last_pose = Pose3(gtsam::Rot3(quat.toRotationMatrix()), last_pose.translation());
-    ROS_INFO_STREAM("Last pose det after: " << last_pose.rotation().matrix().determinant());
-
+    last_pose =
+        Pose3(gtsam::Rot3(quat.toRotationMatrix()), last_pose.translation());
+    ROS_INFO_STREAM(
+        "Last pose det after: " << last_pose.rotation().matrix().determinant());
 
     // Add values to graph so have it for adding map TODO - use unit covariance
     pose_graph_.TrackNode(
@@ -555,7 +542,7 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     // add  node/keyframe to keyed stamps
     pose_graph_.InsertKeyedStamp(
         current_key,
-        times.second); // TODO - check - can remove as duplicates TrackNode
+        times.second);  // TODO - check - can remove as duplicates TrackNode
     pose_graph_.InsertStampedOdomKey(times.second.toSec(), current_key);
 
     // Track the edges that have been added
@@ -569,25 +556,25 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
       // Store the keyed scan and add it to the map
       // Copy input scan.
       new_scan = odom_factor.point_cloud;
-      
-      if (!new_scan->points.empty() && new_scan != NULL || new_scan->size() != 0){
 
+      if (!new_scan->points.empty() && new_scan != NULL ||
+          new_scan->size() != 0) {
         // Add to keyed scans and publish
         AddKeyedScanAndPublish(new_scan, current_key);
       } else {
         ROS_WARN("No valid point cloud with odom factor in Lamp");
       }
-      
     }
   }
 
   return true;
 }
 
-void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan, gtsam::Symbol current_key){
+void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
+                                       gtsam::Symbol current_key) {
   // Filter and publish scan
-  const int n_points = static_cast<int>(
-      (1.0 - params_.decimate_percentage) * new_scan->size());
+  const int n_points =
+      static_cast<int>((1.0 - params_.decimate_percentage) * new_scan->size());
 
   // // Apply random downsampling to the keyed scan
   pcl::RandomSample<pcl::PointXYZI> random_filter;
@@ -619,7 +606,7 @@ void LampRobot::UpdateAndPublishOdom() {
   Pose3 last_pose = pose_graph_.LastPose();
 
   // Get the delta from the last pose to now
-  ros::Time stamp; // = ros::Time::now();
+  ros::Time stamp;  // = ros::Time::now();
   GtsamPosCov delta_pose_cov;
   // if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
   // Had a bad odom return - try latest time from odometry_handler
@@ -760,8 +747,9 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
         timestamp, temp_transform, transform, global_pose, pose_key);
 
     if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
-      ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
-                "BE HANDLED OR LOSE ARTIFACTS!!");
+      ROS_ERROR(
+          "Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
+          "BE HANDLED OR LOSE ARTIFACTS!!");
       b_has_new_factor_ = false;
       // Clean Artifact handler so that these set of
       // factors are removed from history
@@ -884,8 +872,9 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
         timestamp, temp_transform, transform, global_pose, pose_key);
 
     if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
-      ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
-                "BE HANDLED OR LOSE APRIL TAG!!");
+      ROS_ERROR(
+          "Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
+          "BE HANDLED OR LOSE APRIL TAG!!");
       b_has_new_factor_ = false;
 
       // Clean all the new factors
@@ -953,14 +942,14 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
 */
 bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   std::shared_ptr<UwbData> uwb_data = std::dynamic_pointer_cast<UwbData>(data);
-  if (!uwb_data->b_has_data)
-    return false;
+  if (!uwb_data->b_has_data) return false;
   // New Factors to be added
   NonlinearFactorGraph new_factors;
-  Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
+  Pose3 global_uwb_pose;  // TODO: How to initialize the pose of UWB node?
 
   ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
-  ROS_INFO_STREAM("Number of UWB factors to be added : " << uwb_data->factors.size());
+  ROS_INFO_STREAM(
+      "Number of UWB factors to be added : " << uwb_data->factors.size());
 
   for (auto factor : uwb_data->factors) {
     auto odom_key = factor.key_from;
@@ -969,7 +958,8 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
     // Check if it is a new uwb id or not
     auto values = pose_graph_.GetValues();
 
-    if (!values.exists(uwb_key) && factor.type != pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+    if (!values.exists(uwb_key) &&
+        factor.type != pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
       // Insert it into the values
       global_uwb_pose = pose_graph_.GetPose(odom_key);
       // Add it into the keyed stamps
@@ -1000,15 +990,15 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       uwb_factor.range_error = uwb_range_sigma_;
       // Add new factors to buffer to send to pgo
       pose_graph_.TrackFactor(uwb_factor);
-    }
-    else if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
+    } else if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
       ROS_INFO("Adding a UWB between factor");
       auto odom_pose = pose_graph_.GetPose(odom_key);
       auto dropped_relative_trans = factor.pose.translation();
 
       auto rotation_matrix = odom_pose.rotation();
       dropped_relative_trans = rotation_matrix * dropped_relative_trans;
-      auto dropped_relative_pose = gtsam::Pose3(gtsam::Rot3(), dropped_relative_trans);
+      auto dropped_relative_pose =
+          gtsam::Pose3(gtsam::Rot3(), dropped_relative_trans);
 
       dropped_relative_pose.print("dropped_relative_pose");
       auto global_uwb_pose = odom_pose.compose(dropped_relative_pose);
@@ -1016,19 +1006,15 @@ bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
       sigmas.head<3>().setConstant(uwb_between_rot_sigma_);
       sigmas.tail<3>().setConstant(uwb_between_trans_sigma_);
       auto noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
-      pose_graph_.TrackNode(
-          factor.stamp, uwb_key, global_uwb_pose, noise);
+      pose_graph_.TrackNode(factor.stamp, uwb_key, global_uwb_pose, noise);
       // Add new factors to buffer to send to pgo
-      pose_graph_.TrackFactor(
-        odom_key,
-        uwb_key,
-        pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN,
-        dropped_relative_pose,
-        noise,
-        true
-      );
+      pose_graph_.TrackFactor(odom_key,
+                              uwb_key,
+                              pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN,
+                              dropped_relative_pose,
+                              noise,
+                              true);
     }
-    
   }
   b_run_optimization_ = true;
   uwb_handler_.ResetFactorData();
@@ -1069,8 +1055,9 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
       odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
 
   if (!delta_pose_cov.b_has_value) {
-    ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
-              "WELL HANDLED YET-----------");
+    ROS_ERROR(
+        "----------Could not get delta between times - THIS CASE IS NOT "
+        "WELL HANDLED YET-----------");
     key_from = utils::GTSAM_ERROR_SYMBOL;
     return;
   }
