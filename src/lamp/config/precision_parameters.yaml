@@ -40,3 +40,6 @@ uwb_between_trans_sigma: 2.0
 
 # Noise parameters for unit vectors in attitude
 noise_sigma_imu: 0.3
+
+# Noise parameters for stationary imu factor 
+stationary_noise_sigma: 0.3

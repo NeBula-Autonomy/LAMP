@@ -40,6 +40,7 @@
 
       <remap from="~uwb_factors" to="uwb_frontend/uwb_factors"/>
       <remap from="~imu_topic" to="vn100/imu_wori_wcov"/>
+      <remap from="~stationary_topic" to="stationary_accel"/>
 
       <!-- LAMP settings -->
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
