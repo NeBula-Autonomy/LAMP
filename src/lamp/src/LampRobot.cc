@@ -664,10 +664,14 @@ bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
   }
 
   Unit3 meas_unit = imu_data->factors[0].attitude.nZ();
-  geometry_msgs::Point meas;
+  Unit3 ref_unit = imu_data->factors[0].attitude.bRef();
+  geometry_msgs::Point meas, ref;
   meas.x = meas_unit.point3().x();
   meas.y = meas_unit.point3().y();
   meas.z = meas_unit.point3().z();
+  ref.x = ref_unit.point3().x();
+  ref.y = ref_unit.point3().y();
+  ref.z = ref_unit.point3().z();
 
   // gtsam::noiseModel::Isotropic noise =
   // boost::dynamic_pointer_cast<gtsam::noiseModel::Isotropic>(imu_data->factors[0].attitude.noiseModel());
@@ -677,7 +681,7 @@ bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
           ->sigma();
 
   pose_graph_.TrackIMUFactor(
-      imu_data->factors[0].attitude.front(), meas, noise_sigma, true);
+      imu_data->factors[0].attitude.front(), meas, ref, noise_sigma, true);
 
   // Optimize every "imu_factors_per_opt"
   b_run_optimization_ = true;

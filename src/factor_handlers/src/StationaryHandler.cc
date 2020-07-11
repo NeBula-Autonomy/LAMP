@@ -10,7 +10,8 @@ namespace pu = parameter_utils;
 // Constructor and Destructor
 // -------------------------------------------------------------
 
-StationaryHandler::StationaryHandler() : currently_stationary_(true), has_data_(false) {
+StationaryHandler::StationaryHandler()
+    : currently_stationary_(true), has_data_(false) {
   ROS_INFO("StationaryHandler Class Constructor");
 }
 

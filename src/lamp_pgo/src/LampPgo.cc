@@ -225,6 +225,7 @@ void LampPgo::InputCallback(
   }
 
   // Run the optimizer
+  new_factors.print("new_factors");
   pgo_solver_->update(new_factors, new_values);
 
   // Extract the optimized values
