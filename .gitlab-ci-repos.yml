@@ -7,3 +7,8 @@ repositories:
     type: git
     url: https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_lo_frontend.git
     version: develop
+  localizer_zero_velocity_detector:
+    type: git 
+    url: https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_zero_velocity_detector.git
+    version: develop
+
