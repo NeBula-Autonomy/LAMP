@@ -12,7 +12,7 @@ use_artifact_loop_closure: false
 b_use_uwb: true
 
 # Flag for whether of not to use imu data for roll and pitch constraints
-b_add_imu_factors: false
+b_add_imu_factors: true
 imu_factors_per_opt: 1
 
 # Artifacts in global frame

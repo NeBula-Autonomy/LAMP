@@ -38,8 +38,11 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
                              msg.range_error,
                              false);
   } else if (msg.type == pose_graph_msgs::PoseGraphEdge::IMU) {
+    geometry_msgs::Point ref;
+    ref.z = 1;
     success = TrackIMUFactor(gtsam::Symbol(msg.key_to),
                             msg.pose.position,
+                            ref,
                             msg.covariance[0],
                             false);
   } else {
@@ -169,16 +172,17 @@ bool PoseGraph::TrackUWBFactor(gtsam::Symbol key_from,
 
 bool PoseGraph::TrackIMUFactor(gtsam::Symbol key_to,
                                geometry_msgs::Point meas,
+                               geometry_msgs::Point ref,
                                double att_noise,
                                bool create_msg) {
   gtsam::noiseModel::Base::shared_ptr noise =
       gtsam::noiseModel::Isotropic::Sigma(2, att_noise);
   
   ROS_INFO_STREAM("TrackIMUFactor - CreateAttitudeFactor for key " << gtsam::DefaultKeyFormatter(key_to));
-  gtsam::Unit3 ref(0, 0, -1); 
+  gtsam::Unit3 ref_unit(ref.x, ref.y, ref.z); 
   gtsam::Unit3 meas_gt(meas.x, meas.y, meas.z);
   
-  gtsam::Pose3AttitudeFactor factor(key_to, meas_gt, noise, ref);
+  gtsam::Pose3AttitudeFactor factor(key_to, meas_gt, noise, ref_unit);
   
   if (create_msg) {
     auto msg = utils::GtsamToRosMsg(key_to,
