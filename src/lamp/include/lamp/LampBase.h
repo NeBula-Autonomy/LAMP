@@ -208,11 +208,6 @@ protected:
   
   double zero_noise_;
 
-  // Parameters
-  int imu_factors_per_opt_;
-  int imu_factor_count_;
-
-
 private:
   // Anything just in the base class
 
