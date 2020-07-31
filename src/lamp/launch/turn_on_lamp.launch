@@ -4,8 +4,8 @@
 
   <arg name="b_use_hero" default="true"/>
 
-  <arg if="$(arg b_use_hero)" name="odom_input_husky" value="hero/odometry"/>
-  <arg unless="$(arg b_use_hero)" name="odom_input_husky" value="lo_frontend/odometry"/>
+  <arg if="$(arg b_use_hero)" name="odom_input" value="hero/odometry"/>
+  <arg unless="$(arg b_use_hero)" name="odom_input" value="lo_frontend/odometry"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default="" /> 
@@ -24,11 +24,13 @@
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
       <!-- Topics -->
-      <!--<remap from="~pcld" to="combined_point_cloud_filtered"/>-->
-      <remap from="~pcld" to="velodyne_points/transformed"/>
+      <remap from="~pcld" to="combined_point_cloud_filtered" unless="$(eval robot_namespace.startswith('spot'))"/>
+      <remap from="~pcld" to="velodyne_points/transformed" if="$(eval robot_namespace.startswith('spot'))"/> 
+      <!-- <remap from="~pcld" to="velodyne_points/transformed"/> -->
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
-      <remap from="~lio_odom" to="lo_frontend/odometry"/>
+      <!-- <remap from="~lio_odom" to="lo_frontend/odometry"/> -->
       <!-- <remap from="~lio_odom" to="hero/lion/odom"/> -->
+      <remap from="~lio_odom" to="$(arg odom_input)"/>
       <!-- <remap from="~lio_odom" to="$(arg odom_input_husky)" unless="$(eval robot_namespace.startswith('spot'))"/> -->
       <!-- <remap from="~lio_odom" to="spot_frontend/odometry" if="$(eval robot_namespace.startswith('spot'))"/> -->
       <remap from="~vio_odom" to="visual_inertial_odometry_topic_currently_not_used"/>
