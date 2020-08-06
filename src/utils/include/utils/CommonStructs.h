@@ -234,6 +234,7 @@ public:
                       bool create_msg = true);
   bool TrackIMUFactor(gtsam::Symbol key_to,
                       geometry_msgs::Point meas,
+                      geometry_msgs::Point ref,
                       double att_noise,
                       bool create_msg = true);
 

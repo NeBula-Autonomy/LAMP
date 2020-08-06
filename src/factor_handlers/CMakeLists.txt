@@ -39,6 +39,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   eigen_conversions
   artifact_msgs
+  localizer_zero_velocity_detector
 )
 
 
@@ -59,6 +60,7 @@ catkin_package(
     geometry_msgs
     nav_msgs
     artifact_msgs
+    localizer_zero_velocity_detector
   DEPENDS
     Boost
 )
@@ -76,7 +78,18 @@ endif()
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
-add_library(${PROJECT_NAME} src/LampDataHandlerBase.cc src/OdometryHandler.cc src/ImuHandler.cc src/ArtifactHandler.cc src/ManualLoopClosureHandler.cc src/PoseGraphHandler.cc src/AprilTagHandler.cc src/UwbHandler.cc src/RobotPoseHandler.cc)
+add_library(${PROJECT_NAME} 
+  src/LampDataHandlerBase.cc 
+  src/OdometryHandler.cc 
+  src/ImuHandler.cc 
+  src/ArtifactHandler.cc 
+  src/ManualLoopClosureHandler.cc 
+  src/PoseGraphHandler.cc 
+  src/AprilTagHandler.cc 
+  src/UwbHandler.cc 
+  src/RobotPoseHandler.cc
+  src/StationaryHandler.cc
+)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}

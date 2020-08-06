@@ -69,8 +69,6 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("b_use_uwb", b_use_uwb_))
     return false;
-  if (!pu::Get("imu_factors_per_opt", imu_factors_per_opt_))
-    return false;
 
   // Names of all robots for base station to subscribe to
   if (!pu::Get("robot_names", robot_names_)) {
@@ -264,11 +262,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
       }
 
       if (e.type == pose_graph_msgs::PoseGraphEdge::IMU) {
-        imu_factor_count_++;
-        
-        if (imu_factor_count_ % imu_factors_per_opt_ == 0){
-          b_run_optimization_ = true;
-        }
+        b_run_optimization_ = true;
       }
     }
 

@@ -10,21 +10,22 @@
 // Includes
 #include <lamp/LampBase.h>
 
-#include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/AprilTagHandler.h>
-#include <factor_handlers/OdometryHandler.h>
-#include <factor_handlers/UwbHandler.h>
+#include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/ImuHandler.h>
+#include <factor_handlers/OdometryHandler.h>
+#include <factor_handlers/StationaryHandler.h>
+#include <factor_handlers/UwbHandler.h>
 
-#include <pcl_ros/point_cloud.h>
 #include <pcl/filters/filter.h>
 #include <pcl/filters/random_sample.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl_ros/point_cloud.h>
 // Services
 
 // Class Definition
 class LampRobot : public LampBase {
-public:
+ public:
   // Constructor
   LampRobot();
 
@@ -37,11 +38,9 @@ public:
   inline gtsam::Symbol GetInitialKey() const {
     return pose_graph_.initial_key;
   };
-  inline gtsam::Symbol GetCurrentKey() const {
-    return pose_graph_.key;
-  };
+  inline gtsam::Symbol GetCurrentKey() const { return pose_graph_.key; };
 
-protected:
+ protected:
   // instantiate all handlers that are being used in the derived classes
   virtual bool InitializeHandlers(const ros::NodeHandle& n);
 
@@ -49,7 +48,7 @@ protected:
   virtual bool LoadParameters(const ros::NodeHandle& n);
 
   // retrieve data from all handlers
-  virtual bool CheckHandlers(); // - inside timed callback
+  virtual bool CheckHandlers();  // - inside timed callback
   // TODO consider checking handlers at different frequencies
 
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -71,25 +70,27 @@ protected:
 
   // Flag for artifact initialization
   bool is_artifact_initialized;
-private:
+
+ private:
   // Overwrite base classs functions where needed
 
-    // Factor Hanlder Wrappers
-    bool ProcessOdomData(std::shared_ptr<FactorData> data);
-    // Process the artifact factors if any available
-    bool ProcessArtifactData(std::shared_ptr<FactorData> data);
-    // Process the uwb factors if any available
-    bool ProcessUwbData(std::shared_ptr<FactorData> data);
+  // Factor Hanlder Wrappers
+  bool ProcessOdomData(std::shared_ptr<FactorData> data);
+  // Process the artifact factors if any available
+  bool ProcessArtifactData(std::shared_ptr<FactorData> data);
+  // Process the uwb factors if any available
+  bool ProcessUwbData(std::shared_ptr<FactorData> data);
 
-    // Process IMU data when an odom node is created (if active)
-    bool ProcessImuData(std::shared_ptr<FactorData> data);
+  // Process Stationary data when robot stops
+  bool ProcessStationaryData(std::shared_ptr<FactorData> data);
 
-    bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
-    bool InitializeGraph(gtsam::Pose3& pose, 
-                         gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-    // Example use:
-    // ProcessArtifactData(artifact_handler_.GetData());
-    void AddKeyedScanAndPublish(PointCloud::Ptr new_scan, gtsam::Symbol current_key);
+  bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
+  bool InitializeGraph(gtsam::Pose3& pose,
+                       gtsam::noiseModel::Diagonal::shared_ptr& covariance);
+  // Example use:
+  // ProcessArtifactData(artifact_handler_.GetData());
+  void AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
+                              gtsam::Symbol current_key);
 
   void HandleRelativePoseMeasurement(const ros::Time& time,
                                      const gtsam::Pose3& relative_pose,
@@ -102,15 +103,11 @@ private:
                                gtsam::Pose3& pose_relative);
 
   // Data Handler classes
-  OdometryHandler odometry_handler_; 
+  OdometryHandler odometry_handler_;
   ArtifactHandler artifact_handler_;
   AprilTagHandler april_tag_handler_;
-  UwbHandler      uwb_handler_;
-  ImuHandler      imu_handler_;
-  // Manual LC
-  // IMU
-  // TS
-  // LoopClosure
+  UwbHandler uwb_handler_;
+  StationaryHandler stationary_handler_;
 
   // Add new functions as needed
 
@@ -130,7 +127,6 @@ private:
   // Test class fixtures
   friend class TestLampRobot;
   friend class TestLampRobotArtifact;
-
 
   struct Parameters {
     // Apply a voxel grid filter.

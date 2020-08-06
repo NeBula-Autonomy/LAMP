@@ -106,6 +106,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_))
     return false;
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
+    return false;
   if (!pu::Get("gt_rot_sigma", gt_rot_sigma_))
     return false;
   if (!pu::Get("gt_trans_sigma", gt_trans_sigma_))

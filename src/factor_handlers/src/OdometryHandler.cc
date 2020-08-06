@@ -276,7 +276,7 @@ bool OdometryHandler::GetOdomDeltaLatestTime(ros::Time& t_latest,
   return GetOdomDelta(t_latest, delta_pose);
 }
 
-std::shared_ptr<FactorData> OdometryHandler::GetData() {
+std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
   // Main interface with lamp for getting factor information
   std::shared_ptr<OdomData> output_data = std::make_shared<OdomData>(factors_);
   output_data->b_has_data = false;
@@ -291,9 +291,9 @@ std::shared_ptr<FactorData> OdometryHandler::GetData() {
   PointCloud::Ptr new_scan(new PointCloud);
   OdometryFactor new_odom;
 
-  if (CalculatePoseDelta(fused_odom_) > translation_threshold_) {
-    // ROS_INFO("Adding a new node");
-    // Adding a new factor 
+  if (!check_threshold ||
+      CalculatePoseDelta(fused_odom_) > translation_threshold_) {
+    // Adding a new factor
 
     // Get the most recent lidar timestamp
     ros::Time t2;
@@ -302,14 +302,14 @@ std::shared_ptr<FactorData> OdometryHandler::GetData() {
     t_odom.fromSec(lidar_odometry_buffer_.rbegin()->first);
 
     // Get keyed scan from closest time to latest odom
-    if (!GetKeyedScanAtTime(t_odom, new_scan)){
+    if (!GetKeyedScanAtTime(t_odom, new_scan)) {
       // Failed to get close enough point cloud
       ROS_WARN("Could not get Point Cloud close to odom time");
       // Set false having point clouds
       t2 = t_odom;
       new_odom.b_has_point_cloud = false;
     } else {
-      // Take the time from the point cloud 
+      // Take the time from the point cloud
       t2.fromNSec(new_scan->header.stamp * 1e3);
 
       // Fill in the keyed scan for the odom factor
@@ -328,7 +328,7 @@ std::shared_ptr<FactorData> OdometryHandler::GetData() {
 
     // Fill factors data
     output_data->b_has_data =
-        true; // TODO: Do this only if Fusion Logic output exceeds threshold
+        true;  // TODO: Do this only if Fusion Logic output exceeds threshold
 
     // Make the new factor data
     new_odom.transform = fused_odom_for_factor.pose;
@@ -350,6 +350,8 @@ std::shared_ptr<FactorData> OdometryHandler::GetData() {
 
   return output_data;
 }
+
+std::shared_ptr<FactorData> OdometryHandler::GetData() { return GetData(true); }
 
 bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
                                          PointCloud::Ptr& msg) {
@@ -674,10 +676,13 @@ bool OdometryHandler::GetTransformBetweenTimes(
     OdomPoseBuffer::const_iterator it;
     it = odom_buffer.find(first_pose.header.stamp.toSec());
     if (it == odom_buffer.end()) {
-      ROS_ERROR(
-          "Failed to retrieve first pose when concatenating covariance in "
-          "OdometryHandler::GetTransformBetweenTimes");
-      return false;
+      it = odom_buffer.begin();
+      if (it->first < first_pose.header.stamp.toSec()) {
+        ROS_ERROR("Have a bad timestamp for the first pose - invalid pose will result");
+        return false;
+      }
+      ROS_WARN(
+          "First pose is before the start of the buffer, covariance may be inaccurate");
     }
     // Initiate total covariance
     gtsam::Matrix66 total_covariance =
