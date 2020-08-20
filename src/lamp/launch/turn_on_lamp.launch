@@ -108,4 +108,9 @@
     <arg name="base_namespace" value="$(arg base_namespace)"/>
   </include>
 
+  <!-- Zero Velocity Detector  -->
+  <include file="$(find localizer_zero_velocity_detector)/launch/very_stable_genius.launch">
+    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+  </include>
+
 </launch>
