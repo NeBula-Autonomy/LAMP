@@ -293,7 +293,6 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
 
   if (!check_threshold ||
       CalculatePoseDelta(fused_odom_) > translation_threshold_) {
-    // ROS_INFO("Adding a new node");
     // Adding a new factor
 
     // Get the most recent lidar timestamp
@@ -677,10 +676,13 @@ bool OdometryHandler::GetTransformBetweenTimes(
     OdomPoseBuffer::const_iterator it;
     it = odom_buffer.find(first_pose.header.stamp.toSec());
     if (it == odom_buffer.end()) {
-      ROS_ERROR(
-          "Failed to retrieve first pose when concatenating covariance in "
-          "OdometryHandler::GetTransformBetweenTimes");
-      return false;
+      it = odom_buffer.begin();
+      if (it->first < first_pose.header.stamp.toSec()) {
+        ROS_ERROR("Have a bad timestamp for the first pose - invalid pose will result");
+        return false;
+      }
+      ROS_WARN(
+          "First pose is before the start of the buffer, covariance may be inaccurate");
     }
     // Initiate total covariance
     gtsam::Matrix66 total_covariance =

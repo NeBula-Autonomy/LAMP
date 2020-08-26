@@ -376,7 +376,8 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
         // Get a keyed scan
         PointCloud::Ptr new_scan(new PointCloud);
-        if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan)) {
+        // Take away 0.1 from ros::Time::now() so the delay in getting point clouds is accounted for
+        if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now() - ros::Duration(0.1), new_scan)) {
           AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
         } else {
           ROS_WARN("No point clouds from Odom Handler during init in lamp");
@@ -391,7 +392,8 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
       // Publish first point cloud
       PointCloud::Ptr new_scan(new PointCloud);
-      if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now(), new_scan)) {
+      // Take away 0.1 from ros::Time::now() so the delay in getting point clouds is accounted for
+      if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now() - ros::Duration(0.1), new_scan)) {
         AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
       } else {
         ROS_WARN("No point clouds from Odom Handler during init in lamp");
