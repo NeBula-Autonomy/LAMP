@@ -93,9 +93,10 @@ gtsam::Pose3AttitudeFactor StationaryHandler::CreateAttitudeFactor(
     const geometry_msgs::Vector3& gravity_vec) const {
   gtsam::Point3 gravity(gravity_vec.x, gravity_vec.y, gravity_vec.z);
   gtsam::Unit3 gravity_dir(gravity.normalize());
+  gtsam::Unit3 ref(0, 0, 1);
   gtsam::SharedNoiseModel model =
       gtsam::noiseModel::Isotropic::Sigma(2, noise_sigma_);
-  gtsam::Pose3AttitudeFactor factor(query_key_, gravity_dir, model);
+  gtsam::Pose3AttitudeFactor factor(query_key_, ref, model, gravity_dir);
   return factor;
 }
 
