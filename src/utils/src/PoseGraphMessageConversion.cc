@@ -168,7 +168,7 @@ void utils::PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
       gtsam::SharedNoiseModel noise = gtsam::noiseModel::Isotropic::Sigma(2, msg_edge.covariance[0]);
 
       gtsam::Unit3 ref(0, 0, 1);
-      graph_nfg->add(gtsam::Pose3AttitudeFactor(msg_edge.key_to, meas_gt, noise, ref));
+      graph_nfg->add(gtsam::Pose3AttitudeFactor(msg_edge.key_to, ref, noise, meas_gt));
 
     }
   }
