@@ -804,7 +804,7 @@ bool LaserLoopClosure::ComputeICPCovariance(
   eigensolver.compute(covariance);
   Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
   Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
-  double lower_bound = 0;     // Should be positive semidef
+  double lower_bound = 0.001;     // Should be positive semidef
   double upper_bound = 10000;
   if (eigen_values.size() < 6) {
     covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
@@ -812,8 +812,8 @@ bool LaserLoopClosure::ComputeICPCovariance(
     return false;
   }
   for (size_t i = 0; i < eigen_values.size(); i++) {
-    if (eigen_values(i) < lower_bound) eigen_values(i) = lower_bound;
-    if (eigen_values(i) > upper_bound) eigen_values(i) = upper_bound;
+    if (eigen_values[i] < lower_bound) eigen_values[i] = lower_bound;
+    if (eigen_values[i] > upper_bound) eigen_values[i] = upper_bound;
   }
   // Update covariance matrix after bound
   covariance =
