@@ -164,6 +164,7 @@ void LampPgo::ResetCallback(const std_msgs::Bool::ConstPtr& msg) {
     pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
     values_ = Values();
     nfg_ = NonlinearFactorGraph();
+    nfg_all_ = NonlinearFactorGraph();
   }
 }
 
@@ -199,8 +200,8 @@ void LampPgo::InputCallback(
   // Extract the new factors
   for (size_t i = 0; i < all_factors.size(); i++) {
     bool factor_exists = false;
-    for (size_t j = 0; j < nfg_.size(); j++) {
-      if (nfg_[j]->keys() == all_factors[i]->keys()) {
+    for (size_t j = 0; j < nfg_all_.size(); j++) {
+      if (nfg_all_[j]->keys() == all_factors[i]->keys()) {
         factor_exists = true;
         break;
       }
@@ -226,6 +227,8 @@ void LampPgo::InputCallback(
 
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
+  // Track all the added factors (including rejected ones)
+  nfg_all_.add(new_factors);
 
   // Extract the optimized values
   values_ = pgo_solver_->calculateEstimate();
