@@ -1,7 +1,7 @@
 /*
 LampPgo.h
 Author: Yun Chang
-Interface for ROS and kimera_rpgo
+Interface for ROS and KimeraRPGO
 */
 
 #ifndef LAMP_PGO_H_
@@ -20,7 +20,7 @@ Interface for ROS and kimera_rpgo
 
 #include <utils/PrefixHandling.h>
 
-#include "kimera_rpgo/RobustSolver.h"
+#include "KimeraRPGO/RobustSolver.h"
 
 class LampPgo {
  public:
@@ -44,7 +44,7 @@ class LampPgo {
   ros::Subscriber revive_robot_sub_;
 
   ros::Subscriber remove_lc_by_id_sub_;
-  // reset subscriber 
+  // reset subscriber
   ros::Subscriber reset_sub_;
 
   void PublishValues() const;
@@ -65,12 +65,12 @@ class LampPgo {
 
   void ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg);
 
-  void PublishIgnoredList() const; 
+  void PublishIgnoredList() const;
 
  private:
   // Optimizer parameters
-  kimera_rpgo::RobustSolverParams rpgo_params_;
-  std::unique_ptr<kimera_rpgo::RobustSolver> pgo_solver_;  // actual solver
+  KimeraRPGO::RobustSolverParams rpgo_params_;
+  std::unique_ptr<KimeraRPGO::RobustSolver> pgo_solver_;  // actual solver
 
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
@@ -81,8 +81,8 @@ class LampPgo {
   // Keep track of node IDs for output message (not stored by GTSAM types)
   std::map<gtsam::Key, std::string> key_to_id_map_;
 
-  // Ignored list of robots that is not fused 
-  std::vector<std::string> ignored_list_; 
+  // Ignored list of robots that is not fused
+  std::vector<std::string> ignored_list_;
 };
 
 #endif  // LAMP_PGO_H_
