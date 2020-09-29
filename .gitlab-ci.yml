@@ -5,6 +5,6 @@ include:
 catkin_lint:
   script:
     # Override default lint setting
-    - catkin lint catkin_ws/src/${CI_PROJECT_NAME} --color=always --explain
+    - catkin lint . --color=always --explain
         --ignore cmake_build_type
         --ignore unconfigured_system_depend
