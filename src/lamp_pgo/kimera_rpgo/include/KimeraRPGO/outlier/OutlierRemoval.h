@@ -1,7 +1,7 @@
 /*
 Outlier removal class
 Provide a set of outlier removal methods
-along with interface to kimera_rpgo
+along with interface to KimeraRPGO
 author: Yun Chang
 */
 
@@ -13,17 +13,17 @@ author: Yun Chang
 #include <string>
 #include <vector>
 
-#include "kimera_rpgo/utils/type_utils.h"
+#include "KimeraRPGO/utils/type_utils.h"
 
-namespace kimera_rpgo {
+namespace KimeraRPGO {
 
 class OutlierRemoval {
  public:
   OutlierRemoval() = default;
   virtual ~OutlierRemoval() = default;
 
-  virtual size_t getNumLC() {}
-  virtual size_t getNumLCInliers() {}
+  virtual size_t getNumLC() = 0;
+  virtual size_t getNumLCInliers() = 0;
   virtual Stats getRejectionStats() {}
 
   /*! \brief Process new measurements and reject outliers
@@ -81,4 +81,4 @@ class OutlierRemoval {
   bool debug_ = true;
 };
 
-}  // namespace kimera_rpgo
+}  // namespace KimeraRPGO

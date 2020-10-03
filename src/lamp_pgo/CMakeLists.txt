@@ -21,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Export package settings
 catkin_package(
   INCLUDE_DIRS include kimera_rpgo
-  LIBRARIES ${PROJECT_NAME} kimera_rpgo
+  LIBRARIES ${PROJECT_NAME} KimeraRPGO
   CATKIN_DEPENDS
   	roscpp
     utils
@@ -32,13 +32,13 @@ catkin_package(
   	geometry_msgs
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} kimera_rpgo)
+include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} kimera_rpgo/include)
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} kimera_rpgo)
 
 add_library(${PROJECT_NAME} src/lamp_pgo.cc src/LampPgo.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
-  kimera_rpgo
+  KimeraRPGO
   gtsam
 )
 
@@ -46,7 +46,7 @@ add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc)
 target_link_libraries(${PROJECT_NAME}_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
-  kimera_rpgo
+  KimeraRPGO
   gtsam
 )
 
