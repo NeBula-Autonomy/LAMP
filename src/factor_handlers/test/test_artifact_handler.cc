@@ -12,6 +12,10 @@ class TestArtifactHandler : public ::testing::Test{
     ros::NodeHandle nh;
     ArtifactHandler art_handle;
     TestArtifactHandler(){
+      // Load Params
+      system("rosparam load $(rospack find "
+            "lamp)/config/lamp_frames.yaml");
+      system("rosparam set artifact_prefix Artifact");
       art_handle.use_artifact_loop_closure_ = true;
     }
     ~TestArtifactHandler(){}
