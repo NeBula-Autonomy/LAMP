@@ -43,7 +43,10 @@
 namespace pu = parameter_utils;
 
 PointCloudMapper::PointCloudMapper()
-  : initialized_(false), map_updated_(false), incremental_unsubscribed_(false) {
+  : initialized_(false),
+    map_updated_(false),
+    incremental_unsubscribed_(false),
+    b_run_rolling_map_buffer_(false) {
   // Initialize map data container.
   map_data_.reset(new PointCloud);
 }
@@ -85,10 +88,15 @@ bool PointCloudMapper::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("map/volume_voxel_size", volume_voxel_size))
     return false;
+  if (!pu::Get("map/map_buffer_max_size", map_buffer_max_size_))
+    return false;
 
   // Initialize the map octree.
   map_octree_.reset(new Octree(octree_resolution_));
   map_octree_->setInputCloud(map_data_);
+
+  // Clear the map buffer
+  map_buffer_.clear();
 
   initialized_ = true;
 
@@ -129,6 +137,16 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
     return false;
   }
   incremental_points->clear();
+
+  if (b_run_rolling_map_buffer_) {
+    // Run a different way to insert the information - in a rolling buffer
+    if (InsertPointCloudInBuffer(points)) {
+      map_updated_ = true;
+      return true;
+    }
+    return false;
+    // incremental_points* = points;
+  }
 
   // Try to get the map mutex from the publisher. If the publisher is using it,
   // we will just not insert this point cloud right now. It'll be added when the
@@ -187,6 +205,14 @@ bool PointCloudMapper::ApproxNearestNeighbors(const PointCloud& points,
 
   neighbors->points.clear();
 
+  if (b_run_rolling_map_buffer_) {
+    // Get the points from the rolling buffer
+    if (GetMapFromBuffer(neighbors)) {
+      return neighbors->points.size() > 0;
+    }
+    return false;
+  }
+
   // Iterate over points in the input point cloud, finding the nearest neighbor
   // for every point and storing it in the output array.
   for (size_t ii = 0; ii < points.points.size(); ++ii) {
@@ -218,6 +244,9 @@ void PointCloudMapper::PublishMap() {
 
 void PointCloudMapper::PublishMapThread() {
   map_mutex_.lock();
+  if (b_run_rolling_map_buffer_) {
+    GetMapFromBuffer(map_data_);
+  }
   map_pub_.publish(map_data_);
 
   // Don't publish again until we get another map update.
@@ -323,4 +352,59 @@ void PointCloudMapper::PublishMapInfo() {
     // Publish
     map_info_pub_.publish(map_info);
   }
+}
+
+bool PointCloudMapper::InsertPointCloudInBuffer(
+    const PointCloud::ConstPtr& scan) {
+  auto initial_size = map_buffer_.size();
+
+  PointCloud current_pointcloud;
+  current_pointcloud = *scan;
+
+  map_buffer_.push_back(current_pointcloud);
+  auto final_size = map_buffer_.size();
+  ROS_INFO_STREAM("Map Buffer size is: " << final_size);
+  if (final_size == (initial_size + 1)) {
+    // Msg insertion was successful, return true to the caller
+    if (final_size > map_buffer_max_size_) {
+      // Have hit limit of the buffer size - remove the first scan
+      map_buffer_.erase(map_buffer_.begin());
+    }
+    ROS_INFO_STREAM(
+        "After possible erase, map buffer size is: " << map_buffer_.size());
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool PointCloudMapper::GetMapFromBuffer(PointCloud::Ptr scan) {
+  // Combine the points in the buffer into one cloud.
+  scan->clear();
+
+  // Add each scan in the buffer
+  for (size_t i = 0; i < map_buffer_.size(); i++) {
+    *scan = *scan + map_buffer_[i];
+  }
+
+  // TODO - do some checks here
+  return true;
+}
+
+bool PointCloudMapper::GetMapFromBuffer(PointCloud* scan) {
+  // Combine the points in the buffer into one cloud.
+  scan->clear();
+
+  // Add each scan in the buffer
+  for (size_t i = 0; i < map_buffer_.size(); i++) {
+    *scan = *scan + map_buffer_[i];
+  }
+
+  // TODO - do some checks here
+  return true;
+}
+
+void PointCloudMapper::SetRollingMapBufferOn() {
+  ROS_INFO("Rolling Map Buffer on");
+  b_run_rolling_map_buffer_ = true;
 }
