@@ -358,14 +358,20 @@ bool PointCloudMapper::InsertPointCloudInBuffer(
     const PointCloud::ConstPtr& scan) {
   auto initial_size = map_buffer_.size();
 
-  map_buffer_.push_back(scan);
+  PointCloud current_pointcloud;
+  current_pointcloud = *scan;
+
+  map_buffer_.push_back(current_pointcloud);
   auto final_size = map_buffer_.size();
+  ROS_INFO_STREAM("Map Buffer size is: " << final_size);
   if (final_size == (initial_size + 1)) {
     // Msg insertion was successful, return true to the caller
     if (final_size > map_buffer_max_size_) {
       // Have hit limit of the buffer size - remove the first scan
       map_buffer_.erase(map_buffer_.begin());
     }
+    ROS_INFO_STREAM(
+        "After possible erase, map buffer size is: " << map_buffer_.size());
     return true;
   } else {
     return false;
@@ -377,8 +383,8 @@ bool PointCloudMapper::GetMapFromBuffer(PointCloud::Ptr scan) {
   scan->clear();
 
   // Add each scan in the buffer
-  for (size_t i; i < map_buffer_.size(); i++) {
-    *scan = *scan + *map_buffer_[i];
+  for (size_t i = 0; i < map_buffer_.size(); i++) {
+    *scan = *scan + map_buffer_[i];
   }
 
   // TODO - do some checks here
@@ -390,8 +396,8 @@ bool PointCloudMapper::GetMapFromBuffer(PointCloud* scan) {
   scan->clear();
 
   // Add each scan in the buffer
-  for (size_t i; i < map_buffer_.size(); i++) {
-    *scan = *scan + *map_buffer_[i];
+  for (size_t i = 0; i < map_buffer_.size(); i++) {
+    *scan = *scan + map_buffer_[i];
   }
 
   // TODO - do some checks here
@@ -399,5 +405,6 @@ bool PointCloudMapper::GetMapFromBuffer(PointCloud* scan) {
 }
 
 void PointCloudMapper::SetRollingMapBufferOn() {
+  ROS_INFO("Rolling Map Buffer on");
   b_run_rolling_map_buffer_ = true;
 }

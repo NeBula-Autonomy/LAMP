@@ -51,7 +51,7 @@ class PointCloudMapper {
 public:
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZI> Octree;
-  typedef std::vector<PointCloud::ConstPtr> PointCloudBuffer;
+  typedef std::vector<PointCloud> PointCloudBuffer;
 
   PointCloudMapper();
   ~PointCloudMapper();
