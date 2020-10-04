@@ -75,6 +75,7 @@
       <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'husky')"/>
       <param name="robot_prefix" value="g" if="$(eval robot_namespace == 'spot1')"/>
       <param name="robot_prefix" value="h" if="$(eval robot_namespace == 'spot2')"/>
+      <param name="robot_prefix" value="i" if="$(eval robot_namespace == 'handheld1')"/>
 
       <!-- The artifact prefix dependent of robot_namespace -->
       <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
@@ -85,6 +86,7 @@
       <param name="artifact_prefix" value="p" if="$(eval robot_namespace == 'husky')"/>
       <param name="artifact_prefix" value="r" if="$(eval robot_namespace == 'spot1')"/>
       <param name="artifact_prefix" value="s" if="$(eval robot_namespace == 'spot2')"/>
+      <param name="artifact_prefix" value="t" if="$(eval robot_namespace == 'handheld1')"/>
     </node>
 
     <!-- Pose graph optimizer -->
@@ -108,4 +110,10 @@
     <arg name="base_namespace" value="$(arg base_namespace)"/>
   </include>
 
+  <!-- Zero Velocity Detector  -->
+  <include file="$(find localizer_zero_velocity_detector)/launch/very_stable_genius.launch">
+    <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+  </include>
+
 </launch>
+

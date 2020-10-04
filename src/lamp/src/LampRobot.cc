@@ -665,8 +665,8 @@ bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  Unit3 meas_unit = imu_data->factors[0].attitude.nZ();
-  Unit3 ref_unit = imu_data->factors[0].attitude.bRef();
+  Unit3 ref_unit = imu_data->factors[0].attitude.nZ();
+  Unit3 meas_unit = imu_data->factors[0].attitude.bRef();
   geometry_msgs::Point meas, ref;
   meas.x = meas_unit.point3().x();
   meas.y = meas_unit.point3().y();

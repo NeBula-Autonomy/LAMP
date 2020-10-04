@@ -12,11 +12,11 @@ author: Yun Chang, Luca Carlone
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
-#include "kimera_rpgo/SolverParams.h"
-#include "kimera_rpgo/logger.h"
-#include "kimera_rpgo/utils/type_utils.h"
+#include "KimeraRPGO/SolverParams.h"
+#include "KimeraRPGO/logger.h"
+#include "KimeraRPGO/utils/type_utils.h"
 
-namespace kimera_rpgo {
+namespace KimeraRPGO {
 
 class GenericSolver {
  public:
@@ -62,4 +62,4 @@ class GenericSolver {
   bool debug_;
 };
 
-}  // namespace kimera_rpgo
+}  // namespace KimeraRPGO
