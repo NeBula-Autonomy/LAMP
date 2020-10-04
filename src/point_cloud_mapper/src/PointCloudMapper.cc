@@ -88,7 +88,7 @@ bool PointCloudMapper::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("map/volume_voxel_size", volume_voxel_size))
     return false;
-  if (!pu::Get("map/map_buffer_max_size", map_buffer_max_size_))
+  if (!pu::Get("map/default_map_buffer_max_size", map_buffer_max_size_))
     return false;
 
   // Initialize the map octree.
@@ -363,15 +363,12 @@ bool PointCloudMapper::InsertPointCloudInBuffer(
 
   map_buffer_.push_back(current_pointcloud);
   auto final_size = map_buffer_.size();
-  ROS_INFO_STREAM("Map Buffer size is: " << final_size);
   if (final_size == (initial_size + 1)) {
     // Msg insertion was successful, return true to the caller
     if (final_size > map_buffer_max_size_) {
       // Have hit limit of the buffer size - remove the first scan
       map_buffer_.erase(map_buffer_.begin());
     }
-    ROS_INFO_STREAM(
-        "After possible erase, map buffer size is: " << map_buffer_.size());
     return true;
   } else {
     return false;
@@ -404,7 +401,25 @@ bool PointCloudMapper::GetMapFromBuffer(PointCloud* scan) {
   return true;
 }
 
+bool PointCloudMapper::GetSubMapFromBuffer(PointCloud* scan, int num_pc) {
+  // Combine the points in the buffer into one cloud.
+  scan->clear();
+
+  // Add the last num_pc scans from the buffer
+  for (size_t i = 0; i < map_buffer_.size() && i < num_pc; i++) {
+    *scan = *scan + map_buffer_[map_buffer_.size() - 1 - i];
+  }
+
+  // TODO - do some checks here
+  return true;
+}
+
 void PointCloudMapper::SetRollingMapBufferOn() {
   ROS_INFO("Rolling Map Buffer on");
   b_run_rolling_map_buffer_ = true;
+}
+
+void PointCloudMapper::SetRollingMapBufferSize(int num_pc) {
+  ROS_INFO_STREAM("Setting Map Rolling Buffer to " << num_pc);
+  map_buffer_max_size_ = num_pc;
 }
