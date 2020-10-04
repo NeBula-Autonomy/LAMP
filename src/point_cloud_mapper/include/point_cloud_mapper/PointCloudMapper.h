@@ -51,6 +51,7 @@ class PointCloudMapper {
 public:
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZI> Octree;
+  typedef std::vector<PointCloud::ConstPtr> PointCloudBuffer;
 
   PointCloudMapper();
   ~PointCloudMapper();
@@ -87,6 +88,8 @@ public:
     return map_data_;
   }
 
+  void SetRollingMapBufferOn();
+
 private:
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
@@ -98,6 +101,10 @@ private:
 
   // Publish map updates for visualization.
   void PublishMapUpdate(const PointCloud& incremental_points);
+
+  // Rolling buffer internal functions
+  bool InsertPointCloudInBuffer(const PointCloud::ConstPtr& scan);
+  bool GetMapFromBuffer(PointCloud::Ptr scan);
 
   // The node's name.
   std::string name_;
@@ -119,6 +126,8 @@ private:
   // Containers storing the map and its structure.
   PointCloud::Ptr map_data_;
   Octree::Ptr map_octree_;
+  // Storage if we are using a rolling buffer
+  PointCloudBuffer map_buffer_;
 
   // Map parameters.
   double octree_resolution_;
@@ -136,6 +145,10 @@ private:
   std::thread publish_frozen_thread_;
   mutable std::mutex map_mutex_;
   mutable std::mutex map_frozen_mutex_;
+
+  // Options
+  bool b_run_rolling_map_buffer_;
+  int map_buffer_max_size_;
 };
 
 #endif
