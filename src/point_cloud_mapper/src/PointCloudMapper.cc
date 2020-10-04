@@ -385,6 +385,19 @@ bool PointCloudMapper::GetMapFromBuffer(PointCloud::Ptr scan) {
   return true;
 }
 
+bool PointCloudMapper::GetMapFromBuffer(PointCloud* scan) {
+  // Combine the points in the buffer into one cloud.
+  scan->clear();
+
+  // Add each scan in the buffer
+  for (size_t i; i < map_buffer_.size(); i++) {
+    *scan = *scan + *map_buffer_[i];
+  }
+
+  // TODO - do some checks here
+  return true;
+}
+
 void PointCloudMapper::SetRollingMapBufferOn() {
   b_run_rolling_map_buffer_ = true;
 }

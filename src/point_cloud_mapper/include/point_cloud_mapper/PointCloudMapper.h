@@ -105,6 +105,7 @@ private:
   // Rolling buffer internal functions
   bool InsertPointCloudInBuffer(const PointCloud::ConstPtr& scan);
   bool GetMapFromBuffer(PointCloud::Ptr scan);
+  bool GetMapFromBuffer(PointCloud* scan);
 
   // The node's name.
   std::string name_;
