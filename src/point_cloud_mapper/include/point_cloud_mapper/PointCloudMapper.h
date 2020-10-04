@@ -88,7 +88,12 @@ public:
     return map_data_;
   }
 
+  // To set the rolling buffer on
   void SetRollingMapBufferOn();
+  void SetRollingMapBufferSize(int num_pc);
+
+  // Extracts the last num_pc point clouds from the buffer
+  bool GetSubMapFromBuffer(PointCloud* scan, int num_pc);
 
 private:
   // Node initialization.
