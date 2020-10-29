@@ -688,21 +688,16 @@ bool OdometryHandler::GetTransformBetweenTimes(
     gtsam::Matrix66 total_covariance =
         utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
             it->second.pose);
-    gtsam::Pose3 last_pose = ToGtsam(gr::FromROS(it->second.pose.pose));
     it++;
-    while (it->first <= second_pose.header.stamp.toSec() && it != odom_buffer.end()) {
+    while (it->first <= second_pose.header.stamp.toSec() &&
+           it != odom_buffer.end()) {
       // Compose covariances
+      // Just sum since pose graph in world frame
       gtsam::Matrix66 covariance_to_add =
           utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
               it->second.pose);
-      gtsam::Matrix66 Ha, Hb;
-      gtsam::Pose3 pose = ToGtsam(gr::FromROS(it->second.pose.pose));
-      Ha = last_pose.between(pose).inverse().AdjointMap();
-      Hb = Eigen::Matrix<double, 6, 6>::Identity();
-      total_covariance = Ha * total_covariance * Ha.transpose() +
-                         Hb * covariance_to_add * Hb.transpose();
+      total_covariance = total_covariance + covariance_to_add;
       // Update and increment
-      last_pose = pose;
       it++;
     }
     *covariance = gtsam::noiseModel::Gaussian::Covariance(total_covariance);

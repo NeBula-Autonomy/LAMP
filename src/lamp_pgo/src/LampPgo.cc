@@ -1,7 +1,7 @@
 /*
 LampPgo.cc
 Author: Yun Chang
-Interface for ROS and kimera_rpgo
+Interface for ROS and KimeraRPGO
 */
 
 #include "lamp_pgo/LampPgo.h"
@@ -69,10 +69,10 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
     if (!pu::Get(param_ns_ + "/rotation_check_threshold", rot_threshold))
       return false;
     rpgo_params_.setPcmSimple3DParams(
-        trans_threshold, rot_threshold, kimera_rpgo::Verbosity::VERBOSE);
+        trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
   } else {
     rpgo_params_.setNoRejection(
-        kimera_rpgo::Verbosity::VERBOSE);  // set no outlier rejection
+        KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection
   }
 
   // Artifact or UWB keys (l, m, n, ... + u)
@@ -84,16 +84,16 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 
   if (solver_num == 1) {
     // Levenberg-Marquardt
-    rpgo_params_.solver = kimera_rpgo::Solver::LM;
+    rpgo_params_.solver = KimeraRPGO::Solver::LM;
   } else if (solver_num == 2) {
     // Gauss Newton
-    rpgo_params_.solver = kimera_rpgo::Solver::GN;
+    rpgo_params_.solver = KimeraRPGO::Solver::GN;
   } else {
     ROS_ERROR("Unsupported solver parameter. Use 1 for LM and 2 for GN");
   }
 
   // Initialize solver
-  pgo_solver_.reset(new kimera_rpgo::RobustSolver(rpgo_params_));
+  pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
 
   std::string log_path;
   if (pu::Get("log_path", log_path)) {
@@ -107,7 +107,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
 }
 
 void LampPgo::RemoveLastLoopClosure(char prefix_1, char prefix_2) {
-  kimera_rpgo::EdgePtr removed_edge =
+  KimeraRPGO::EdgePtr removed_edge =
       pgo_solver_->removeLastLoopClosure(prefix_1, prefix_2);
   if (removed_edge != NULL) {
     // Extract the optimized values
@@ -127,7 +127,7 @@ void LampPgo::RemoveLastLoopClosure(char prefix_1, char prefix_2) {
 }
 
 void LampPgo::RemoveLastLoopClosure() {
-  kimera_rpgo::EdgePtr removed_edge = pgo_solver_->removeLastLoopClosure();
+  KimeraRPGO::EdgePtr removed_edge = pgo_solver_->removeLastLoopClosure();
   if (removed_edge != NULL) {
     // Extract the optimized values
     values_ = pgo_solver_->calculateEstimate();
@@ -161,9 +161,10 @@ void LampPgo::RemoveLCCallback(const std_msgs::Bool::ConstPtr& msg) {
 void LampPgo::ResetCallback(const std_msgs::Bool::ConstPtr& msg) {
   if (msg->data) {
     // Re-initialize solver
-    pgo_solver_.reset(new kimera_rpgo::RobustSolver(rpgo_params_));
+    pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
     values_ = Values();
     nfg_ = NonlinearFactorGraph();
+    nfg_all_ = NonlinearFactorGraph();
   }
 }
 
@@ -199,8 +200,8 @@ void LampPgo::InputCallback(
   // Extract the new factors
   for (size_t i = 0; i < all_factors.size(); i++) {
     bool factor_exists = false;
-    for (size_t j = 0; j < nfg_.size(); j++) {
-      if (nfg_[j]->keys() == all_factors[i]->keys()) {
+    for (size_t j = 0; j < nfg_all_.size(); j++) {
+      if (nfg_all_[j]->keys() == all_factors[i]->keys()) {
         factor_exists = true;
         break;
       }
@@ -226,6 +227,8 @@ void LampPgo::InputCallback(
 
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
+  // Track all the added factors (including rejected ones)
+  nfg_all_.add(new_factors);
 
   // Extract the optimized values
   values_ = pgo_solver_->calculateEstimate();
