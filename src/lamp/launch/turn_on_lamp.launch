@@ -2,7 +2,7 @@
   <arg name="robot_namespace" default="husky"/>
   <arg name="base_namespace" default="base1"/>
 
-  <arg name="b_use_hero" default="true"/>
+  <arg name="b_use_hero" default="false"/>
 
   <arg if="$(arg b_use_hero)" name="odom_input" value="hero/odometry"/>
   <arg unless="$(arg b_use_hero)" name="odom_input" value="lo_frontend/odometry"/>
@@ -24,9 +24,10 @@
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
       <!-- Topics -->
-      <remap from="~pcld" to="combined_point_cloud_filtered" unless="$(eval robot_namespace.startswith('spot'))"/>
+      <remap from="~pcld" to="combined_point_cloud_filtered" unless="$(eval robot_namespace.startswith('spot'))"/> 
       <remap from="~pcld" to="velodyne_points/transformed" if="$(eval robot_namespace.startswith('spot'))"/> 
       <!-- <remap from="~pcld" to="velodyne_points/transformed"/> -->
+      <!-- <remap from="~pcld" to="lo_frontend/local_scan_map" /> -->
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
       <!-- <remap from="~lio_odom" to="lo_frontend/odometry"/> -->
       <!-- <remap from="~lio_odom" to="hero/lion/odom"/> -->
