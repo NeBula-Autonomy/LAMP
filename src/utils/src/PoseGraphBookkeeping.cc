@@ -393,6 +393,46 @@ void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
   RemoveValuesWithPrefix(art_prefix);
 }
 
+void PoseGraph::UpdateLoopClosures(const GraphMsgPtr& msg) {
+  ROS_DEBUG("Update loop closures to reflect inliers");
+  // Remove edge loop closure messages
+  EdgeSet new_edges;
+  auto e = edges_.begin();
+  while (e != edges_.end()) {
+    if (e->type != pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+      new_edges.insert(*e);
+    }
+    e++;
+  }
+
+  // Remove edge loop closure factors
+  gtsam::NonlinearFactorGraph new_nfg;
+  for (const auto& factor : nfg_) {
+    if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3>>(
+            factor)) {
+      if (factor->front() + 1 == factor->back()) {
+        new_nfg.add(factor);
+      }
+    } else {
+      new_nfg.add(factor);
+    }
+  }
+  // Insert the inlier loop closures
+  for (const auto& edge : msg->edges) {
+    if (edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+      new_edges.insert(edge);
+      new_nfg.add(
+          gtsam::BetweenFactor<gtsam::Pose3>(gtsam::Symbol(edge.key_from),
+                                             gtsam::Symbol(edge.key_to),
+                                             utils::MessageToPose(edge),
+                                             utils::MessageToCovariance(edge)));
+    }
+  }
+
+  edges_ = new_edges;
+  nfg_ = new_nfg;
+}
+
 void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
   ROS_DEBUG("Removing edges msg");
   // Remove edge messages
