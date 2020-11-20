@@ -7,7 +7,7 @@ project(point_cloud_mapper)
 
 SET(CMAKE_BUILD_TYPE Release)
 
-find_package(PCL 1.7 REQUIRED COMPONENTS common octree)
+find_package(PCL 1.7 REQUIRED COMPONENTS common octree filters)
 if(NOT PCL_FOUND)
   message(FATAL_ERROR "This program requires the PCL library.")
 endif(NOT PCL_FOUND)
