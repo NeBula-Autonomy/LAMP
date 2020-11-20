@@ -48,8 +48,6 @@ PointCloudMapper::PointCloudMapper()
     incremental_unsubscribed_(false),
     b_run_rolling_map_buffer_(false) {
   map_data_.reset(new PointCloud);
-  box_filter_.setMin(Eigen::Vector4f(-50, -50, -50, 1.0));
-  box_filter_.setMax(Eigen::Vector4f(50, 50, 50, 1.0));
 }
 
 PointCloudMapper::~PointCloudMapper() {
@@ -457,7 +455,8 @@ void PointCloudMapper::SetClientName(const std::string& client_name) {
 }
 
 void PointCloudMapper::SetBoxFilterSize(const int box_filter_size) {
-  box_filter_size_ = box_filter_size; 
+  box_filter_.setMin(Eigen::Vector4f(-box_filter_size, -box_filter_size, -box_filter_size, 1.0));
+  box_filter_.setMax(Eigen::Vector4f(box_filter_size, box_filter_size, box_filter_size, 1.0));
 }
 
 void PointCloudMapper::SetCurrentRobotPosition(const Eigen::Vector3f current_robot_position) {
