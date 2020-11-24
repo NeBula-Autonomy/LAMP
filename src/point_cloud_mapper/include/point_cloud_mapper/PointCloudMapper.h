@@ -102,6 +102,7 @@ public:
   void SetClientName(const std::string& client_name);
   void SetBoxFilterSize(const int box_filter_size);
   void SetCurrentRobotPosition(const Eigen::Vector3f current_robot_position);
+  void Refresh(); 
 
 private:
   // Node initialization.
@@ -169,7 +170,7 @@ private:
   Eigen::Vector3f current_robot_position_; 
   pcl::CropBox<pcl::PointXYZI> box_filter_;
   int box_filter_size_; 
-  double current_map_volume_;
+  bool b_refresh_; 
 
 };
 

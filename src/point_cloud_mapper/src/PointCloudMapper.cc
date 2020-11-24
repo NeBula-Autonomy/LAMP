@@ -46,7 +46,8 @@ PointCloudMapper::PointCloudMapper()
   : initialized_(false),
     map_updated_(false),
     incremental_unsubscribed_(false),
-    b_run_rolling_map_buffer_(false) {
+    b_run_rolling_map_buffer_(false), 
+    b_refresh_(false) {
   map_data_.reset(new PointCloud);
 }
 
@@ -175,27 +176,24 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
 
     }
   
+
+
     /* 
     Map Sliding Window 2 ----------------------------------------------------------
       - Enable robot-centered box-filtering of mapper map_data_ for LOCUS client */       
-    if (client_name_ == "LOCUS") {      
-      /*
-      When to refresh: 
-        - When a maximum number of points in the map is reached 
-        - When a maximum volume of the map is reached 
-        - When a maximum robot displacement is reached (e.g. every 10m)
-      */
-      if (map_data_->size()>500*points->points.size()) {
-        box_filter_.setInputCloud(map_data_); 
-        box_filter_.setTranslation(current_robot_position_); 
-        box_filter_.filter(*map_data_);
-        ROS_WARN("Resetting the octree");
-        map_octree_.reset(new Octree(octree_resolution_));  
-        map_octree_->setInputCloud(map_data_);
-        map_octree_->addPointsFromInputCloud();
-      }
+    if (client_name_ == "LOCUS" && b_refresh_) {      
+      box_filter_.setInputCloud(map_data_); 
+      box_filter_.setTranslation(current_robot_position_); 
+      box_filter_.filter(*map_data_);
+      ROS_WARN("Resetting the octree");
+      map_octree_.reset(new Octree(octree_resolution_));  
+      map_octree_->setInputCloud(map_data_);
+      map_octree_->addPointsFromInputCloud();
+      b_refresh_= false; 
     }         
     // ---------------------------------------------------------------------------
+
+
 
     map_mutex_.unlock();
   } else {
@@ -463,4 +461,8 @@ void PointCloudMapper::SetBoxFilterSize(const int box_filter_size) {
 
 void PointCloudMapper::SetCurrentRobotPosition(const Eigen::Vector3f current_robot_position) {
   current_robot_position_ = current_robot_position; 
+}
+
+void PointCloudMapper::Refresh() {
+  b_refresh_ = true; 
 }
