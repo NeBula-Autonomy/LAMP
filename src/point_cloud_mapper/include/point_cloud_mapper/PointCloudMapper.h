@@ -98,8 +98,7 @@ public:
   // Extracts the last num_pc point clouds from the buffer
   bool GetSubMapFromBuffer(PointCloud* scan, int num_pc);
 
-  // Map Sliding Window 2 --------------------------
-  void SetClientName(const std::string& client_name);
+  // Map Sliding Window 2 ---------------------------------------------------
   void SetBoxFilterSize(const int box_filter_size);
   void SetCurrentRobotPosition(const Eigen::Vector3f current_robot_position);
   void Refresh(); 

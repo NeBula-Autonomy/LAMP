@@ -175,26 +175,7 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
       }
 
     }
-  
-
-
-    /* 
-    Map Sliding Window 2 ----------------------------------------------------------
-      - Enable robot-centered box-filtering of mapper map_data_ for LOCUS client */       
-    if (client_name_ == "LOCUS" && b_refresh_) {      
-      box_filter_.setInputCloud(map_data_); 
-      box_filter_.setTranslation(current_robot_position_); 
-      box_filter_.filter(*map_data_);
-      ROS_WARN("Resetting the octree");
-      map_octree_.reset(new Octree(octree_resolution_));  
-      map_octree_->setInputCloud(map_data_);
-      map_octree_->addPointsFromInputCloud();
-      b_refresh_= false; 
-    }         
-    // ---------------------------------------------------------------------------
-
-
-
+ 
     map_mutex_.unlock();
   } else {
     // This won't happen often.
@@ -304,6 +285,7 @@ void PointCloudMapper::PublishMapUpdate(const PointCloud& incremental_points) {
 }
 
 void PointCloudMapper::PublishMapInfo() {
+
   // When do we want to publish: When points are inserted or the one done in
   // Base station. Why is it so in base station
   if (!b_publish_map_info_) {
@@ -449,10 +431,6 @@ void PointCloudMapper::SetRollingMapBufferSize(int num_pc) {
 
 // Map Sliding Window 2 -----------------------------------------------
 
-void PointCloudMapper::SetClientName(const std::string& client_name) {
-  client_name_ = client_name; 
-}
-
 void PointCloudMapper::SetBoxFilterSize(const int box_filter_size) {
   box_filter_size_ = box_filter_size;
   box_filter_.setMin(Eigen::Vector4f(-box_filter_size_, -box_filter_size_, -box_filter_size_, 1.0));
@@ -464,5 +442,23 @@ void PointCloudMapper::SetCurrentRobotPosition(const Eigen::Vector3f current_rob
 }
 
 void PointCloudMapper::Refresh() {
-  b_refresh_ = true; 
+  
+  if (map_mutex_.try_lock()) {
+    ROS_WARN("Refreshing map/octree");    
+    box_filter_.setInputCloud(map_data_); 
+    box_filter_.setTranslation(current_robot_position_); 
+    box_filter_.filter(*map_data_);
+    map_updated_ = true;
+    map_octree_.reset(new Octree(octree_resolution_));  
+    map_octree_->setInputCloud(map_data_);
+    map_octree_->addPointsFromInputCloud();
+    map_mutex_.unlock();
+  }
+  else {
+    ROS_WARN(
+            "%s: Failed to Refresh: map publisher has a hold of the thread. "
+            "Turn off any subscriptions to the 3D map topic to prevent this from "
+            "happening.", name_.c_str());
+  }  
+
 }
