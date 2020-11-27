@@ -46,8 +46,7 @@ PointCloudMapper::PointCloudMapper()
   : initialized_(false),
     map_updated_(false),
     incremental_unsubscribed_(false),
-    b_run_rolling_map_buffer_(false), 
-    b_refresh_(false) {
+    b_run_rolling_map_buffer_(false) {
   map_data_.reset(new PointCloud);
 }
 

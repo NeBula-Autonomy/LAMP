@@ -165,11 +165,9 @@ private:
   int map_buffer_max_size_;
 
   // Map Sliding Window 2 ----------------- 
-  std::string client_name_;
   Eigen::Vector3f current_robot_position_; 
   pcl::CropBox<pcl::PointXYZI> box_filter_;
   int box_filter_size_; 
-  bool b_refresh_; 
 
 };
 
