@@ -48,6 +48,8 @@
 #include <core_msgs/MapInfo.h>
 
 #include <pcl/filters/crop_box.h>
+#include <geometry_utils/GeometryUtilsROS.h>
+#include <geometry_utils/Transform3.h>
 
 
 class PointCloudMapper {
@@ -100,8 +102,7 @@ public:
 
   // Map Sliding Window 2 ---------------------------------------------------
   void SetBoxFilterSize(const int box_filter_size);
-  void SetCurrentRobotPosition(const Eigen::Vector3f current_robot_position);
-  void Refresh(); 
+  void Refresh(const geometry_utils::Transform3& current_pose); 
 
 private:
   // Node initialization.
@@ -165,7 +166,6 @@ private:
   int map_buffer_max_size_;
 
   // Map Sliding Window 2 ----------------- 
-  Eigen::Vector3f current_robot_position_; 
   pcl::CropBox<pcl::PointXYZI> box_filter_;
   int box_filter_size_; 
 

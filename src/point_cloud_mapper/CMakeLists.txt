@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   core_msgs
   parameter_utils
+  geometry_utils
 )
 
 catkin_package(
@@ -30,6 +31,7 @@ catkin_package(
     roscpp
     std_msgs
     parameter_utils
+    geometry_utils
 )
 
 include(CheckCXXCompilerFlag)

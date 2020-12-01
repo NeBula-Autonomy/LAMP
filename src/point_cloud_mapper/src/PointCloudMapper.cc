@@ -436,22 +436,30 @@ void PointCloudMapper::SetBoxFilterSize(const int box_filter_size) {
   box_filter_.setMax(Eigen::Vector4f(box_filter_size_, box_filter_size_, box_filter_size_, 1.0));
 }
 
-void PointCloudMapper::SetCurrentRobotPosition(const Eigen::Vector3f current_robot_position) {
-  current_robot_position_ = current_robot_position; 
-}
-
-void PointCloudMapper::Refresh() {
+void PointCloudMapper::Refresh(const geometry_utils::Transform3& current_pose) {
   
   if (map_mutex_.try_lock()) {
-    ROS_WARN("Refreshing map/octree");    
-    box_filter_.setInputCloud(map_data_); 
-    box_filter_.setTranslation(current_robot_position_); 
+    auto refresh_start_time = std::chrono::system_clock::now();
+    ROS_WARN("Refreshing map/octree");     
+    Eigen::Vector3f current_translation(3), current_rotation(3); 
+    current_translation << current_pose.translation.data[0], 
+                           current_pose.translation.data[1], 
+                           current_pose.translation.data[2];
+    current_rotation << current_pose.rotation.Roll(), 
+                        current_pose.rotation.Pitch(), 
+                        current_pose.rotation.Yaw(); 
+    box_filter_.setInputCloud(map_data_);
+    box_filter_.setTranslation(current_translation); 
+    box_filter_.setRotation(current_rotation); 
     box_filter_.filter(*map_data_);
     map_updated_ = true;
     map_octree_.reset(new Octree(octree_resolution_));  
     map_octree_->setInputCloud(map_data_);
     map_octree_->addPointsFromInputCloud();
-    map_mutex_.unlock();
+    map_mutex_.unlock();    
+    auto refresh_end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> refresh_duration = refresh_end_time - refresh_start_time;
+    ROS_INFO_STREAM("refresh_duration: " << refresh_duration.count());
   }
   else {
     ROS_WARN(
