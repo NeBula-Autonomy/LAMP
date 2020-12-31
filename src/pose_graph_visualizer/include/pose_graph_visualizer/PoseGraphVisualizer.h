@@ -45,6 +45,7 @@
 
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
+#include <utils/PoseGraph.h>
 
 namespace gu = geometry_utils;
 

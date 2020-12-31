@@ -57,6 +57,7 @@
 
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
+#include <utils/PoseGraph.h>
 #include <utils/PrefixHandling.h>
 
 #include <math.h>
