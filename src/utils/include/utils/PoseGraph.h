@@ -114,12 +114,7 @@ class PoseGraph {
                  const gtsam::Symbol& key,
                  const gtsam::Pose3& pose,
                  const gtsam::SharedNoiseModel& covariance,
-                 bool create_msg = true);
-  bool TrackNode(const ros::Time& stamp,
-                 const gtsam::Symbol& key,
-                 const gtsam::Pose3& pose,
-                 const gtsam::SharedNoiseModel& covariance,
-                 const std::string id,
+                 const std::string& id = "",
                  bool create_msg = true);
 
   // Tracks priors (one-sided edges). Returns true if new prior is added.

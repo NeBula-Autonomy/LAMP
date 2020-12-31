@@ -216,7 +216,7 @@ bool PoseGraph::TrackNode(const NodeMessage& msg) {
   Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
 
   // Track node without creating another node message
-  if (!TrackNode(msg.header.stamp, gtsam::Symbol(msg.key), pose, noise, false))
+  if (!TrackNode(msg.header.stamp, gtsam::Symbol(msg.key), pose, noise, msg.ID, false))
     return false;
 
   // make copy to modify ID
@@ -238,46 +238,7 @@ bool PoseGraph::TrackNode(const ros::Time& stamp,
                           const gtsam::Symbol& key,
                           const gtsam::Pose3& pose,
                           const gtsam::SharedNoiseModel& covariance,
-                          bool create_msg) {
-  // TODO use covariance?
-
-  if (values_.exists(key)) {
-    values_.update(key, pose);
-  } else {
-    values_.insert(key, pose);
-  }
-  if (values_new_.exists(key)) {
-    values_new_.update(key, pose);
-  } else {
-    values_new_.insert(key, pose);
-  }
-  keyed_stamps[key] = stamp;
-
-  if (create_msg) {
-    NodeMessage msg =
-        utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
-    // make copy to modify ID
-    auto msg_found = nodes_.find(msg);
-    if (msg_found == nodes_.end()) {
-      NodeMessage m = msg;
-      if (m.ID.empty() && !symbol_id_map.empty())
-        m.ID = symbol_id_map(msg.key);
-      nodes_.insert(m);
-      nodes_new_.insert(m);
-    } else {
-      nodes_.erase(msg_found);
-      nodes_.insert(msg);
-    }
-  }
-
-  return true;
-}
-
-bool PoseGraph::TrackNode(const ros::Time& stamp,
-                          const gtsam::Symbol& key,
-                          const gtsam::Pose3& pose,
-                          const gtsam::SharedNoiseModel& covariance,
-                          const std::string id,
+                          const std::string& id,
                           bool create_msg) {
   // TODO use covariance?
 
