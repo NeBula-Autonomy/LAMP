@@ -19,6 +19,7 @@
 
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
+#include <utils/PoseGraph.h>
 
 class TestPoseGraphClass : public ::testing::Test {
   public:
