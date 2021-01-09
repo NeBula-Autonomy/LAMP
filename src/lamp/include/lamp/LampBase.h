@@ -62,9 +62,6 @@
 
 #include <math.h>
 
-// TODO - review and make pure-virtual all functions that are not implemented
-// here
-
 // Services
 
 // Class definition
@@ -78,7 +75,7 @@ public:
 
   // Define main interface functions
 
-  virtual bool Initialize(const ros::NodeHandle& n);
+  virtual bool Initialize(const ros::NodeHandle& n) = 0;
 
   // Pose graph getters for outside modules (e.g. test fixtures).
   inline const PoseGraph& graph() const {
@@ -89,11 +86,9 @@ public:
   }
 
 protected:
-  // TODO: make most of these pure virtual
-
   // Use this for any "private" things to be used in the derived class
   // Node initialization.
-  virtual bool LoadParameters(const ros::NodeHandle& n);
+  virtual bool LoadParameters(const ros::NodeHandle& n) = 0;
 
   // Set precisions for fixed covariance settings
   bool SetFactorPrecisions();
@@ -102,13 +97,14 @@ protected:
   // Node initialization.
   // Set precisions for fixed covariance settings
   virtual bool CreatePublishers(const ros::NodeHandle& n);
+  virtual bool RegisterCallbacks(const ros::NodeHandle& n) = 0;
   virtual bool InitializeHandlers(const ros::NodeHandle& n) = 0;
   virtual void ProcessTimerCallback(const ros::TimerEvent& ev) = 0;
   double update_rate_;
   ros::Timer update_timer_;
 
   // retrieve data from all handlers
-  virtual bool CheckHandlers();
+  virtual bool CheckHandlers() = 0;
 
   // Callback for loop closures
   void LaserLoopClosureCallback(const pose_graph_msgs::PoseGraphConstPtr msg);
@@ -138,12 +134,11 @@ protected:
 
 
   // New pose graph values from optimizer
-  virtual void
-  OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
-  virtual void MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
+  void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
+  void MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
   // Set artifact positions
-  virtual void UpdateArtifactPositions();
+  virtual void UpdateArtifactPositions() {};
 
   void PublishAllKeyedScans();
 
@@ -151,7 +146,7 @@ protected:
   PoseGraph pose_graph_;
 
   // Function used for retrieving internal identifier given gtsam::Symbol.
-  virtual std::string MapSymbolToId(gtsam::Symbol key) const;
+  std::string MapSymbolToId(gtsam::Symbol key) const;
 
   // Publishers
   ros::Publisher pose_graph_pub_;

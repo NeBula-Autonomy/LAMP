@@ -29,33 +29,33 @@ class LampBaseStation : public LampBase {
     ~LampBaseStation();    
 
     // Override base class functions where needed 
-    virtual bool Initialize(const ros::NodeHandle& n, bool from_log);
+    bool Initialize(const ros::NodeHandle& n) override;
 
   protected: 
     
     // Instantiate all handlers that are being used in the derived classes
-    virtual bool InitializeHandlers(const ros::NodeHandle& n); 
+    bool InitializeHandlers(const ros::NodeHandle& n) override; 
 
     // Load parameters from yaml files
-    virtual bool LoadParameters(const ros::NodeHandle& n);
+    bool LoadParameters(const ros::NodeHandle& n) override;
 
     // Create subscribers
-    virtual bool RegisterCallbacks(const ros::NodeHandle& n);
+    bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
     // Create publishers
-    virtual bool CreatePublishers(const ros::NodeHandle& n);
+    bool CreatePublishers(const ros::NodeHandle& n) override;
 
     // retrieve data from all handlers
-    virtual bool CheckHandlers(); // - inside timed callback
+    bool CheckHandlers() override; // - inside timed callback
 
     // Main update timer callback
-    virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
+    void ProcessTimerCallback(const ros::TimerEvent& ev) override;
 
     // Callback to remove a robot from the posegraph
     void RemoveRobotCallback(const std_msgs::String msg);
 
     // Callback for debugging - put any code inside this
-    virtual void DebugCallback(const std_msgs::String msg);
+    void DebugCallback(const std_msgs::String msg);
 
     // Process keyed scan candidates to add to the map
     void AddKeyedScanCandidatesToMap();
