@@ -21,8 +21,8 @@ class ManualLoopClosureHandler : public LampDataHandlerBase {
     ManualLoopClosureHandler();
     virtual ~ManualLoopClosureHandler();
 
-    virtual bool Initialize(const ros::NodeHandle& n);
-    virtual std::shared_ptr<FactorData> GetData();
+    bool Initialize(const ros::NodeHandle& n);
+    std::shared_ptr<FactorData> GetData() override;
 
   protected:
 

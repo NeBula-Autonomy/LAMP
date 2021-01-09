@@ -60,7 +60,7 @@ public:
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
   // LAMP Interface
-  std::shared_ptr<FactorData> GetData();
+  std::shared_ptr<FactorData> GetData() override;
   std::shared_ptr<FactorData> GetData(bool check_threshold);
   bool GetOdomDelta(const ros::Time t_now, GtsamPosCov& delta_pose);
   bool GetOdomDeltaLatestTime(ros::Time& t_now, GtsamPosCov& delta_pose);

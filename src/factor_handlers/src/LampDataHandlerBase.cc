@@ -20,9 +20,6 @@ LampDataHandlerBase::LampDataHandlerBase() {}
 // Destructor
 LampDataHandlerBase::~LampDataHandlerBase() {}
 
-// Initialization
-bool LampDataHandlerBase::Initialize(const ros::NodeHandle& n) {}
-
 // // Main interface call
 // FactorData* LampDataHandlerBase::GetData() {
 //   // Get the factors

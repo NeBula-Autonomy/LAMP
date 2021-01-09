@@ -21,8 +21,8 @@ class RobotPoseHandler : public LampDataHandlerBase {
     RobotPoseHandler();
     virtual ~RobotPoseHandler();
 
-    virtual bool Initialize(const ros::NodeHandle& n, std::vector<std::string> robot_names);
-    virtual std::shared_ptr<FactorData> GetData();
+    bool Initialize(const ros::NodeHandle& n, std::vector<std::string> robot_names);
+    std::shared_ptr<FactorData> GetData() override;
 
   protected:
 
