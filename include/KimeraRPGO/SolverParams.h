@@ -8,6 +8,8 @@ author: Yun Chang
 #include <string>
 #include <vector>
 
+#include <gtsam/nonlinear/GncParams.h>
+
 namespace KimeraRPGO {
 
 enum class Solver { LM, GN };
@@ -36,7 +38,8 @@ struct RobustSolverParams {
         pcmDist_transThreshold(0.05),  // 5cm
         pcmDist_rotThreshold(0.005),   // <0.5degrees
         incremental(false),
-        log_output(false) {}
+        log_output(false),
+        gnc(false) {}
   /*! \brief For RobustSolver to not do outlier rejection at all
    */
   void setNoRejection(Verbosity verbos = Verbosity::UPDATE) {
@@ -113,6 +116,13 @@ struct RobustSolverParams {
     log_folder = output_folder;
   }
 
+  /*! \brief use gnc
+   */
+  void useGnc(double inlier_threshold = 1.0) {
+    gnc = true;
+    gncInlierThreshold = inlier_threshold;
+  }
+
   // General
   Solver solver;
   OutlierRemovalMethod outlierRemovalMethod;
@@ -131,6 +141,10 @@ struct RobustSolverParams {
 
   // incremental max clique
   bool incremental;
+
+  // for GNC
+  bool gnc;
+  double gncInlierThreshold;
 };
 
 }  // namespace KimeraRPGO
