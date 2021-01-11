@@ -233,11 +233,10 @@ void PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
     gtsam::Point3 pose_translation(msg_node.pose.position.x,
                                    msg_node.pose.position.y,
                                    msg_node.pose.position.z);
-    gtsam::Rot3 pose_orientation(
-        gtsam::Rot3::quaternion(msg_node.pose.orientation.w,
-                                msg_node.pose.orientation.x,
-                                msg_node.pose.orientation.y,
-                                msg_node.pose.orientation.z));
+    gtsam::Rot3 pose_orientation(msg_node.pose.orientation.w,
+                                 msg_node.pose.orientation.x,
+                                 msg_node.pose.orientation.y,
+                                 msg_node.pose.orientation.z);
     full_pose = gtsam::Pose3(pose_orientation, pose_translation);
 
     gtsam::Key key = gtsam::Key(msg_node.key);

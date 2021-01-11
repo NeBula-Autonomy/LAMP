@@ -262,7 +262,7 @@ bool ArtifactHandler::UpdateGlobalPosition(const gtsam::Symbol artifact_key,
 void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
                                        const gtsam::Pose3 global_pose) {
   // Get the artifact pose
-  Eigen::Vector3d artifact_position = global_pose.translation().vector();
+  Eigen::Vector3d artifact_position = global_pose.translation();
   std::string artifact_label;
 
   if (!(artifact_key.chr() == 'l' || artifact_key.chr() == 'm' ||

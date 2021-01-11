@@ -520,8 +520,7 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     pose_21.print();
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
-    initial_guess.block(0, 3, 3, 1) =
-        pose_21.translation().vector().cast<float>();
+    initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
   } break;
   
   case IcpInitMethod::ODOM_ROTATION: // initialize with zero translation but

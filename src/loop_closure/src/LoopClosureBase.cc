@@ -47,11 +47,10 @@ void LoopClosure::InputCallback(
     gtsam::Point3 pose_translation(node_msg.pose.position.x,
                                    node_msg.pose.position.y,
                                    node_msg.pose.position.z);
-    gtsam::Rot3 pose_orientation(
-        gtsam::Rot3::quaternion(node_msg.pose.orientation.w,
-                                node_msg.pose.orientation.x,
-                                node_msg.pose.orientation.y,
-                                node_msg.pose.orientation.z));
+    gtsam::Rot3 pose_orientation(node_msg.pose.orientation.w,
+                                 node_msg.pose.orientation.x,
+                                 node_msg.pose.orientation.y,
+                                 node_msg.pose.orientation.z);
     new_pose = gtsam::Pose3(pose_orientation, pose_translation);
 
     // add new key and stamp to keyed_stamps_
