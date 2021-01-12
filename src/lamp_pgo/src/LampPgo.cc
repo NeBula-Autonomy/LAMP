@@ -93,6 +93,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   }
   // Use incremental max clique
   rpgo_params_.setIncremental();
+  rpgo_params_.useGnc();
   std::string log_path;
   if (pu::Get("log_path", log_path)) {
     rpgo_params_.logOutput(log_path);
