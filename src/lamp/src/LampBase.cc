@@ -121,7 +121,7 @@ void LampBase::OptimizerUpdateCallback(
   // }
 
   // Merge the optimizer result into the internal pose graph
-  // Note that the edges should not have changed (only values)
+  // and also update loop closure edges to reflect inliers
   MergeOptimizedGraph(msg);
 
   // Publish the pose graph and update the map 
@@ -152,6 +152,9 @@ void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg
 
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
+
+  // prune outliers given optimized graph
+  pose_graph_.UpdateLoopClosures(msg);
 
   ROS_DEBUG_STREAM("Pose graph after update: ");
   // for (auto n : pose_graph_.GetNodes()) {

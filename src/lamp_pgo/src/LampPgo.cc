@@ -281,6 +281,20 @@ void LampPgo::PublishValues() const {
     pose_graph_msg.nodes.push_back(node);
   }
 
+  for (const auto& factor : nfg_) {
+    if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3>>(factor)) {
+      pose_graph_msgs::PoseGraphEdge edge;
+      edge.key_from = factor->front();
+      edge.key_to = factor->back();
+      if (factor->front() + 1 == factor->back()) {
+        edge.type = pose_graph_msgs::PoseGraphEdge::ODOM;
+      } else {
+        edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+      }
+      pose_graph_msg.edges.push_back(edge);
+    }
+  }
+
   ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size()
                                                << " values");
   optimized_pub_.publish(pose_graph_msg);
