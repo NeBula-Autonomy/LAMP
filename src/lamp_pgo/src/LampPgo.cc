@@ -95,11 +95,6 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Initialize solver
   pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
 
-  std::string log_path;
-  if (pu::Get("log_path", log_path)) {
-    pgo_solver_->enableLogging(log_path);
-    ROS_INFO("Enabled logging in Kimera-RPGO");
-  }
   // Publish ignored list once
   PublishIgnoredList();
 
@@ -277,6 +272,20 @@ void LampPgo::PublishValues() const {
         values_.at<gtsam::Pose3>(key).rotation().toQuaternion().w();
 
     pose_graph_msg.nodes.push_back(node);
+  }
+
+  for (const auto& factor : nfg_) {
+    if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3>>(factor)) {
+      pose_graph_msgs::PoseGraphEdge edge;
+      edge.key_from = factor->front();
+      edge.key_to = factor->back();
+      if (factor->front() + 1 == factor->back()) {
+        edge.type = pose_graph_msgs::PoseGraphEdge::ODOM;
+      } else {
+        edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+      }
+      pose_graph_msg.edges.push_back(edge);
+    }
   }
 
   ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size()

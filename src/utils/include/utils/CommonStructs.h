@@ -269,6 +269,9 @@ public:
   void RemoveEdgesWithPrefix(unsigned char prefix);
   void RemoveValuesWithPrefix(unsigned char prefix);
 
+  // Update to reflect set of inlier loop closures 
+  void UpdateLoopClosures(const GraphMsgPtr& msg);
+
   // Adds gtsam::Values to internal values and values_new without updating node
   // messages.
   void AddNewValues(const gtsam::Values& new_values);
