@@ -91,7 +91,13 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   } else {
     ROS_ERROR("Unsupported solver parameter. Use 1 for LM and 2 for GN");
   }
-
+  // Use incremental max clique
+  rpgo_params_.setIncremental();
+  std::string log_path;
+  if (pu::Get("log_path", log_path)) {
+    rpgo_params_.logOutput(log_path);
+    ROS_INFO("Enabled logging in Kimera-RPGO");
+  }
   // Initialize solver
   pgo_solver_.reset(new KimeraRPGO::RobustSolver(rpgo_params_));
 

@@ -1,5 +1,5 @@
 #include "utils/CommonFunctions.h"
-#include "utils/CommonStructs.h"
+#include "utils/PoseGraph.h"
 
 #include <gtsam/sam/RangeFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
@@ -65,8 +65,8 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
   return success;
 }
 
-bool PoseGraph::TrackFactor(gtsam::Symbol key_from,
-                            gtsam::Symbol key_to,
+bool PoseGraph::TrackFactor(const gtsam::Symbol& key_from,
+                            const gtsam::Symbol& key_to,
                             int type,
                             const gtsam::Pose3& transform,
                             const gtsam::SharedNoiseModel& covariance,
@@ -138,8 +138,8 @@ bool PoseGraph::TrackFactor(gtsam::Symbol key_from,
   return true;
 }
 
-bool PoseGraph::TrackUWBFactor(gtsam::Symbol key_from,
-                               gtsam::Symbol key_to,
+bool PoseGraph::TrackUWBFactor(const gtsam::Symbol& key_from,
+                               const gtsam::Symbol& key_to,
                                double range,
                                double range_error,
                                bool create_msg) {
@@ -170,9 +170,9 @@ bool PoseGraph::TrackUWBFactor(gtsam::Symbol key_from,
   return true;
 }
 
-bool PoseGraph::TrackIMUFactor(gtsam::Symbol key_to,
-                               geometry_msgs::Point meas,
-                               geometry_msgs::Point ref,
+bool PoseGraph::TrackIMUFactor(const gtsam::Symbol& key_to,
+                               const geometry_msgs::Point& meas,
+                               const geometry_msgs::Point& ref,
                                double att_noise,
                                bool create_msg) {
   gtsam::noiseModel::Base::shared_ptr noise =
@@ -216,7 +216,7 @@ bool PoseGraph::TrackNode(const NodeMessage& msg) {
   Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
 
   // Track node without creating another node message
-  if (!TrackNode(msg.header.stamp, gtsam::Symbol(msg.key), pose, noise, false))
+  if (!TrackNode(msg.header.stamp, gtsam::Symbol(msg.key), pose, noise, msg.ID, false))
     return false;
 
   // make copy to modify ID
@@ -235,49 +235,10 @@ bool PoseGraph::TrackNode(const NodeMessage& msg) {
 }
 
 bool PoseGraph::TrackNode(const ros::Time& stamp,
-                          gtsam::Symbol key,
+                          const gtsam::Symbol& key,
                           const gtsam::Pose3& pose,
                           const gtsam::SharedNoiseModel& covariance,
-                          bool create_msg) {
-  // TODO use covariance?
-
-  if (values_.exists(key)) {
-    values_.update(key, pose);
-  } else {
-    values_.insert(key, pose);
-  }
-  if (values_new_.exists(key)) {
-    values_new_.update(key, pose);
-  } else {
-    values_new_.insert(key, pose);
-  }
-  keyed_stamps[key] = stamp;
-
-  if (create_msg) {
-    NodeMessage msg =
-        utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
-    // make copy to modify ID
-    auto msg_found = nodes_.find(msg);
-    if (msg_found == nodes_.end()) {
-      NodeMessage m = msg;
-      if (m.ID.empty() && !symbol_id_map.empty())
-        m.ID = symbol_id_map(msg.key);
-      nodes_.insert(m);
-      nodes_new_.insert(m);
-    } else {
-      nodes_.erase(msg_found);
-      nodes_.insert(msg);
-    }
-  }
-
-  return true;
-}
-
-bool PoseGraph::TrackNode(const ros::Time& stamp,
-                          gtsam::Symbol key,
-                          const gtsam::Pose3& pose,
-                          const gtsam::SharedNoiseModel& covariance,
-                          const std::string id,
+                          const std::string& id,
                           bool create_msg) {
   // TODO use covariance?
 
@@ -351,7 +312,7 @@ bool PoseGraph::TrackPrior(const Node& node) {
   return TrackPrior(node.key, node.pose, node.covariance);
 }
 
-bool PoseGraph::TrackPrior(gtsam::Symbol key,
+bool PoseGraph::TrackPrior(const gtsam::Symbol& key,
                            const gtsam::Pose3& pose,
                            const gtsam::SharedNoiseModel& covariance,
                            bool create_msg) {
@@ -534,7 +495,7 @@ void PoseGraph::AddNewFactors(const gtsam::NonlinearFactorGraph& nfg) {
   nfg_.add(nfg);
 }
 
-void PoseGraph::Initialize(gtsam::Symbol initial_key,
+void PoseGraph::Initialize(const gtsam::Symbol& initial_key,
                            const gtsam::Pose3& pose,
                            const Diagonal::shared_ptr& covariance) {
   nfg_ = gtsam::NonlinearFactorGraph();
@@ -553,15 +514,15 @@ void PoseGraph::Initialize(gtsam::Symbol initial_key,
   TrackNode(prior);
 }
 
-void PoseGraph::InsertKeyedScan(gtsam::Symbol key,
+void PoseGraph::InsertKeyedScan(const gtsam::Symbol& key,
                                 const PointCloud::ConstPtr& scan) {
   keyed_scans.insert(std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
 }
 
-void PoseGraph::InsertKeyedStamp(gtsam::Symbol key, const ros::Time& stamp) {
+void PoseGraph::InsertKeyedStamp(const gtsam::Symbol& key, const ros::Time& stamp) {
   keyed_stamps.insert(std::pair<gtsam::Symbol, ros::Time>(key, stamp));
 }
 
-void PoseGraph::InsertStampedOdomKey(double seconds, gtsam::Symbol key) {
+void PoseGraph::InsertStampedOdomKey(double seconds, const gtsam::Symbol& key) {
   stamp_to_odom_key.insert(std::pair<double, gtsam::Symbol>(seconds, key));
 }

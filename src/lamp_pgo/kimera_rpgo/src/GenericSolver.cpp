@@ -8,9 +8,13 @@ author: Yun Chang, Luca Carlone
 
 #include "KimeraRPGO/GenericSolver.h"
 
+#include <gtsam/geometry/Pose2.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/DoglegOptimizer.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/slam/PriorFactor.h>
 
 namespace KimeraRPGO {
 
@@ -20,7 +24,8 @@ GenericSolver::GenericSolver(Solver solvertype,
       nfg_(gtsam::NonlinearFactorGraph()),
       solver_type_(solvertype),
       special_symbols_(special_symbols),
-      debug_(true) {}
+      debug_(true),
+      log_(false) {}
 
 bool GenericSolver::isSpecialSymbol(char symb) const {
   for (size_t i = 0; i < special_symbols_.size(); i++) {
@@ -103,6 +108,33 @@ EdgePtr GenericSolver::removeLastFactor() {
       Edge(nfg_[num_factors - 1]->front(), nfg_[num_factors - 1]->back());
   nfg_.erase(std::prev(nfg_.end()));
   return make_unique<Edge>(removed_edge);
+}
+
+void GenericSolver::removePriorsWithPrefix(const char& prefix) {
+  // First make copy of nfg_
+  const gtsam::NonlinearFactorGraph nfg_copy = nfg_;
+  // Clear nfg_
+  nfg_ = gtsam::NonlinearFactorGraph();
+  // Iterate and pick out non prior factors and prior factors without key with
+  // prefix
+  for (auto factor : nfg_copy) {
+    if (boost::dynamic_pointer_cast<gtsam::PriorFactor<gtsam::Pose3>>(factor)) {
+      gtsam::PriorFactor<gtsam::Pose3> prior_factor =
+          *boost::dynamic_pointer_cast<gtsam::PriorFactor<gtsam::Pose3>>(
+              factor);
+      gtsam::Symbol node(prior_factor.key());
+      if (node.chr() != prefix) nfg_.add(factor);
+    } else if (boost::dynamic_pointer_cast<gtsam::PriorFactor<gtsam::Pose2>>(
+                   factor)) {
+      gtsam::PriorFactor<gtsam::Pose2> prior_factor =
+          *boost::dynamic_pointer_cast<gtsam::PriorFactor<gtsam::Pose2>>(
+              factor);
+      gtsam::Symbol node(prior_factor.key());
+      if (node.chr() != prefix) nfg_.add(factor);
+    } else {
+      nfg_.add(factor);
+    }
+  }
 }
 
 }  // namespace KimeraRPGO

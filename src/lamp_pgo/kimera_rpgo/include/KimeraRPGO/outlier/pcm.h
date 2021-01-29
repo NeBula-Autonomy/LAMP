@@ -11,6 +11,7 @@ author: Yun Chang, Luca Carlone
 
 #include <math.h>
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <memory>
@@ -55,18 +56,15 @@ class Pcm : public OutlierRemoval {
  public:
   Pcm(double threshold1,
       double threshold2,
+      bool incremental = false,
       const std::vector<char>& special_symbols = std::vector<char>())
       : OutlierRemoval(),
         threshold1_(threshold1),
         threshold2_(threshold2),
+        incremental_(incremental),
         special_symbols_(special_symbols),
         total_lc_(0),
-        total_lc_odom_cons_(0),
-        total_lc_inliers_(0),
-        total_landmark_measurements_(0),
-        total_landmark_inliers_(0),
-        total_multirobot_lc_(0),
-        total_multirobot_lc_inliers_(0) {
+        total_good_lc_(0) {
     // check if templated value valid
     BOOST_CONCEPT_ASSERT((gtsam::IsLieGroup<poseT>));
   }
@@ -92,6 +90,9 @@ class Pcm : public OutlierRemoval {
   // trajectory maping robot prefix to its keys and poses
   std::unordered_map<char, Trajectory<poseT, T>> odom_trajectories_;
 
+  // Incremental max clique
+  bool incremental_;
+
   // these are the symbols corresponding to landmarks
   std::vector<char> special_symbols_;
 
@@ -101,10 +102,7 @@ class Pcm : public OutlierRemoval {
   // store the vector of observations (loop closures)
   std::vector<ObservationId> loop_closures_in_order_;
 
-  size_t total_lc_, total_lc_inliers_, total_landmark_measurements_,
-      total_landmark_inliers_, total_multirobot_lc_,
-      total_multirobot_lc_inliers_, total_lc_odom_cons_;
-  std::vector<double> consistency_error_;
+  size_t total_lc_, total_good_lc_;
 
   // store the vector of ignored prefixes (loop closures to ignore)
   std::vector<char> ignored_prefixes_;
@@ -117,18 +115,7 @@ class Pcm : public OutlierRemoval {
 
  public:
   size_t getNumLC() { return total_lc_; }
-  size_t getNumLCInliers() { return total_lc_inliers_; }
-
-  Stats getRejectionStats() {
-    return Stats(total_lc_,
-                 total_lc_inliers_,
-                 total_lc_odom_cons_,
-                 total_multirobot_lc_,
-                 total_multirobot_lc_inliers_,
-                 total_landmark_measurements_,
-                 total_landmark_inliers_,
-                 consistency_error_);
-  }
+  size_t getNumLCInliers() { return total_good_lc_; }
 
   /*! \brief Process new measurements and reject outliers
    *  process the new measurements and update the "good set" of measurements
@@ -142,6 +129,8 @@ class Pcm : public OutlierRemoval {
                       const gtsam::Values& new_values,
                       gtsam::NonlinearFactorGraph* output_nfg,
                       gtsam::Values* output_values) override {
+    // Start timer
+    auto start = std::chrono::high_resolution_clock::now();
     // store new values:
     output_values->insert(
         new_values);  // - store latest pose in values_ (note:
@@ -208,7 +197,7 @@ class Pcm : public OutlierRemoval {
           newMeasurement.consistent_factors.add(new_factors[i]);
           gtsam::Symbol symb(new_values.keys()[0]);
           landmarks_[symb] = newMeasurement;
-          total_landmark_measurements_++;
+          total_lc_++;
         } break;
         case FactorType::LOOP_CLOSURE: {
           if (new_factors[i]->front() != new_factors[i]->back()) {
@@ -230,18 +219,41 @@ class Pcm : public OutlierRemoval {
         }
       }  // end switch
     }
+    auto max_clique_duration = std::chrono::milliseconds::zero();
     if (loop_closure_factors.size() > 0) {
       // update inliers
-      parseAndIncrementAdjMatrix(loop_closure_factors, *output_values);
-      // output values is just used to sanity check the keys
-      findInliers();
+      std::unordered_map<ObservationId, size_t> num_new_loopclosures;
+      parseAndIncrementAdjMatrix(
+          loop_closure_factors, *output_values, &num_new_loopclosures);
+      auto max_clique_start = std::chrono::high_resolution_clock::now();
+      if (incremental_) {
+        findInliersIncremental(num_new_loopclosures);
+      } else {
+        findInliers();
+      }
+      auto max_clique_end = std::chrono::high_resolution_clock::now();
+      max_clique_duration =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              max_clique_end - max_clique_start);
       // Find inliers with Pairwise consistent measurement set maximization
       do_optimize = true;
     }
     *output_nfg = buildGraphToOptimize();
 
-    values_ = *output_values;
-    last_ouput_nfg_ = *output_nfg;
+    // End clock
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto spin_duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    if (debug_ || do_optimize)
+      log<INFO>(
+          "PCM spin took %1% milliseconds. Detected %2% total loop closures "
+          "with %3% inliers. ") %
+          spin_duration.count() % total_lc_ % total_good_lc_;
+    if (log_output_) {
+      saveAdjacencyMatrix(log_folder_);
+      logSpinStatus(
+          spin_duration.count(), max_clique_duration.count(), log_folder_);
+    }
     return do_optimize;
   }  // end reject outliers
 
@@ -250,13 +262,10 @@ class Pcm : public OutlierRemoval {
    *  - folder_path: path to directory to save results in
    */
   void saveData(std::string folder_path) override {
-    // Save g2o files for post analysis
-    std::string result_g2o = folder_path + "/result.g2o";
-    gtsam::writeG2o(last_ouput_nfg_, values_, result_g2o);
-    std::string odom_g2o = folder_path + "/odom_inconsistent.g2o";
-    gtsam::writeG2o(odom_inconsistent_factors_, values_, odom_g2o);
-    std::string pw_g2o = folder_path + "/pairwise_inconsistent.g2o";
-    gtsam::writeG2o(pairwise_inconsistent_factors_, values_, pw_g2o);
+    // TODO(Yun) save max clique results
+    // TODO(Yun) Maybe just use log?
+    // saveAdjacencyMatrix(folder_path);
+    // saveCliqueSizeData(folder_path);
   }
 
   /*! \brief remove the last loop closure based on observation ID
@@ -346,13 +355,39 @@ class Pcm : public OutlierRemoval {
    */
   inline std::vector<char> getIgnoredPrefixes() { return ignored_prefixes_; }
 
+  /*! \brief remove the prior factors of nodes that given prefix
+   */
+  void removePriorFactorsWithPrefix(
+      const char& prefix,
+      gtsam::NonlinearFactorGraph* updated_factors) {
+    // First make copy of nfg_special_ where prior factors stored
+    const gtsam::NonlinearFactorGraph nfg_special_copy = nfg_special_;
+    // Clear nfg_special_
+    nfg_special_ = gtsam::NonlinearFactorGraph();
+    // Iterate and pick out non prior factors and prior factors without key with
+    // prefix
+    for (auto factor : nfg_special_copy) {
+      if (!boost::dynamic_pointer_cast<gtsam::PriorFactor<poseT>>(factor)) {
+        nfg_special_.add(factor);
+      } else {
+        gtsam::PriorFactor<poseT> prior_factor =
+            *boost::dynamic_pointer_cast<gtsam::PriorFactor<poseT>>(factor);
+        gtsam::Symbol node(prior_factor.key());
+        if (node.chr() != prefix) nfg_special_.add(factor);
+      }
+    }
+    *updated_factors = buildGraphToOptimize();
+    return;
+  }
+
  protected:
   /*! \brief goes through the loop closures and updates the corresponding
    * adjacency matrices, in preparation for max clique
    */
   void parseAndIncrementAdjMatrix(
       const gtsam::NonlinearFactorGraph& new_factors,
-      const gtsam::Values& output_values) {
+      const gtsam::Values& output_values,
+      std::unordered_map<ObservationId, size_t>* num_new_loopclosures) {
     for (size_t i = 0; i < new_factors.size(); i++) {
       // iterate through the factors
       // double check again that these are between factors
@@ -389,19 +424,17 @@ class Pcm : public OutlierRemoval {
                 gtsam::DefaultKeyFormatter(landmark_key);
 
           landmarks_[landmark_key].factors.add(nfg_factor);
-          total_landmark_measurements_++;
+          total_lc_++;
           // grow adj matrix
           incrementLandmarkAdjMatrix(landmark_key);
         } else {
           // It is a proper loop closures
-          total_lc_++;
           double odom_dist;
           bool odom_consistent = false;
           if (symbfrnt.chr() == symbback.chr()) {
             odom_consistent = isOdomConsistent(nfg_factor, &odom_dist);
           } else {
             // odom consistency check only for intrarobot loop closures
-            total_multirobot_lc_++;
             odom_consistent = true;
           }
           if (odom_consistent) {
@@ -411,11 +444,18 @@ class Pcm : public OutlierRemoval {
                   gtsam::DefaultKeyFormatter(nfg_factor.back());
             ObservationId obs_id(symbfrnt.chr(), symbback.chr());
             // detect which inter or intra robot loop closure this belongs to
+            if (num_new_loopclosures->find(obs_id) ==
+                num_new_loopclosures->end()) {
+              num_new_loopclosures->insert(
+                  std::pair<ObservationId, size_t>(obs_id, 1));
+            } else {
+              num_new_loopclosures->at(obs_id)++;
+            }
             loop_closures_[obs_id].factors.add(nfg_factor);
             loop_closures_in_order_.push_back(obs_id);
+            total_lc_++;
             incrementAdjMatrix(obs_id, nfg_factor);
           } else {
-            odom_inconsistent_factors_.add(nfg_factor);
             if (debug_)
               log<WARNING>(
                   "Discarded loop closure (inconsistent with odometry)");
@@ -680,7 +720,6 @@ class Pcm : public OutlierRemoval {
         // check consistency
         double mah_distance;
         bool consistent = areLoopsConsistent(factor_i, factor, &mah_distance);
-        consistency_error_.push_back(mah_distance);
         new_dst_matrix(num_lc - 1, i) = mah_distance;
         new_dst_matrix(i, num_lc - 1) = mah_distance;
         if (consistent) {
@@ -777,11 +816,7 @@ class Pcm : public OutlierRemoval {
    */
   void findInliers() {
     if (debug_) log<INFO>("total loop closures registered: %1%") % total_lc_;
-    pairwise_inconsistent_factors_ = gtsam::NonlinearFactorGraph();  // reset
-
-    total_lc_inliers_ = 0;
-    total_lc_odom_cons_ = 0;
-    total_multirobot_lc_inliers_ = 0;
+    total_good_lc_ = 0;
     // iterate through loop closures and find inliers
     std::unordered_map<ObservationId, Measurements>::iterator it =
         loop_closures_.begin();
@@ -791,25 +826,15 @@ class Pcm : public OutlierRemoval {
       // find max clique
       size_t num_inliers =
           findMaxCliqueHeu(it->second.adj_matrix, &inliers_idx);
-      std::sort(inliers_idx.begin(), inliers_idx.end());  // sort
-      gtsam::NonlinearFactorGraph outlier_factors = it->second.factors.clone();
       // update inliers, or consistent factors, according to max clique result
-      // itreate in reverse order and update outliers
-      for (size_t i = num_inliers; i > 0; --i) {
-        outlier_factors.erase(outlier_factors.begin() + inliers_idx[i - 1]);
-        it->second.consistent_factors.add(
-            it->second.factors[inliers_idx[i - 1]]);
+      for (size_t i = 0; i < num_inliers; i++) {
+        it->second.consistent_factors.add(it->second.factors[inliers_idx[i]]);
       }
-      total_lc_odom_cons_ = total_lc_odom_cons_ + it->second.adj_matrix.rows();
-      total_lc_inliers_ = total_lc_inliers_ + num_inliers;
-      if (it->first.id1 != it->first.id2)
-        total_multirobot_lc_inliers_ =
-            total_multirobot_lc_inliers_ + num_inliers;
       it++;
-      pairwise_inconsistent_factors_.add(outlier_factors);
+      total_good_lc_ = total_good_lc_ + num_inliers;
     }
+
     // iterate through landmarks and find inliers
-    total_landmark_inliers_ = 0;
     std::unordered_map<gtsam::Key, Measurements>::iterator it_ldmrk =
         landmarks_.begin();
     while (it_ldmrk != landmarks_.end()) {
@@ -825,15 +850,76 @@ class Pcm : public OutlierRemoval {
             it_ldmrk->second.factors[inliers_idx[i]]);
       }
       it_ldmrk++;
-      total_landmark_inliers_ = total_landmark_inliers_ + num_inliers;
+      total_good_lc_ = total_good_lc_ + num_inliers;
     }
-    if (debug_) {
-      log<INFO>("number of good loop closures: %1%") % total_lc_inliers_;
-      log<INFO>("number of good multirobot loop closures: %1%") %
-          total_multirobot_lc_inliers_;
-      log<INFO>("number of good landmark measurements: %1%") %
-          total_landmark_inliers_;
+    if (debug_) log<INFO>("number of inliers: %1%") % total_good_lc_;
+  }
+
+  /* *******************************************************************************
+   */
+  /*
+   * TODO Incremental maxclique
+   */
+  void findInliersIncremental(
+      const std::unordered_map<ObservationId, size_t>& num_new_loopclosures) {
+    if (debug_) log<INFO>("total loop closures registered: %1%") % total_lc_;
+    total_good_lc_ = 0;
+    // iterate through loop closures and find inliers
+    std::unordered_map<ObservationId, size_t>::const_iterator new_lc_it =
+        num_new_loopclosures.begin();
+    while (new_lc_it != num_new_loopclosures.end()) {
+      ObservationId robot_pair = new_lc_it->first;
+      std::vector<int> inliers_idx;
+      size_t prev_maxclique_size =
+          loop_closures_[robot_pair].consistent_factors.size();
+      // find max clique incrementally
+      size_t num_inliers =
+          findMaxCliqueHeuIncremental(loop_closures_[robot_pair].adj_matrix,
+                                      new_lc_it->second,
+                                      prev_maxclique_size,
+                                      &inliers_idx);
+      // update inliers, or consistent factors, according to max clique result
+      // num_inliers will be zero if the previous inlier set should not be
+      // changed
+      if (num_inliers > 0) {
+        loop_closures_[robot_pair].consistent_factors =
+            gtsam::NonlinearFactorGraph();  // reset
+        for (size_t i = 0; i < num_inliers; i++) {
+          loop_closures_[robot_pair].consistent_factors.add(
+              loop_closures_[robot_pair].factors[inliers_idx[i]]);
+        }
+      } else {
+        // Set of inliers not modified. Don't reset consistent_factors
+        num_inliers = prev_maxclique_size;
+      }
+      new_lc_it++;
     }
+
+    // update total_good_lc_
+    for (auto robot_pair_lc : loop_closures_) {
+      total_good_lc_ =
+          total_good_lc_ + robot_pair_lc.second.consistent_factors.size();
+    }
+
+    // iterate through landmarks and find inliers
+    std::unordered_map<gtsam::Key, Measurements>::iterator it_ldmrk =
+        landmarks_.begin();
+    while (it_ldmrk != landmarks_.end()) {
+      std::vector<int> inliers_idx;
+      it_ldmrk->second.consistent_factors =
+          gtsam::NonlinearFactorGraph();  // reset
+      // find max clique
+      size_t num_inliers =
+          findMaxCliqueHeu(it_ldmrk->second.adj_matrix, &inliers_idx);
+      // update inliers, or consistent factors, according to max clique result
+      for (size_t i = 0; i < num_inliers; i++) {
+        it_ldmrk->second.consistent_factors.add(
+            it_ldmrk->second.factors[inliers_idx[i]]);
+      }
+      it_ldmrk++;
+      total_good_lc_ = total_good_lc_ + num_inliers;
+    }
+    if (debug_) log<INFO>("number of inliers: %1%") % total_good_lc_;
   }
 
   /* *******************************************************************************
@@ -868,6 +954,39 @@ class Pcm : public OutlierRemoval {
     output_nfg.add(
         nfg_special_);  // still need to update the class overall factorgraph
     return output_nfg;
+  }
+
+  /*
+   * Save adjacency matrix to ObservationId_adj_matrix.txt
+   */
+  void saveAdjacencyMatrix(const std::string& folder_path) {
+    for (auto measurement : loop_closures_) {
+      ObservationId id = measurement.first;
+      gtsam::Matrix adj_matrix = measurement.second.adj_matrix;
+
+      // Save to file
+      std::string filename =
+          folder_path + "/" + id.id1 + "-" + id.id2 + "_adj_matrix.txt";
+      std::ofstream outfile;
+      outfile.open(filename);
+      outfile << adj_matrix;
+      outfile.close();
+    }
+  }
+
+  /*
+   * Log spin status (timing, number of loop closures, number of inliers)
+   */
+  void logSpinStatus(const int& spin_duration,
+                     const int& find_inlier_duration,
+                     const std::string& folder_path) {
+    // Save to file
+    std::string filename = folder_path + "/outlier_rejection_status.txt";
+    std::ofstream outfile;
+    outfile.open(filename, std::ofstream::out | std::ofstream::app);
+    outfile << total_lc_ << " " << total_good_lc_ << " " << spin_duration << " "
+            << find_inlier_duration << std::endl;
+    outfile.close();
   }
 };
 

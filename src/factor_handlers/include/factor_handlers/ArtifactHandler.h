@@ -84,7 +84,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
-    virtual std::shared_ptr<FactorData> GetData();
+    std::shared_ptr<FactorData> GetData() override;
 
     /*! \brief  Get the artifact_key2info_hash_
      * Returns  artifact_key2info_hash_
@@ -181,7 +181,10 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Add artifact data
      * Returns  Void
      */
-    virtual void AddArtifactData(const gtsam::Symbol artifact_key, const ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
+    virtual void AddArtifactData(const gtsam::Symbol artifact_key,
+                                 const ros::Time time_stamp,
+                                 const gtsam::Point3 transform,
+                                 const gtsam::SharedNoiseModel noise);
 
     /*! \brief  Stores/Updated artifactInfo Hash
      * Returns  Void

@@ -279,7 +279,7 @@ void PoseGraphVisualizer::RemoveFactorVizCallback(
 
 void PoseGraphVisualizer::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
-  const gtsam::Key key = msg->key;
+  const gtsam::Key& key = msg->key;
   if (pose_graph_.HasScan(key)) {
     ROS_ERROR("%s: Key %lu already has a laser scan.", name_.c_str(), key);
     return;
@@ -302,7 +302,7 @@ void PoseGraphVisualizer::KeyedScanCallback(
 }
 
 Eigen::Vector3d
-PoseGraphVisualizer::GetArtifactPosition(const gtsam::Key artifact_key) const {
+PoseGraphVisualizer::GetArtifactPosition(const gtsam::Key& artifact_key) const {
   const auto pose = pose_graph_.GetPose(artifact_key);
   Eigen::Vector3d v(pose.x(), pose.y(), pose.z());
   return v;

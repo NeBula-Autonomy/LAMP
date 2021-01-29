@@ -1,4 +1,4 @@
-#include "utils/CommonStructs.h"
+#include "utils/PoseGraph.h"
 #include "utils/PrefixHandling.h"
 
 double PoseGraph::time_threshold = 1.0;
@@ -99,7 +99,7 @@ gtsam::Pose3 PoseGraph::LastPose(char c) const {
     return values_.at<gtsam::Pose3>(latest);;
 }
 
-const NodeMessage* PoseGraph::FindNode(gtsam::Key key) const {
+const NodeMessage* PoseGraph::FindNode(const gtsam::Key& key) const {
   for (const auto& node : nodes_) {
     if (node.key == key) {
       return &node;
@@ -108,8 +108,8 @@ const NodeMessage* PoseGraph::FindNode(gtsam::Key key) const {
   return nullptr;
 }
 
-const EdgeMessage* PoseGraph::FindEdge(gtsam::Key key_from,
-                                       gtsam::Key key_to) const {
+const EdgeMessage* PoseGraph::FindEdge(const gtsam::Key& key_from,
+                                       const gtsam::Key& key_to) const {
   for (const auto& edge : edges_) {
     if (edge.key_from == key_from && edge.key_to == key_to) {
       return &edge;
@@ -118,7 +118,7 @@ const EdgeMessage* PoseGraph::FindEdge(gtsam::Key key_from,
   return nullptr;
 }
 
-const EdgeMessage* PoseGraph::FindPrior(gtsam::Key key) const {
+const EdgeMessage* PoseGraph::FindPrior(const gtsam::Key& key) const {
   for (const auto& edge : priors_) {
     if (edge.key_from == key) {
       return &edge;

@@ -20,11 +20,9 @@ class StationaryHandler : public LampDataHandlerBase {
   ~StationaryHandler();
 
   bool Initialize(const ros::NodeHandle& n);
-  bool LoadParameters(const ros::NodeHandle& n);
-  bool RegisterCallbacks(const ros::NodeHandle& n);
 
   // LAMP Interface
-  virtual std::shared_ptr<FactorData> GetData();
+  std::shared_ptr<FactorData> GetData() override;
 
   bool SetKeyForImuAttitude(const gtsam::Symbol& key);
   bool has_data_;
@@ -33,6 +31,9 @@ class StationaryHandler : public LampDataHandlerBase {
   std::string name_;
 
   ros::Subscriber stationary_sub_;
+  bool LoadParameters(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& n);
+
   void StationaryCallback(const StationaryMessage::ConstPtr& msg);
 
   // Quaternions
