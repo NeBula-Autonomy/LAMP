@@ -47,6 +47,11 @@
 
 #include <core_msgs/MapInfo.h>
 
+#include <pcl/filters/crop_box.h>
+#include <geometry_utils/GeometryUtilsROS.h>
+#include <geometry_utils/Transform3.h>
+
+
 class PointCloudMapper {
 public:
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
@@ -94,6 +99,10 @@ public:
 
   // Extracts the last num_pc point clouds from the buffer
   bool GetSubMapFromBuffer(PointCloud* scan, int num_pc);
+
+  // Map Sliding Window 2 ---------------------------------------------------
+  void SetBoxFilterSize(const int box_filter_size);
+  void Refresh(const geometry_utils::Transform3& current_pose); 
 
 private:
   // Node initialization.
@@ -155,6 +164,11 @@ private:
   // Options
   bool b_run_rolling_map_buffer_;
   int map_buffer_max_size_;
+
+  // Map Sliding Window 2 ----------------- 
+  pcl::CropBox<pcl::PointXYZI> box_filter_;
+  int box_filter_size_; 
+
 };
 
 #endif
