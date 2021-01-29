@@ -27,7 +27,7 @@ LampBaseStation::LampBaseStation():
 LampBaseStation::~LampBaseStation() {}
 
 // Initialization - override for Base Station Setup
-bool LampBaseStation::Initialize(const ros::NodeHandle& n, bool from_log) {
+bool LampBaseStation::Initialize(const ros::NodeHandle& n) {
 
   // Get the name of the process
   name_ = ros::names::append(n.getNamespace(), "LampBaseStation");

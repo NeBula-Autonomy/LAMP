@@ -45,6 +45,7 @@
 
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
+#include <utils/PoseGraph.h>
 
 namespace gu = geometry_utils;
 
@@ -137,7 +138,7 @@ private:
   std::unordered_map<std::string, std::string> current_parentID2ID_;
   std::hash<std::string> parent_id2int_;
   std::vector<std::string> artifact_parentID_blacklist_;
-  Eigen::Vector3d GetArtifactPosition(const gtsam::Key artifact_key) const;
+  Eigen::Vector3d GetArtifactPosition(const gtsam::Key& artifact_key) const;
 
   // Visualization publishers.
   ros::Publisher odometry_edge_pub_;

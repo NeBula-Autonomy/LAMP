@@ -768,9 +768,8 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     // the function above
     covariance = artifact.covariance;
 
-    if (b_use_fixed_covariances_) {
-      covariance = SetFixedNoiseModels("artifact");
-    }
+    // Can only used fixed covariance for artifact edges
+    covariance = SetFixedNoiseModels("artifact");
 
     // Check if it is a new artifact or not
     if (!pose_graph_.HasKey(cur_artifact_key)) {
@@ -894,9 +893,8 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
     // the function above
     covariance = april_tag.covariance;
 
-    if (b_use_fixed_covariances_) {
-      covariance = SetFixedNoiseModels("april");
-    }
+    // Can only use fixed covariance for april tag measurements
+    covariance = SetFixedNoiseModels("april");
 
     // Check if it is a new april tag or not
     if (!pose_graph_.HasKey(cur_april_tag_key)) {

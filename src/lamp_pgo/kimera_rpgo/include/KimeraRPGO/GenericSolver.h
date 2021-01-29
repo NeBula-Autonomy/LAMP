@@ -5,6 +5,7 @@ author: Yun Chang, Luca Carlone
 
 #pragma once
 
+#include <string>
 #include <vector>
 
 // enables correct operations of GTSAM (correct Jacobians)
@@ -48,6 +49,8 @@ class GenericSolver {
 
   EdgePtr removeLastFactor();  // remove last added factor
 
+  void removePriorsWithPrefix(const char& prefix);
+
  protected:
   bool addAndCheckIfOptimize(
       const gtsam::NonlinearFactorGraph& nfg = gtsam::NonlinearFactorGraph(),
@@ -60,6 +63,8 @@ class GenericSolver {
   Solver solver_type_;
   std::vector<char> special_symbols_;
   bool debug_;
+  bool log_;
+  std::string log_folder_;
 };
 
 }  // namespace KimeraRPGO

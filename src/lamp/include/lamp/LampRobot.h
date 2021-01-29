@@ -33,7 +33,7 @@ class LampRobot : public LampBase {
   ~LampRobot();
 
   // Override base class functions where needed
-  virtual bool Initialize(const ros::NodeHandle& n);
+  bool Initialize(const ros::NodeHandle& n) override;
 
   inline gtsam::Symbol GetInitialKey() const {
     return pose_graph_.initial_key;
@@ -42,27 +42,27 @@ class LampRobot : public LampBase {
 
  protected:
   // instantiate all handlers that are being used in the derived classes
-  virtual bool InitializeHandlers(const ros::NodeHandle& n);
+  bool InitializeHandlers(const ros::NodeHandle& n) override;
 
   // load parameters from yaml files
-  virtual bool LoadParameters(const ros::NodeHandle& n);
+  bool LoadParameters(const ros::NodeHandle& n) override;
 
   // retrieve data from all handlers
-  virtual bool CheckHandlers();  // - inside timed callback
+  bool CheckHandlers() override;  // - inside timed callback
   // TODO consider checking handlers at different frequencies
 
-  bool RegisterCallbacks(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
-  virtual bool CreatePublishers(const ros::NodeHandle& n);
+  bool CreatePublishers(const ros::NodeHandle& n) override;
 
   // Main update timer callback
-  virtual void ProcessTimerCallback(const ros::TimerEvent& ev);
+  void ProcessTimerCallback(const ros::TimerEvent& ev) override;
 
   // Initialization helper functions
   bool SetInitialPosition();
   bool SetInitialKey();
 
-  void UpdateArtifactPositions();
+  void UpdateArtifactPositions() override;
   void UpdateAndPublishOdom();
 
   // Publishers

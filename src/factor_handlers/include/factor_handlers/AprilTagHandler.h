@@ -9,13 +9,13 @@ class AprilTagHandler : public ArtifactHandler {
     // Constructor
     AprilTagHandler();
     // Destructor
-    virtual ~AprilTagHandler() = default;
+    ~AprilTagHandler() = default;
 
     /*! \brief Initialize parameters and callbacks. 
      * n - Nodehandle
      * Returns bool
      */
-    virtual bool Initialize(const ros::NodeHandle& n);
+    bool Initialize(const ros::NodeHandle& n) override;
 
     /*! \brief  Get ground truth data from April tag node key.  
      * Returns  Ground truth information
@@ -25,7 +25,7 @@ class AprilTagHandler : public ArtifactHandler {
     /*! \brief Gives the factors to be added and clears to start afresh.
      * Returns New factor data
      */
-    virtual std::shared_ptr<FactorData> GetData();
+    std::shared_ptr<FactorData> GetData() override;
 
     protected:
 
@@ -33,13 +33,13 @@ class AprilTagHandler : public ArtifactHandler {
      * n - Nodehandle
      * Returns bool
      */
-    virtual bool LoadParameters(const ros::NodeHandle& n);
+    bool LoadParameters(const ros::NodeHandle& n) override;
 
     /*! \brief Register Online callbacks. 
      * n - Nodehandle
      * Returns bool
      */
-    virtual bool RegisterOnlineCallbacks(const ros::NodeHandle& n); 
+    bool RegisterOnlineCallbacks(const ros::NodeHandle& n) override;
 
     /*! \brief  Callback for April Tag.
      * Returns  Void
@@ -55,9 +55,12 @@ class AprilTagHandler : public ArtifactHandler {
     /*! \brief  Add artifact data
      * Returns  Void
      */
-    virtual void AddArtifactData(const gtsam::Symbol artifact_key, const ros::Time time_stamp, const gtsam::Point3 transform, const gtsam::SharedNoiseModel noise);
+    void AddArtifactData(const gtsam::Symbol artifact_key,
+                         const ros::Time time_stamp,
+                         const gtsam::Point3 transform,
+                         const gtsam::SharedNoiseModel noise) override;
 
-    private:
+   private:
     // April related parameters
     // GT AprilTag world coordinates
     double calibration_left_x_;

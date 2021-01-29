@@ -178,6 +178,11 @@ class TestLampRobotArtifact : public ::testing::Test {
 public:
   // using namespace TestLampRobot;
   TestLampRobotArtifact() {
+    // Load required params
+    system(
+        "rosparam load $(rospack find "
+        "lamp)/config/precision_parameters.yaml");
+
     // Set the global flags. 
     setArtifactInGlobal(false);
     setFixedCovariance(false);
@@ -194,6 +199,7 @@ public:
   nav_msgs::Odometry l1_value;
 
   // Access functions
+  bool SetFactorPrecisions() { return lr.SetFactorPrecisions(); }
   void AddStampToOdomKey(ros::Time stamp, gtsam::Symbol key) {
     lr.graph().stamp_to_odom_key[stamp.toSec()] = key;
   }
@@ -506,6 +512,7 @@ TEST_F(TestLampRobot, TestSetInitialPosition) {
  */
 // CAUSING TESTING ISSUES TODO
 TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
+  SetFactorPrecisions();
   // Fill odometry related information
   FillOdometryData();
 

@@ -46,22 +46,7 @@ class LampDataHandlerBase {
     LampDataHandlerBase();
     ~LampDataHandlerBase();
 
-    virtual bool Initialize(const ros::NodeHandle& n);
     virtual std::shared_ptr<FactorData> GetData() = 0;
-
-
-  protected:
-    // Node initialization.
-    bool LoadParameters(const ros::NodeHandle& n);
-    bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
-    bool RegisterLogCallbacks(const ros::NodeHandle& n);
-    bool RegisterOnlineCallbacks(const ros::NodeHandle& n);
-    bool CreatePublishers(const ros::NodeHandle& n);
-
-    // Reset Factor data
-    void ResetFactorData();
-
-  private:
 };
 
 #endif
