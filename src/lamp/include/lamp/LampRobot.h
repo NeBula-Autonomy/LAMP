@@ -74,72 +74,72 @@ class LampRobot : public LampBase {
  private:
   // Overwrite base classs functions where needed
 
-  // Factor Hanlder Wrappers
-  bool ProcessOdomData(std::shared_ptr<FactorData> data);
-  // Process the artifact factors if any available
-  bool ProcessArtifactData(std::shared_ptr<FactorData> data);
-  // Process the uwb factors if any available
-  bool ProcessUwbData(std::shared_ptr<FactorData> data);
+   // Factor Handler Wrappers
+   bool ProcessOdomData(std::shared_ptr<FactorData> data);
+   // Process the artifact factors if any available
+   bool ProcessArtifactData(std::shared_ptr<FactorData> data);
+   // Process the uwb factors if any available
+   bool ProcessUwbData(std::shared_ptr<FactorData> data);
 
-  // Process Stationary data when robot stops
-  bool ProcessStationaryData(std::shared_ptr<FactorData> data);
+   // Process Stationary data when robot stops
+   bool ProcessStationaryData(std::shared_ptr<FactorData> data);
 
-  bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
-  bool InitializeGraph(gtsam::Pose3& pose,
-                       gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-  // Example use:
-  // ProcessArtifactData(artifact_handler_.GetData());
-  void AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
-                              gtsam::Symbol current_key);
+   bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
+   bool InitializeGraph(gtsam::Pose3& pose,
+                        gtsam::noiseModel::Diagonal::shared_ptr& covariance);
+   // Example use:
+   // ProcessArtifactData(artifact_handler_.GetData());
+   void AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
+                               gtsam::Symbol current_key);
 
-  void HandleRelativePoseMeasurement(const ros::Time& time,
-                                     const gtsam::Pose3& relative_pose,
-                                     gtsam::Pose3& transform,
-                                     gtsam::Pose3& global_pose,
-                                     gtsam::Symbol& key_from);
+   void HandleRelativePoseMeasurement(const ros::Time& time,
+                                      const gtsam::Pose3& relative_pose,
+                                      gtsam::Pose3& transform,
+                                      gtsam::Pose3& global_pose,
+                                      gtsam::Symbol& key_from);
 
-  bool ConvertGlobalToRelative(const ros::Time stamp,
-                               const gtsam::Pose3 pose_global,
-                               gtsam::Pose3& pose_relative);
+   bool ConvertGlobalToRelative(const ros::Time stamp,
+                                const gtsam::Pose3 pose_global,
+                                gtsam::Pose3& pose_relative);
 
-  // Data Handler classes
-  OdometryHandler odometry_handler_;
-  ArtifactHandler artifact_handler_;
-  AprilTagHandler april_tag_handler_;
-  UwbHandler uwb_handler_;
-  StationaryHandler stationary_handler_;
+   // Data Handler classes
+   OdometryHandler odometry_handler_;
+   ArtifactHandler artifact_handler_;
+   AprilTagHandler april_tag_handler_;
+   UwbHandler uwb_handler_;
+   StationaryHandler stationary_handler_;
 
-  // Add new functions as needed
+   // Add new functions as needed
 
-  // Add new variables as needed
+   // Add new variables as needed
 
-  // Parameters
-  gtsam::Vector6 initial_noise_;
-  bool b_artifacts_in_global_;
-  bool b_use_uwb_;
-  bool b_add_imu_factors_;
-  bool b_init_pg_pub_;
-  int factor_count_;
-  int init_count_;
-  float init_wait_time_;
-  float repub_first_wait_time_;
+   // Parameters
+   gtsam::Vector6 initial_noise_;
+   bool b_artifacts_in_global_;
+   bool b_use_uwb_;
+   bool b_add_imu_factors_;
+   bool b_init_pg_pub_;
+   int factor_count_;
+   int init_count_;
+   float init_wait_time_;
+   float repub_first_wait_time_;
 
-  // Test class fixtures
-  friend class TestLampRobot;
-  friend class TestLampRobotArtifact;
+   // Test class fixtures
+   friend class TestLampRobot;
+   friend class TestLampRobotArtifact;
 
-  struct Parameters {
-    // Apply a voxel grid filter.
-    bool grid_filter;
+   struct Parameters {
+     // Apply a voxel grid filter.
+     bool grid_filter;
 
-    // Resolution of voxel grid filter.
-    double grid_res;
+     // Resolution of voxel grid filter.
+     double grid_res;
 
-    // Apply a random downsampling filter.
-    bool random_filter;
+     // Apply a random downsampling filter.
+     bool random_filter;
 
-    // Percentage of points to discard. Must be between 0.0 and 1.0;
-    double decimate_percentage;
+     // Percentage of points to discard. Must be between 0.0 and 1.0;
+     double decimate_percentage;
   } params_;
 };
 
