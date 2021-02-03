@@ -47,6 +47,8 @@ private:
   void ComputeNormals(
       PointCloud::ConstPtr input,
       Normals::Ptr normals);
+  void NormalizePCloud(PointCloud::ConstPtr cloud,
+                       PointCloud::Ptr pclptr_normalized);
   void ComputeKeypoints(PointCloud::ConstPtr source,
                         Normals::Ptr source_normals,
                         PointCloud::Ptr source_keypoints);
@@ -78,10 +80,6 @@ private:
           bool b_use_prior,
           gtsam::Pose3 prior,
           std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
-  bool ComputeICPCovariance(const PointCloud& pointCloud,
-                            const Eigen::Matrix4f& T,
-                            const double& icp_fitness,
-                            Eigen::Matrix<double, 6, 6>& covariance);
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
   void SeedCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
@@ -117,7 +115,17 @@ private:
 
   void PublishPointCloud(ros::Publisher&, PointCloud&);
 
-private:
+  bool ComputeICPCovariancePointPoint(const PointCloud::ConstPtr& pointCloud,
+                                      const Eigen::Matrix4f& T,
+                                      const double& icp_fitness,
+                                      Eigen::Matrix<double, 6, 6>& covariance);
+
+  bool ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& pointCloud,
+                                      const Eigen::Matrix4f& T,
+                                      const double& icp_fitness,
+                                      Eigen::Matrix<double, 6, 6>& covariance);
+
+ private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
   ros::Subscriber pc_gt_trigger_sub_;
@@ -168,7 +176,11 @@ private:
 
   enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES };
 
+  enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };
+
   IcpInitMethod icp_init_method_;
+
+  IcpCovarianceMethod icp_covariance_method_;
 
   // Test class fixtures
   friend class TestLaserLoopClosure;
