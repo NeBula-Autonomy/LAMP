@@ -40,16 +40,6 @@ LampBase::LampBase()
 // Destructor
 LampBase::~LampBase() {}
 
-// Initialization
-bool LampBase::Initialize(const ros::NodeHandle& n) {
-  LoadParameters(n);
-  CreatePublishers(n);
-  // InitializeHandlers(n);
-}
-
-// Load Parameters
-bool LampBase::LoadParameters(const ros::NodeHandle& n) {}
-
 bool LampBase::SetFactorPrecisions() {
   if (!pu::Get("attitude_sigma", attitude_sigma_))
     return false;
@@ -117,14 +107,6 @@ bool LampBase::CreatePublishers(const ros::NodeHandle& n) {
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, true);
 }
 
-bool LampBase::InitializeHandlers(const ros::NodeHandle& n) {
-  return false;
-}
-
-bool LampBase::CheckHandlers() {
-  return false;
-}
-
 void LampBase::OptimizerUpdateCallback(
     const pose_graph_msgs::PoseGraphConstPtr& msg) {
   ROS_INFO_STREAM("Received new pose graph from optimizer - merging now "
@@ -139,7 +121,7 @@ void LampBase::OptimizerUpdateCallback(
   // }
 
   // Merge the optimizer result into the internal pose graph
-  // Note that the edges should not have changed (only values)
+  // and also update loop closure edges to reflect inliers
   MergeOptimizedGraph(msg);
 
   // Publish the pose graph and update the map 
@@ -171,6 +153,9 @@ void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg
   // update the LAMP internal values_ and factors
   pose_graph_.UpdateFromMsg(fused_graph);
 
+  // prune outliers given optimized graph
+  pose_graph_.UpdateLoopClosures(msg);
+
   ROS_DEBUG_STREAM("Pose graph after update: ");
   // for (auto n : pose_graph_.GetNodes()) {
   //   ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
@@ -183,8 +168,6 @@ void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg
     pose_graph_.AddAllValuesToNew();
   }
 }
-
-void LampBase::UpdateArtifactPositions(){};
 
 // Callback from a laser loop closure message
 void LampBase::LaserLoopClosureCallback(

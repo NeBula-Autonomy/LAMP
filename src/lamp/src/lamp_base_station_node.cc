@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle n("~");
 
   LampBaseStation lbs;
-  if (!lbs.Initialize(n, false /* online processing */)) {
+  if (!lbs.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize LAMP Base Station.",
               ros::this_node::getName().c_str());
     return EXIT_FAILURE;

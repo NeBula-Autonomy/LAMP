@@ -15,7 +15,6 @@
       <remap from="~revive_loop_closures" to="lamp/revive_loop_closures" />
       <remap from="~ignored_robots" to="lamp/ignored_robots" />
       <!-- Config - TODO move the proximity_threshold param elsewhere -->
-      <param name="log_path" value="$(find lamp_pgo)/log" />
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/> 
     </node>
 

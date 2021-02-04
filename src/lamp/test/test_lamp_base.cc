@@ -94,12 +94,12 @@ private:
 
 TEST_F(TestLampBase, Initialize){
   ros::NodeHandle nh, pnh("~");
-  lb.Initialize(pnh, false /* online processing */);
+  lb.Initialize(pnh);
 }
 
 TEST_F(TestLampBase, AddScansBeforePoseNodes){
   ros::NodeHandle nh, pnh("~");
-  lb.Initialize(pnh, false /* online processing */);
+  lb.Initialize(pnh);
   
   // Add keyed scans to map 
   init_key_ = gtsam::Symbol('a', 0);

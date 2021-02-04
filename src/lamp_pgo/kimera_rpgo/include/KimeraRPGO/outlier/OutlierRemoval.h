@@ -9,7 +9,7 @@ author: Yun Chang
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/slam/BetweenFactor.h>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -24,7 +24,6 @@ class OutlierRemoval {
 
   virtual size_t getNumLC() = 0;
   virtual size_t getNumLCInliers() = 0;
-  virtual Stats getRejectionStats() {}
 
   /*! \brief Process new measurements and reject outliers
    *  process the new measurements and update the "good set" of measurements
@@ -48,6 +47,18 @@ class OutlierRemoval {
   /*! \brief Supressing the print messages to console
    */
   void setQuiet() { debug_ = false; }
+
+  /*! \brief Set log folder
+   */
+  void logOutput(const std::string& output_folder) {
+    log_output_ = true;
+    log_folder_ = output_folder;
+    std::string filename = output_folder + "/outlier_rejection_status.txt";
+    std::ofstream outfile;
+    outfile.open(filename);
+    outfile << "total inliers spin-time mc-time\n";
+    outfile.close();
+  }
 
   /*! \brief Remove last measured loop closure
    */
@@ -77,8 +88,16 @@ class OutlierRemoval {
    */
   virtual inline std::vector<char> getIgnoredPrefixes() {}
 
+  /*! \brief Remove prior factors of nodes with prefix prefix
+   */
+  virtual void removePriorFactorsWithPrefix(
+      const char& prefix,
+      gtsam::NonlinearFactorGraph* updated_factors) {}
+
  protected:
   bool debug_ = true;
+  bool log_output_ = false;
+  std::string log_folder_;
 };
 
 }  // namespace KimeraRPGO

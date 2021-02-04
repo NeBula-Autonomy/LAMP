@@ -129,7 +129,7 @@ void OdometryHandler::LidarOdometryCallback(const Odometry::ConstPtr& msg) {
   }
   // InsertMsgInBuffer 
   if (!InsertMsgInBuffer(msg, lidar_odometry_buffer_)) {
-    ROS_WARN("OdometryHanlder - LidarOdometryCallback - Unable to store "
+    ROS_WARN("OdometryHandler - LidarOdometryCallback - Unable to store "
              "message in buffer");
   }
 }
@@ -145,7 +145,7 @@ void OdometryHandler::VisualOdometryCallback(const Odometry::ConstPtr& msg) {
   }
   // InsertMsgInBuffer 
   if (!InsertMsgInBuffer(msg, visual_odometry_buffer_)) {
-    ROS_WARN("OdometryHanlder - VisualOdometryCallback - Unable to store "
+    ROS_WARN("OdometryHandler - VisualOdometryCallback - Unable to store "
              "message in buffer");
   }
 }
@@ -161,7 +161,7 @@ void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {
   }
   // InsertMsgInBuffer 
   if (!InsertMsgInBuffer(msg, wheel_odometry_buffer_)) {
-    ROS_WARN("OdometryHanlder - WheelOdometryCallback - Unable to store "
+    ROS_WARN("OdometryHandler - WheelOdometryCallback - Unable to store "
              "message in buffer");
   }
 }
