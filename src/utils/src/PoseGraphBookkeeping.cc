@@ -258,6 +258,9 @@ bool PoseGraph::TrackNode(const ros::Time& stamp,
     NodeMessage msg =
         utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
     msg.ID = id;
+    if (msg.ID.empty() && !symbol_id_map.empty())
+      msg.ID = symbol_id_map(msg.key);
+
     // make copy to modify ID
     auto msg_found = nodes_.find(msg);
     if (msg_found == nodes_.end()) {

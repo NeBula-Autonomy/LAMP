@@ -7,6 +7,9 @@ robot:
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES }
   icp_initialization_method: 3
 
+  # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
+  icp_covariance_calculation: 1
+
   # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
 
@@ -99,6 +102,9 @@ robot:
 base: 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES }
   icp_initialization_method: 3
+
+  # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
+  icp_covariance_calculation: 1
 
   # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
