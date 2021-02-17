@@ -63,13 +63,15 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
     return false;
   if (b_use_outlier_rejection) {
     // outlier rejection on: set up PCM params
-    double trans_threshold, rot_threshold;
+    double trans_threshold, rot_threshold, gnc_alpha;
     if (!pu::Get(param_ns_ + "/translation_check_threshold", trans_threshold))
       return false;
     if (!pu::Get(param_ns_ + "/rotation_check_threshold", rot_threshold))
       return false;
+    if (!pu::Get(param_ns_ + "/gnc_alpha", gnc_alpha)) return false;
     rpgo_params_.setPcmSimple3DParams(
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
+    rpgo_params_.setGncInlierCostThresholdsAtProbability(gnc_alpha);
   } else {
     rpgo_params_.setNoRejection(
         KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection
@@ -93,7 +95,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   }
   // Use incremental max clique
   rpgo_params_.setIncremental();
-  rpgo_params_.useGnc();
+
   std::string log_path;
   if (pu::Get("log_path", log_path)) {
     rpgo_params_.logOutput(log_path);
