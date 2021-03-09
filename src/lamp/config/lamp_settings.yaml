@@ -18,18 +18,18 @@ imu_factors_per_opt: 1
 # Artifacts in global frame
 b_artifacts_in_global: false
 
-# Threshold for time to be matched 
+# Threshold for time to be matched
 time_threshold: 10.0
 
 # Wait time before publishing
 init_wait_time: 5.0
-# Repub full graph for this time 
+# Repub full graph for this time
 repub_first_wait_time: 500.0
 
 #######################################
 # Robot LAMP settings
 #######################################
-robot: 
+robot:
 
   # Turn laser loop closures on or off
   b_find_laser_loop_closures: false
@@ -38,11 +38,10 @@ robot:
 #######################################
 # Base station LAMP settings
 #######################################
-base: 
+base:
   # Turn laser loop closures on or off
   b_find_laser_loop_closures: true
 
   # if true, optimize every time a new artifact edge is received
   # if false, currently won't optimize for artifact loop closures
-  b_optimize_on_artifacts: false 
-
+  b_optimize_on_artifacts: true

@@ -13,7 +13,7 @@ laser_lc_trans_sigma: 0.01 #0.6324 # default 0.04
 # Noise parameters (as precisions) for artifacts
 # high translational precision required for ground truthing, could be bad for artifact LC
 artifact_rot_precision: 0.00000000000000000001 # must be nonzero
-artifact_trans_precision: 10.0 
+artifact_trans_precision: 10.0
 
 # Noise parameters (as precisions) for fiducials
 fiducial_rot_precision: 0.0
@@ -41,5 +41,5 @@ uwb_between_trans_sigma: 2.0
 # Noise parameters for unit vectors in attitude
 noise_sigma_imu: 0.3
 
-# Noise parameters for stationary imu factor 
+# Noise parameters for stationary imu factor
 stationary_noise_sigma: 0.3
