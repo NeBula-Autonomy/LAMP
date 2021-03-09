@@ -751,6 +751,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     // Is a relative tranform, so need to handle linking to the pose-graph
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
+    ROS_INFO("HandleRelativePoseMeasurement");
 
     if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
       ROS_ERROR(
@@ -768,7 +769,8 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     // the function above
     covariance = artifact.covariance;
 
-    // Can only used fixed covariance for artifact edges
+    // Can only used fixed covariance for artifact edges TODO: use covariance
+    // from artifact msg
     covariance = SetFixedNoiseModels("artifact");
 
     // Check if it is a new artifact or not
@@ -787,18 +789,59 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       ROS_INFO("Calling Publish Artifacts");
       artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
 
+      // Add and track the edges that have been added
+      int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+      pose_graph_.TrackFactor(
+          pose_key, cur_artifact_key, type, transform, covariance);
+      ROS_INFO("Added artifact to pose graph factors in lamp");
+
     } else {
+      ROS_INFO("Find edge");
+      // Find artifact edge that is already connected to cur_artifact_key
+      auto edge = pose_graph_.FindEdgeKeyTo(cur_artifact_key);
+
+      if (edge == nullptr) {
+        ROS_ERROR_STREAM("Edge is not found!!!");
+        if (pose_graph_.HasKey(cur_artifact_key)) {
+          ROS_INFO_STREAM("Posegraph has this key!! "
+                          << gtsam::DefaultKeyFormatter(cur_artifact_key));
+        }
+        return false;
+      }
+
       // Second sighting of an artifact - we have a loop closure
-      ROS_INFO_STREAM("Artifact re-sighted with key: "
-                      << gtsam::DefaultKeyFormatter(cur_artifact_key));
-      b_run_optimization_ = true;
+      ROS_WARN_STREAM("\nProcessArtifactData: Artifact re-sighted with key: "
+                      << gtsam::DefaultKeyFormatter(cur_artifact_key)
+                      << " and from pose key: "
+                      << gtsam::DefaultKeyFormatter(pose_key)
+                      << ". The artifact is already connected to key: "
+                      << gtsam::DefaultKeyFormatter(edge->key_from));
+
+      // Find the transform from the odom node that has been connected to the
+      // resighted artifact
+      HandleRelativePoseMeasurementWithFixedKey(
+          timestamp, temp_transform, edge->key_from, transform, global_pose);
+
+      // Insert into the values TODO - add unit covariance
+      std::string id = artifact_handler_.GetArtifactID(cur_artifact_key);
+      pose_graph_.TrackNode(
+          timestamp, cur_artifact_key, global_pose, covariance, id);
+
+      // TODO Add keyed stamps. If the time stamp changes, .
+      pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
+
+      // Publish the new artifact, with the global pose. FYI: We may removed
+      // this (check with Kyon)
+      ROS_INFO("Calling Publish Artifacts");
+      artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
+
+      // Add and track the edges that have been added
+      int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+      pose_graph_.TrackArtifactFactor(
+          edge->key_from, cur_artifact_key, transform, covariance);
+      ROS_INFO("Added resighted artifact to pose graph factors in lamp");
     }
 
-    // Add and track the edges that have been added
-    int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
-    pose_graph_.TrackFactor(
-        pose_key, cur_artifact_key, type, transform, covariance);
-    ROS_INFO("Added artifact to pose graph factors in lamp");
   }
 
   ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
@@ -1063,6 +1106,53 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
         "----------Could not get delta between times - THIS CASE IS NOT "
         "WELL HANDLED YET-----------");
     key_from = utils::GTSAM_ERROR_SYMBOL;
+    return;
+  }
+
+  // TODO - do covariances as well
+
+  // Compose the transforms to get the between factor
+  gtsam::Pose3 delta_pose = delta_pose_cov.pose;
+  gtsam::SharedNoiseModel delta_cov = delta_pose_cov.covariance;
+  transform = delta_pose.compose(relative_pose);
+
+  // Compose from the node in the graph to get the global position
+  // TODO - maybe do this outside this function
+  global_pose = pose_graph_.GetPose(key_from).compose(transform);
+}
+
+// Function gets a relative pose and time, and returns the global pose and the
+// transform from the closest node in time.
+/*!
+  \brief  Function to handle relative measurements and adding them to the
+  pose-graph \param   stamp          - The time of the measurement \param
+  relative_pose  - The observed relative pose \param   transform      - The
+  output transform (for a between factor) \param   global pose    - The output
+  global pose estimate \param   key_from       - The output key from which the
+  new relative measurement is attached \warning ... \author
+*/
+void LampRobot::HandleRelativePoseMeasurementWithFixedKey(
+    const ros::Time& stamp,
+    const gtsam::Pose3& relative_pose,
+    const gtsam::Symbol& key_from,
+    gtsam::Pose3& transform,
+    gtsam::Pose3& global_pose) {
+  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
+    ROS_ERROR("Measurement is from a time out of range. Rejecting");
+    return;
+  }
+
+  // Time from this key - closest time that there is anode
+  ros::Time stamp_from = pose_graph_.keyed_stamps[key_from];
+
+  // Get the delta pose from the key_from to the time of the observation
+  GtsamPosCov delta_pose_cov;
+  delta_pose_cov =
+      odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
+
+  if (!delta_pose_cov.b_has_value) {
+    ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
+              "WELL HANDLED YET-----------");
     return;
   }
 

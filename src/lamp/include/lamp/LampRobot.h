@@ -98,6 +98,13 @@ class LampRobot : public LampBase {
                                       gtsam::Pose3& global_pose,
                                       gtsam::Symbol& key_from);
 
+   void
+   HandleRelativePoseMeasurementWithFixedKey(const ros::Time& time,
+                                             const gtsam::Pose3& relative_pose,
+                                             const gtsam::Symbol& key_from,
+                                             gtsam::Pose3& transform,
+                                             gtsam::Pose3& global_pose);
+
    bool ConvertGlobalToRelative(const ros::Time stamp,
                                 const gtsam::Pose3 pose_global,
                                 gtsam::Pose3& pose_relative);
