@@ -37,6 +37,11 @@ robot:
   # if a loop closure is found but the angle is larger than this, reject it
   max_rotation_deg: 50
 
+  # Only look for loop closures if current observability is above some threshold
+  b_check_observability: true
+
+  min_observability: 0.1
+
   #--------------------------------------------------------------------------------
   # ICP Settings for laser loop closure
   #--------------------------------------------------------------------------------
@@ -132,6 +137,11 @@ base:
   # If a batchloop has recently been closed, don't close a new one for at least this
   # amount of translational distance (m).
   distance_before_batch_reclosing: 10 #3
+
+  # Only look for loop closures if current observability is above some threshold
+  b_check_observability: true
+
+  min_observability: 0.1
 
 
   #--------------------------------------------------------------------------------

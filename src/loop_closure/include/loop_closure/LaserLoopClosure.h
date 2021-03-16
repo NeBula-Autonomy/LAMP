@@ -125,6 +125,17 @@ private:
                                       const double& icp_fitness,
                                       Eigen::Matrix<double, 6, 6>& covariance);
 
+  void ComputeIcpObservability(const PointCloud::ConstPtr& cloud,
+                               Eigen::Matrix<double, 6, 1>* eigenvalues);
+
+  void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr pcl_normalized,
+                                   const Normals::Ptr pcl_normals,
+                                   Eigen::Matrix<double, 6, 6>& Ap);
+
+  void ComputeDiagonalAndUpperRightOfAi(Eigen::Vector3d& a_i,
+                                        Eigen::Vector3d& n_i,
+                                        Eigen::Matrix<double, 6, 6>& A_i);
+
  private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
@@ -139,6 +150,8 @@ private:
   ros::Publisher current_scan_pub_;
   ros::Publisher aligned_scan_pub_;
 
+  bool b_check_observability_;
+  double min_observability_;
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;
   double distance_before_reclosing_;
