@@ -125,7 +125,7 @@ private:
                                       const double& icp_fitness,
                                       Eigen::Matrix<double, 6, 6>& covariance);
 
-  void ComputeIcpObservability(const PointCloud::ConstPtr& cloud,
+  void ComputeIcpObservability(PointCloud::ConstPtr cloud,
                                Eigen::Matrix<double, 6, 1>* eigenvalues);
 
   void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr pcl_normalized,
@@ -151,7 +151,7 @@ private:
   ros::Publisher aligned_scan_pub_;
 
   bool b_check_observability_;
-  double min_observability_;
+  double min_observability_ratio_;
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;
   double distance_before_reclosing_;

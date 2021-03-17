@@ -61,7 +61,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   // Load loop closing parameters.
   if (!pu::Get(param_ns_ + "/b_check_observability", b_check_observability_))
     return false;
-  if (!pu::Get(param_ns_ + "/min_observability", min_observability_))
+  if (!pu::Get(param_ns_ + "/min_observability_ratio", min_observability_ratio_))
     return false;
   if (!pu::Get(param_ns_ + "/translation_threshold_nodes", translation_threshold_nodes_))
     return false;
@@ -318,8 +318,9 @@ bool LaserLoopClosure::FindLoopClosures(
   if (b_check_observability_) {
     Eigen::Matrix<double, 6, 1> obs_eigenvals;
     ComputeIcpObservability(scan1, &obs_eigenvals);
-    std::cout << min_observability_ << std::endl;
-    if (obs_eigenvals.minCoeff() < min_observability_) return false;
+    double obs_ratio =
+        obs_eigenvals.head(3).minCoeff() / obs_eigenvals.head(3).maxCoeff();
+    if (obs_ratio < min_observability_ratio_) return false;
   }
 
   // Create a temporary copy of last_closure_key_map so that updates in this iteration are not used
@@ -1126,7 +1127,7 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
 }
 
 void LaserLoopClosure::ComputeIcpObservability(
-    const PointCloud::ConstPtr& cloud,
+    PointCloud::ConstPtr cloud,
     Eigen::Matrix<double, 6, 1>* eigenvalues) {
   // Get normals
   Normals::Ptr normals(new Normals);   // pc with normals
@@ -1166,7 +1167,7 @@ void LaserLoopClosure::ComputeAp_ForPoint2PlaneICP(
 
     ComputeDiagonalAndUpperRightOfAi(a_i, n_i, A_i);
 
-    Ap += A_i;
+    if (!A_i.hasNaN()) Ap += A_i;
   }
 
   Ap.block(3, 0, 3, 3) = Ap.block(0, 3, 3, 3).transpose();

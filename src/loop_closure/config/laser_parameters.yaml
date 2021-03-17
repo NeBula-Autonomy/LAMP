@@ -15,12 +15,12 @@ robot:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 10
+  proximity_threshold: 5
 
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.10
+  max_tolerable_fitness: 0.04
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -40,7 +40,8 @@ robot:
   # Only look for loop closures if current observability is above some threshold
   b_check_observability: true
 
-  min_observability: 0.1
+  # Minimum allowed observability ratio (if low indicates possible slip in some direction)
+  min_observability_ratio: 0.1
 
   #--------------------------------------------------------------------------------
   # ICP Settings for laser loop closure
@@ -141,7 +142,8 @@ base:
   # Only look for loop closures if current observability is above some threshold
   b_check_observability: true
 
-  min_observability: 0.1
+  # Minimum allowed observability ratio (if low indicates possible slip in some direction)
+  min_observability_ratio: 0.1
 
 
   #--------------------------------------------------------------------------------
