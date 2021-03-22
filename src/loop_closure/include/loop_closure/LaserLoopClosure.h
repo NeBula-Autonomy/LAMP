@@ -125,6 +125,14 @@ private:
                                       const double& icp_fitness,
                                       Eigen::Matrix<double, 6, 6>& covariance);
 
+  void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr pcl_normalized,
+                                   const Normals::Ptr pcl_normals,
+                                   Eigen::Matrix<double, 6, 6>& Ap);
+
+  void ComputeDiagonalAndUpperRightOfAi(Eigen::Vector3d& a_i,
+                                        Eigen::Vector3d& n_i,
+                                        Eigen::Matrix<double, 6, 6>& A_i);
+
  private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;

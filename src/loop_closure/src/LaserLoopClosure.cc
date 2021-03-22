@@ -1069,28 +1069,15 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
   Normals::Ptr pcl_normals(new Normals);           // pc with normals
   PointCloud::Ptr pcl_normalized(new PointCloud);  // pc whose points have been
                                                    // rearranged.
+  Eigen::Matrix<double, 6, 6> Ap;
+
   ComputeNormals(pointCloud, pcl_normals);
   NormalizePCloud(pointCloud, pcl_normalized);
 
-  covariance = Eigen::Matrix<double, 6, 6>::Zero();
-  Eigen::Matrix<double, 6, 6> H_i = Eigen::Matrix<double, 6, 6>::Zero();
+  ComputeAp_ForPoint2PlaneICP(pcl_normalized, pcl_normals, Ap);
 
-  Eigen::Vector3d a_i, n_i;
+  covariance = icp_fitness * icp_fitness * Ap.inverse();
 
-  for (uint32_t i = 0; i < pointCloud->size(); i++) {
-    a_i << pcl_normalized->points[i].x, pcl_normalized->points[i].y,
-        pcl_normalized->points[i].z;
-    n_i << pcl_normals->points[i].normal_x, pcl_normals->points[i].normal_y,
-        pcl_normals->points[i].normal_z;
-    Eigen::Vector3d ai_cross_ni = (a_i.cross(n_i));
-
-    H_i.block(0, 0, 3, 3) = ai_cross_ni * (ai_cross_ni.transpose());
-    H_i.block(0, 3, 3, 3) = ai_cross_ni * n_i.transpose();
-    H_i.block(3, 3, 3, 3) = n_i * n_i.transpose();
-    if (!H_i.hasNaN()) covariance += H_i;
-  }
-
-  covariance.block(3, 0, 3, 3) = covariance.block(0, 3, 3, 3).transpose();
   // Here bound the covariance using eigen values
   Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;
   eigensolver.compute(covariance);
@@ -1112,4 +1099,41 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
                eigen_vectors.inverse() * icp_fitness;
 
   return true;
+}
+
+void LaserLoopClosure::ComputeAp_ForPoint2PlaneICP(
+    const PointCloud::Ptr pcl_normalized,
+    const Normals::Ptr pcl_normals,
+    Eigen::Matrix<double, 6, 6>& Ap) {
+  Ap = Eigen::Matrix<double, 6, 6>::Zero();
+  Eigen::Matrix<double, 6, 6> A_i = Eigen::Matrix<double, 6, 6>::Zero();
+
+  Eigen::Vector3d a_i, n_i;
+
+  for (uint32_t i = 0; i < pcl_normals->size(); i++) {
+    a_i << pcl_normalized->points[i].x,  //////
+        pcl_normalized->points[i].y,     //////
+        pcl_normalized->points[i].z;
+
+    n_i << pcl_normals->points[i].normal_x,  //////
+        pcl_normals->points[i].normal_y,     //////
+        pcl_normals->points[i].normal_z;
+
+    ComputeDiagonalAndUpperRightOfAi(a_i, n_i, A_i);
+
+    Ap += A_i;
+  }
+
+  Ap.block(3, 0, 3, 3) = Ap.block(0, 3, 3, 3).transpose();
+}
+
+void LaserLoopClosure::ComputeDiagonalAndUpperRightOfAi(
+    Eigen::Vector3d& a_i,
+    Eigen::Vector3d& n_i,
+    Eigen::Matrix<double, 6, 6>& A_i) {
+  Eigen::Vector3d ai_cross_ni = (a_i.cross(n_i));
+
+  A_i.block(0, 0, 3, 3) = ai_cross_ni * (ai_cross_ni.transpose());
+  A_i.block(0, 3, 3, 3) = ai_cross_ni * n_i.transpose();
+  A_i.block(3, 3, 3, 3) = n_i * n_i.transpose();
 }
