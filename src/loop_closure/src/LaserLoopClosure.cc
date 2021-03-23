@@ -59,6 +59,10 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   // Parameters
   double distance_to_skip_recent_poses;
   // Load loop closing parameters.
+  if (!pu::Get(param_ns_ + "/b_check_observability", b_check_observability_))
+    return false;
+  if (!pu::Get(param_ns_ + "/min_observability_ratio", min_observability_ratio_))
+    return false;
   if (!pu::Get(param_ns_ + "/translation_threshold_nodes", translation_threshold_nodes_))
     return false;
   if (!pu::Get(param_ns_ + "/proximity_threshold", proximity_threshold_))
@@ -310,6 +314,14 @@ bool LaserLoopClosure::FindLoopClosures(
   // Get pose and scan for the provided key.
   const gtsam::Pose3 pose1 = keyed_poses_.at(new_key);
   const PointCloud::ConstPtr scan1 = keyed_scans_.at(new_key);
+
+  if (b_check_observability_) {
+    Eigen::Matrix<double, 6, 1> obs_eigenvals;
+    ComputeIcpObservability(scan1, &obs_eigenvals);
+    double obs_ratio =
+        obs_eigenvals.head(3).minCoeff() / obs_eigenvals.head(3).maxCoeff();
+    if (obs_ratio < min_observability_ratio_) return false;
+  }
 
   // Create a temporary copy of last_closure_key_map so that updates in this iteration are not used
   std::map<std::pair<char,char>, gtsam::Key> last_closure_key_copy_(last_closure_key_);
@@ -1101,6 +1113,27 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
   return true;
 }
 
+void LaserLoopClosure::ComputeIcpObservability(
+    PointCloud::ConstPtr cloud,
+    Eigen::Matrix<double, 6, 1>* eigenvalues) {
+  // Get normals
+  Normals::Ptr normals(new Normals);           // pc with normals
+  PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
+                                               // rearranged.
+  ComputeNormals(cloud, normals);
+  NormalizePCloud(cloud, normalized);
+
+  Eigen::Matrix<double, 6, 6> Ap;
+  // Compute Ap and its eigenvalues
+  ComputeAp_ForPoint2PlaneICP(normalized, normals, Ap);
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 6, 6>> eigensolver(Ap);
+  if (eigensolver.info() == Eigen::Success) {
+    *eigenvalues = eigensolver.eigenvalues();
+  } else {
+    ROS_WARN("Failed to decompose observability matrix. ");
+  }
+}
+
 void LaserLoopClosure::ComputeAp_ForPoint2PlaneICP(
     const PointCloud::Ptr pcl_normalized,
     const Normals::Ptr pcl_normals,
@@ -1121,7 +1154,7 @@ void LaserLoopClosure::ComputeAp_ForPoint2PlaneICP(
 
     ComputeDiagonalAndUpperRightOfAi(a_i, n_i, A_i);
 
-    Ap += A_i;
+    if (!A_i.hasNaN()) Ap += A_i;
   }
 
   Ap.block(3, 0, 3, 3) = Ap.block(0, 3, 3, 3).transpose();
