@@ -3,7 +3,7 @@
 
 // Constructor
 ArtifactHandler::ArtifactHandler()
-  : largest_artifact_id_(0), 
+  : largest_artifact_id_(0),
     use_artifact_loop_closure_(false),
     is_pgo_initialized(false) {}
 
@@ -135,12 +135,14 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
 
   // get artifact id / key -----------------------------------------------
   // Check if the ID of the object already exists in the object hash
-  if (use_artifact_loop_closure_ &&
-      artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() &&
+  if (artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() &&
       msg.label != "Cell Phone") {
     // Take the ID for that object - no reconciliation in the pose-graph of a
     // cell phone (for now)
     cur_artifact_key = artifact_id2key_hash[artifact_id];
+    ROS_INFO_STREAM(
+        "\nArtifact Handler: artifact previously observed, artifact id "
+        << artifact_id);
     std::cout << "artifact previously observed, artifact id " << artifact_id
               << " with key in pose graph "
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
@@ -152,6 +154,8 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
               << artifact_prefix_ << std::endl;
     cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
     ++largest_artifact_id_;
+    ROS_INFO_STREAM("\nArtifact Handler: new artifact observed, artifact id "
+                    << artifact_id);
     std::cout << "new artifact observed, artifact id " << artifact_id
               << " with key in pose graph "
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;

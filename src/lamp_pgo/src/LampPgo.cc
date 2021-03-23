@@ -175,7 +175,7 @@ void LampPgo::InputCallback(
   NonlinearFactorGraph all_factors, new_factors;
   Values all_values, new_values;
 
-  ROS_INFO_STREAM("PGO received graph of size " << graph_msg->nodes.size());
+  ROS_WARN_STREAM("PGO received graph of size " << graph_msg->nodes.size());
 
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
@@ -235,6 +235,10 @@ void LampPgo::InputCallback(
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
+  // Extract the marginal/covariances of the optimized values
+  gtsam::Marginals marginal(nfg_, values_);
+  marginals_ = marginal;
+
   // nfg_.print("nfg");
   ROS_INFO_STREAM("FACTORS AFTER");
   for (auto f : nfg_) {
@@ -252,9 +256,14 @@ void LampPgo::InputCallback(
 // TODO - check that this is ok including just the positions in the message
 void LampPgo::PublishValues() const {
   pose_graph_msgs::PoseGraph pose_graph_msg;
-
+  int iter_debug = 0;
   // Then store the values as nodes
   gtsam::KeyVector key_list = values_.keys();
+  gtsam::Marginals marginal(nfg_, values_);
+  // marginal.print();
+  // marginal.bayesTree_.print("Bayes Tree: ");
+
+
   for (const auto& key : key_list) {
     pose_graph_msgs::PoseGraphNode node;
     node.key = key;
@@ -276,6 +285,23 @@ void LampPgo::PublishValues() const {
         values_.at<gtsam::Pose3>(key).rotation().toQuaternion().z();
     node.pose.orientation.w =
         values_.at<gtsam::Pose3>(key).rotation().toQuaternion().w();
+    // covariance
+    try {
+      auto cov_matrix = marginal.marginalCovariance(gtsam::Symbol(key));
+      int iter = 0;
+      for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+          node.covariance[iter] = cov_matrix(i, j);
+          iter++;
+        }
+      }
+    }
+    catch (std::exception& e) {
+      ROS_WARN_STREAM("Key is not found in the clique" << gtsam::DefaultKeyFormatter(key));
+    }
+
+
+    // ROS_WARN_STREAM("Debug get covariance");
 
     pose_graph_msg.nodes.push_back(node);
   }
