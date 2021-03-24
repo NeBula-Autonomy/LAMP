@@ -106,6 +106,13 @@ class PoseGraph {
                       double att_noise,
                       bool create_msg = true);
 
+  // Update edge (factor)
+  bool TrackArtifactFactor(const gtsam::Symbol& key_from,
+                           const gtsam::Symbol& key_to,
+                           const gtsam::Pose3& transform,
+                           const gtsam::SharedNoiseModel& covariance,
+                           bool create_msg = true);
+
   // Tracks nodes and updates values. Returns true if new node is added.
   // Updates the internal keyed_stamp map for this key.
   bool TrackNode(const Node& node);
@@ -216,6 +223,7 @@ class PoseGraph {
   // Returns const ptr because std::set only has const_iterators.
   const EdgeMessage* FindEdge(const gtsam::Key& key_from,
                               const gtsam::Key& key_to) const;
+  const EdgeMessage* FindEdgeKeyTo(const gtsam::Key& key_to) const;
 
   // Retrieves prior of the given key, returns nullptr otherwise.
   // Returns const ptr because std::set only has const_iterators.

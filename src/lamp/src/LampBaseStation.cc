@@ -15,7 +15,7 @@ namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
 // Constructor (if there is override)
-LampBaseStation::LampBaseStation(): 
+LampBaseStation::LampBaseStation():
         b_published_initial_node_(false) {
 
   // On base station LAMP, republish values after optimization
@@ -100,7 +100,7 @@ bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
   b_has_new_factor_ = false;
   b_has_new_scan_ = false;
   b_have_received_first_pg_ = true; // True for base station
-  
+
   return true;
 }
 
@@ -133,7 +133,7 @@ bool LampBaseStation::RegisterCallbacks(const ros::NodeHandle& n) {
                             &LampBaseStation::DebugCallback,
                             this);
 
-  return true; 
+  return true;
 }
 
 bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
@@ -155,11 +155,11 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
     publishers_pose_[utils::GetRobotPrefix(robot)] = pose_pub_;
   }
 
-  return true; 
+  return true;
 }
 
 bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
-  
+
   // Manual loop closure handler
   if (!manual_loop_closure_handler_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize the manual loop closure handler.", name_.c_str());
@@ -179,8 +179,8 @@ bool LampBaseStation::InitializeHandlers(const ros::NodeHandle& n){
     ROS_ERROR("%s: Failed to initialize the robot pose handler.", name_.c_str());
     return false;
   }
-  
-  return true; 
+
+  return true;
 }
 
 void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
@@ -188,13 +188,13 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Check the handlers
   CheckHandlers();
 
-  // Send data to optimizer - pose graph and map publishing happens in 
+  // Send data to optimizer - pose graph and map publishing happens in
   // callback when data is received back from optimizer
   if (b_run_optimization_) {
-    ROS_DEBUG_STREAM("Publishing pose graph to optimizer");
+    ROS_INFO_STREAM("Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
 
-    b_run_optimization_ = false; 
+    b_run_optimization_ = false;
   }
 
   if (b_has_new_factor_) {
@@ -210,7 +210,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
     b_has_new_scan_ = false;
   }
 
-  // Publish anything that is needed 
+  // Publish anything that is needed
 }
 
 bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
@@ -221,14 +221,14 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
 
   // Check if there are new pose graphs
   if (!pose_graph_data->b_has_data) {
-    return false; 
+    return false;
   }
 
   ROS_INFO_STREAM("New data received at base: " << pose_graph_data->graphs.size() <<
    " graphs, " << pose_graph_data->scans.size() << " scans ");
   b_has_new_factor_ = true;
 
-  pose_graph_msgs::PoseGraph::Ptr graph_ptr; 
+  pose_graph_msgs::PoseGraph::Ptr graph_ptr;
 
   gtsam::Values new_values;
 
@@ -252,11 +252,12 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     for (pose_graph_msgs::PoseGraphEdge e : g->edges) {
 
       // Optimize on loop closures, IMU factors and artifact loop closures
-      if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE || 
-          (b_optimize_on_artifacts_ && e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) ||
+      if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE ||
+          (b_optimize_on_artifacts_ &&
+           e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) ||
           (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) ||
-          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN)) {
-      
+          (b_use_uwb_ &&
+           e.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN)) {
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
       }
@@ -266,7 +267,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
       }
     }
 
-    // Store the pose at the most recent node for each robot 
+    // Store the pose at the most recent node for each robot
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
       char prefix = gtsam::Symbol(n.key).chr();
       if (!utils::IsRobotPrefix(prefix)) continue;
@@ -286,9 +287,9 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
 
   ROS_INFO_STREAM("Keyed stamps: " << pose_graph_.keyed_stamps.size());
 
-  // Update from stored keyed scans 
+  // Update from stored keyed scans
   for (auto s : pose_graph_data->scans) {
-    
+
     // Register new data - this will cause map to publish
     b_has_new_scan_ = true;
 
@@ -297,7 +298,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
 
     // Copy from ROS to PCL
     pcl::fromROSMsg(s->scan, *scan_ptr);
-    
+
     pose_graph_.InsertKeyedScan(s->key, scan_ptr); // TODO: add overloaded function
 
     // Add key to the list of scan candidates to add to the map
@@ -310,11 +311,11 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   AddKeyedScanCandidatesToMap();
 
 
-  return true; 
+  return true;
 }
 
 void LampBaseStation::AddKeyedScanCandidatesToMap(){
-  
+
   // Loop through list of candidates
   auto key_it = keyed_scan_candidates_.begin();
   int scan_count = 0;
@@ -346,7 +347,7 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
 
   // Check if there are new pose graphs
   if (!pose_data->b_has_data) {
-    return false; 
+    return false;
   }
 
 
@@ -384,10 +385,10 @@ bool LampBaseStation::ProcessManualLoopClosureData(std::shared_ptr<FactorData> d
   ROS_INFO_STREAM("Received new manual loop closure data");
 
   for (auto factor : manual_loop_closure_data->factors) {
-    pose_graph_.TrackFactor(factor.key_from, 
+    pose_graph_.TrackFactor(factor.key_from,
                             factor.key_to,
-                            pose_graph_msgs::PoseGraphEdge::LOOPCLOSE, 
-                            factor.transform, 
+                            pose_graph_msgs::PoseGraphEdge::LOOPCLOSE,
+                            factor.transform,
                             factor.covariance);
 
     b_run_optimization_ = true;
@@ -437,13 +438,13 @@ bool LampBaseStation::ProcessArtifactGT() {
     }
 
     // Add the prior
-    pose_graph_.TrackPrior(a.key, 
-                           gtsam::Pose3(gtsam::Rot3(),a.position), 
+    pose_graph_.TrackPrior(a.key,
+                           gtsam::Pose3(gtsam::Rot3(),a.position),
                            SetFixedNoiseModels("artifact_gt"));
 
 
-    // Trigger optimisation 
-    b_run_optimization_ = true; 
+    // Trigger optimisation
+    b_run_optimization_ = true;
   }
 
   return true;
@@ -475,7 +476,7 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
 
   // Split message data into a vector of space-separated strings
   std::vector<std::string> data;
-  boost::split(data, msg.data, [](char c){return c == ' ';}); 
+  boost::split(data, msg.data, [](char c){return c == ' ';});
 
   if (data.size() == 0) {
     ROS_INFO_STREAM("Invalid debug message data");
@@ -494,7 +495,7 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     ProcessArtifactGT();
   }
 
-  // Save the pose graph 
+  // Save the pose graph
   else if (cmd == "save") {
     ROS_INFO_STREAM("Saving the pose graph");
 
@@ -507,7 +508,7 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     }
   }
 
-  // Load pose graph from file 
+  // Load pose graph from file
   else if (cmd == "load") {
     ROS_INFO_STREAM("Loading pose graph and keyed scans");
 
@@ -518,13 +519,13 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     else {
       pose_graph_.Load("saved_pose_graph.zip");
     }
-    
-    PublishPoseGraph(); 
+
+    PublishPoseGraph();
     ROS_INFO_STREAM("Done Loading pose graph");
-    
+
     ReGenerateMapPointCloud();
     ROS_INFO_STREAM("Done regenerating Map Pointcloud");
-   
+
     PublishAllKeyedScans(); // So the loop closure module has all the keyed scans
     ROS_INFO_STREAM("Done publishing keyed scans");
   }

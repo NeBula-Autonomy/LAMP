@@ -90,10 +90,10 @@ bool PoseGraphVisualizer::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get("b_scale_artifacts_with_confidence", b_scale_artifacts_with_confidence_))
     return false;
-    
+
   if (!pu::Get("artifact_confidence_limit", artifact_confidence_limit_))
     return false;
-  
+
   // Initialize interactive marker server
   if (publish_interactive_markers_) {
     server.reset(new interactive_markers::InteractiveMarkerServer(
@@ -139,7 +139,7 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
   artifact_marker_pub_ =
       pnh.advertise<visualization_msgs::Marker>("artifact_markers", 10, true);
   stair_marker_pub_ =
-      pnh.advertise<visualization_msgs::Marker>("stair_markers", 10, false);      
+      pnh.advertise<visualization_msgs::Marker>("stair_markers", 10, false);
   artifact_id_marker_pub_ = pnh.advertise<visualization_msgs::Marker>(
       "artifact_id_markers", 10, true);
 
@@ -184,7 +184,7 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
   if (!b_use_base_reconciliation_){
     ROS_INFO("Using topics directly from the robot");
     for (std::string robot : robot_names_) {
-  
+
       // artifact subs
       artifact_sub_ = nh.subscribe(
           "/" + robot + "/artifact", 10, &PoseGraphVisualizer::ArtifactCallback, this);
@@ -333,7 +333,7 @@ void PoseGraphVisualizer::ArtifactCallback(const artifact_msgs::Artifact& msg) {
     return;
   }
 
-  // Update id to parent ID mapping 
+  // Update id to parent ID mapping
   artifact_ID2ParentID_[msg.id] = msg.parent_id;
 
   ArtifactInfo artifactinfo;
@@ -774,7 +774,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
 
   // Publish Artifacts
   if (artifact_marker_pub_.getNumSubscribers() > 0 ||
-      artifact_id_marker_pub_.getNumSubscribers() > 0 || 
+      artifact_id_marker_pub_.getNumSubscribers() > 0 ||
       stair_marker_pub_.getNumSubscribers() > 0) {
     visualization_msgs::Marker m, m_id;
     m.header.frame_id = pose_graph_.fixed_frame_id;
@@ -852,7 +852,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       } else {
         VisualizeSingleSimpleArtifact(m, art);
       }
-      
+
       VisualizeSingleArtifactId(m_id, art);
 
       // Add or delete markers depending on user rejection status
@@ -972,7 +972,7 @@ void PoseGraphVisualizer::VisualizeSingleRealisticArtifact(visualization_msgs::M
   m.color.b = 0.0f;
   m.color.a = 0.0f;
   m.type = visualization_msgs::Marker::MESH_RESOURCE;
-  
+
   if (artifact_label == "Backpack") {
     m.mesh_resource = "package://pose_graph_visualizer/meshes/backpack/backpack.dae";
   } else if (artifact_label == "Fire Extinguisher") {

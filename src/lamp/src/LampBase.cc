@@ -25,11 +25,11 @@ using gtsam::Vector3;
 
 // Constructor
 LampBase::LampBase()
-  : update_rate_(10), 
-  zero_noise_(0.0001),
-  b_use_fixed_covariances_(false),
-  b_repub_values_after_optimization_(false),
-  b_received_optimizer_update_(false) {
+  : update_rate_(10),
+    zero_noise_(0.0001),
+    b_use_fixed_covariances_(false),
+    b_repub_values_after_optimization_(false),
+    b_received_optimizer_update_(false) {
   // any other things on construction
 
   // set up mapping function to get internal ID given gtsam::Symbol
@@ -109,7 +109,7 @@ bool LampBase::CreatePublishers(const ros::NodeHandle& n) {
 
 void LampBase::OptimizerUpdateCallback(
     const pose_graph_msgs::PoseGraphConstPtr& msg) {
-  ROS_INFO_STREAM("Received new pose graph from optimizer - merging now "
+  ROS_WARN_STREAM("Received new pose graph from optimizer - merging now "
                   "-----------------------------------------------------");
   b_received_optimizer_update_ = true;
 
@@ -124,7 +124,7 @@ void LampBase::OptimizerUpdateCallback(
   // and also update loop closure edges to reflect inliers
   MergeOptimizedGraph(msg);
 
-  // Publish the pose graph and update the map 
+  // Publish the pose graph and update the map
   PublishPoseGraph(false);
 
   // Update the map (also publishes)
@@ -135,7 +135,6 @@ void LampBase::OptimizerUpdateCallback(
 }
 
 void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
-  
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
@@ -345,7 +344,7 @@ bool LampBase::PublishPoseGraph( bool b_publish_incremental) {
       ROS_INFO_STREAM("Publishing incremental graph with "
                       << g_inc->nodes.size() << " nodes and "
                       << g_inc->edges.size() << " edges");
-      
+
       // Publish
       pose_graph_incremental_pub_.publish(*g_inc);
 
@@ -378,9 +377,9 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   // ROS_DEBUG_STREAM("Publishing pose graph for optimizer with "
   //                 << g->nodes.size() << " nodes and " << g->edges.size()
   //                 << " edges");
-  // for (auto v : g->nodes) {
-  //   ROS_DEBUG_STREAM("Key : " << gtsam::DefaultKeyFormatter(v.key));
-  // }
+  for (auto v : g->nodes) {
+    ROS_DEBUG_STREAM("PublishedPGForOptimizer Key : " << gtsam::DefaultKeyFormatter(v.key));
+  }
 
   // Publish
   pose_graph_to_optimize_pub_.publish(*g);
@@ -440,8 +439,8 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   else if (utils::IsRobotPrefix(key.chr())) {
     // Odom or key frame
     return "odom_node";
-  } 
-  
+  }
+
   else if (key.chr() == 'u') {
     // UWB
     // return uwd_handler_.GetUWBID(key); // TODO
