@@ -34,16 +34,71 @@
  * Authors: Erik Nelson            ( eanelson@eecs.berkeley.edu )
  */
 
+#include "point_cloud_mapper/IPointCloudMapper.h"
 #include <pcl/search/impl/search.hpp>
+
 #include <point_cloud_mapper/PointCloudMapper.h>
+//#include <point_cloud_mapper/PointCloudOctomapMapper.h>
+//#include <point_cloud_mapper/PointCloudFlannMapper.h>
+//#include <point_cloud_mapper/PointCloudVDBMapper.h>
 #include <ros/ros.h>
+
+enum class MappingMethod {
+  MAPPER,
+  BUFFER_MAPPER,
+  OCTOMAP_MAPPER,
+  VDB_MAPPER,
+  KFLANN
+};
+using EnumToStringMappingMethods = std::pair<std::string, MappingMethod>;
+const std::vector<EnumToStringMappingMethods> EnumToStringMappingMethodsVector =
+    {EnumToStringMappingMethods("mapper", MappingMethod::MAPPER),
+     EnumToStringMappingMethods("buffer_mapper", MappingMethod::BUFFER_MAPPER),
+     EnumToStringMappingMethods("kflann", MappingMethod::KFLANN),
+     EnumToStringMappingMethods("octomap_mapper",
+                                MappingMethod::OCTOMAP_MAPPER),
+     EnumToStringMappingMethods("vdb_mapper", MappingMethod::VDB_MAPPER)};
+// TODO: maybe template?
+MappingMethod getCalibrationMethodFromString(const std::string& mode) {
+  for (const auto& available_vlo : EnumToStringMappingMethodsVector) {
+    if (mode == available_vlo.first) {
+      return available_vlo.second;
+    }
+  }
+  throw std::runtime_error("No such mapping mode!: " + mode);
+}
+
+IPointCloudMapper::Ptr mapperFabric(const std::string& mapping_method) {
+  switch (getCalibrationMethodFromString(mapping_method)) {
+  case MappingMethod::MAPPER: {
+    ROS_INFO_STREAM("MappingMethod::MAPPER activated.");
+    return std::make_shared<PointCloudMapper>();
+  }
+    //  case MappingMethod::OCTOMAP_MAPPER: {
+    //    ROS_INFO_STREAM("MappingMethod::OCTOMAP_MAPPER activated.");
+    //    return std::make_shared<PointCloudOctomapMapper>();
+    //  }
+    //  case MappingMethod::VDB_MAPPER: {
+    //    ROS_INFO_STREAM("MappingMethod::VDB_MAPPER activated.");
+    //    return std::make_shared<PointCloudVDBMapper>();
+    //  }
+    //  case MappingMethod::KFLANN: {
+    //    ROS_INFO_STREAM("MappingMethod::KFLANN acticated.");
+    //    return std::make_shared<PointCloudFlannMapper>();
+    //  }
+  default:
+    throw std::runtime_error("No such mapping mode or not implemented yet " +
+                             mapping_method);
+  }
+}
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "point_cloud_mapper");
   ros::NodeHandle n("~");
 
-  PointCloudMapper pcm;
-  if (!pcm.Initialize(n)) {
+  // TODO: this should be setup via config
+  IPointCloudMapper::Ptr pcm = mapperFabric("mapper");
+  if (!pcm->Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud mapper.",
               ros::this_node::getName().c_str());
     return EXIT_FAILURE;

@@ -47,22 +47,22 @@
 
 #include <core_msgs/MapInfo.h>
 
-#include <pcl/filters/crop_box.h>
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
+#include <pcl/filters/crop_box.h>
 
+#include "IPointCloudMapper.h"
 
-class PointCloudMapper {
+class PointCloudMapper : public IPointCloudMapper {
 public:
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZI> Octree;
-  typedef std::vector<PointCloud> PointCloudBuffer;
 
   PointCloudMapper();
   ~PointCloudMapper();
 
   // Calls LoadParameters and RegisterCallbacks. Fails on failure of either.
-  bool Initialize(const ros::NodeHandle& n);
+  bool Initialize(const ros::NodeHandle& n) override;
 
   // Resets the octree and stored points to an empty map. This is used when
   // closing loops or otherwise regenerating the map from scratch.
@@ -72,13 +72,14 @@ public:
   // already exist in the corresponding voxel. Output the points from the input
   // that ended up being inserted into the octree.
   bool InsertPoints(const PointCloud::ConstPtr& points,
-                    PointCloud* incremental_points);
+                    PointCloud* incremental_points) override;
 
   // Returns the approximate nearest neighbor for every point in the input point
   // cloud. Localization to the map can be performed by doing ICP between the
   // input and output. Returns true if at least one of the inputs points had a
   // nearest neighbor.
-  bool ApproxNearestNeighbors(const PointCloud& points, PointCloud* neighbors);
+  bool ApproxNearestNeighbors(const PointCloud& points,
+                              PointCloud* neighbors) override;
 
   // Publish map for visualization. This can be expensive so it is not called
   // from inside, as opposed to PublishMapUpdate().
@@ -88,21 +89,9 @@ public:
   // Publish map info for analysis
   void PublishMapInfo();
 
-  // Getter for the point cloud
-  PointCloud::Ptr GetMapData() {
-    return map_data_;
-  }
-
-  // To set the rolling buffer on
-  void SetRollingMapBufferOn();
-  void SetRollingMapBufferSize(int num_pc);
-
-  // Extracts the last num_pc point clouds from the buffer
-  bool GetSubMapFromBuffer(PointCloud* scan, int num_pc);
-
   // Map Sliding Window 2 ---------------------------------------------------
-  void SetBoxFilterSize(const int box_filter_size);
-  void Refresh(const geometry_utils::Transform3& current_pose); 
+  void SetBoxFilterSize(const int box_filter_size) override;
+  void Refresh(const geometry_utils::Transform3& current_pose) override;
 
 private:
   // Node initialization.
@@ -115,11 +104,6 @@ private:
 
   // Publish map updates for visualization.
   void PublishMapUpdate(const PointCloud& incremental_points);
-
-  // Rolling buffer internal functions
-  bool InsertPointCloudInBuffer(const PointCloud::ConstPtr& scan);
-  bool GetMapFromBuffer(PointCloud::Ptr scan);
-  bool GetMapFromBuffer(PointCloud* scan);
 
   // The node's name.
   std::string name_;
@@ -139,10 +123,9 @@ private:
   bool incremental_unsubscribed_;
 
   // Containers storing the map and its structure.
-  PointCloud::Ptr map_data_;
+
   Octree::Ptr map_octree_;
   // Storage if we are using a rolling buffer
-  PointCloudBuffer map_buffer_;
 
   // Map parameters.
   double octree_resolution_;
@@ -161,14 +144,9 @@ private:
   mutable std::mutex map_mutex_;
   mutable std::mutex map_frozen_mutex_;
 
-  // Options
-  bool b_run_rolling_map_buffer_;
-  int map_buffer_max_size_;
-
-  // Map Sliding Window 2 ----------------- 
+  // Map Sliding Window 2 -----------------
   pcl::CropBox<pcl::PointXYZI> box_filter_;
-  int box_filter_size_; 
-
+  int box_filter_size_;
 };
 
 #endif
