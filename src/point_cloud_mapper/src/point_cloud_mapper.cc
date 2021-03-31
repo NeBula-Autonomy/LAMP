@@ -35,15 +35,22 @@
  */
 
 #include <pcl/search/impl/search.hpp>
+#include <point_cloud_mapper/IPointCloudMapper.h>
+
 #include <point_cloud_mapper/PointCloudMapper.h>
+#include <point_cloud_mapper/settings.h>
+//#include <point_cloud_mapper/PointCloudOctomapMapper.h>
+//#include <point_cloud_mapper/PointCloudFlannMapper.h>
+//#include <point_cloud_mapper/PointCloudVDBMapper.h>
 #include <ros/ros.h>
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "point_cloud_mapper");
   ros::NodeHandle n("~");
 
-  PointCloudMapper pcm;
-  if (!pcm.Initialize(n)) {
+  // TODO: this should be setup via config
+  IPointCloudMapper::Ptr pcm = mapperFabric("mapper");
+  if (!pcm->Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize point cloud mapper.",
               ros::this_node::getName().c_str());
     return EXIT_FAILURE;
