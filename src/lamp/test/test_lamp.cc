@@ -861,8 +861,7 @@ TEST_F(TestLampRobotArtifact, ConvertGlobalToRelative) {
   // Convert global to relative pose
   ConvertGlobalToRelative(stamp, pose_global, pose_relative);
   // Check
-  EXPECT_EQ(pose_relative.translation().vector(),
-            gtsam::Point3(-415.0, 0.0, 0.0));
+  EXPECT_EQ(pose_relative.translation(), gtsam::Point3(-415.0, 0.0, 0.0));
 }
 
 TEST_F(TestLampRobot, SetFactorPrecisions) {
