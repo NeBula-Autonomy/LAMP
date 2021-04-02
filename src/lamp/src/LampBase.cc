@@ -105,6 +105,8 @@ bool LampBase::CreatePublishers(const ros::NodeHandle& n) {
   // Published keyed scans (for GT processing)
   keyed_scan_pub_ =
       nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, true);
+
+  return true;
 }
 
 void LampBase::OptimizerUpdateCallback(
@@ -258,6 +260,7 @@ bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
   }
   ROS_INFO_STREAM("Points size is: " << points->points.size()
                                      << ", in CombineKeyedScansWorld");
+  return true;
 }
 
 // Transform the point cloud to world frame
@@ -304,6 +307,7 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   // ROS_INFO_STREAM("Points size is: " << points->points.size()
   //                                    << ", in
   //                                    GetTransformedPointCloudWorld");
+  return true;
 }
 
 // For adding one scan to the map

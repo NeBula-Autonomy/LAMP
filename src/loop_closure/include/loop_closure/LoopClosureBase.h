@@ -26,7 +26,7 @@ public:
   LoopClosure(const ros::NodeHandle& n);
   ~LoopClosure();
 
-  virtual bool Initialize(const ros::NodeHandle& n) {}
+  virtual bool Initialize(const ros::NodeHandle& n) = 0;
 
 protected:
   std::unordered_map<gtsam::Key, ros::Time> keyed_stamps_;
@@ -39,7 +39,7 @@ protected:
 
   virtual bool FindLoopClosures(
       gtsam::Key new_key,
-      std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {}
+      std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) = 0;
 
   void InputCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
 
