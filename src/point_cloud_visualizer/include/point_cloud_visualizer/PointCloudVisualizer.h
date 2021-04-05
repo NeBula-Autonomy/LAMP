@@ -40,9 +40,33 @@
 #include <pcl_ros/point_cloud.h>
 #include <ros/ros.h>
 
+#include <parameter_utils/ParameterUtils.h>
+#include <pose_graph_msgs/KeyedScan.h>
+#include <pose_graph_msgs/PoseGraph.h>
+#include <std_msgs/Bool.h>
+#include <std_msgs/Empty.h>
+#include <visualization_msgs/Marker.h>
+
+#include <utils/PoseGraph.h>
+
+#include <pcl/io/pcd_io.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <utils/ColorHandling.h>
+#include <utils/CommonFunctions.h>
+#include <utils/PrefixHandling.h>
+
+#include <tf_conversions/tf_eigen.h>
+
+#include <fstream>
+#include <pcl_ros/transforms.h>
+#include <time.h>
+
+namespace gu = geometry_utils;
+
 class PointCloudVisualizer {
 public:
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+  typedef pcl::PointCloud<pcl::PointXYZRGB> ColorPointCloud;
 
   PointCloudVisualizer();
   ~PointCloudVisualizer();
@@ -57,9 +81,29 @@ public:
   void PublishIncrementalPointCloud();
 
 private:
+  PoseGraph pose_graph_;
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
+  void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
+  void
+  PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr& msg);
+  void VisualizePointCloud();
+  void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
+  void
+  PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr& msg);
+  void ColorPointCloudBasedOnRobotType(const PointCloud::ConstPtr& in_cloud,
+                                       ColorPointCloud& out_cloud,
+                                       const unsigned char robot_type) const;
+  bool GetTransformedPointCloudWorld(const gtsam::Symbol key,
+                                     PointCloud* points);
+  bool CombineKeyedScansWorld(PointCloud* points);
+  geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
+  ros::Subscriber keyed_scan_sub_;
+  ros::Subscriber pose_graph_sub_;
+  ros::Subscriber pose_graph_node_sub_;
+  ros::Subscriber pose_graph_edge_sub_;
+  ros::Publisher robot_colored_point_cloud_;
 
   // The node's name.
   std::string name_;
@@ -78,6 +122,7 @@ private:
   // grows, we are only publishing new changes each time, making visualization
   // constant time rather than O(n).
   PointCloud::Ptr incremental_points_;
+  ColorPointCloud::Ptr robot_color_incremental_points_;
 
   // Enable or disable visualization. If this parameter is loaded as false, this
   // class object won't do anything.
