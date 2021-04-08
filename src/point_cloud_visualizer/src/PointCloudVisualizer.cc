@@ -116,7 +116,7 @@ bool PointCloudVisualizer::RegisterCallbacks(const ros::NodeHandle& n) {
         std::pair<unsigned char, ros::Publisher>(
             utils::ROBOT_PREFIXES.at(robot),
             nl.advertise<sensor_msgs::PointCloud2>(
-                robot + "/colored_point_cloud", 10, false)));
+                robot + "/lamp/octree_map", 10, false)));
   }
 
   return true;
