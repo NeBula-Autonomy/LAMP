@@ -38,13 +38,13 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <point_cloud_visualizer/PointCloudVisualizer.h>
+#include <utils/PrefixHandling.h>
 
 namespace pu = parameter_utils;
 
 PointCloudVisualizer::PointCloudVisualizer() {
   // Instantiate point cloud pointers.
   incremental_points_.reset(new PointCloud);
-  robot_color_incremental_points_.reset(new ColorPointCloud);
 }
 
 PointCloudVisualizer::~PointCloudVisualizer() {}
@@ -62,6 +62,12 @@ bool PointCloudVisualizer::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
+  for (std::string robot : robot_names_) {
+    PointCloud::Ptr cloud_to_fill(new PointCloud);
+    robots_point_clouds_.insert(std::pair<unsigned char, PointCloud::Ptr>(
+        utils::ROBOT_PREFIXES.at(robot), cloud_to_fill));
+  }
+
   return true;
 }
 
@@ -70,9 +76,18 @@ bool PointCloudVisualizer::LoadParameters(const ros::NodeHandle& n) {
   //  if (!pu::Get("visualizer/enable_visualization", enable_visualization_))
   //    return false;
 
-  //  // Load coordinate frames.
-  //  if (!pu::Get("frame_id/fixed", fixed_frame_id_))
-  //    return false;
+  // Load coordinate frames.
+  if (!pu::Get("frame_id/fixed", fixed_frame_id_))
+    return false;
+
+  if (!pu::Get("/base1/lamp/robot_names", robot_names_)) {
+    ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
+    return false;
+  } else {
+    for (auto s : robot_names_) {
+      ROS_INFO_STREAM("Registered new robot: " << s);
+    }
+  }
 
   return true;
 }
@@ -95,18 +110,14 @@ bool PointCloudVisualizer::RegisterCallbacks(const ros::NodeHandle& n) {
       10,
       &PointCloudVisualizer::PoseGraphCallback,
       this);
-  pose_graph_edge_sub_ = nl.subscribe<pose_graph_msgs::PoseGraphEdge>(
-      "/base1/lamp/pose_graph_edge",
-      10,
-      &PointCloudVisualizer::PoseGraphEdgeCallback,
-      this);
-  pose_graph_node_sub_ = nl.subscribe<pose_graph_msgs::PoseGraphNode>(
-      "/base1/lamp/pose_graph_node",
-      10,
-      &PointCloudVisualizer::PoseGraphNodeCallback,
-      this);
-  robot_colored_point_cloud_ =
-      nl.advertise<sensor_msgs::PointCloud2>("colored_point_cloud", 10, false);
+
+  for (std::string robot : robot_names_) {
+    publishers_robots_point_clouds_.insert(
+        std::pair<unsigned char, ros::Publisher>(
+            utils::ROBOT_PREFIXES.at(robot),
+            nl.advertise<sensor_msgs::PointCloud2>(
+                robot + "/colored_point_cloud", 10, false)));
+  }
 
   return true;
 }
@@ -161,8 +172,6 @@ void PointCloudVisualizer::KeyedScanCallback(
     pose_graph_.InsertKeyedStamp(key, stamp);
   }
 
-  // ROS_INFO_STREAM("AddKeyScanPair " << key);
-
   // Add the key and scan.
   pose_graph_.InsertKeyedScan(key, scan);
 }
@@ -193,40 +202,32 @@ PointCloudVisualizer::GetPositionMsg(gtsam::Key key) const {
 }
 
 void PointCloudVisualizer::VisualizePointCloud() {
-  // PointCloud::Ptr new_pt(new PointCloud);
-  // CombineKeyedScansWorld(new_pt.get());
-  // ROS_INFO_STREAM("new pt: " << new_pt->size());
-  ROS_INFO_STREAM("VIS :!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-  ROS_INFO_STREAM(pose_graph_.keyed_scans.size());
   for (const auto& keyed_scan : pose_graph_.keyed_scans) {
-    ROS_INFO_STREAM("Key" << keyed_scan.first);
-    ROS_INFO_STREAM("KEY CHAR: " << keyed_scan.first.chr());
-    ROS_INFO_STREAM(GetPositionMsg(keyed_scan.first));
-    ROS_INFO_STREAM(keyed_scan.second->size());
     PointCloud::Ptr temp_cloud(new PointCloud);
     GetTransformedPointCloudWorld(keyed_scan.first, temp_cloud.get());
-    ColorPointCloud::Ptr colored_cloud(new ColorPointCloud);
-    ColorPointCloudBasedOnRobotType(
-        temp_cloud, *colored_cloud, keyed_scan.first.chr());
-    *robot_color_incremental_points_ += *colored_cloud;
+    *robots_point_clouds_.at(keyed_scan.first.chr()) += *temp_cloud;
 
-    ROS_INFO_STREAM("PC CLOUID SIZE: " << colored_cloud->size());
-    ROS_INFO_STREAM(
-        "incremental_points_: " << robot_color_incremental_points_->size());
+    //    ROS_INFO_STREAM("Cloud : "
+    //                    << keyed_scan.first.chr() << " has "
+    //                    <<
+    //                    robots_point_clouds_.at(keyed_scan.first.chr())->size()
+    //                    << " after adding : " << temp_cloud->size());
   }
 
-  if (robot_colored_point_cloud_.getNumSubscribers() > 0 and
-      pose_graph_.keyed_scans.size() != 0) {
-    ROS_INFO_STREAM("PUBLISINHG");
+  if (pose_graph_.keyed_scans.size() != 0) {
+    for (std::string robot : robot_names_) {
+      unsigned char robot_chr = utils::ROBOT_PREFIXES.at(robot);
 
-    // Convert incremental points to ROS's sensor_msgs::PointCloud2 type.
-    sensor_msgs::PointCloud2 pcl_pc2;
-    pcl::toROSMsg(*robot_color_incremental_points_, pcl_pc2);
-    pcl_pc2.header.stamp = stamp_;
-    pcl_pc2.header.frame_id = "world"; // fixed_frame_id_;
-    robot_colored_point_cloud_.publish(pcl_pc2);
+      if (publishers_robots_point_clouds_.at(robot_chr).getNumSubscribers() >
+          0) {
+        sensor_msgs::PointCloud2 pcl_pc2;
+        pcl::toROSMsg(*robots_point_clouds_.at(robot_chr), pcl_pc2);
+        pcl_pc2.header.stamp = stamp_;
+        pcl_pc2.header.frame_id = fixed_frame_id_;
+        publishers_robots_point_clouds_.at(robot_chr).publish(pcl_pc2);
+      }
+    }
   }
-  ROS_INFO_STREAM("$$$$$$$$$$$$$$$$$$DONE######################");
 }
 
 bool PointCloudVisualizer::GetTransformedPointCloudWorld(
@@ -262,42 +263,7 @@ bool PointCloudVisualizer::GetTransformedPointCloudWorld(
   quat.normalize();
   b2w.block(0, 0, 3, 3) = quat.matrix();
 
-  // ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " <<
-  // pose.rotation.Eigen().determinant() << ")"); Eigen::IOFormat CleanFmt(4, 0,
-  // ", ", "\n", "[", "]"); ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
-
-  // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
 
-  // ROS_INFO_STREAM("Points size is: " << points->points.size()
-  //                                    << ", in
-  //                                    GetTransformedPointCloudWorld");
   return true;
-}
-
-void PointCloudVisualizer::PoseGraphNodeCallback(
-    const pose_graph_msgs::PoseGraphNode::ConstPtr& msg) {
-  pose_graph_.TrackNode(*msg);
-}
-
-void PointCloudVisualizer::PoseGraphEdgeCallback(
-    const pose_graph_msgs::PoseGraphEdge::ConstPtr& msg) {
-  pose_graph_.TrackFactor(*msg);
-}
-
-void PointCloudVisualizer::ColorPointCloudBasedOnRobotType(
-    const PointCloud::ConstPtr& in_cloud,
-    ColorPointCloud& out_cloud,
-    const unsigned char robot_type) const {
-  out_cloud.resize(in_cloud->size());
-  if (utils::IsRobotPrefix(robot_type)) {
-    for (const auto& point : in_cloud->points) {
-      pcl::PointXYZRGB pt_to_push;
-      pt_to_push.x = point.x;
-      pt_to_push.y = point.y;
-      pt_to_push.z = point.z;
-      pt_to_push.rgb = ROBOT_COLOR.at(robot_type)._RGB::rgb;
-      out_cloud.push_back(pt_to_push);
-    }
-  }
 }

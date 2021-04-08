@@ -86,15 +86,10 @@ private:
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
-  void
-  PoseGraphEdgeCallback(const pose_graph_msgs::PoseGraphEdge::ConstPtr& msg);
+
   void VisualizePointCloud();
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
-  void
-  PoseGraphNodeCallback(const pose_graph_msgs::PoseGraphNode::ConstPtr& msg);
-  void ColorPointCloudBasedOnRobotType(const PointCloud::ConstPtr& in_cloud,
-                                       ColorPointCloud& out_cloud,
-                                       const unsigned char robot_type) const;
+
   bool GetTransformedPointCloudWorld(const gtsam::Symbol key,
                                      PointCloud* points);
   bool CombineKeyedScansWorld(PointCloud* points);
@@ -103,13 +98,14 @@ private:
   ros::Subscriber pose_graph_sub_;
   ros::Subscriber pose_graph_node_sub_;
   ros::Subscriber pose_graph_edge_sub_;
-  ros::Publisher robot_colored_point_cloud_;
 
+  std::map<unsigned char, ros::Publisher> publishers_robots_point_clouds_;
   // The node's name.
   std::string name_;
 
   // World coordinate frame for publishing the point cloud.
   std::string fixed_frame_id_;
+  std::vector<std::string> robot_names_;
 
   // Most recent point cloud update time stamp for publishers.
   ros::Time stamp_;
@@ -122,7 +118,7 @@ private:
   // grows, we are only publishing new changes each time, making visualization
   // constant time rather than O(n).
   PointCloud::Ptr incremental_points_;
-  ColorPointCloud::Ptr robot_color_incremental_points_;
+  std::map<unsigned char, PointCloud::Ptr> robots_point_clouds_;
 
   // Enable or disable visualization. If this parameter is loaded as false, this
   // class object won't do anything.
