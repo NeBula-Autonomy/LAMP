@@ -19,6 +19,7 @@ Loop closure base class
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>
 
+#include <geometry_utils/Transform3.h>
 #include <utils/PrefixHandling.h>
 
 class LoopClosure {
@@ -49,7 +50,22 @@ protected:
   // Parameter namespace ("robot" or "base")
   std::string param_ns_;
 
-  // Whether or not to look for loop closures (set independently in each base class)
+  // Whether or not to look for loop closures (set independently in each base
+  // class)
   bool b_check_for_loop_closures_;
+  // last_closure_key_<a,b> stores the last key for robot a on which there was a
+  // loop closure between robots a and b
+  std::map<std::pair<char, char>, gtsam::Key> last_closure_key_;
+
+  pose_graph_msgs::PoseGraphEdge CreateLoopClosureEdge(
+      const gtsam::Symbol& key1,
+      const gtsam::Symbol& key2,
+      const geometry_utils::Transform3& delta,
+      const gtsam::Matrix66& covariance);
+
+  pose_graph_msgs::PoseGraphEdge CreatePriorEdge(
+      const gtsam::Symbol& key,
+      const geometry_utils::Transform3& delta,
+      const gtsam::Matrix66& covariance);
 };
 #endif // LOOP_CLOSURE_BASE_H_

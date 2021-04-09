@@ -8,6 +8,7 @@ Lidar pointcloud based loop closure
 #define LASER_LOOP_CLOSURE_H_
 
 #include "loop_closure/LoopClosureBase.h"
+#include "loop_closure/PointCloudUtils.h"
 
 #include <unordered_map>
 
@@ -21,7 +22,6 @@ Lidar pointcloud based loop closure
 #include <gtsam/inference/Symbol.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
-#include <geometry_utils/Transform3.h>
 #include <multithreaded_gicp/gicp.h>
 #include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
@@ -44,18 +44,6 @@ private:
   void AccumulateScans(
       gtsam::Key key,
       PointCloud::Ptr scan_out);
-  void ComputeNormals(
-      PointCloud::ConstPtr input,
-      Normals::Ptr normals);
-  void NormalizePCloud(PointCloud::ConstPtr cloud,
-                       PointCloud::Ptr pclptr_normalized);
-  void ComputeKeypoints(PointCloud::ConstPtr source,
-                        Normals::Ptr source_normals,
-                        PointCloud::Ptr source_keypoints);
-  void ComputeFeatures(PointCloud::ConstPtr keypoints,
-                       PointCloud::ConstPtr input,
-                       Normals::Ptr normals,
-                       Features::Ptr features);
   void GetInitialAlignment(
       PointCloud::ConstPtr source,
       PointCloud::ConstPtr target,
@@ -93,18 +81,6 @@ private:
 
   double DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol key2);
 
-
-  pose_graph_msgs::PoseGraphEdge CreateLoopClosureEdge(
-          gtsam::Symbol key1, 
-          gtsam::Symbol key2,
-          geometry_utils::Transform3& delta, 
-          gtsam::Matrix66& covariance);
-
-  pose_graph_msgs::PoseGraphEdge CreatePriorEdge(
-          gtsam::Symbol key,
-          geometry_utils::Transform3& delta, 
-          gtsam::Matrix66& covariance);
-
   void GenerateGTFromPC(std::string gt_pc_filename);
 
   void TriggerGTCallback(const std_msgs::String::ConstPtr& msg);
@@ -132,9 +108,6 @@ private:
 
   std::unordered_map<gtsam::Key, PointCloud::ConstPtr> keyed_scans_;
 
-  // last_closure_key_<a,b> stores the last key for robot a on which there was a 
-  // loop closure between robots a and b
-  std::map< std::pair<char,char>, gtsam::Key> last_closure_key_;
   ros::Publisher gt_pub_;
   ros::Publisher current_scan_pub_;
   ros::Publisher aligned_scan_pub_;
@@ -158,11 +131,7 @@ private:
   double sac_features_radius_;
   double sac_fitness_score_threshold_;
 
-  double harris_threshold_;
-  bool harris_suppression_;
-  double harris_radius_;
-  bool harris_refine_;
-  int harris_response_;
+  utils::HarrisParams harris_params_;
 
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
