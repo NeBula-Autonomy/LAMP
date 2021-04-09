@@ -40,7 +40,7 @@
       <remap from="~optimized_values" to="lamp_pgo/optimized_values"/>
 
       <remap from="~artifact" to="~artifact_global" />
-      <remap from="~artifact_relative" to="unreconciled_artifact" />
+      <remap from="~artifact_relative" to="artifact/update" />
 
       <remap from="~uwb_factors" to="uwb_frontend/uwb_factors"/>
       <remap from="~imu_topic" to="vn100/imu_wori_wcov"/>
