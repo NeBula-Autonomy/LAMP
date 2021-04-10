@@ -579,17 +579,21 @@ void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
       static_cast<int>((1.0 - params_.decimate_percentage) * new_scan->size());
 
   // // Apply random downsampling to the keyed scan
-  pcl::RandomSample<pcl::PointXYZI> random_filter;
-  random_filter.setSample(n_points);
-  random_filter.setInputCloud(new_scan);
-  random_filter.filter(*new_scan);
+  if (params_.random_filter) {
+    pcl::RandomSample<pcl::PointXYZI> random_filter;
+    random_filter.setSample(n_points);
+    random_filter.setInputCloud(new_scan);
+    random_filter.filter(*new_scan);
+  }
 
   // Apply voxel grid filter to the keyed scan
-  // TODO - have option to turn on and off keyed scans
-  pcl::VoxelGrid<pcl::PointXYZI> grid;
-  grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
-  grid.setInputCloud(new_scan);
-  grid.filter(*new_scan);
+  if (params_.grid_filter) {
+    // TODO - have option to turn on and off keyed scans
+    pcl::VoxelGrid<pcl::PointXYZI> grid;
+    grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
+    grid.setInputCloud(new_scan);
+    grid.filter(*new_scan);
+  }
 
   pose_graph_.InsertKeyedScan(current_key, new_scan);
 
