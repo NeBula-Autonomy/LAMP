@@ -276,12 +276,14 @@ bool LaserLoopClosure::FindLoopClosures(
 
     // Check for single robot loop closures
     if (utils::IsKeyFromSameRobot(new_key, other_key)) {
-      closed_loop |= CheckForLoopClosure(new_key, other_key, loop_closure_edges);
+      closed_loop |=
+          CheckForLoopClosure(new_key, other_key, false, loop_closure_edges);
     }
 
     // Check for inter robot loop closures
     else {
-      closed_loop |= CheckForInterRobotLoopClosure(new_key, other_key, loop_closure_edges);
+      closed_loop |=
+          CheckForLoopClosure(new_key, other_key, true, loop_closure_edges);
     }
   }
 
@@ -301,6 +303,7 @@ double LaserLoopClosure::DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol k
 bool LaserLoopClosure::CheckForLoopClosure(
         gtsam::Symbol key1,
         gtsam::Symbol key2,
+        bool b_inter_robot,
         std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
 
   if (!utils::IsKeyFromSameRobot(key1, key2)) {
@@ -313,29 +316,7 @@ bool LaserLoopClosure::CheckForLoopClosure(
     return false;
 
   // Don't compare against poses that were recently collected.
-  if (std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
-    return false;
-  
-  if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
-    return false;
-  }
-
-  // Perform loop closure without a provided prior transform
-  return PerformLoopClosure(key1, key2, false, gtsam::Pose3(), loop_closure_edges);
-}
-
-bool LaserLoopClosure::CheckForInterRobotLoopClosure(
-        gtsam::Symbol key1,
-        gtsam::Symbol key2,
-        std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
-
-  if (utils::IsKeyFromSameRobot(key1, key2)) {
-    ROS_ERROR_STREAM("Checking for inter robot loop closures on same robot");
-    return false;
-  }
-
-  // Don't self-check.
-  if (key1 == key2)
+  if (!b_inter_robot && std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
     return false;
   
   if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
