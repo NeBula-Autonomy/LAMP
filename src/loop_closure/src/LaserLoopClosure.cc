@@ -6,9 +6,7 @@ Lidar pointcloud based loop closure
 #include "loop_closure/LaserLoopClosure.h"
 
 #include <pcl/io/pcd_io.h>
-#include <pcl/registration/gicp.h>
 #include <boost/range/as_array.hpp>
-// #include <multithreaded_gicp/gicp.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/registration/ia_ransac.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -126,6 +124,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   skip_recent_poses_ =
       (int)(distance_to_skip_recent_poses / translation_threshold_nodes_);
 
+  SetupICP();
   return true;
 }
 
@@ -427,20 +426,19 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     ROS_ERROR("PerformAlignment: empty point clouds.");
     return false;
   }
-  // Set up ICP.
+  // Set up ICP_.
   pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
                                                      pcl::PointXYZI>
       icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
-  SetupICP(icp);
 
   PointCloud::Ptr accumulated_target(new PointCloud);
   *accumulated_target = *scan2;
   AccumulateScans(key2, accumulated_target);
 
-  icp.setInputSource(scan1);
+  icp_.setInputSource(scan1);
 
-  icp.setInputTarget(accumulated_target);
+  icp_.setInputTarget(accumulated_target);
 
   ///// ICP initialization scheme
   // Default is to initialize by identity. Other options include
@@ -505,12 +503,12 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     initial_guess.block(0, 3, 3, 1) = guess.translation.Eigen().cast<float>();
   }
 
-  // Perform ICP.
+  // Perform ICP_.
   PointCloud::Ptr icp_result(new PointCloud);
-  icp.align(*icp_result, initial_guess);
+  icp_.align(*icp_result, initial_guess);
 
   // Get resulting transform.
-  const Eigen::Matrix4f T = icp.getFinalTransformation();
+  const Eigen::Matrix4f T = icp_.getFinalTransformation();
 
   delta->translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
   delta->rotation = gu::Rot3(T(0, 0),
@@ -524,13 +522,13 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
                              T(2, 2));
 
   // Is the transform good?
-  if (!icp.hasConverged()) {
-    ROS_INFO_STREAM("ICP: No converged, score is: " << icp.getFitnessScore());
+  if (!icp_.hasConverged()) {
+    ROS_INFO_STREAM("ICP: No converged, score is: " << icp_.getFitnessScore());
     return false;
   }
 
-  if (icp.getFitnessScore() > max_tolerable_fitness_) {
-    ROS_INFO_STREAM("ICP: Coverged but score is: " << icp.getFitnessScore());
+  if (icp_.getFitnessScore() > max_tolerable_fitness_) {
+    ROS_INFO_STREAM("ICP: Coverged but score is: " << icp_.getFitnessScore());
     return false;
   }
 
@@ -542,11 +540,11 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     return false;
   }  
 
-  ROS_INFO_STREAM("ICP: Found loop with score: " << icp.getFitnessScore());
-  fitness_score = icp.getFitnessScore();
+  ROS_INFO_STREAM("ICP: Found loop with score: " << icp_.getFitnessScore());
+  fitness_score = icp_.getFitnessScore();
   
 
-  // Find transform from pose2 to pose1 from output of ICP.
+  // Find transform from pose2 to pose1 from output of ICP_.
   *delta = gu::PoseInverse(*delta); // NOTE: gtsam need 2_Transform_1 while
                                     // ICP output 1_Transform_2
 
@@ -666,12 +664,11 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = gt_trans_sigma_ * gt_trans_sigma_;
 
-  // Set up ICP.
+  // Set up ICP_.
   pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
                                                      pcl::PointXYZI>
       icp;
-  SetupICP(icp);
-  icp.setInputTarget(gt_pc_ptr);
+  icp_.setInputTarget(gt_pc_ptr);
 
   // ---------------------------------------------------------
   // Loop through keyed poses
@@ -706,14 +703,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     }
 
     // Set source
-    icp.setInputSource(keyed_scan_world);
+    icp_.setInputSource(keyed_scan_world);
 
-    // Perform ICP.
+    // Perform ICP_.
     PointCloud unused_result;
-    icp.align(unused_result);
+    icp_.align(unused_result);
 
     // Get resulting transform.
-    const Eigen::Matrix4f T = icp.getFinalTransformation();
+    const Eigen::Matrix4f T = icp_.getFinalTransformation();
 
     delta.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
     delta.rotation = gu::Rot3(T(0, 0),
@@ -727,14 +724,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
                               T(2, 2));
 
     // Check it ICP has passed
-    if (!icp.hasConverged()) {
-      ROS_INFO_STREAM("ICP GT, key " << gtsam::DefaultKeyFormatter(it->first) << " : Not converged, score is: " << icp.getFitnessScore());
+    if (!icp_.hasConverged()) {
+      ROS_INFO_STREAM("ICP GT, key " << gtsam::DefaultKeyFormatter(it->first) << " : Not converged, score is: " << icp_.getFitnessScore());
       continue;
     }
 
     // Check our fitness threshold
-    if (icp.getFitnessScore() > max_tolerable_fitness_) {
-      ROS_INFO_STREAM("ICP GT, key " << gtsam::DefaultKeyFormatter(it->first) << ": Coverged but score is: " << icp.getFitnessScore());
+    if (icp_.getFitnessScore() > max_tolerable_fitness_) {
+      ROS_INFO_STREAM("ICP GT, key " << gtsam::DefaultKeyFormatter(it->first) << ": Coverged but score is: " << icp_.getFitnessScore());
       continue;
     }
 
@@ -786,16 +783,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   }
 }
 
-bool LaserLoopClosure::SetupICP(
-    pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
-                                                       pcl::PointXYZI>& icp) {
-  icp.setTransformationEpsilon(icp_tf_epsilon_);
-  icp.setMaxCorrespondenceDistance(icp_corr_dist_);
-  icp.setMaximumIterations(icp_iterations_);
-  icp.setRANSACIterations(0);
-  icp.setMaximumOptimizerIterations(50);
-  icp.setNumThreads(icp_threads_);
-  icp.enableTimingOutput(true);
+bool LaserLoopClosure::SetupICP() {
+  icp_.setTransformationEpsilon(icp_tf_epsilon_);
+  icp_.setMaxCorrespondenceDistance(icp_corr_dist_);
+  icp_.setMaximumIterations(icp_iterations_);
+  icp_.setRANSACIterations(0);
+  icp_.setMaximumOptimizerIterations(50);
+  icp_.setNumThreads(icp_threads_);
+  icp_.enableTimingOutput(true);
   return true;
 }
 
