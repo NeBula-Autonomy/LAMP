@@ -5,10 +5,15 @@ Loop closure base class
 */
 #include "loop_closure/LoopClosureBase.h"
 
+#include <geometry_utils/GeometryUtilsROS.h>
 #include <pose_graph_msgs/PoseGraph.h>
+#include <utils/CommonFunctions.h>
 
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Rot3.h>
+
+namespace gu = geometry_utils;
+namespace gr = gu::ros;
 
 LoopClosure::LoopClosure(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
@@ -85,4 +90,61 @@ void LoopClosure::PublishLoopClosures(
   graph.edges = edges;
 
   loop_closure_pub_.publish(graph);
+}
+
+pose_graph_msgs::PoseGraphEdge LoopClosure::CreateLoopClosureEdge(
+    const gtsam::Symbol& key1,
+    const gtsam::Symbol& key2,
+    const geometry_utils::Transform3& delta,
+    const gtsam::Matrix66& covariance) {
+  // Store last time a new loop closure was added
+  if (key1 > last_closure_key_[{key1.chr(), key2.chr()}]) {
+    last_closure_key_[{key1.chr(), key2.chr()}] = key1;
+  }
+  if (key2 > last_closure_key_[{key2.chr(), key1.chr()}]) {
+    last_closure_key_[{key2.chr(), key1.chr()}] = key2;
+  }
+
+  // Create the new loop closure edge
+  pose_graph_msgs::PoseGraphEdge edge;
+  edge.key_from = key1;
+  edge.key_to = key2;
+  edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+  edge.pose = gr::ToRosPose(delta);
+
+  // Convert matrix covariance to vector
+  for (size_t i = 0; i < 6; ++i) {
+    for (size_t j = 0; j < 6; ++j) {
+      edge.covariance[6 * i + j] = covariance(i, j);
+    }
+  }
+
+  return edge;
+}
+
+pose_graph_msgs::PoseGraphEdge LoopClosure::CreatePriorEdge(
+    const gtsam::Symbol& key,
+    const geometry_utils::Transform3& delta,
+    const gtsam::Matrix66& covariance) {
+  pose_graph_msgs::PoseGraphEdge prior;
+  prior.key_from = key;
+  prior.key_to = key;
+  prior.type = pose_graph_msgs::PoseGraphEdge::PRIOR;
+  prior.pose.position.x = delta.translation.X();
+  prior.pose.position.y = delta.translation.Y();
+  prior.pose.position.z = delta.translation.Z();
+  prior.pose.orientation.w = utils::ToGtsam(delta).rotation().quaternion()[0];
+  prior.pose.orientation.x = utils::ToGtsam(delta).rotation().quaternion()[1];
+  prior.pose.orientation.y = utils::ToGtsam(delta).rotation().quaternion()[2];
+  prior.pose.orientation.z = utils::ToGtsam(delta).rotation().quaternion()[3];
+
+  // Convert matrix covariance to vector
+  for (size_t i = 0; i < 6; ++i) {
+    for (size_t j = 0; j < 6; ++j) {
+      if (i == j) {
+        prior.covariance[6 * i + j] = covariance(i, j);
+      }
+    }
+  }
+  return prior;
 }
