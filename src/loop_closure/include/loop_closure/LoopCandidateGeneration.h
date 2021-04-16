@@ -33,15 +33,15 @@ class LoopCandidateGeneration {
 
  protected:
   // Key -> odometry-pose
-  std::unordered_map<gtsam::Key, gtsam::Pose3> keyed_poses_;
+  std::map<gtsam::Key, gtsam::Pose3> keyed_poses_;
   // Possible loop closure candidates along with their odometry transform
-  std::vector<pose_graph_msgs::LoopClosureCandidate> candidates_;
+  std::vector<pose_graph_msgs::LoopCandidate> candidates_;
 
   // Define publishers and subscribers
   ros::Publisher loop_candidate_pub_;
   ros::Subscriber keyed_poses_sub_;
 
-  virtual bool GenerateLoopCandidates(const gtsam::Key& new_key) = 0;
+  virtual void GenerateLoopCandidates(const gtsam::Key& new_key) = 0;
 
   virtual void KeyedPoseCallback(
       const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) = 0;
@@ -49,7 +49,7 @@ class LoopCandidateGeneration {
   inline void PublishLoopCandidates() const {
     pose_graph_msgs::LoopCandidateArray candidates_msg;
     candidates_msg.candidates = candidates_;
-    loop_candidate_pub_.publish(candidates_msg;)
+    loop_candidate_pub_.publish(candidates_msg);
   }
 
   inline void ClearLoopCandidates() { candidates_.clear(); }
