@@ -5,8 +5,8 @@
  */
 #pragma once
 
-#include <deque>
 #include <map>
+#include <queue>
 #include <vector>
 
 #include <pose_graph_msgs/LoopCandidate.h>
@@ -25,7 +25,7 @@ class LoopTransformComputation {
 
   virtual bool Initialize(const ros::NodeHandle& n) = 0;
 
-  virtual bool LoadParameters(const ros::NodeHandle& n) = 0;
+  virtual bool LoadParameters(const ros::NodeHandle& n);
 
   virtual bool CreatePublishers(const ros::NodeHandle& n);
 

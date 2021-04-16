@@ -25,7 +25,7 @@ class LoopCandidatePrioritization {
 
   virtual bool Initialize(const ros::NodeHandle& n) = 0;
 
-  virtual bool LoadParameters(const ros::NodeHandle& n) = 0;
+  virtual bool LoadParameters(const ros::NodeHandle& n);
 
   virtual bool CreatePublishers(const ros::NodeHandle& n);
 
