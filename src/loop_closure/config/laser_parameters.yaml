@@ -59,7 +59,7 @@ robot:
     iterations: 5 # Default from original branch is 20: 
 
     # Number of threads for multithreaded GICP
-    threads: 1
+    threads: 4
   
   #--------------------------------------------------------------------------------
   # SAC-IA Settings for feature-based initialization
@@ -164,7 +164,7 @@ base:
                   # For ground truth generation set it to a high number (100)
     
     # Number of threads for multithreaded GICP
-    threads: 3
+    threads: 4
 
   #--------------------------------------------------------------------------------
   # SAC-IA Settings for feature-based initialization

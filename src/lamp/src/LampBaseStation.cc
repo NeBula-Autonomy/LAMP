@@ -60,6 +60,7 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n) {
     ROS_ERROR("%s: Failed to initialize handlers.", name_.c_str());
     return false;
   }
+  return true;
 }
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
@@ -371,6 +372,7 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
       publishers_pose_[robot].publish(msg);
     }
   }
+  return true;
 }
 
 bool LampBaseStation::ProcessManualLoopClosureData(std::shared_ptr<FactorData> data) {
