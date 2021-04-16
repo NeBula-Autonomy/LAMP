@@ -41,7 +41,7 @@ robot:
   b_check_observability: true
 
   # Minimum allowed observability ratio (if low indicates possible slip in some direction)
-  min_observability_ratio: 0.4
+  min_observability_ratio: 0.1
 
   #--------------------------------------------------------------------------------
   # ICP Settings for laser loop closure
@@ -143,7 +143,7 @@ base:
   b_check_observability: true
 
   # Minimum allowed observability ratio (if low indicates possible slip in some direction)
-  min_observability_ratio: 0.4
+  min_observability_ratio: 0.1
 
 
   #--------------------------------------------------------------------------------

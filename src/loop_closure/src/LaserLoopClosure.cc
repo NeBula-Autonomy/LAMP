@@ -418,10 +418,6 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     ROS_ERROR("PerformAlignment: empty point clouds.");
     return false;
   }
-  // Set up ICP_.
-  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
-                                                     pcl::PointXYZI>
-      icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
 
   PointCloud::Ptr accumulated_target(new PointCloud);
@@ -505,7 +501,7 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   // Get the correspondence indices
   std::vector<size_t> correspondences;
   if (icp_covariance_method_ == IcpCovarianceMethod::POINT2PLANE) {
-    KdTree::Ptr search_tree = icp.getSearchMethodTarget();
+    KdTree::Ptr search_tree = icp_.getSearchMethodTarget();
     for (auto point : icp_result->points) {
       std::vector<int> matched_indices;
       std::vector<float> matched_distances;
