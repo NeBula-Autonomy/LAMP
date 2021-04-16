@@ -25,7 +25,7 @@ class LoopCandidateGeneration {
 
   virtual bool Initialize(const ros::NodeHandle& n) = 0;
 
-  virtual bool LoadParameters(const ros::NodeHandle& n) = 0;
+  virtual bool LoadParameters(const ros::NodeHandle& n);
 
   virtual bool CreatePublishers(const ros::NodeHandle& n);
 
@@ -43,7 +43,8 @@ class LoopCandidateGeneration {
 
   virtual bool GenerateLoopCandidates(const gtsam::Key& new_key) = 0;
 
-  void KeyedPoseCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
+  virtual void KeyedPoseCallback(
+      const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) = 0;
 
   inline void PublishLoopCandidates() const {
     pose_graph_msgs::LoopCandidateArray candidates_msg;
