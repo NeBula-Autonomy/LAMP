@@ -256,10 +256,9 @@ bool LaserLoopClosure::FindLoopClosures(
   const PointCloud::ConstPtr scan1 = keyed_scans_.at(new_key);
 
   if (b_check_observability_) {
-    Eigen::Matrix<double, 6, 1> obs_eigenvals;
+    Eigen::Matrix<double, 3, 1> obs_eigenvals;
     ComputeIcpObservability(scan1, &obs_eigenvals);
-    double obs_ratio =
-        obs_eigenvals.head(3).minCoeff() / obs_eigenvals.head(3).maxCoeff();
+    double obs_ratio = obs_eigenvals.minCoeff() / obs_eigenvals.maxCoeff();
     if (obs_ratio < min_observability_ratio_) return false;
   }
 
@@ -318,7 +317,7 @@ bool LaserLoopClosure::CheckForLoopClosure(
         bool b_inter_robot,
         std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
 
-  if (!utils::IsKeyFromSameRobot(key1, key2)) {
+  if (!b_inter_robot && !utils::IsKeyFromSameRobot(key1, key2)) {
     ROS_ERROR_STREAM("Checking for single robot loop closures on different robots");
     return false;
   }
@@ -503,6 +502,19 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   // Get resulting transform.
   const Eigen::Matrix4f T = icp_.getFinalTransformation();
 
+  // Get the correspondence indices
+  std::vector<size_t> correspondences;
+  if (icp_covariance_method_ == IcpCovarianceMethod::POINT2PLANE) {
+    KdTree::Ptr search_tree = icp.getSearchMethodTarget();
+    for (auto point : icp_result->points) {
+      std::vector<int> matched_indices;
+      std::vector<float> matched_distances;
+      search_tree->nearestKSearch(
+          point, 1, matched_indices, matched_distances);
+      correspondences.push_back(matched_indices[0]);
+    }
+  }
+
   delta->translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
   delta->rotation = gu::Rot3(T(0, 0),
                              T(0, 1),
@@ -555,7 +567,7 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
         break;
       case (IcpCovarianceMethod::POINT2PLANE):
         ComputeICPCovariancePointPlane(
-            icp_result, T, fitness_score, *covariance);
+            scan1, accumulated_target, correspondences, T, covariance);
         break;
       default:
         ROS_ERROR(
@@ -935,45 +947,35 @@ bool LaserLoopClosure::ComputeICPCovariancePointPoint(
 }
 
 bool LaserLoopClosure::ComputeICPCovariancePointPlane(
-    const PointCloud::ConstPtr& pointCloud,
+    const PointCloud::ConstPtr& query_cloud,
+    const PointCloud::ConstPtr& reference_cloud,
+    const std::vector<size_t>& correspondences,
     const Eigen::Matrix4f& T,
-    const double& icp_fitness,
-    Eigen::Matrix<double, 6, 6>& covariance) {     // Get normals
-  Normals::Ptr pcl_normals(new Normals);           // pc with normals
-  PointCloud::Ptr pcl_normalized(new PointCloud);  // pc whose points have been
-                                                   // rearranged.
+    Eigen::Matrix<double, 6, 6>* covariance) {
+  // Get normals
+  Normals::Ptr reference_normals(new Normals);       // pc with normals
+  PointCloud::Ptr query_normalized(new PointCloud);  // pc whose points have
+                                                     // been rearranged.
+  Eigen::Matrix<double, 6, 6> Ap;
+
   utils::ComputeNormals(
-      pointCloud, sac_normals_radius_, icp_threads_, pcl_normals);
-  utils::NormalizePCloud(pointCloud, pcl_normalized);
+      reference_cloud, sac_normals_radius_, icp_threads_, reference_normals);
+  utils::NormalizePCloud(query_cloud, query_normalized);
 
-  covariance = Eigen::Matrix<double, 6, 6>::Zero();
-  Eigen::Matrix<double, 6, 6> H_i = Eigen::Matrix<double, 6, 6>::Zero();
+  ComputeAp_ForPoint2PlaneICP(
+      query_normalized, reference_normals, correspondences, T, Ap);
+  // 1 cm covariance for now hard coded
+  *covariance = 0.01 * 0.01 * Ap.inverse();
 
-  Eigen::Vector3d a_i, n_i;
-
-  for (uint32_t i = 0; i < pointCloud->size(); i++) {
-    a_i << pcl_normalized->points[i].x, pcl_normalized->points[i].y,
-        pcl_normalized->points[i].z;
-    n_i << pcl_normals->points[i].normal_x, pcl_normals->points[i].normal_y,
-        pcl_normals->points[i].normal_z;
-    Eigen::Vector3d ai_cross_ni = (a_i.cross(n_i));
-
-    H_i.block(0, 0, 3, 3) = ai_cross_ni * (ai_cross_ni.transpose());
-    H_i.block(0, 3, 3, 3) = ai_cross_ni * n_i.transpose();
-    H_i.block(3, 3, 3, 3) = n_i * n_i.transpose();
-    if (!H_i.hasNaN()) covariance += H_i;
-  }
-
-  covariance.block(3, 0, 3, 3) = covariance.block(0, 3, 3, 3).transpose();
   // Here bound the covariance using eigen values
   Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;
-  eigensolver.compute(covariance);
+  eigensolver.compute(*covariance);
   Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
   Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
   double lower_bound = 0.001;  // Should be positive semidef
   double upper_bound = 1000;
   if (eigen_values.size() < 6) {
-    covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
+    *covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
     ROS_ERROR("Failed to find eigen values when computing icp covariance");
     return false;
   }
@@ -982,26 +984,32 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
     if (eigen_values(i) > upper_bound) eigen_values(i) = upper_bound;
   }
   // Update covariance matrix after bound
-  covariance = eigen_vectors * eigen_values.asDiagonal() *
-               eigen_vectors.inverse() * icp_fitness;
-
+  *covariance =
+      eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
   return true;
 }
 
 void LaserLoopClosure::ComputeIcpObservability(
     PointCloud::ConstPtr cloud,
-    Eigen::Matrix<double, 6, 1>* eigenvalues) {
+    Eigen::Matrix<double, 3, 1>* eigenvalues) {
   // Get normals
-  Normals::Ptr normals(new Normals);   // pc with normals
+  Normals::Ptr normals(new Normals);           // pc with normals
   PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
                                                // rearranged.
-  ComputeNormals(cloud, normals);
-  NormalizePCloud(cloud, normalized);
+  utils::ComputeNormals(cloud, sac_normals_radius_, icp_threads_, normals);
+  utils::NormalizePCloud(cloud, normalized);
+
+  // Correspondence with itself (not really used anyways)
+  std::vector<size_t> c(cloud->size());
+  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
+
+  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero();  // Unused
 
   Eigen::Matrix<double, 6, 6> Ap;
   // Compute Ap and its eigenvalues
-  ComputeAp_ForPoint2PlaneICP(normalized, normals, Ap);
-  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 6, 6>> eigensolver(Ap);
+  ComputeAp_ForPoint2PlaneICP(normalized, normals, c, T_unsued, Ap);
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 3, 3>> eigensolver(
+      Ap.block(3, 3, 3, 3));
   if (eigensolver.info() == Eigen::Success) {
     *eigenvalues = eigensolver.eigenvalues();
   } else {
@@ -1010,38 +1018,29 @@ void LaserLoopClosure::ComputeIcpObservability(
 }
 
 void LaserLoopClosure::ComputeAp_ForPoint2PlaneICP(
-    const PointCloud::Ptr pcl_normalized,
-    const Normals::Ptr pcl_normals,
+    const PointCloud::Ptr query_normalized,
+    const Normals::Ptr reference_normals,
+    const std::vector<size_t>& correspondences,
+    const Eigen::Matrix4f& T,
     Eigen::Matrix<double, 6, 6>& Ap) {
   Ap = Eigen::Matrix<double, 6, 6>::Zero();
   Eigen::Matrix<double, 6, 6> A_i = Eigen::Matrix<double, 6, 6>::Zero();
 
   Eigen::Vector3d a_i, n_i;
+  for (uint32_t i = 0; i < query_normalized->size(); i++) {
+    a_i << query_normalized->points[i].x,  //////
+        query_normalized->points[i].y,     //////
+        query_normalized->points[i].z;
 
-  for (uint32_t i = 0; i < pcl_normals->size(); i++) {
-    a_i << pcl_normalized->points[i].x,  //////
-        pcl_normalized->points[i].y,     //////
-        pcl_normalized->points[i].z;
+    n_i << reference_normals->points[correspondences[i]].normal_x,  //////
+        reference_normals->points[correspondences[i]].normal_y,     //////
+        reference_normals->points[correspondences[i]].normal_z;
 
-    n_i << pcl_normals->points[i].normal_x,  //////
-        pcl_normals->points[i].normal_y,     //////
-        pcl_normals->points[i].normal_z;
+    if (a_i.hasNaN() || n_i.hasNaN()) continue;
 
-    ComputeDiagonalAndUpperRightOfAi(a_i, n_i, A_i);
-
-    if (!A_i.hasNaN()) Ap += A_i;
+    Eigen::Matrix<double, 1, 6> H = Eigen::Matrix<double, 1, 6>::Zero();
+    H.block(0, 0, 1, 3) = (a_i.cross(n_i)).transpose();
+    H.block(0, 3, 1, 3) = n_i.transpose();
+    Ap += H.transpose() * H;
   }
-
-  Ap.block(3, 0, 3, 3) = Ap.block(0, 3, 3, 3).transpose();
-}
-
-void LaserLoopClosure::ComputeDiagonalAndUpperRightOfAi(
-    Eigen::Vector3d& a_i,
-    Eigen::Vector3d& n_i,
-    Eigen::Matrix<double, 6, 6>& A_i) {
-  Eigen::Vector3d ai_cross_ni = (a_i.cross(n_i));
-
-  A_i.block(0, 0, 3, 3) = ai_cross_ni * (ai_cross_ni.transpose());
-  A_i.block(0, 3, 3, 3) = ai_cross_ni * n_i.transpose();
-  A_i.block(3, 3, 3, 3) = n_i * n_i.transpose();
 }
