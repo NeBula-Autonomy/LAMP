@@ -40,6 +40,7 @@ public:
   typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
+  typedef pcl::search::KdTree<pcl::PointXYZI> KdTree;
 
 private:
   void AccumulateScans(
@@ -92,10 +93,21 @@ private:
                                       const double& icp_fitness,
                                       Eigen::Matrix<double, 6, 6>& covariance);
 
-  bool ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& pointCloud,
-                                      const Eigen::Matrix4f& T,
-                                      const double& icp_fitness,
-                                      Eigen::Matrix<double, 6, 6>& covariance);
+  bool ComputeICPCovariancePointPlane(
+      const PointCloud::ConstPtr& query_cloud,
+      const PointCloud::ConstPtr& reference_cloud,
+      const std::vector<size_t>& correspondences,
+      const Eigen::Matrix4f& T,
+      Eigen::Matrix<double, 6, 6>* covariance);
+
+  void ComputeIcpObservability(PointCloud::ConstPtr cloud,
+                               Eigen::Matrix<double, 3, 1>* eigenvalues);
+
+  void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
+                                   const Normals::Ptr reference_normals,
+                                   const std::vector<size_t>& correspondences,
+                                   const Eigen::Matrix4f& T,
+                                   Eigen::Matrix<double, 6, 6>& Ap);
 
  private:
   ros::Subscriber keyed_scans_sub_;
@@ -108,6 +120,8 @@ private:
   ros::Publisher current_scan_pub_;
   ros::Publisher aligned_scan_pub_;
 
+  bool b_check_observability_;
+  double min_observability_ratio_;
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;
   double distance_before_reclosing_;
