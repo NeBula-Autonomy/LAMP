@@ -645,6 +645,7 @@ void LampRobot::UpdateAndPublishOdom() {
   // TODO - use the covariance when we have it
   // geometry_msgs::PoseWithCovarianceStamped msg;
   // msg.pose = utils::GtsamToRosMsg(new_pose, covariance);
+
   // msg.header.frame_id = pose_graph_.fixed_frame_id;
   // msg.header.stamp = stamp;
 
@@ -768,14 +769,16 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       return false;
     }
 
+    // Can only used fixed covariance for artifact edges TODO: use covariance
+    // from artifact msg
+    // covariance = SetFixedNoiseModels("artifact");
+    covariance = artifact.covariance;
+
     // Get the covariances (Should be in relative frame as well)
     // TODO - handle this better - need to add covariances from the odom - do in
     // the function above
-    covariance = artifact.covariance;
+    // std::cout << msg_d.pose.covariance << '\n';
 
-    // Can only used fixed covariance for artifact edges TODO: use covariance
-    // from artifact msg
-    covariance = SetFixedNoiseModels("artifact");
 
     // Check if it is a new artifact or not
     if (!pose_graph_.HasKey(cur_artifact_key)) {

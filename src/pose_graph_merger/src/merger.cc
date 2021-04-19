@@ -176,7 +176,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
       if (fastInAdjList.find(node.key) != fastInAdjList.end()) {
         const GraphEdge* edge_to_check = *fastInAdjList[node.key].begin();
         if (edge_to_check->type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
-          ROS_INFO_STREAM(
+          ROS_DEBUG_STREAM(
               "\nDebug Merger: Adding the reobserved artifact to newfastnode "
               << gtsam::DefaultKeyFormatter(node.key));
           newFastNodes[node.header.seq] = &node;
