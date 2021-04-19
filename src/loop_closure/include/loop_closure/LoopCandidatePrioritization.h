@@ -33,7 +33,7 @@ class LoopCandidatePrioritization {
 
  protected:
   // Use different priority metrics to populate output (priority) queue
-  virtual bool PopulatePriorityQueue() = 0;
+  virtual void PopulatePriorityQueue() = 0;
 
   virtual void PublishBestCandidates() = 0;
 

@@ -84,9 +84,10 @@ add_library(${PROJECT_NAME}
   src/LoopClosureBase.cc 
   src/PointCloudUtils.cc
   src/LoopCandidateGeneration.cc
-  src/LoopClosurePrioritization.cc
+  src/LoopCandidatePrioritization.cc
   src/LoopTransformComputation.cc
   src/ProximityLoopCandidateGeneration.cc
+  src/ObservabilityLoopCandidatePrioritization.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
