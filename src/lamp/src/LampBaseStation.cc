@@ -514,7 +514,6 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
 
     PublishPoseGraph();
     ROS_INFO_STREAM("Done Loading pose graph");
-
     ReGenerateMapPointCloud();
     ROS_INFO_STREAM("Done regenerating Map Pointcloud");
 
