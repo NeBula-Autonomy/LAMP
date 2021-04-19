@@ -34,7 +34,6 @@ LampBase::LampBase()
 
   // set up mapping function to get internal ID given gtsam::Symbol
   pose_graph_.symbol_id_map = boost::bind(&LampBase::MapSymbolToId, this, _1);
-
 }
 
 // Destructor
@@ -88,8 +87,8 @@ bool LampBase::SetFactorPrecisions() {
   artifact_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
 
   // gtsam::Vector6 noise;
-  // noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_;
-  // zero_covariance_ = gtsam::noiseModel::Diagonal::Sigmas(noise);
+  // noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_,
+  // zero_noise_; zero_covariance_ = gtsam::noiseModel::Diagonal::Sigmas(noise);
 
   return true;
 }
@@ -136,7 +135,8 @@ void LampBase::OptimizerUpdateCallback(
   UpdateArtifactPositions();
 }
 
-void LampBase::MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
+void LampBase::MergeOptimizedGraph(
+    const pose_graph_msgs::PoseGraphConstPtr& msg) {
   // Process the slow graph update
   merger_.OnSlowGraphMsg(msg);
 
@@ -223,7 +223,7 @@ LampBase::ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
 
 bool LampBase::ReGenerateMapPointCloud() {
   // Reset the map
-  mapper_.Reset();
+  mapper_->Reset();
 
   // Combine the keyed scans with the latest node values
   PointCloud::Ptr regenerated_map(new PointCloud);
@@ -231,10 +231,10 @@ bool LampBase::ReGenerateMapPointCloud() {
 
   // Insert points into the map (publishes incremental point clouds)
   PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(regenerated_map, unused.get());
+  mapper_->InsertPoints(regenerated_map, unused.get());
 
   // Publish map
-  mapper_.PublishMap();
+  mapper_->PublishMap();
 }
 
 // For combining all the scans together
@@ -291,15 +291,15 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
   b2w.setZero();
   b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
   b2w.block(0, 3, 3, 1) = pose.translation.Eigen();
-  b2w(3,3) = 1;
+  b2w(3, 3) = 1;
 
   Eigen::Quaterniond quat(pose.rotation.Eigen());
   quat.normalize();
   b2w.block(0, 0, 3, 3) = quat.matrix();
 
-  // ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " << pose.rotation.Eigen().determinant() << ")");
-  // Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-  // ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
+  // ROS_INFO_STREAM("TRANSFORMATION MATRIX (rotation det: " <<
+  // pose.rotation.Eigen().determinant() << ")"); Eigen::IOFormat CleanFmt(4, 0,
+  // ", ", "\n", "[", "]"); ROS_INFO_STREAM("\n" << b2w.format(CleanFmt));
 
   // Transform the body-frame scan into world frame.
   pcl::transformPointCloud(*pose_graph_.keyed_scans[key], *points, b2w);
@@ -321,7 +321,7 @@ bool LampBase::AddTransformedPointCloudToMap(const gtsam::Symbol key) {
 
   // Add to the map
   PointCloud::Ptr unused(new PointCloud);
-  mapper_.InsertPoints(points, unused.get());
+  mapper_->InsertPoints(points, unused.get());
 
   return true;
 }
@@ -330,13 +330,13 @@ bool LampBase::AddTransformedPointCloudToMap(const gtsam::Symbol key) {
 // Conversion and publish pose graph functions
 //------------------------------------------------------------------------------------------
 
-bool LampBase::PublishPoseGraph( bool b_publish_incremental) {
+bool LampBase::PublishPoseGraph(bool b_publish_incremental) {
   // Incremental publishing
-  if (b_publish_incremental)  {
+  if (b_publish_incremental) {
     // Convert new parts of the pose-graph to messages
     pose_graph_msgs::PoseGraphConstPtr g_inc;
 
-    if (b_have_received_first_pg_){
+    if (b_have_received_first_pg_) {
       g_inc = pose_graph_.ToIncrementalMsg();
     } else {
       g_inc = pose_graph_.ToMsg();
@@ -344,7 +344,7 @@ bool LampBase::PublishPoseGraph( bool b_publish_incremental) {
     // TODO - change interface to just take a flag? Then do the clear in there?
     // - no want to make sure it is published
 
-    if (g_inc->nodes.size() > 0 || g_inc->edges.size() > 0){
+    if (g_inc->nodes.size() > 0 || g_inc->edges.size() > 0) {
       ROS_INFO_STREAM("Publishing incremental graph with "
                       << g_inc->nodes.size() << " nodes and "
                       << g_inc->edges.size() << " edges");
@@ -382,7 +382,8 @@ bool LampBase::PublishPoseGraphForOptimizer() {
   //                 << g->nodes.size() << " nodes and " << g->edges.size()
   //                 << " edges");
   for (auto v : g->nodes) {
-    ROS_DEBUG_STREAM("PublishedPGForOptimizer Key : " << gtsam::DefaultKeyFormatter(v.key));
+    ROS_DEBUG_STREAM(
+        "PublishedPGForOptimizer Key : " << gtsam::DefaultKeyFormatter(v.key));
   }
 
   // Publish
@@ -419,7 +420,6 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
     precisions.tail<3>().setConstant(fiducial_trans_precision_);
     noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
   } else if (type == "total_station") {
-
   } else if (type == "artifact_gt") {
     gtsam::Vector6 precisions;
     precisions.head<3>().setConstant(artifact_gt_rot_precision_);
@@ -459,7 +459,6 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   }
 }
 
-
 void LampBase::PublishAllKeyedScans() {
   if (pose_graph_.keyed_scans.size() == 0) {
     ROS_WARN("No keyed scans and you are trying to publish all keyed scans");
@@ -469,7 +468,9 @@ void LampBase::PublishAllKeyedScans() {
   ROS_INFO("Publishing All Keyed Scans");
   pose_graph_msgs::KeyedScan keyed_scan_msg;
 
-  for (auto it = pose_graph_.keyed_scans.begin() ; it != pose_graph_.keyed_scans.end() ; ++it){
+  for (auto it = pose_graph_.keyed_scans.begin();
+       it != pose_graph_.keyed_scans.end();
+       ++it) {
     ROS_INFO_ONCE("Publishing Keyed Scans... WAIT UNTIL DONE");
     keyed_scan_msg.key = it->first;
     pcl::toROSMsg(*it->second, keyed_scan_msg.scan);
