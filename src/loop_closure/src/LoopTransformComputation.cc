@@ -47,4 +47,26 @@ void LoopTransformComputation::InputCallback(
   return;
 }
 
+pose_graph_msgs::PoseGraphEdge LoopTransformComputation::CreateLoopClosureEdge(
+    const gtsam::Symbol& key1,
+    const gtsam::Symbol& key2,
+    const geometry_utils::Transform3& delta,
+    const gtsam::Matrix66& covariance) const {
+  // Create the new loop closure edge
+  pose_graph_msgs::PoseGraphEdge edge;
+  edge.key_from = key1;
+  edge.key_to = key2;
+  edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
+  edge.pose = gr::ToRosPose(delta);
+
+  // Convert matrix covariance to vector
+  for (size_t i = 0; i < 6; ++i) {
+    for (size_t j = 0; j < 6; ++j) {
+      edge.covariance[6 * i + j] = covariance(i, j);
+    }
+  }
+
+  return edge;
+}
+
 }  // namespace lamp_loop_closure

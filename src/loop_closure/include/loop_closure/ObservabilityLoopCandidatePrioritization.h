@@ -60,7 +60,7 @@ class ObservabilityLoopCandidatePrioritization
   ros::Timer update_timer_;
 
   // Paramters
-  int publish_n_best_;     // Publish only the top n candidates
+  int publish_n_best_;        // Publish only the top n candidates
   double min_observability_;  // Discard any candidate with observability
                               // below threshold
   double normals_radius_;     // radius used for cloud normal computation

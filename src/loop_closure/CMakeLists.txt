@@ -88,6 +88,7 @@ add_library(${PROJECT_NAME}
   src/LoopTransformComputation.cc
   src/ProximityLoopCandidateGeneration.cc
   src/ObservabilityLoopCandidatePrioritization.cc
+  src/IcpLoopTransformComputation.cc
 )
 
 target_link_libraries(${PROJECT_NAME}

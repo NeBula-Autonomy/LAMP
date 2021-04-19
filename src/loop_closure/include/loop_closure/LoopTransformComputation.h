@@ -31,14 +31,20 @@ class LoopTransformComputation {
 
   virtual bool RegisterCallbacks(const ros::NodeHandle& n);
 
-  // Compute transform and populate output queue
-  virtual bool ComputeTransforms() = 0;
-
  protected:
+  // Compute transform and populate output queue
+  virtual void ComputeTransforms() = 0;
+
   void PublishLoopClosures();
 
   void InputCallback(
       const pose_graph_msgs::LoopCandidateArray::ConstPtr& input_candidates);
+
+  pose_graph_msgs::PoseGraphEdge CreateLoopClosureEdge(
+      const gtsam::Symbol& key1,
+      const gtsam::Symbol& key2,
+      const geometry_utils::Transform3& delta,
+      const gtsam::Matrix66& covariance) const;
 
   // Define publishers and subscribers
   ros::Publisher loop_closure_pub_;
