@@ -93,11 +93,13 @@ private:
   bool GetTransformedPointCloudWorld(const gtsam::Symbol key,
                                      PointCloud* points);
   bool CombineKeyedScansWorld(PointCloud* points);
+  void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
   geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
   ros::Subscriber keyed_scan_sub_;
   ros::Subscriber pose_graph_sub_;
   ros::Subscriber pose_graph_node_sub_;
   ros::Subscriber pose_graph_edge_sub_;
+  ros::Subscriber back_end_pose_graph_sub_;
 
   std::map<unsigned char, ros::Publisher> publishers_robots_point_clouds_;
   // The node's name.

@@ -77,8 +77,8 @@ bool PointCloudVisualizer::LoadParameters(const ros::NodeHandle& n) {
   //    return false;
 
   // Load coordinate frames.
-  if (!pu::Get("frame_id/fixed", fixed_frame_id_))
-    return false;
+  //  if (!pu::Get("frame_id/fixed", fixed_frame_id_))
+  //    return false;
 
   if (!pu::Get("/base1/lamp/robot_names", robot_names_)) {
     ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
@@ -110,6 +110,12 @@ bool PointCloudVisualizer::RegisterCallbacks(const ros::NodeHandle& n) {
       10,
       &PointCloudVisualizer::PoseGraphCallback,
       this);
+
+  back_end_pose_graph_sub_ =
+      nl.subscribe("/base1/lamp_pgo/optimized_values",
+                   1,
+                   &PointCloudVisualizer::OptimizerUpdateCallback,
+                   this);
 
   for (std::string robot : robot_names_) {
     publishers_robots_point_clouds_.insert(
@@ -176,8 +182,22 @@ void PointCloudVisualizer::KeyedScanCallback(
   pose_graph_.InsertKeyedScan(key, scan);
 }
 
+void PointCloudVisualizer::OptimizerUpdateCallback(
+    const pose_graph_msgs::PoseGraphConstPtr& msg) {
+  ROS_INFO_STREAM("POSE GRAPH SIZE: " << pose_graph_.keyed_scans.size());
+  ROS_INFO_STREAM("POSE GRAPH SIZE2: " << pose_graph_.nodes_.size());
+  pose_graph_.Reset();
+  pose_graph_.UpdateFromMsg(msg);
+  ROS_INFO_STREAM("Optimized: " << msg.get()->nodes.size());
+  ROS_INFO_STREAM("POSE GRAPH SIZE: " << pose_graph_.keyed_scans.size());
+  ROS_INFO_STREAM("POSE GRAPH SIZE2: " << pose_graph_.nodes_.size());
+}
+
 void PointCloudVisualizer::PoseGraphCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
+  ROS_INFO_STREAM("CAsual: " << msg.get()->nodes.size());
+  ROS_INFO_STREAM("CAsual incremental: " << msg->incremental);
+  ROS_INFO_STREAM(msg->incremental);
   pose_graph_.UpdateFromMsg(msg);
   VisualizePointCloud();
   if (!msg->incremental) {
