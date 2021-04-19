@@ -43,8 +43,7 @@ class LoopCandidateGeneration {
 
   virtual void GenerateLoopCandidates(const gtsam::Key& new_key) = 0;
 
-  virtual void KeyedPoseCallback(
-      const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) = 0;
+  void KeyedPoseCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
 
   inline void PublishLoopCandidates() const {
     pose_graph_msgs::LoopCandidateArray candidates_msg;

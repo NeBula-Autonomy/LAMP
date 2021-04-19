@@ -4,7 +4,6 @@
  * @author Yun Chang
  */
 
-#include <gtsam/inference/Symbol.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <utils/CommonFunctions.h>
 #include <string>

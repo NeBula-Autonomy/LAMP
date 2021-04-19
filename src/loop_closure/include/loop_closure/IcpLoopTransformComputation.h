@@ -12,6 +12,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
+#include "loop_closure/PointCloudUtils.h"
 
 #include "loop_closure/LoopTransformComputation.h"
 

@@ -5,6 +5,8 @@
  */
 #pragma once
 
+#include <gtsam/inference/Symbol.h>
+
 #include "loop_closure/LoopCandidateGeneration.h"
 
 namespace lamp_loop_closure {

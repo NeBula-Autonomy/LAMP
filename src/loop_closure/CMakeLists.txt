@@ -105,6 +105,28 @@ target_link_libraries(laser_${PROJECT_NAME}_node
   gtsam
 )
 
+add_executable(loop_generation_node src/loop_generation_node.cc)
+target_link_libraries(loop_generation_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+add_executable(loop_prioritization_node src/loop_prioritization_node.cc)
+target_link_libraries(loop_prioritization_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+add_executable(loop_computation_node src/loop_computation_node.cc)
+target_link_libraries(loop_computation_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
 #############
 ## Testing ##
 #############
