@@ -4,15 +4,16 @@
  * Authors: Yun Chang (yunchang@mit.edu)
  */
 
-#include <loop_closure/IcpLoopTransformComputation.h>
+#include <loop_closure/IcpLoopComputation.h>
 #include <ros/ros.h>
 
-namespace lamp_loop_closure {
+namespace lc = lamp_loop_closure;
+
 int main(int argc, char** argv) {
   ros::init(argc, argv, "loop_computation");
   ros::NodeHandle n("~");
 
-  IcpLoopTransformComputation loop_computation;
+  lc::IcpLoopComputation loop_computation;
   if (!loop_computation.Initialize(n)) {
     ROS_ERROR(
         "%s: Failed to initialize Loop Candidate Prioritization module. .",
@@ -23,4 +24,3 @@ int main(int argc, char** argv) {
 
   return EXIT_SUCCESS;
 }
-}  // namespace lamp_loop_closure

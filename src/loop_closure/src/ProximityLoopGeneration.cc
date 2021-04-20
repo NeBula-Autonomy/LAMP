@@ -1,5 +1,5 @@
 /**
- * @file   ProximityLoopCandidateGeneration.cc
+ * @file   ProximityLoopGeneration.cc
  * @brief  Find potentital loop closures based on proximity
  * @author Yun Chang
  */
@@ -8,18 +8,18 @@
 #include <utils/CommonFunctions.h>
 #include <string>
 
-#include "loop_closure/ProximityLoopCandidateGeneration.h"
+#include "loop_closure/ProximityLoopGeneration.h"
 
 namespace pu = parameter_utils;
 
 namespace lamp_loop_closure {
 
-ProximityLoopCandidateGeneration::ProximityLoopCandidateGeneration() {}
-ProximityLoopCandidateGeneration::~ProximityLoopCandidateGeneration() {}
+ProximityLoopGeneration::ProximityLoopGeneration() {}
+ProximityLoopGeneration::~ProximityLoopGeneration() {}
 
-bool ProximityLoopCandidateGeneration::Initialize(const ros::NodeHandle& n) {
+bool ProximityLoopGeneration::Initialize(const ros::NodeHandle& n) {
   std::string name =
-      ros::names::append(n.getNamespace(), "ProximityLoopCandidateGeneration");
+      ros::names::append(n.getNamespace(), "ProximityLoopGeneration");
   // Add load params etc
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name.c_str());
@@ -41,9 +41,9 @@ bool ProximityLoopCandidateGeneration::Initialize(const ros::NodeHandle& n) {
   return true;
 }
 
-bool ProximityLoopCandidateGeneration::LoadParameters(
+bool ProximityLoopGeneration::LoadParameters(
     const ros::NodeHandle& n) {
-  if (!LoopCandidateGeneration::LoadParameters(n)) return false;
+  if (!LoopGeneration::LoadParameters(n)) return false;
 
   double distance_to_skip_recent_poses, translation_threshold_nodes;
   if (!pu::Get(param_ns_ + "/translation_threshold_nodes",
@@ -60,19 +60,19 @@ bool ProximityLoopCandidateGeneration::LoadParameters(
   return true;
 }
 
-bool ProximityLoopCandidateGeneration::CreatePublishers(
+bool ProximityLoopGeneration::CreatePublishers(
     const ros::NodeHandle& n) {
-  if (!LoopCandidateGeneration::CreatePublishers(n)) return false;
+  if (!LoopGeneration::CreatePublishers(n)) return false;
   return true;
 }
 
-bool ProximityLoopCandidateGeneration::RegisterCallbacks(
+bool ProximityLoopGeneration::RegisterCallbacks(
     const ros::NodeHandle& n) {
-  if (!LoopCandidateGeneration::RegisterCallbacks(n)) return false;
+  if (!LoopGeneration::RegisterCallbacks(n)) return false;
   return true;
 }
 
-double ProximityLoopCandidateGeneration::DistanceBetweenKeys(
+double ProximityLoopGeneration::DistanceBetweenKeys(
     const gtsam::Symbol& key1,
     const gtsam::Symbol& key2) const {
   const gtsam::Pose3 pose1 = keyed_poses_.at(key1);
@@ -82,7 +82,7 @@ double ProximityLoopCandidateGeneration::DistanceBetweenKeys(
   return delta.translation().norm();
 }
 
-void ProximityLoopCandidateGeneration::GenerateLoopCandidates(
+void ProximityLoopGeneration::GenerateLoops(
     const gtsam::Key& new_key) {
   const gtsam::Symbol key = gtsam::Symbol(new_key);
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {

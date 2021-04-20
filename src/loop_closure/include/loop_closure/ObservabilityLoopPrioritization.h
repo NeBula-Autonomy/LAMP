@@ -1,5 +1,5 @@
 /**
- * @file   ObservabilityLoopCandidatePrioritization.h
+ * @file   ObservabilityLoopPrioritization.h
  * @brief  Base class for classes to find "priority loop closures" from the
  * candidates
  * @author Yun Chang
@@ -13,19 +13,19 @@
 #include <map>
 #include "loop_closure/PointCloudUtils.h"
 
-#include "loop_closure/LoopCandidatePrioritization.h"
+#include "loop_closure/LoopPrioritization.h"
 
 namespace lamp_loop_closure {
 
-class ObservabilityLoopCandidatePrioritization
-    : public LoopCandidatePrioritization {
+class ObservabilityLoopPrioritization
+    : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
 
  public:
-  ObservabilityLoopCandidatePrioritization();
-  ~ObservabilityLoopCandidatePrioritization();
+  ObservabilityLoopPrioritization();
+  ~ObservabilityLoopPrioritization();
 
   bool Initialize(const ros::NodeHandle& n) override;
 

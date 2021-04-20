@@ -1,5 +1,5 @@
 /**
- * @file   LoopCandidatePrioritization.h
+ * @file   LoopPrioritization.h
  * @brief  Base class for classes to find "priority loop closures" from the
  * candidates
  * @author Yun Chang
@@ -18,10 +18,10 @@
 
 namespace lamp_loop_closure {
 
-class LoopCandidatePrioritization {
+class LoopPrioritization {
  public:
-  LoopCandidatePrioritization();
-  ~LoopCandidatePrioritization();
+  LoopPrioritization();
+  ~LoopPrioritization();
 
   virtual bool Initialize(const ros::NodeHandle& n) = 0;
 

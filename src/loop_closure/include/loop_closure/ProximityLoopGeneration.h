@@ -1,5 +1,5 @@
 /**
- * @file   ProximityLoopCandidateGeneration.h
+ * @file   ProximityLoopGeneration.h
  * @brief  Find potentital loop closures based on proximity
  * @author Yun Chang
  */
@@ -7,14 +7,14 @@
 
 #include <gtsam/inference/Symbol.h>
 
-#include "loop_closure/LoopCandidateGeneration.h"
+#include "loop_closure/LoopGeneration.h"
 
 namespace lamp_loop_closure {
 
-class ProximityLoopCandidateGeneration : public LoopCandidateGeneration {
+class ProximityLoopGeneration : public LoopGeneration {
  public:
-  ProximityLoopCandidateGeneration();
-  ~ProximityLoopCandidateGeneration();
+  ProximityLoopGeneration();
+  ~ProximityLoopGeneration();
 
   bool Initialize(const ros::NodeHandle& n) override;
 
@@ -25,7 +25,7 @@ class ProximityLoopCandidateGeneration : public LoopCandidateGeneration {
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
  protected:
-  void GenerateLoopCandidates(const gtsam::Key& new_key) override;
+  void GenerateLoops(const gtsam::Key& new_key) override;
 
   double DistanceBetweenKeys(const gtsam::Symbol& key1,
                              const gtsam::Symbol& key2) const;

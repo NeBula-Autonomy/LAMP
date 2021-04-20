@@ -1,5 +1,5 @@
 /**
- * @file   IcpLoopTransformComputation.cc
+ * @file   IcpLoopComputation.cc
  * @brief  Find transform of loop closures via ICP
  * @author Yun Chang
  */
@@ -10,19 +10,19 @@
 #include <utils/CommonFunctions.h>
 #include "loop_closure/PointCloudUtils.h"
 
-#include "loop_closure/IcpLoopTransformComputation.h"
+#include "loop_closure/IcpLoopComputation.h"
 
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
 namespace lamp_loop_closure {
 
-IcpLoopTransformComputation::IcpLoopTransformComputation() {}
-IcpLoopTransformComputation::~IcpLoopTransformComputation() {}
+IcpLoopComputation::IcpLoopComputation() {}
+IcpLoopComputation::~IcpLoopComputation() {}
 
-bool IcpLoopTransformComputation::Initialize(const ros::NodeHandle& n) {
+bool IcpLoopComputation::Initialize(const ros::NodeHandle& n) {
   std::string name =
-      ros::names::append(n.getNamespace(), "ProximityLoopCandidateGeneration");
+      ros::names::append(n.getNamespace(), "ProximityLoopGeneration");
   // Add load params etc
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name.c_str());
@@ -44,8 +44,8 @@ bool IcpLoopTransformComputation::Initialize(const ros::NodeHandle& n) {
   return true;
 }
 
-bool IcpLoopTransformComputation::LoadParameters(const ros::NodeHandle& n) {
-  if (!LoopTransformComputation::LoadParameters(n)) return false;
+bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
+  if (!LoopComputation::LoadParameters(n)) return false;
 
   if (!pu::Get(param_ns_ + "/max_tolerable_fitness", max_tolerable_fitness_))
     return false;
@@ -101,26 +101,26 @@ bool IcpLoopTransformComputation::LoadParameters(const ros::NodeHandle& n) {
   return true;
 }
 
-bool IcpLoopTransformComputation::CreatePublishers(const ros::NodeHandle& n) {
-  if (!LoopTransformComputation::CreatePublishers(n)) return false;
+bool IcpLoopComputation::CreatePublishers(const ros::NodeHandle& n) {
+  if (!LoopComputation::CreatePublishers(n)) return false;
   return true;
 }
 
-bool IcpLoopTransformComputation::RegisterCallbacks(const ros::NodeHandle& n) {
-  if (!LoopTransformComputation::RegisterCallbacks(n)) return false;
+bool IcpLoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
+  if (!LoopComputation::RegisterCallbacks(n)) return false;
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans",
       100,
-      &IcpLoopTransformComputation::KeyedScanCallback,
+      &IcpLoopComputation::KeyedScanCallback,
       this);
 
   update_timer_ = nl.createTimer(
-      2.0, &IcpLoopTransformComputation::ProcessTimerCallback, this);
+      2.0, &IcpLoopComputation::ProcessTimerCallback, this);
 }
 
-bool IcpLoopTransformComputation::SetupICP() {
+bool IcpLoopComputation::SetupICP() {
   icp_.setTransformationEpsilon(icp_tf_epsilon_);
   icp_.setMaxCorrespondenceDistance(icp_corr_dist_);
   icp_.setMaximumIterations(icp_iterations_);
@@ -132,7 +132,7 @@ bool IcpLoopTransformComputation::SetupICP() {
 }
 
 // Compute transform and populate output queue
-void IcpLoopTransformComputation::ComputeTransforms() {
+void IcpLoopComputation::ComputeTransforms() {
   // First make copy of input queue
   size_t n = input_queue_.size();
 
@@ -166,7 +166,7 @@ void IcpLoopTransformComputation::ComputeTransforms() {
   return;
 }
 
-void IcpLoopTransformComputation::ProcessTimerCallback(
+void IcpLoopComputation::ProcessTimerCallback(
     const ros::TimerEvent& ev) {
   ComputeTransforms();
 
@@ -175,7 +175,7 @@ void IcpLoopTransformComputation::ProcessTimerCallback(
   }
 }
 
-void IcpLoopTransformComputation::KeyedScanCallback(
+void IcpLoopComputation::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
@@ -193,7 +193,7 @@ void IcpLoopTransformComputation::KeyedScanCallback(
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
 
-bool IcpLoopTransformComputation::PerformAlignment(
+bool IcpLoopComputation::PerformAlignment(
     const gtsam::Symbol& key1,
     const gtsam::Symbol& key2,
     const gtsam::Pose3& pose1,
@@ -355,7 +355,7 @@ bool IcpLoopTransformComputation::PerformAlignment(
   return true;
 }
 
-void IcpLoopTransformComputation::GetInitialAlignment(
+void IcpLoopComputation::GetInitialAlignment(
     PointCloud::ConstPtr source,
     PointCloud::ConstPtr target,
     Eigen::Matrix4f* tf_out,
@@ -410,7 +410,7 @@ void IcpLoopTransformComputation::GetInitialAlignment(
   *tf_out = sac_ia.getFinalTransformation();
 }
 
-bool IcpLoopTransformComputation::ComputeICPCovariancePointPlane(
+bool IcpLoopComputation::ComputeICPCovariancePointPlane(
     const PointCloud::ConstPtr& query_cloud,
     const PointCloud::ConstPtr& reference_cloud,
     const std::vector<size_t>& correspondences,
@@ -453,7 +453,7 @@ bool IcpLoopTransformComputation::ComputeICPCovariancePointPlane(
   return true;
 }
 
-bool IcpLoopTransformComputation::ComputeICPCovariancePointPoint(
+bool IcpLoopComputation::ComputeICPCovariancePointPoint(
     const PointCloud::ConstPtr& pointCloud,
     const Eigen::Matrix4f& T,
     const double& icp_fitness,

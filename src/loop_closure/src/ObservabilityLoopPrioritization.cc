@@ -1,5 +1,5 @@
 /**
- * @file   ObservabilityLoopCandidatePrioritization.cc
+ * @file   ObservabilityLoopPrioritization.cc
  * @brief  Base class for classes to find "priority loop closures" from the
  * candidates
  * @author Yun Chang
@@ -12,21 +12,21 @@
 #include <numeric>
 #include "loop_closure/PointCloudUtils.h"
 
-#include "loop_closure/ObservabilityLoopCandidatePrioritization.h"
+#include "loop_closure/ObservabilityLoopPrioritization.h"
 
 namespace pu = parameter_utils;
 
 namespace lamp_loop_closure {
 
-ObservabilityLoopCandidatePrioritization::
-    ObservabilityLoopCandidatePrioritization() {}
-ObservabilityLoopCandidatePrioritization::
-    ~ObservabilityLoopCandidatePrioritization() {}
+ObservabilityLoopPrioritization::
+    ObservabilityLoopPrioritization() {}
+ObservabilityLoopPrioritization::
+    ~ObservabilityLoopPrioritization() {}
 
-bool ObservabilityLoopCandidatePrioritization::Initialize(
+bool ObservabilityLoopPrioritization::Initialize(
     const ros::NodeHandle& n) {
   std::string name =
-      ros::names::append(n.getNamespace(), "ProximityLoopCandidateGeneration");
+      ros::names::append(n.getNamespace(), "ProximityLoopGeneration");
   // Add load params etc
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name.c_str());
@@ -48,9 +48,9 @@ bool ObservabilityLoopCandidatePrioritization::Initialize(
   return true;
 }
 
-bool ObservabilityLoopCandidatePrioritization::LoadParameters(
+bool ObservabilityLoopPrioritization::LoadParameters(
     const ros::NodeHandle& n) {
-  if (!LoopCandidatePrioritization::LoadParameters(n)) return false;
+  if (!LoopPrioritization::LoadParameters(n)) return false;
 
   if (!pu::Get(param_ns_ + "/obs_prioritization/publish_n_best",
                publish_n_best_))
@@ -67,33 +67,33 @@ bool ObservabilityLoopCandidatePrioritization::LoadParameters(
   return true;
 }
 
-bool ObservabilityLoopCandidatePrioritization::CreatePublishers(
+bool ObservabilityLoopPrioritization::CreatePublishers(
     const ros::NodeHandle& n) {
-  if (!LoopCandidatePrioritization::CreatePublishers(n)) return false;
+  if (!LoopPrioritization::CreatePublishers(n)) return false;
 
   return true;
 }
 
-bool ObservabilityLoopCandidatePrioritization::RegisterCallbacks(
+bool ObservabilityLoopPrioritization::RegisterCallbacks(
     const ros::NodeHandle& n) {
-  if (!LoopCandidatePrioritization::RegisterCallbacks(n)) return false;
+  if (!LoopPrioritization::RegisterCallbacks(n)) return false;
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans",
       100,
-      &ObservabilityLoopCandidatePrioritization::KeyedScanCallback,
+      &ObservabilityLoopPrioritization::KeyedScanCallback,
       this);
 
   update_timer_ = nl.createTimer(
       2.0,
-      &ObservabilityLoopCandidatePrioritization::ProcessTimerCallback,
+      &ObservabilityLoopPrioritization::ProcessTimerCallback,
       this);
 
   return true;
 }
 
-void ObservabilityLoopCandidatePrioritization::ProcessTimerCallback(
+void ObservabilityLoopPrioritization::ProcessTimerCallback(
     const ros::TimerEvent& ev) {
   PopulatePriorityQueue();
   if (priority_queue_.size() > 0 &&
@@ -101,7 +101,7 @@ void ObservabilityLoopCandidatePrioritization::ProcessTimerCallback(
     PublishBestCandidates();
   }
 }
-void ObservabilityLoopCandidatePrioritization::PopulatePriorityQueue() {
+void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
   size_t n = candidate_queue_.size();
   for (size_t i = 0; i < n; i++) {
     auto candidate = candidate_queue_.front();
@@ -141,7 +141,7 @@ void ObservabilityLoopCandidatePrioritization::PopulatePriorityQueue() {
   return;
 }
 
-void ObservabilityLoopCandidatePrioritization::PublishBestCandidates() {
+void ObservabilityLoopPrioritization::PublishBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
@@ -152,7 +152,7 @@ void ObservabilityLoopCandidatePrioritization::PublishBestCandidates() {
   loop_candidate_pub_.publish(output_msg);
 }
 
-void ObservabilityLoopCandidatePrioritization::KeyedScanCallback(
+void ObservabilityLoopPrioritization::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
@@ -170,7 +170,7 @@ void ObservabilityLoopCandidatePrioritization::KeyedScanCallback(
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
 
-void ObservabilityLoopCandidatePrioritization::ComputeIcpObservability(
+void ObservabilityLoopPrioritization::ComputeIcpObservability(
     PointCloud::ConstPtr cloud,
     Eigen::Matrix<double, 3, 1>* eigenvalues) const {
   // Get normals

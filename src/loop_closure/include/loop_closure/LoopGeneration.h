@@ -1,5 +1,5 @@
 /**
- * @file   LoopCandidateGeneration.h
+ * @file   LoopGeneration.h
  * @brief  Base class for classes to find potentital loop closures
  * @author Yun Chang
  */
@@ -18,10 +18,10 @@
 
 namespace lamp_loop_closure {
 
-class LoopCandidateGeneration {
+class LoopGeneration {
  public:
-  LoopCandidateGeneration();
-  ~LoopCandidateGeneration();
+  LoopGeneration();
+  ~LoopGeneration();
 
   virtual bool Initialize(const ros::NodeHandle& n) = 0;
 
@@ -41,17 +41,17 @@ class LoopCandidateGeneration {
   ros::Publisher loop_candidate_pub_;
   ros::Subscriber keyed_poses_sub_;
 
-  virtual void GenerateLoopCandidates(const gtsam::Key& new_key) = 0;
+  virtual void GenerateLoops(const gtsam::Key& new_key) = 0;
 
   void KeyedPoseCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
 
-  inline void PublishLoopCandidates() const {
+  inline void PublishLoops() const {
     pose_graph_msgs::LoopCandidateArray candidates_msg;
     candidates_msg.candidates = candidates_;
     loop_candidate_pub_.publish(candidates_msg);
   }
 
-  inline void ClearLoopCandidates() { candidates_.clear(); }
+  inline void ClearLoops() { candidates_.clear(); }
 
   std::string param_ns_;
 };

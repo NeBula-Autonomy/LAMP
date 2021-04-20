@@ -1,5 +1,5 @@
 /**
- * @file   IcpLoopTransformComputation.h
+ * @file   IcpLoopComputation.h
  * @brief  Find transform of loop closures via ICP
  * @author Yun Chang
  */
@@ -14,11 +14,11 @@
 #include <pose_graph_msgs/KeyedScan.h>
 #include "loop_closure/PointCloudUtils.h"
 
-#include "loop_closure/LoopTransformComputation.h"
+#include "loop_closure/LoopComputation.h"
 
 namespace lamp_loop_closure {
 
-class IcpLoopTransformComputation : public LoopTransformComputation {
+class IcpLoopComputation : public LoopComputation {
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
@@ -26,8 +26,8 @@ class IcpLoopTransformComputation : public LoopTransformComputation {
   typedef pcl::search::KdTree<pcl::PointXYZI> KdTree;
 
  public:
-  IcpLoopTransformComputation();
-  ~IcpLoopTransformComputation();
+  IcpLoopComputation();
+  ~IcpLoopComputation();
 
   bool Initialize(const ros::NodeHandle& n) override;
 

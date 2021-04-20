@@ -1,5 +1,5 @@
 /**
- * @file   LoopTransformComputation.h
+ * @file   LoopComputation.h
  * @brief  Base class for classes to find transform of loop closures
  * @author Yun Chang
  */
@@ -18,10 +18,10 @@
 
 namespace lamp_loop_closure {
 
-class LoopTransformComputation {
+class LoopComputation {
  public:
-  LoopTransformComputation();
-  ~LoopTransformComputation();
+  LoopComputation();
+  ~LoopComputation();
 
   virtual bool Initialize(const ros::NodeHandle& n) = 0;
 

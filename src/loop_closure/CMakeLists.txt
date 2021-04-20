@@ -83,12 +83,12 @@ add_library(${PROJECT_NAME}
   src/LaserLoopClosure.cc 
   src/LoopClosureBase.cc 
   src/PointCloudUtils.cc
-  src/LoopCandidateGeneration.cc
-  src/LoopCandidatePrioritization.cc
-  src/LoopTransformComputation.cc
-  src/ProximityLoopCandidateGeneration.cc
-  src/ObservabilityLoopCandidatePrioritization.cc
-  src/IcpLoopTransformComputation.cc
+  src/LoopGeneration.cc
+  src/LoopPrioritization.cc
+  src/LoopComputation.cc
+  src/ProximityLoopGeneration.cc
+  src/ObservabilityLoopPrioritization.cc
+  src/IcpLoopComputation.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -112,6 +112,7 @@ target_link_libraries(loop_generation_node
   ${Boost_LIBRARIES}
   gtsam
 )
+
 add_executable(loop_prioritization_node src/loop_prioritization_node.cc)
 target_link_libraries(loop_prioritization_node
   ${PROJECT_NAME}
@@ -119,6 +120,7 @@ target_link_libraries(loop_prioritization_node
   ${Boost_LIBRARIES}
   gtsam
 )
+
 add_executable(loop_computation_node src/loop_computation_node.cc)
 target_link_libraries(loop_computation_node
   ${PROJECT_NAME}

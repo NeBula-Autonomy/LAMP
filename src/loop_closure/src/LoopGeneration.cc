@@ -1,42 +1,42 @@
 /**
- * @file   LoopCandidateGeneration.cc
+ * @file   LoopGeneration.cc
  * @brief  Base class for classes to find potentital loop closures
  * @author Yun Chang
  */
 #include <pose_graph_msgs/PoseGraphNode.h>
 #include <utils/CommonFunctions.h>
 
-#include "loop_closure/LoopCandidateGeneration.h"
+#include "loop_closure/LoopGeneration.h"
 
 namespace lamp_loop_closure {
 
-LoopCandidateGeneration::LoopCandidateGeneration() {}
-LoopCandidateGeneration::~LoopCandidateGeneration() {}
+LoopGeneration::LoopGeneration() {}
+LoopGeneration::~LoopGeneration() {}
 
-bool LoopCandidateGeneration::LoadParameters(const ros::NodeHandle& n) {
+bool LoopGeneration::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
   param_ns_ = utils::GetParamNamespace(n.getNamespace());
   return true;
 }
 
-bool LoopCandidateGeneration::CreatePublishers(const ros::NodeHandle& n) {
+bool LoopGeneration::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_candidate_pub_ = nl.advertise<pose_graph_msgs::LoopCandidateArray>(
       "loop_candidates", 10, false);
   return true;
 }
 
-bool LoopCandidateGeneration::RegisterCallbacks(const ros::NodeHandle& n) {
+bool LoopGeneration::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   keyed_poses_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_incremental",
       100,
-      &LoopCandidateGeneration::KeyedPoseCallback,
+      &LoopGeneration::KeyedPoseCallback,
       this);
   return true;
 }
 
-void LoopCandidateGeneration::KeyedPoseCallback(
+void LoopGeneration::KeyedPoseCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
   pose_graph_msgs::PoseGraphNode node_msg;
   for (const auto& node_msg : graph_msg->nodes) {
@@ -62,11 +62,11 @@ void LoopCandidateGeneration::KeyedPoseCallback(
     // add new key and pose to keyed_poses_
     keyed_poses_[new_key] = new_pose;
 
-    GenerateLoopCandidates(new_key);
+    GenerateLoops(new_key);
   }
 
   if (loop_candidate_pub_.getNumSubscribers() > 0) {
-    PublishLoopCandidates();
+    PublishLoops();
   }
   return;
 }
