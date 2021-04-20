@@ -28,7 +28,7 @@ bool LoopComputation::CreatePublishers(const ros::NodeHandle& n) {
 bool LoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_candidate_sub_ = nl.subscribe<pose_graph_msgs::LoopCandidateArray>(
-      "loop_candidates", 100, &LoopComputation::InputCallback, this);
+      "prioritized_loop_candidates", 100, &LoopComputation::InputCallback, this);
   return true;
 }
 

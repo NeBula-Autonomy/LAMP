@@ -98,6 +98,12 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
 
   SetupICP();
 
+  // Hard coded covariances
+  if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;
+  if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_)) return false;
+  if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
+    return false;
+
   return true;
 }
 
@@ -111,13 +117,10 @@ bool IcpLoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
-      "keyed_scans",
-      100,
-      &IcpLoopComputation::KeyedScanCallback,
-      this);
+      "keyed_scans", 100, &IcpLoopComputation::KeyedScanCallback, this);
 
-  update_timer_ = nl.createTimer(
-      2.0, &IcpLoopComputation::ProcessTimerCallback, this);
+  update_timer_ =
+      nl.createTimer(2.0, &IcpLoopComputation::ProcessTimerCallback, this);
 }
 
 bool IcpLoopComputation::SetupICP() {
@@ -166,8 +169,7 @@ void IcpLoopComputation::ComputeTransforms() {
   return;
 }
 
-void IcpLoopComputation::ProcessTimerCallback(
-    const ros::TimerEvent& ev) {
+void IcpLoopComputation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   ComputeTransforms();
 
   if (loop_closure_pub_.getNumSubscribers() > 0) {
@@ -193,13 +195,12 @@ void IcpLoopComputation::KeyedScanCallback(
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
 
-bool IcpLoopComputation::PerformAlignment(
-    const gtsam::Symbol& key1,
-    const gtsam::Symbol& key2,
-    const gtsam::Pose3& pose1,
-    const gtsam::Pose3& pose2,
-    gu::Transform3* delta,
-    gtsam::Matrix66* covariance) {
+bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
+                                          const gtsam::Symbol& key2,
+                                          const gtsam::Pose3& pose1,
+                                          const gtsam::Pose3& pose2,
+                                          gu::Transform3* delta,
+                                          gtsam::Matrix66* covariance) {
   ROS_DEBUG_STREAM("Performing alignment between "
                    << gtsam::DefaultKeyFormatter(key1) << " and "
                    << gtsam::DefaultKeyFormatter(key2));
@@ -355,11 +356,10 @@ bool IcpLoopComputation::PerformAlignment(
   return true;
 }
 
-void IcpLoopComputation::GetInitialAlignment(
-    PointCloud::ConstPtr source,
-    PointCloud::ConstPtr target,
-    Eigen::Matrix4f* tf_out,
-    double& sac_fitness_score) {
+void IcpLoopComputation::GetInitialAlignment(PointCloud::ConstPtr source,
+                                             PointCloud::ConstPtr target,
+                                             Eigen::Matrix4f* tf_out,
+                                             double& sac_fitness_score) {
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);

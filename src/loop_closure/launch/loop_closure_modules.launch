@@ -1,0 +1,34 @@
+<launch>
+
+  <!-- Loop Generation -->
+  <node pkg="loop_closure"
+        name="loop_generation"
+        type="loop_generation_node"
+        output="screen">
+    <remap from="~pose_graph_incremental" to="lamp/pose_graph" />
+    <!-- Loop closure parameters  -->
+    <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>      
+  </node>
+
+  <!-- Loop Prioritization -->
+  <node pkg="loop_closure"
+        name="loop_prioritization"
+        type="loop_prioritization_node"
+        output="screen">
+    <remap from="~keyed_scans" to="lamp/keyed_scans" />
+    <!-- Loop closure parameters  -->
+    <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>      
+  </node>
+
+  <!-- Loop Computation -->
+  <node pkg="loop_closure"
+        name="loop_computation"
+        type="loop_computation_node"
+        output="screen">
+    <remap from="~keyed_scans" to="lamp/keyed_scans" />
+    <remap from="~loop_closures" to="lamp/laser_loop_closures" />
+    <!-- Loop closure parameters  -->
+    <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>      
+  </node>
+
+</launch>
