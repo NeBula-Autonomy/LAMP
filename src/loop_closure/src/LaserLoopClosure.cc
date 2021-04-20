@@ -653,15 +653,15 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     }
   } break;
 
-  case IcpInitMethod::TEASER:
-  {
-    double n_inliers = teaser_inlier_threshold_;
-    GetTEASERInitialAlignment(scan1, accumulated_target, &initial_guess, n_inliers);
-    if (n_inliers >= teaser_inlier_threshold_) {
-      ROS_INFO("Number of TEASER inliers is too low");
-      return false;
-    }
-  } break;
+  // case IcpInitMethod::TEASER:
+  // {
+  //   double n_inliers = teaser_inlier_threshold_;
+  //   GetTEASERInitialAlignment(scan1, accumulated_target, &initial_guess, n_inliers);
+  //   if (n_inliers >= teaser_inlier_threshold_) {
+  //     ROS_INFO("Number of TEASER inliers is too low");
+  //     return false;
+  //   }
+  // } break;
   
   default: // identity as default (default in ICP anyways)
   {

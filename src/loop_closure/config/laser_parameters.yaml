@@ -5,7 +5,7 @@
 robot: 
 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 3
+  icp_initialization_method: 4
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
   icp_covariance_calculation: 1
@@ -110,7 +110,7 @@ robot:
 
 base: 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 3
+  icp_initialization_method: 4
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
   icp_covariance_calculation: 1
@@ -120,12 +120,12 @@ base:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 10
+  proximity_threshold: 3
 
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.1 #was 0.04
+  max_tolerable_fitness: 2.5 #0.15 #was 0.04
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -182,6 +182,14 @@ base:
 
     # If SAC fitness score is more than the following value, it will be rejected
     fitness_score_threshold: 3.0 #was 0.30
+
+    
+  #--------------------------------------------------------------------------------
+  # TEASER Settings for feature-based initialization
+  #--------------------------------------------------------------------------------
+  TEASERPP:
+
+    num_inlier_threshold: 50
 
   #--------------------------------------------------------------------------------
   # Harris keypoints Settings 
