@@ -115,6 +115,9 @@ private:
   // Publishers.
   ros::Publisher incremental_points_pub_;
 
+  bool optimized = false;
+  std::map<gtsam::Symbol, PointCloud::ConstPtr> key_scans_to_update_;
+
   // Store up incremental point clouds to be published when
   // PublishIncrementalPointCloud() is called. This makes it so that as the map
   // grows, we are only publishing new changes each time, making visualization

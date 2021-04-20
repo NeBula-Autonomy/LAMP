@@ -163,7 +163,8 @@ void PointCloudVisualizer::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& msg) {
   const gtsam::Key& key = msg->key;
   if (pose_graph_.HasScan(key)) {
-    ROS_ERROR("%s: Key %lu already has a laser scan.", name_.c_str(), key);
+    //    ROS_ERROR("%s: Key %lu already has a laser scan.", name_.c_str(),
+    //    key);
     return;
   }
 
@@ -180,28 +181,38 @@ void PointCloudVisualizer::KeyedScanCallback(
 
   // Add the key and scan.
   pose_graph_.InsertKeyedScan(key, scan);
+  key_scans_to_update_.insert(
+      std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
 }
 
 void PointCloudVisualizer::OptimizerUpdateCallback(
     const pose_graph_msgs::PoseGraphConstPtr& msg) {
-  ROS_INFO_STREAM("POSE GRAPH SIZE: " << pose_graph_.keyed_scans.size());
-  ROS_INFO_STREAM("POSE GRAPH SIZE2: " << pose_graph_.nodes_.size());
-  pose_graph_.Reset();
   pose_graph_.UpdateFromMsg(msg);
-  ROS_INFO_STREAM("Optimized: " << msg.get()->nodes.size());
-  ROS_INFO_STREAM("POSE GRAPH SIZE: " << pose_graph_.keyed_scans.size());
-  ROS_INFO_STREAM("POSE GRAPH SIZE2: " << pose_graph_.nodes_.size());
+  optimized = true;
+  for (const auto& keyed_pose : pose_graph_.GetValues()) {
+    const gtsam::Symbol key = keyed_pose.key;
+
+    // Append the world-frame point cloud to the output.
+    PointCloud::Ptr temp_cloud(new PointCloud);
+    GetTransformedPointCloudWorld(key, temp_cloud.get());
+    if (robots_point_clouds_.find(key.chr()) != robots_point_clouds_.end()) {
+      *robots_point_clouds_.at(key.chr()) += *temp_cloud;
+    }
+  }
+  VisualizePointCloud();
 }
 
 void PointCloudVisualizer::PoseGraphCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
-  ROS_INFO_STREAM("CAsual: " << msg.get()->nodes.size());
-  ROS_INFO_STREAM("CAsual incremental: " << msg->incremental);
-  ROS_INFO_STREAM(msg->incremental);
-  pose_graph_.UpdateFromMsg(msg);
-  VisualizePointCloud();
-  if (!msg->incremental) {
-    pose_graph_.Reset();
+  if (msg->nodes.size() != pose_graph_.nodes_.size()) {
+    pose_graph_.UpdateFromMsg(msg);
+    for (const auto& keyed_scan : key_scans_to_update_) {
+      PointCloud::Ptr temp_cloud(new PointCloud);
+      GetTransformedPointCloudWorld(keyed_scan.first, temp_cloud.get());
+      *robots_point_clouds_.at(keyed_scan.first.chr()) += *temp_cloud;
+    }
+    VisualizePointCloud();
+    key_scans_to_update_.clear();
   }
 }
 geometry_msgs::Point
@@ -222,30 +233,14 @@ PointCloudVisualizer::GetPositionMsg(gtsam::Key key) const {
 }
 
 void PointCloudVisualizer::VisualizePointCloud() {
-  for (const auto& keyed_scan : pose_graph_.keyed_scans) {
-    PointCloud::Ptr temp_cloud(new PointCloud);
-    GetTransformedPointCloudWorld(keyed_scan.first, temp_cloud.get());
-    *robots_point_clouds_.at(keyed_scan.first.chr()) += *temp_cloud;
-
-    //    ROS_INFO_STREAM("Cloud : "
-    //                    << keyed_scan.first.chr() << " has "
-    //                    <<
-    //                    robots_point_clouds_.at(keyed_scan.first.chr())->size()
-    //                    << " after adding : " << temp_cloud->size());
-  }
-
-  if (pose_graph_.keyed_scans.size() != 0) {
-    for (std::string robot : robot_names_) {
-      unsigned char robot_chr = utils::ROBOT_PREFIXES.at(robot);
-
-      if (publishers_robots_point_clouds_.at(robot_chr).getNumSubscribers() >
-          0) {
-        sensor_msgs::PointCloud2 pcl_pc2;
-        pcl::toROSMsg(*robots_point_clouds_.at(robot_chr), pcl_pc2);
-        pcl_pc2.header.stamp = stamp_;
-        pcl_pc2.header.frame_id = fixed_frame_id_;
-        publishers_robots_point_clouds_.at(robot_chr).publish(pcl_pc2);
-      }
+  for (std::string robot : robot_names_) {
+    unsigned char robot_chr = utils::ROBOT_PREFIXES.at(robot);
+    if (publishers_robots_point_clouds_.at(robot_chr).getNumSubscribers() > 0) {
+      sensor_msgs::PointCloud2 pcl_pc2;
+      pcl::toROSMsg(*robots_point_clouds_.at(robot_chr), pcl_pc2);
+      pcl_pc2.header.stamp = stamp_;
+      pcl_pc2.header.frame_id = "world"; // fixed_frame_id_;
+      publishers_robots_point_clouds_.at(robot_chr).publish(pcl_pc2);
     }
   }
 }
@@ -260,8 +255,8 @@ bool PointCloudVisualizer::GetTransformedPointCloudWorld(
 
   // No key associated with the scan
   if (!pose_graph_.HasScan(key)) {
-    ROS_WARN("Could not find scan associated with key in "
-             "GetTransformedPointCloudWorld");
+    //    ROS_WARN("Could not find scan associated with key in "
+    //             "GetTransformedPointCloudWorld");
     return false;
   }
 
