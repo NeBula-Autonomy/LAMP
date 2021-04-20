@@ -133,8 +133,7 @@ bool PoseGraphVisualizer::RegisterCallbacks(const ros::NodeHandle& nh_,
       pnh.advertise<visualization_msgs::Marker>("graph_nodes", 10, false);
   graph_node_id_pub_ =
       pnh.advertise<visualization_msgs::Marker>("graph_node_ids", 10, false);
-  keyframe_node_pub_ =
-      pnh.advertise<visualization_msgs::Marker>("keyframe_nodes", 10, false);
+
   closure_area_pub_ =
       pnh.advertise<visualization_msgs::Marker>("closure_area", 10, false);
   highlight_pub_ =
