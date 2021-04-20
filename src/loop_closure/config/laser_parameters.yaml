@@ -4,7 +4,7 @@
 
 robot: 
 
-  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES }
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
   icp_initialization_method: 3
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
@@ -75,6 +75,15 @@ robot:
     # If SAC fitness score is more than the following value, it will be rejected
     fitness_score_threshold: 0.30
 
+  
+  #--------------------------------------------------------------------------------
+  # TEASER Settings for feature-based initialization
+  #--------------------------------------------------------------------------------
+  TEASERPP:
+
+    num_inlier_threshold: 50
+
+
   #--------------------------------------------------------------------------------
   # Harris keypoints Settings 
   #--------------------------------------------------------------------------------
@@ -100,7 +109,7 @@ robot:
 #############################################
 
 base: 
-  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES }
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
   icp_initialization_method: 3
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
@@ -111,20 +120,20 @@ base:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 5
+  proximity_threshold: 10
 
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.04
+  max_tolerable_fitness: 0.1 #was 0.04
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
-  distance_to_skip_recent_poses: 10 #10 # 200
+  distance_to_skip_recent_poses: 15 #10 # 200
 
   # If a loop has recently been closed, don't close a new one for at least this
   # amount of translational distance (m).
-  distance_before_reclosing: 5 #10
+  distance_before_reclosing: 10
 
   # if a loop closure is found but the angle is larger than this, reject it
   max_rotation_deg: 50
@@ -148,7 +157,7 @@ base:
 
     # Iterate ICP this many times.
     # Check this
-    iterations: 5 # Default from original branch is 20: 
+    iterations: 10 #was 5 # Default from original branch is 20: 
                   # For ground truth generation set it to a high number (100)
     
     # Number of threads for multithreaded GICP
@@ -160,7 +169,7 @@ base:
 
   sac_ia:
     # Iterate SAC-IA this many times.
-    iterations: 100
+    iterations: 10
 
     # Number of previous scans to accumulate for target pointcloud
     # 0 means no accumulation
@@ -172,7 +181,7 @@ base:
     features_radius: 2.0
 
     # If SAC fitness score is more than the following value, it will be rejected
-    fitness_score_threshold: 0.30
+    fitness_score_threshold: 3.0 #was 0.30
 
   #--------------------------------------------------------------------------------
   # Harris keypoints Settings 

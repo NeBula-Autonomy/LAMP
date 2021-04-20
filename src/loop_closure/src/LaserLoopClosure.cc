@@ -21,6 +21,13 @@ Lidar pointcloud based loop closure
 #include <parameter_utils/ParameterUtils.h>
 #include <utils/CommonFunctions.h>
 
+#include <teaser/registration.h>
+#include <teaser/matcher.h>
+#include <teaser/ply_io.h>
+
+#include <Eigen/Core>
+
+
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 namespace gr = gu::ros;
@@ -87,6 +94,9 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/features_radius", sac_features_radius_)) return false;
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold", sac_fitness_score_threshold_)) return false;
+
+  // Load TEASER parameters
+  if (!pu::Get(param_ns_ + "/TEASERPP/num_inlier_threshold", teaser_inlier_threshold_)) return false;
 
   // Load Harris parameters
   if (!pu::Get(param_ns_ + "/harris3D/harris_threshold", harris_threshold_))
@@ -288,6 +298,78 @@ void LaserLoopClosure::GetInitialAlignment(
   ROS_INFO_STREAM("SAC fitness score" << sac_fitness_score);
 
   *tf_out = sac_ia.getFinalTransformation();
+}
+
+void LaserLoopClosure::GetTEASERInitialAlignment(
+    PointCloud::ConstPtr source,
+    PointCloud::ConstPtr target,
+    Eigen::Matrix4f* tf_out,
+    double& n_inliers) {
+  // Get Normals
+  Normals::Ptr source_normals(new Normals);
+  Normals::Ptr target_normals(new Normals);
+  ComputeNormals(source, source_normals);
+  ComputeNormals(target, target_normals);
+
+  // Get Harris keypoints for source and target
+  PointCloud::Ptr source_keypoints(new PointCloud);
+  PointCloud::Ptr target_keypoints(new PointCloud);
+  ComputeKeypoints(source, source_normals, source_keypoints);
+  ComputeKeypoints(target, target_normals, target_keypoints);
+
+  Features::Ptr source_features(new Features);
+  Features::Ptr target_features(new Features);
+  ComputeFeatures(source_keypoints, source, source_normals, source_features);
+  ComputeFeatures(target_keypoints, target, target_normals, target_features);
+
+
+  // Convert to teaser point cloud
+  teaser::PointCloud src_cloud;
+  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
+           source->points.begin();
+       it != source->points.end();
+       it++) {
+         src_cloud.push_back({it->x, it->y, it->z});
+       }
+
+
+  teaser::PointCloud tgt_cloud;
+  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
+           target->points.begin();
+       it != target->points.end();
+       it++) {
+         tgt_cloud.push_back({it->x, it->y, it->z});
+       }
+
+  // Align 
+  teaser::Matcher matcher;
+  auto correspondences = matcher.calculateCorrespondences(
+      src_cloud, tgt_cloud, *source_features, *target_features, false, true, false, 0.95);
+
+  // Run TEASER++ registration
+  // Prepare solver parameters
+  teaser::RobustRegistrationSolver::Params params;
+  params.noise_bound = 0.05;
+  params.cbar2 = 1;
+  params.estimate_scaling = false;
+  params.rotation_max_iterations = 100;
+  params.rotation_gnc_factor = 1.4;
+  params.rotation_estimation_algorithm =
+      teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::GNC_TLS;
+  params.rotation_cost_threshold = 0.005;
+
+  // Solve with TEASER++
+  teaser::RobustRegistrationSolver solver(params);
+  solver.solve(src_cloud, tgt_cloud, correspondences);
+
+  auto solution = solver.getSolution();
+  Eigen::Matrix4d T;
+  T.topLeftCorner(3, 3) = solution.rotation;
+  T.topRightCorner(3, 1) = solution.translation;
+  *tf_out = T.cast <float> ();
+  // Manually set for troubleshooting purposes.
+  n_inliers = 100;
+
 }
 
 bool LaserLoopClosure::FindLoopClosures(
@@ -567,6 +649,16 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     GetInitialAlignment(scan1, accumulated_target, &initial_guess, sac_fitness_score);
     if (sac_fitness_score >= sac_fitness_score_threshold_) {
       ROS_INFO("SAC fitness score is too high");
+      return false;
+    }
+  } break;
+
+  case IcpInitMethod::TEASER:
+  {
+    double n_inliers = teaser_inlier_threshold_;
+    GetTEASERInitialAlignment(scan1, accumulated_target, &initial_guess, n_inliers);
+    if (n_inliers >= teaser_inlier_threshold_) {
+      ROS_INFO("Number of TEASER inliers is too low");
       return false;
     }
   } break;

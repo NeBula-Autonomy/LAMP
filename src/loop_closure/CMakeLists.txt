@@ -7,6 +7,8 @@ project(loop_closure)
 
 SET(CMAKE_BUILD_TYPE Release)
 
+set (CMAKE_CXX_STANDARD 14)
+
 find_package(GTSAM REQUIRED)
 if (NOT GTSAM_FOUND)
   message(FATAL_ERROR "This program requires the GTSAM library.")
@@ -66,6 +68,9 @@ catkin_package(
     Boost
 )
 
+find_package(Eigen3 REQUIRED)
+find_package(teaserpp REQUIRED)
+
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
 check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
@@ -84,6 +89,10 @@ target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   gtsam
+  Eigen3::Eigen
+  teaserpp::teaser_registration
+  teaserpp::teaser_features
+  teaserpp::teaser_io
 )
 
 add_executable(laser_${PROJECT_NAME}_node src/laser_${PROJECT_NAME}_node.cc)
@@ -92,6 +101,10 @@ target_link_libraries(laser_${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   gtsam
+  Eigen3::Eigen
+  teaserpp::teaser_registration
+  teaserpp::teaser_features
+  teaserpp::teaser_io
 )
 
 #############
