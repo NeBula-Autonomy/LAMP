@@ -204,7 +204,7 @@ void PointCloudVisualizer::OptimizerUpdateCallback(
 
 void PointCloudVisualizer::PoseGraphCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& msg) {
-  if (msg->nodes.size() != pose_graph_.nodes_.size()) {
+  if (msg->nodes.size() != pose_graph_.GetValues().size()) {
     pose_graph_.UpdateFromMsg(msg);
     for (const auto& keyed_scan : key_scans_to_update_) {
       PointCloud::Ptr temp_cloud(new PointCloud);
