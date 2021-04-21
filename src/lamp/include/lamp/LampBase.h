@@ -132,13 +132,12 @@ protected:
   // Zero noise param
   gtsam::noiseModel::Diagonal::shared_ptr zero_covariance_;
 
-
   // New pose graph values from optimizer
   void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
   void MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
   // Set artifact positions
-  virtual void UpdateArtifactPositions() {};
+  virtual void UpdateArtifactPositions(){};
 
   void PublishAllKeyedScans();
 
@@ -182,7 +181,7 @@ protected:
   PointCloudFilter filter_;
 
   // Mapper
-  PointCloudMapper mapper_;
+  IPointCloudMapper::Ptr mapper_;
 
   // Precisions
   double attitude_sigma_;
@@ -201,12 +200,11 @@ protected:
   double uwb_range_sigma_;
   double uwb_between_rot_sigma_;
   double uwb_between_trans_sigma_;
-  
+
   double zero_noise_;
 
 private:
   // Anything just in the base class
-
 };
 
 #endif

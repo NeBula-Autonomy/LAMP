@@ -66,7 +66,7 @@ public:
 
   // Resets the octree and stored points to an empty map. This is used when
   // closing loops or otherwise regenerating the map from scratch.
-  void Reset();
+  void Reset() override;
 
   // Adds a set of points to the octree. Only inserts points if one does not
   // already exist in the corresponding voxel. Output the points from the input
