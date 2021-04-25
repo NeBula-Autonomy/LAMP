@@ -61,12 +61,25 @@
 #include <pcl_ros/transforms.h>
 #include <time.h>
 
+#include <tf/transform_broadcaster.h>
+#include <visualization_msgs/Marker.h>
+
+#include <limits>
+#include <visualization_msgs/MarkerArray.h>
+
 namespace gu = geometry_utils;
 
 class PointCloudVisualizer {
 public:
+  struct Level {
+    tf::StampedTransform tf_;
+    PointCloud::Ptr points_;
+    ros::Publisher pub_;
+    std::vector<gu::Transform3> nodes_;
+  };
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::PointCloud<pcl::PointXYZRGB> ColorPointCloud;
+  typedef std::vector<Level> Levels;
 
   PointCloudVisualizer();
   ~PointCloudVisualizer();
@@ -84,8 +97,17 @@ private:
   PoseGraph pose_graph_;
   // Node initialization.
   bool LoadParameters(const ros::NodeHandle& n);
+
+  // Math functions
+  bool IsPointInsideTheCone(const gu::Transform3& current_pose,
+                            const gu::Transform3& point_to_test) const;
+  bool IsPointInsideTheNegativeCone(const gu::Transform3& current_pose,
+                                    const gu::Transform3& point_to_test) const;
+
+  // Callbacks
   bool RegisterCallbacks(const ros::NodeHandle& n);
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& msg);
+  void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
 
   void VisualizePointCloud();
   void PoseGraphCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
@@ -93,7 +115,14 @@ private:
   bool GetTransformedPointCloudWorld(const gtsam::Symbol key,
                                      PointCloud* points);
   bool CombineKeyedScansWorld(PointCloud* points);
-  void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
+
+  // Create a new level for data accumulation and static transform publisher
+  void CreateNewLevel();
+  // select the level to add point clouds
+  void AddPointCloudToCorrespondingLevel(const gtsam::Symbol key,
+                                         const PointCloud::Ptr& pc);
+  size_t SelectLevelForNode(const gtsam::Symbol key);
+
   geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
   ros::Subscriber keyed_scan_sub_;
   ros::Subscriber pose_graph_sub_;
@@ -102,6 +131,8 @@ private:
   ros::Subscriber back_end_pose_graph_sub_;
 
   std::map<unsigned char, ros::Publisher> publishers_robots_point_clouds_;
+  ros::Publisher cone_pub_;
+  ros::Publisher cone_pub_neg_;
   // The node's name.
   std::string name_;
 
@@ -115,7 +146,6 @@ private:
   // Publishers.
   ros::Publisher incremental_points_pub_;
 
-  bool optimized = false;
   std::map<gtsam::Symbol, PointCloud::ConstPtr> key_scans_to_update_;
 
   // Store up incremental point clouds to be published when
@@ -128,6 +158,14 @@ private:
   // Enable or disable visualization. If this parameter is loaded as false, this
   // class object won't do anything.
   bool enable_visualization_;
+  Levels levels_;
+  size_t selected_level = 0;
+  ros::NodeHandle nh_;
+  tf::TransformBroadcaster broadcaster_;
+  int current_level = 0; // todo: delete
+
+  // Test class fixtures
+  friend class TestPointCloudVisualizer;
 };
 
 #endif

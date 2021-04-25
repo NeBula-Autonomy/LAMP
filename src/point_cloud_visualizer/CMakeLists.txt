@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   pcl_ros
   pose_graph_msgs
+  rviz_visual_tools
   utils
 )
 
@@ -69,6 +70,7 @@ target_link_libraries(${PROJECT_NAME}_node
 
 # Add Gtest for the package
 if(CATKIN_ENABLE_TESTING)
-  catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cpp)
+  find_package(rostest REQUIRED)
+  add_rostest_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.test  test/test_${PROJECT_NAME}.cpp)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})  
 endif(CATKIN_ENABLE_TESTING)
