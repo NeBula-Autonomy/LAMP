@@ -41,8 +41,7 @@ bool ProximityLoopGeneration::Initialize(const ros::NodeHandle& n) {
   return true;
 }
 
-bool ProximityLoopGeneration::LoadParameters(
-    const ros::NodeHandle& n) {
+bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
   if (!LoopGeneration::LoadParameters(n)) return false;
 
   double distance_to_skip_recent_poses, translation_threshold_nodes;
@@ -60,15 +59,18 @@ bool ProximityLoopGeneration::LoadParameters(
   return true;
 }
 
-bool ProximityLoopGeneration::CreatePublishers(
-    const ros::NodeHandle& n) {
+bool ProximityLoopGeneration::CreatePublishers(const ros::NodeHandle& n) {
   if (!LoopGeneration::CreatePublishers(n)) return false;
   return true;
 }
 
-bool ProximityLoopGeneration::RegisterCallbacks(
-    const ros::NodeHandle& n) {
-  if (!LoopGeneration::RegisterCallbacks(n)) return false;
+bool ProximityLoopGeneration::RegisterCallbacks(const ros::NodeHandle& n) {
+  ros::NodeHandle nl(n);
+  keyed_poses_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
+      "pose_graph_incremental",
+      100,
+      &ProximityLoopGeneration::KeyedPoseCallback,
+      this);
   return true;
 }
 
@@ -82,8 +84,7 @@ double ProximityLoopGeneration::DistanceBetweenKeys(
   return delta.translation().norm();
 }
 
-void ProximityLoopGeneration::GenerateLoops(
-    const gtsam::Key& new_key) {
+void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
   const gtsam::Symbol key = gtsam::Symbol(new_key);
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
@@ -112,6 +113,42 @@ void ProximityLoopGeneration::GenerateLoops(
     candidate.value = distance;
 
     candidates_.push_back(candidate);
+  }
+  return;
+}
+
+void ProximityLoopGeneration::KeyedPoseCallback(
+    const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
+  pose_graph_msgs::PoseGraphNode node_msg;
+  for (const auto& node_msg : graph_msg->nodes) {
+    gtsam::Key new_key = node_msg.key;            // extract new key
+    ros::Time timestamp = node_msg.header.stamp;  // extract new timestamp
+
+    // Check if the node is new
+    if (keyed_poses_.count(new_key) > 0) {
+      continue;  // Not a new node
+    }
+
+    // also extract poses (NOTE(Yun) this pose will not be updated...)
+    gtsam::Pose3 new_pose;
+    gtsam::Point3 pose_translation(node_msg.pose.position.x,
+                                   node_msg.pose.position.y,
+                                   node_msg.pose.position.z);
+    gtsam::Rot3 pose_orientation(node_msg.pose.orientation.w,
+                                 node_msg.pose.orientation.x,
+                                 node_msg.pose.orientation.y,
+                                 node_msg.pose.orientation.z);
+    new_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    // add new key and pose to keyed_poses_
+    keyed_poses_[new_key] = new_pose;
+
+    GenerateLoops(new_key);
+  }
+
+  if (loop_candidate_pub_.getNumSubscribers() > 0) {
+    PublishLoops();
+    ClearLoops();
   }
   return;
 }

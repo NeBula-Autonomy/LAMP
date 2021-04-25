@@ -21,8 +21,7 @@ IcpLoopComputation::IcpLoopComputation() {}
 IcpLoopComputation::~IcpLoopComputation() {}
 
 bool IcpLoopComputation::Initialize(const ros::NodeHandle& n) {
-  std::string name =
-      ros::names::append(n.getNamespace(), "ProximityLoopGeneration");
+  std::string name = ros::names::append(n.getNamespace(), "IcpLoopComputation");
   // Add load params etc
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name.c_str());
@@ -121,6 +120,7 @@ bool IcpLoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
 
   update_timer_ =
       nl.createTimer(2.0, &IcpLoopComputation::ProcessTimerCallback, this);
+  return true;
 }
 
 bool IcpLoopComputation::SetupICP() {

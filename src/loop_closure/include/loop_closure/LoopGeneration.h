@@ -29,7 +29,7 @@ class LoopGeneration {
 
   virtual bool CreatePublishers(const ros::NodeHandle& n);
 
-  virtual bool RegisterCallbacks(const ros::NodeHandle& n);
+  virtual bool RegisterCallbacks(const ros::NodeHandle& n) = 0;
 
  protected:
   // Key -> odometry-pose
@@ -41,9 +41,8 @@ class LoopGeneration {
   ros::Publisher loop_candidate_pub_;
   ros::Subscriber keyed_poses_sub_;
 
-  virtual void GenerateLoops(const gtsam::Key& new_key) = 0;
-
-  void KeyedPoseCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
+  virtual void KeyedPoseCallback(
+      const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) = 0;
 
   inline void PublishLoops() const {
     pose_graph_msgs::LoopCandidateArray candidates_msg;

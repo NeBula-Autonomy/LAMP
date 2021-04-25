@@ -18,15 +18,12 @@ namespace pu = parameter_utils;
 
 namespace lamp_loop_closure {
 
-ObservabilityLoopPrioritization::
-    ObservabilityLoopPrioritization() {}
-ObservabilityLoopPrioritization::
-    ~ObservabilityLoopPrioritization() {}
+ObservabilityLoopPrioritization::ObservabilityLoopPrioritization() {}
+ObservabilityLoopPrioritization::~ObservabilityLoopPrioritization() {}
 
-bool ObservabilityLoopPrioritization::Initialize(
-    const ros::NodeHandle& n) {
+bool ObservabilityLoopPrioritization::Initialize(const ros::NodeHandle& n) {
   std::string name =
-      ros::names::append(n.getNamespace(), "ProximityLoopGeneration");
+      ros::names::append(n.getNamespace(), "ObservabilityLoopPrioritization");
   // Add load params etc
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name.c_str());
@@ -48,8 +45,7 @@ bool ObservabilityLoopPrioritization::Initialize(
   return true;
 }
 
-bool ObservabilityLoopPrioritization::LoadParameters(
-    const ros::NodeHandle& n) {
+bool ObservabilityLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
   if (!LoopPrioritization::LoadParameters(n)) return false;
 
   if (!pu::Get(param_ns_ + "/obs_prioritization/publish_n_best",
@@ -86,9 +82,7 @@ bool ObservabilityLoopPrioritization::RegisterCallbacks(
       this);
 
   update_timer_ = nl.createTimer(
-      2.0,
-      &ObservabilityLoopPrioritization::ProcessTimerCallback,
-      this);
+      2.0, &ObservabilityLoopPrioritization::ProcessTimerCallback, this);
 
   return true;
 }
@@ -101,6 +95,7 @@ void ObservabilityLoopPrioritization::ProcessTimerCallback(
     PublishBestCandidates();
   }
 }
+
 void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
   size_t n = candidate_queue_.size();
   for (size_t i = 0; i < n; i++) {
