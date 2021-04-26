@@ -308,8 +308,8 @@ bool PointCloudVisualizer::GetTransformedPointCloudWorld(
 }
 int id = 0;
 
-double base_height = 5.0;
-double base_radius = base_height * sqrt(3);
+double base_height = 50.0;
+double base_radius = base_height * sqrt(3); // / 0.2; //* 10 * 2; // sqrt(3);
 double height_min_ = 2.0;
 visualization_msgs::Marker CreateConeMarker(const geometry_msgs::Pose& pose,
                                             /*double angle, */ double height,
@@ -404,6 +404,10 @@ visualization_msgs::Marker CreateNodeMarker(const gu::Transform3& pose,
   return marker;
 }
 
+bool PointCloudVisualizer::IsPointInInKindConePolygon(
+    const gu::Transform3& current_pose,
+    const gu::Transform3& point_to_test) const {}
+
 bool PointCloudVisualizer::IsPointInsideTheCone(
     const gu::Transform3& current_pose,
     const gu::Transform3& point_to_test) const {
@@ -481,11 +485,11 @@ PointCloudVisualizer::SelectLevelForNode(const gtsam::Symbol current_key) {
 
     double min_distance = std::numeric_limits<double>::infinity();
     for (size_t j = 0; j < levels_[i].nodes_.size(); ++j) {
-      if (levels_[i].nodes_.size() > 20) {
+      if (levels_[i].nodes_.size() > 10) {
         if (IsPointInsideTheCone(current_pose, levels_[i].nodes_[j])) {
           auto marker = CreateNodeMarker(levels_[i].nodes_[j]);
-          ROS_INFO_STREAM("IsPointInsideTheCone: FOR SURE IT'S NOT THIS NODE : "
-                          << current_pose << " AND " << levels_[i].nodes_[j]);
+          // ROS_INFO_STREAM("IsPointInsideTheCone: FOR SURE IT'S NOT THISNODE"
+          //                << current_pose << " AND " << levels_[i].nodes_[j]);
           cone_pub_.publish(marker);
           potential_levels.clear();
           break;
@@ -493,9 +497,9 @@ PointCloudVisualizer::SelectLevelForNode(const gtsam::Symbol current_key) {
 
         if (IsPointInsideTheNegativeCone(current_pose, levels_[i].nodes_[j])) {
           auto marker = CreateNodeMarker(levels_[i].nodes_[j]);
-          ROS_INFO_STREAM(
-              "IsPointInsideTheNegativeCone : FOR SURE IT'S NOT THIS NODE : "
-              << current_pose << " AND " << levels_[i].nodes_[j]);
+          // ROS_INFO_STREAM(
+          //     "IsPointInsideTheNegativeCone : FOR SURE IT'S NOT THISNODE "
+          //     << current_pose << " AND " << levels_[i].nodes_[j]);
           cone_pub_neg_.publish(marker);
           if (potential_levels.size() == 0) {
             potential_levels.emplace_back(
@@ -517,15 +521,16 @@ PointCloudVisualizer::SelectLevelForNode(const gtsam::Symbol current_key) {
       double dz2 = std::pow(current_pose.translation.Z() -
                                 levels_[i].nodes_[j].translation.Z(),
                             2);
-      double distance = dx2 + dy2 + dz2;
+
+      double distance = dx2 + dy2 + 1000.0 * dz2;
 
       if (distance < min_distance) {
         min_distance = distance;
         index = j;
       }
 
-      ROS_INFO_STREAM("j: " << j << " / " << levels_[i].nodes_.size() - 1
-                            << " distance: " << distance);
+      // ROS_INFO_STREAM("j: " << j << " / " << levels_[i].nodes_.size() - 1
+      //                       << " distance: " << distance);
 
       if (j == levels_[i].nodes_.size() - 1) {
         potential_levels.emplace_back(
@@ -579,7 +584,7 @@ void PointCloudVisualizer::AddPointCloudToCorrespondingLevel(
 
 void PointCloudVisualizer::CreateNewLevel() {
   std::string name = "level_" + std::to_string(levels_.size());
-  double x = static_cast<double>(levels_.size()) * 80.0;
+  double x = static_cast<double>(levels_.size() + 1) * 80.0;
   ROS_INFO_STREAM("New Level Detected " << x);
   tf::StampedTransform transform(
       tf::Transform(tf::Quaternion(0.0, 0.0, 0.0, 1.0),

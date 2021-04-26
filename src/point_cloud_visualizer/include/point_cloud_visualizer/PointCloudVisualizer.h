@@ -103,6 +103,8 @@ private:
                             const gu::Transform3& point_to_test) const;
   bool IsPointInsideTheNegativeCone(const gu::Transform3& current_pose,
                                     const gu::Transform3& point_to_test) const;
+  bool IsPointInInKindConePolygon(const gu::Transform3& current_pose,
+                                  const gu::Transform3& point_to_test) const;
 
   // Callbacks
   bool RegisterCallbacks(const ros::NodeHandle& n);
