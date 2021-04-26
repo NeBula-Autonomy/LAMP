@@ -45,6 +45,7 @@ class LoopGeneration {
       const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) = 0;
 
   inline void PublishLoops() const {
+    if (candidates_.size() == 0) return;
     pose_graph_msgs::LoopCandidateArray candidates_msg;
     candidates_msg.candidates = candidates_;
     loop_candidate_pub_.publish(candidates_msg);

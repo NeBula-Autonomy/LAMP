@@ -119,6 +119,7 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     if (min_obs_to < min_observability_) continue;
 
     double score = min_obs_from + min_obs_to;
+    candidate.value = score;
     std::deque<double>::iterator score_it = observability_score_.begin();
     std::deque<pose_graph_msgs::LoopCandidate>::iterator candidate_it =
         priority_queue_.begin();
