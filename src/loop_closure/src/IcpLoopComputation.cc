@@ -118,6 +118,12 @@ bool IcpLoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans", 100, &IcpLoopComputation::KeyedScanCallback, this);
 
+  keyed_poses_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
+      "pose_graph_incremental",
+      100,
+      &IcpLoopComputation::KeyedPoseCallback,
+      this);
+
   update_timer_ =
       nl.createTimer(2.0, &IcpLoopComputation::ProcessTimerCallback, this);
   return true;
@@ -195,6 +201,32 @@ void IcpLoopComputation::KeyedScanCallback(
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
 
+void IcpLoopComputation::KeyedPoseCallback(
+    const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
+  pose_graph_msgs::PoseGraphNode node_msg;
+  for (const auto& node_msg : graph_msg->nodes) {
+    gtsam::Key new_key = node_msg.key;  // extract new key
+    // Check if the node is new
+    if (keyed_poses_.count(new_key) > 0) {
+      continue;  // Not a new node
+    }
+
+    // also extract poses (NOTE(Yun) this pose will not be updated...)
+    gtsam::Pose3 new_pose;
+    gtsam::Point3 pose_translation(node_msg.pose.position.x,
+                                   node_msg.pose.position.y,
+                                   node_msg.pose.position.z);
+    gtsam::Rot3 pose_orientation(node_msg.pose.orientation.w,
+                                 node_msg.pose.orientation.x,
+                                 node_msg.pose.orientation.y,
+                                 node_msg.pose.orientation.z);
+    new_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    // add new key and pose to keyed_poses_
+    keyed_poses_[new_key] = new_pose;
+  }
+}
+
 bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
                                           const gtsam::Symbol& key2,
                                           const gtsam::Pose3& pose1,
@@ -217,6 +249,12 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     return false;
   }
 
+  if (!keyed_poses_.count(key1) || !keyed_poses_.count(key2)) {
+    ROS_WARN(
+        "PerformAlignment: Missing keyed-poses when performing alignment. ");
+    return false;
+  }
+
   // Get poses and keys
   const PointCloud::ConstPtr scan1 = keyed_scans_.at(key1.key());
   const PointCloud::ConstPtr scan2 = keyed_scans_.at(key2.key());
@@ -234,9 +272,12 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     return false;
   }
 
-  icp_.setInputSource(scan1);
+  PointCloud::Ptr accumulated_target(new PointCloud);
+  *accumulated_target = *scan2;
+  AccumulateScans(key2, accumulated_target);
 
-  icp_.setInputTarget(scan2);
+  icp_.setInputSource(scan1);
+  icp_.setInputTarget(accumulated_target);
 
   ///// ICP initialization scheme
   // Default is to initialize by identity. Other options include
@@ -256,8 +297,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
       initial_guess = Eigen::Matrix4f::Identity(4, 4);
       initial_guess.block(0, 0, 3, 3) =
           pose_21.rotation().matrix().cast<float>();
-      initial_guess.block(0, 3, 3, 1) =
-          pose_21.translation().vector().cast<float>();
+      initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
     } break;
 
     case IcpInitMethod::ODOM_ROTATION:  // initialize with zero translation but
@@ -450,6 +490,14 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   // Update covariance matrix after bound
   *covariance =
       eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
+
+  if (covariance->hasNaN()) {  // Prevent NaNs in covariance
+    for (int i = 0; i < 3; ++i)
+      (*covariance)(i, i) = laser_lc_rot_sigma_ * laser_lc_rot_sigma_;
+    for (int i = 3; i < 6; ++i)
+      (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
+  }
+
   return true;
 }
 
@@ -589,6 +637,45 @@ bool IcpLoopComputation::ComputeICPCovariancePointPoint(
       eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
 
   return true;
+}
+
+void IcpLoopComputation::AccumulateScans(const gtsam::Key& key,
+                                         PointCloud::Ptr scan_out) {
+  for (int i = 0; i < sac_num_prev_scans_; i++) {
+    gtsam::Key prev_key = key - i - 1;
+    // If scan doesn't exist, just skip it
+    if (!keyed_poses_.count(prev_key) || !keyed_scans_.count(prev_key)) {
+      continue;
+    }
+    const PointCloud::ConstPtr prev_scan = keyed_scans_[prev_key];
+
+    // Transform and Accumulate
+    const gtsam::Pose3 new_pose = keyed_poses_.at(key);
+    const gtsam::Pose3 old_pose = keyed_poses_.at(prev_key);
+    const gtsam::Pose3 tf = new_pose.between(old_pose);
+
+    PointCloud::Ptr transformed(new PointCloud);
+    pcl::transformPointCloud(*prev_scan, *transformed, tf.matrix());
+    *scan_out += *transformed;
+  }
+
+  for (int i = 0; i < sac_num_next_scans_; i++) {
+    gtsam::Key next_key = key + i + 1;
+    // If scan doesn't exist, just skip it
+    if (!keyed_poses_.count(next_key) || !keyed_scans_.count(next_key)) {
+      continue;
+    }
+    const PointCloud::ConstPtr next_scan = keyed_scans_[next_key];
+
+    // Transform and Accumulate
+    const gtsam::Pose3 new_pose = keyed_poses_.at(key);
+    const gtsam::Pose3 old_pose = keyed_poses_.at(next_key);
+    const gtsam::Pose3 tf = new_pose.between(old_pose);
+
+    PointCloud::Ptr transformed(new PointCloud);
+    pcl::transformPointCloud(*next_scan, *transformed, tf.matrix());
+    *scan_out += *transformed;
+  }
 }
 
 }  // namespace lamp_loop_closure

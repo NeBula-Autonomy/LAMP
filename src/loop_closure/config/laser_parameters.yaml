@@ -20,7 +20,7 @@ robot:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.3
+  max_tolerable_fitness: 0.04
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -87,7 +87,7 @@ robot:
     features_radius: 2.0
 
     # If SAC fitness score is more than the following value, it will be rejected
-    fitness_score_threshold: 4.0
+    fitness_score_threshold: 1.2
 
   #--------------------------------------------------------------------------------
   # Harris keypoints Settings 
@@ -125,7 +125,7 @@ base:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 5
+  proximity_threshold: 10
 
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
@@ -153,6 +153,13 @@ base:
   # Minimum allowed observability ratio (if low indicates possible slip in some direction)
   min_observability_ratio: 0.1
 
+  #--------------------------------------------------------------------------------
+  # Observability prioritization loop closure
+  #--------------------------------------------------------------------------------
+  obs_prioritization:
+    publish_n_best: 10
+    min_observability: 100
+    normals_search_radius: 1.0
 
   #--------------------------------------------------------------------------------
   # ICP Settings for laser loop closure
@@ -180,19 +187,19 @@ base:
 
   sac_ia:
     # Iterate SAC-IA this many times.
-    iterations: 100
+    iterations: 10
 
     # Number of previous scans to accumulate for target pointcloud
     # 0 means no accumulation
-    num_prev_scans: 3
-    num_next_scans: 0
+    num_prev_scans: 2
+    num_next_scans: 2
     
     # Radii of area to consider when computing normals and features
     normals_radius: 1.0
     features_radius: 2.0
 
     # If SAC fitness score is more than the following value, it will be rejected
-    fitness_score_threshold: 0.30
+    fitness_score_threshold: 1.2
 
   #--------------------------------------------------------------------------------
   # Harris keypoints Settings 

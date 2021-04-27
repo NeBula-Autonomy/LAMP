@@ -43,6 +43,8 @@ class IcpLoopComputation : public LoopComputation {
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 
+  void KeyedPoseCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg);
+
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
   bool SetupICP();
@@ -71,14 +73,18 @@ class IcpLoopComputation : public LoopComputation {
                                       const double& icp_fitness,
                                       Eigen::Matrix<double, 6, 6>& covariance);
 
+  void AccumulateScans(const gtsam::Key& key, PointCloud::Ptr scan_out);
+
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
+  ros::Subscriber keyed_poses_sub_;
 
   // Timer
   ros::Timer update_timer_;
 
   // Store keyed scans
   std::map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
+  std::map<gtsam::Key, gtsam::Pose3> keyed_poses_;
 
   double max_tolerable_fitness_;
   double icp_tf_epsilon_;
