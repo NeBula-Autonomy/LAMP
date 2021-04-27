@@ -102,7 +102,6 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
                                  const Eigen::Matrix4f& T,
                                  Eigen::Matrix<double, 6, 6>& Ap) {
   Ap = Eigen::Matrix<double, 6, 6>::Zero();
-  Eigen::Matrix<double, 6, 6> A_i = Eigen::Matrix<double, 6, 6>::Zero();
 
   Eigen::Vector3d a_i, n_i;
   for (uint32_t i = 0; i < query_normalized->size(); i++) {

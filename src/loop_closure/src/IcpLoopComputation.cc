@@ -3,11 +3,11 @@
  * @brief  Find transform of loop closures via ICP
  * @author Yun Chang
  */
-
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/registration/ia_ransac.h>
 #include <utils/CommonFunctions.h>
+#include <Eigen/LU>
 #include "loop_closure/PointCloudUtils.h"
 
 #include "loop_closure/IcpLoopComputation.h"
@@ -468,7 +468,15 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
 
   utils::ComputeAp_ForPoint2PlaneICP(
       query_normalized, reference_normals, correspondences, T, Ap);
-  // 1 cm covariance for now hard coded
+  // If matrix not invertible, use fixed
+  if (covariance->determinant() == 0) {
+    for (int i = 0; i < 3; ++i)
+      (*covariance)(i, i) = laser_lc_rot_sigma_ * laser_lc_rot_sigma_;
+    for (int i = 3; i < 6; ++i)
+      (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
+    return true;
+  }
+
   *covariance = 0.01 * 0.01 * Ap.inverse();
 
   // Here bound the covariance using eigen values
@@ -476,8 +484,8 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   eigensolver.compute(*covariance);
   Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
   Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
-  double lower_bound = 0.001;  // Should be positive semidef
-  double upper_bound = 1000;
+  double lower_bound = 1e-6;  // Should be positive semidef
+  double upper_bound = 1e6;
   if (eigen_values.size() < 6) {
     *covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
     ROS_ERROR("Failed to find eigen values when computing icp covariance");
@@ -491,7 +499,8 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   *covariance =
       eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
 
-  if (covariance->hasNaN()) {  // Prevent NaNs in covariance
+  if (covariance->array().hasNaN()) {  // Prevent NaNs in covariance
+    *covariance = Eigen::MatrixXd::Zero(6, 6);
     for (int i = 0; i < 3; ++i)
       (*covariance)(i, i) = laser_lc_rot_sigma_ * laser_lc_rot_sigma_;
     for (int i = 3; i < 6; ++i)
