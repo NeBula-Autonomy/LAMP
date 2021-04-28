@@ -102,7 +102,6 @@
       <remap from="~pose_graph" to="/$(arg robot_namespace)/lamp/pose_graph" />
       <remap from="~pose_graph_to_optimize" to="lamp_pgo/pose_graph_to_optimize" />
       <remap from="~optimized_values" to="lamp_pgo/optimized_values" />
-      <!-- <rosparam file="$(find localization_uncertainty_analysis/config/precision_parameters.yaml" /> -->
     </node>
 
     <node pkg="lamp_pgo"

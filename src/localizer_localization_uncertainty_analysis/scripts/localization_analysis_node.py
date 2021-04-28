@@ -27,7 +27,7 @@ class PoseGraphModifier(object):
         modified_edge = edge
         modified_edge.covariance = self.generate_cov_matrix(self.odom_att_sigma,
                                                             self.odom_pos_sigma)
-        return copy.deepcopy(modified_edge)
+        return modified_edge
 
     def update_pg_values(self, pg_modified, pg_optimized):
         pg_updated = copy.deepcopy(pg_modified)
@@ -51,7 +51,7 @@ class PoseGraphModifier(object):
                             pg_updated.nodes[itr].covariance = copy.deepcopy(node.covariance)
                             break
 
-        return copy.deepcopy(pg_updated)
+        return pg_updated
 
     def generate_cov_matrix(self, att_sigma, pos_sigma):
         cov_matrix = [0] * 36
@@ -113,8 +113,7 @@ class PoseGraphHandler(object):
         return self.pg_modififier.modify_pg(self.current_pg)
 
     def optimize(self, pg):
-        pub_pg = copy.deepcopy(pg)
-        self.pub_pg_tobe_optimized.publish(pub_pg)
+        self.pub_pg_tobe_optimized.publish(pg)
         self.pub_time = rospy.Time.now()
         rospy.loginfo("PoseGraphHandler: publishing current pg to optimizer")
 
@@ -191,7 +190,7 @@ class ConfidenceEstimator:
 class LocalizationAnalysis:
     def __init__(self):
         # Read parameters
-        self.data_rate = 0.2
+        self.data_rate = 0.1
         self.optimization_interval = 30.0  # second
 
         # Setup modules: PoseGraph Manager, Planning, ArtifactManager
