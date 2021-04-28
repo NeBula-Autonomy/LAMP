@@ -182,7 +182,7 @@ private:
 
   PointCloudFilter filter_;
 
-  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER };
+  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASERPP };
 
   enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };
 
