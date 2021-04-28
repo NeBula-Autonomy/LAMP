@@ -46,10 +46,11 @@ class PoseGraphModifier(object):
         for itr in range(len(pg_updated.nodes)):
             if pg_updated.nodes[itr].key in artifact_key_dict.keys():
                 if sum(pg_updated.nodes[itr].covariance) < 0.001:
-                    for node in pg_updated.nodes:
-                        if node.key == artifact_key_dict[pg_updated.nodes[itr].key]:
-                            pg_updated.nodes[itr].covariance = copy.deepcopy(node.covariance)
-                            break
+                    rospy.logwarn("Artifact %s does not have covariance value", pg_updated.nodes[itr].ID)
+                    # for node in pg_updated.nodes:
+                    #     if node.key == artifact_key_dict[pg_updated.nodes[itr].key]:
+                    #         pg_updated.nodes[itr].covariance = copy.deepcopy(node.covariance)
+                    #         break
 
         return pg_updated
 
