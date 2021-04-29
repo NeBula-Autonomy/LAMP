@@ -713,8 +713,9 @@ bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
   pose_graph_.TrackIMUFactor(
       imu_data->factors[0].attitude.front(), meas, ref, noise_sigma, true);
 
+  // Do not optimize on the robot
   // Optimize every "imu_factors_per_opt"
-  b_run_optimization_ = true;
+  // b_run_optimization_ = false;
   return true;
 }
 
