@@ -89,6 +89,7 @@ add_library(${PROJECT_NAME}
   src/ProximityLoopGeneration.cc
   src/ObservabilityLoopPrioritization.cc
   src/IcpLoopComputation.cc
+  src/LoopCandidateQueue.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -115,6 +116,14 @@ target_link_libraries(loop_generation_node
 
 add_executable(loop_prioritization_node src/loop_prioritization_node.cc)
 target_link_libraries(loop_prioritization_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+add_executable(loop_candidate_queue_node src/loop_candidate_queue_node.cc)
+target_link_libraries(loop_candidate_queue_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
