@@ -48,14 +48,14 @@ bool LoopCandidateQueue::LoadParameters(const ros::NodeHandle& n) {
 bool LoopCandidateQueue::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_candidate_pub_ = nl.advertise<pose_graph_msgs::LoopCandidateArray>(
-      "loop_candidates", 10, false);
+      "output_loop_candidates", 10, false);
   return true;
 }
 
 bool LoopCandidateQueue::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_candidate_sub_ = nl.subscribe<pose_graph_msgs::LoopCandidateArray>(
-      "loop_candidates", 100, &LoopCandidateQueue::InputCallback, this);
+      "input_loop_candidates", 100, &LoopCandidateQueue::InputCallback, this);
   return true;
 }
 
