@@ -225,13 +225,10 @@ void PointCloudMapper::PublishMapThread() {
 }
 
 void PointCloudMapper::PublishMapFrozen() {
-  ROS_INFO_STREAM("1");
   if (initialized_ && map_frozen_pub_.getNumSubscribers() > 0) {
-    ROS_INFO_STREAM("2");
     // Use a new thread to publish the map to avoid blocking main thread
     // on concurrent calls.
     if (publish_frozen_thread_.joinable()) {
-      ROS_INFO_STREAM("3");
       publish_frozen_thread_.join();
     }
     publish_frozen_thread_ =
