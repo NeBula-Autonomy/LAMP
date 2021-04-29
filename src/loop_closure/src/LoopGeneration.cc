@@ -13,7 +13,7 @@ namespace pu = parameter_utils;
 
 namespace lamp_loop_closure {
 
-LoopGeneration::LoopGeneration() {}
+LoopGeneration::LoopGeneration() : b_check_for_loop_closures_(false) {}
 LoopGeneration::~LoopGeneration() {}
 
 bool LoopGeneration::LoadParameters(const ros::NodeHandle& n) {

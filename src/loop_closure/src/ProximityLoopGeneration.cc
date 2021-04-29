@@ -14,7 +14,7 @@ namespace pu = parameter_utils;
 
 namespace lamp_loop_closure {
 
-ProximityLoopGeneration::ProximityLoopGeneration() {}
+ProximityLoopGeneration::ProximityLoopGeneration() : LoopGeneration() {}
 ProximityLoopGeneration::~ProximityLoopGeneration() {}
 
 bool ProximityLoopGeneration::Initialize(const ros::NodeHandle& n) {
@@ -86,7 +86,7 @@ double ProximityLoopGeneration::DistanceBetweenKeys(
 
 void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
   // Loop closure off. No candidates generated
-  if (b_check_for_loop_closures_) return;
+  if (!b_check_for_loop_closures_) return;
 
   const gtsam::Symbol key = gtsam::Symbol(new_key);
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
@@ -149,7 +149,7 @@ void ProximityLoopGeneration::KeyedPoseCallback(
     GenerateLoops(new_key);
   }
 
-  if (loop_candidate_pub_.getNumSubscribers() > 0) {
+  if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {
     PublishLoops();
     ClearLoops();
   }
