@@ -18,7 +18,7 @@ class PoseGraphModifier(object):
 
     def modify_pg(self, pg):
         for itr in range(len(pg.edges)):
-            if pg.edges[itr].type == PoseGraphEdge.ODOM:
+            if pg.edges[itr].type == PoseGraphEdge.ODOM or pg.edges[itr].type == PoseGraphEdge.LOOPCLOSE:
                 pg.edges[itr] = self.modify_odom_edge(pg.edges[itr])
 
         return copy.deepcopy(pg)
@@ -47,10 +47,10 @@ class PoseGraphModifier(object):
             if pg_updated.nodes[itr].key in artifact_key_dict.keys():
                 if sum(pg_updated.nodes[itr].covariance) < 0.001:
                     rospy.logwarn("Artifact %s does not have covariance value", pg_updated.nodes[itr].ID)
-                    # for node in pg_updated.nodes:
-                    #     if node.key == artifact_key_dict[pg_updated.nodes[itr].key]:
-                    #         pg_updated.nodes[itr].covariance = copy.deepcopy(node.covariance)
-                    #         break
+                for node in pg_updated.nodes:
+                    if node.key == artifact_key_dict[pg_updated.nodes[itr].key]:
+                        pg_updated.nodes[itr].covariance = copy.deepcopy(node.covariance)
+                        break
 
         return pg_updated
 
@@ -140,12 +140,48 @@ class ConfidenceEstimator:
 
     def estimate_artifact_confidence(self, pg):
         rospy.loginfo("ConfidenceEstimator: Estimating artifact confidence")
-        rospy.loginfo("id x y z error radius scorability")
+        b_print_list_header = False
+        b_print_odom_nodes = False
+        b_print_artifact_edges = False
+
         for node in pg.nodes:
             if node.ID != "odom_node":  # is artifact?
                 self.confidence_dict[node.ID] = self.get_confidence_from_cov(node.covariance)
                 radius, err = self.calculate_eigen_value(node.covariance)
-                rospy.loginfo("%s %.2f %.2f %.2f %.2f %.2f %.2f", node.ID, node.pose.position.x, node.pose.position.y, node.pose.position.z, err, radius, self.confidence_dict[node.ID])
+                if not b_print_list_header:
+                    rospy.loginfo("id \t\tx \ty \tz \terror \tradius \tscorability")
+                    b_print_list_header = True
+                rospy.loginfo("%s \t%.2f \t%.2f \t%.2f \t%.2f \t%.2f \t%.2f", node.ID, node.pose.position.x, node.pose.position.y, node.pose.position.z, err, radius, self.confidence_dict[node.ID])
+        print("\n")
+
+        if b_print_odom_nodes:
+            rospy.loginfo("Modified odom nodes")
+            rospy.loginfo("key \tID \t\tx \ty \tz \terror")
+            for node in pg.nodes:
+                if node.ID == "odom_node":  # is artifact?
+                    radius, err = self.calculate_eigen_value(node.covariance)
+                    key = chr(node.key >> 56) + str(node.key & 0x00ffffffffffffff) + "  "
+                    rospy.loginfo("%s \t%s \t%.1f \t%.1f \t%.1f \t%.1f",
+                                  key, node.ID,
+                                  node.pose.position.x, node.pose.position.y, node.pose.position.z,
+                                  err)
+            print("\n")
+
+        if b_print_artifact_edges:
+            rospy.loginfo("Artifact edge in pose graph")
+            rospy.loginfo("ID \t\tx \ty \tz \terror")
+            artifact_key_dict = {}
+            for edge in pg.edges:
+                if edge.type == PoseGraphEdge.ARTIFACT:
+                    radius, err = self.calculate_eigen_value(edge.covariance)
+                    artifact_key_dict[edge.key_to] = err
+            for node in pg.nodes:
+                if node.key in artifact_key_dict:
+                    rospy.loginfo("%s \t%.1f \t%.1f \t%.1f \t%.1f",
+                                  node.ID,
+                                  node.pose.position.x, node.pose.position.y, node.pose.position.z,
+                                  artifact_key_dict[node.key])
+            print("\n")
 
     def get_confidence_from_cov(self, cov):
         # get volume
@@ -226,13 +262,14 @@ class LocalizationAnalysis:
                 self.pg_handler.optimize(modified_pg)
                 self.last_opt_time = rospy.Time.now()
                 rospy.sleep(2.0)  # wait for the optimizer
+                # rospy.logwarn("MODIFIED")
+                # self.conf_estimator.estimate_artifact_confidence(modified_pg)
                 self.publish_modified_pg(self.pg_handler.get_optimized_pg(), modified_pg)
             r.sleep()
 
     def publish_modified_pg(self, pg_optimized, pg_modified):
         combined_pg = self.pg_handler.update_pg_values(pg_modified, pg_optimized)
         self.pub_mod_pg.publish(combined_pg)
-        self.conf_estimator.estimate_artifact_confidence(self.pg_handler.get_pg())
         self.conf_estimator.estimate_artifact_confidence(combined_pg)
 
     def is_optimize_pg(self):
