@@ -85,6 +85,9 @@ double ProximityLoopGeneration::DistanceBetweenKeys(
 }
 
 void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
+  // Loop closure off. No candidates generated
+  if (b_check_for_loop_closures_) return;
+
   const gtsam::Symbol key = gtsam::Symbol(new_key);
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;

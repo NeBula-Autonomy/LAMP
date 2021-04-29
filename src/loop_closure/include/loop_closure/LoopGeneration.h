@@ -54,6 +54,8 @@ class LoopGeneration {
   inline void ClearLoops() { candidates_.clear(); }
 
   std::string param_ns_;
+
+  bool b_check_for_loop_closures_;
 };
 
 }  // namespace lamp_loop_closure
