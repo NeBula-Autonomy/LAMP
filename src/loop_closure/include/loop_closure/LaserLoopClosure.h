@@ -17,6 +17,7 @@ Lidar pointcloud based loop closure
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Float64.h>
 
 #include <gtsam/inference/Symbol.h>
 
@@ -131,6 +132,9 @@ private:
                                       const double& icp_fitness,
                                       Eigen::Matrix<double, 6, 6>& covariance);
 
+  void PublishLCComputationTime(const double& lc_computation_time,
+                              const ros::Publisher& pub);
+                              
  private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
@@ -144,6 +148,7 @@ private:
   ros::Publisher gt_pub_;
   ros::Publisher current_scan_pub_;
   ros::Publisher aligned_scan_pub_;
+  ros::Publisher lc_computation_time_pub_;
 
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;
@@ -165,6 +170,11 @@ private:
   double sac_fitness_score_threshold_;
 
   double teaser_inlier_threshold_;
+  double rotation_cost_threshold_;
+  double rotation_max_iterations_;
+  double noise_bound_;
+  double TEASER_FPFH_normals_radius_;
+  double TEASER_FPFH_features_radius_;
 
   double harris_threshold_;
   bool harris_suppression_;

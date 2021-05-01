@@ -79,9 +79,16 @@ robot:
   #--------------------------------------------------------------------------------
   # TEASER Settings for feature-based initialization
   #--------------------------------------------------------------------------------
+  
   TEASERPP:
 
     num_inlier_threshold: 5
+    rotation_cost_threshold: 1.0 # Default value in TEASER++: 0.005
+    rotation_max_iterations: 100
+    noise_bound: 0.05
+    # For finding FPFH correspondences
+    TEASER_FPFH_normals_radius: 1.5
+    TEASER_FPFH_features_radius: 2.5
 
 
   #--------------------------------------------------------------------------------
@@ -110,7 +117,7 @@ robot:
 
 base: 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 3
+  icp_initialization_method: 4
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
   icp_covariance_calculation: 1
@@ -125,7 +132,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.04 #0.15 #was 0.04
+  max_tolerable_fitness: 2.5 #0.04
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -187,9 +194,16 @@ base:
   #--------------------------------------------------------------------------------
   # TEASER Settings for feature-based initialization
   #--------------------------------------------------------------------------------
+  
   TEASERPP:
 
     num_inlier_threshold: 5
+    rotation_cost_threshold: 1.0 # Default value in TEASER++: 0.005
+    rotation_max_iterations: 100
+    noise_bound: 0.05
+    # For finding FPFH correspondences
+    TEASER_FPFH_normals_radius: 1.5
+    TEASER_FPFH_features_radius: 2.5
 
   #--------------------------------------------------------------------------------
   # Harris keypoints Settings 
