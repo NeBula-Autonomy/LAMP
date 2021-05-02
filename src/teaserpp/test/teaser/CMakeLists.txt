@@ -29,6 +29,7 @@ if (BUILD_TEASER_FPFH)
     list(APPEND TEST_SRCS feature-test.cc
             matcher-test.cc)
     list(APPEND TEST_LINK_LIBRARIES teaser_features ${PCL_LIBRARIES})
+    include_directories(${PCL_INCLUDE_DIRS})
 endif ()
 
 # Executable for running unit tests
