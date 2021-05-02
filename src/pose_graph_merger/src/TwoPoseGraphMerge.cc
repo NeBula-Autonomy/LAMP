@@ -48,6 +48,7 @@ bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
       nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, true);
   merged_pose_pub_ = 
       nl.advertise<geometry_msgs::PoseStamped>("merged_pose", 10, false);
+  return true;
 }
 
 // Create Subscribers
@@ -62,6 +63,7 @@ bool TwoPoseGraphMerge::CreateSubscribers(const ros::NodeHandle& n) {
   robot_pose_sub_ = nl.subscribe("robot_pose",
                                  10,
                                  &TwoPoseGraphMerge::ProcessRobotPose, this);
+  return true;
 }
 
 geometry_msgs::PoseStamped TwoPoseGraphMerge::GetLatestOdomPose(

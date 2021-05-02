@@ -109,7 +109,7 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief Set if PGO is initialized
      * Returns  Void
      */
-    inline bool SetPgoInitialized(const bool value) {is_pgo_initialized = value;}
+    inline bool SetPgoInitialized(const bool value) {is_pgo_initialized = value; return true;}
 
     /*! \brief  Get artifacts ID from artifact key
      * Returns Artifacts ID

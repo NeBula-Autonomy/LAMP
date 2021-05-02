@@ -235,10 +235,6 @@ void LampPgo::InputCallback(
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
-  // Extract the marginal/covariances of the optimized values
-  gtsam::Marginals marginal(nfg_, values_);
-  marginals_ = marginal;
-
   // nfg_.print("nfg");
   ROS_INFO_STREAM("FACTORS AFTER");
   for (auto f : nfg_) {
@@ -259,6 +255,7 @@ void LampPgo::PublishValues() const {
   int iter_debug = 0;
   // Then store the values as nodes
   gtsam::KeyVector key_list = values_.keys();
+  // Extract the marginal/covariances of the optimized values
   gtsam::Marginals marginal(nfg_, values_);
   // marginal.print();
   // marginal.bayesTree_.print("Bayes Tree: ");

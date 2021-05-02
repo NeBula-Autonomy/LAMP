@@ -76,7 +76,6 @@ class LampPgo {
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
   gtsam::NonlinearFactorGraph nfg_all_;
-  gtsam::Marginals marginals_;
 
   // Parameter namespace ("robot" or "base")
   std::string param_ns_;
