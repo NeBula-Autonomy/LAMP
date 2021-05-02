@@ -25,6 +25,7 @@ FIND_PACKAGE(Boost REQUIRED
   chrono
 )
 
+find_package(teaserpp REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   utils
@@ -39,6 +40,7 @@ find_package(catkin REQUIRED COMPONENTS
   pose_graph_msgs
   geometry_msgs
   multithreaded_gicp
+  teaserpp
 )
 
 find_package(OpenMP)
@@ -69,7 +71,6 @@ catkin_package(
 )
 
 find_package(Eigen3 REQUIRED)
-find_package(teaserpp REQUIRED)
 
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
