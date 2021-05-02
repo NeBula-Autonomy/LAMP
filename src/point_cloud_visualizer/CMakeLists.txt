@@ -19,7 +19,6 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   pcl_ros
   pose_graph_msgs
-  rviz_visual_tools
   utils
 )
 

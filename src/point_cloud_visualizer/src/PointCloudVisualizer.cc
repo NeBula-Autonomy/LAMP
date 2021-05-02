@@ -35,7 +35,10 @@
  *
  */
 
+#include <numeric>
 #include <parameter_utils/ParameterUtils.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/pcl_base.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <point_cloud_visualizer/PointCloudVisualizer.h>
 #include <tf/transform_broadcaster.h>
@@ -101,9 +104,11 @@ bool PointCloudVisualizer::RegisterCallbacks(const ros::NodeHandle& n) {
   incremental_points_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("incremental_points", 10, false);
 
-  cone_pub_ = nh_.advertise<visualization_msgs::Marker>("current_cone", 0);
-  cone_pub_neg_ =
-      nh_.advertise<visualization_msgs::Marker>("current_cone_neg", 0);
+  cone_pub_ =
+      nh_.advertise<visualization_msgs::MarkerArray>("current_cone", 1, true);
+
+  crossed_nodes_pub_ =
+      nh_.advertise<visualization_msgs::Marker>("crossed_node", 1, true);
 
   keyed_scan_sub_ = nh_.subscribe<pose_graph_msgs::KeyedScan>(
       "/base1/lamp/keyed_scans",
@@ -129,8 +134,6 @@ bool PointCloudVisualizer::RegisterCallbacks(const ros::NodeHandle& n) {
             nh_.advertise<sensor_msgs::PointCloud2>(
                 robot + "/lamp/octree_map", 10, false)));
   }
-
-  //  CreateNewLevel();
 
   return true;
 }
@@ -192,25 +195,43 @@ void PointCloudVisualizer::KeyedScanCallback(
       std::pair<gtsam::Symbol, PointCloud::ConstPtr>(key, scan));
 }
 
-void PointCloudVisualizer::OptimizerUpdateCallback(
-    const pose_graph_msgs::PoseGraphConstPtr& msg) {
-  pose_graph_.UpdateFromMsg(msg);
-  //  ROS_INFO_STREAM("OPTIMIZED!");
-  for (auto& robot_point_cloud : robots_point_clouds_) {
-    robot_point_cloud.second->clear();
-  }
+double point2planedistnace(const pcl::PointXYZ pt,
+                           const pcl::ModelCoefficients& coefficients) {
+  double f1 =
+      fabs(coefficients.values[0] * pt.x + coefficients.values[1] * pt.y +
+           coefficients.values[2] * pt.z + coefficients.values[3]);
+  double f2 =
+      sqrt(pow(coefficients.values[0], 2) + pow(coefficients.values[1], 2) +
+           pow(coefficients.values[2], 2));
+  return f1 / f2;
+}
 
-  for (const auto& keyed_pose : pose_graph_.GetValues()) {
-    const gtsam::Symbol key = keyed_pose.key;
+double point2planedistnace(const gu::Transform3 pose,
+                           const pcl::ModelCoefficients& coefficients) {
+  pcl::PointXYZ pt;
+  pt.x = pose.translation.X();
+  pt.y = pose.translation.Y();
+  pt.z = pose.translation.Z();
+  return point2planedistnace(pt, coefficients);
+}
 
-    // Append the world-frame point cloud to the output.
-    PointCloud::Ptr temp_cloud(new PointCloud);
-    GetTransformedPointCloudWorld(key, temp_cloud.get());
-    if (robots_point_clouds_.find(key.chr()) != robots_point_clouds_.end()) {
-      *robots_point_clouds_.at(key.chr()) += *temp_cloud;
-    }
-  }
-  VisualizePointCloud();
+double point2planedistnaceWithSign(const pcl::PointXYZ pt,
+                                   const pcl::ModelCoefficients& coefficients) {
+  double f1 = coefficients.values[0] * pt.x + coefficients.values[1] * pt.y +
+      coefficients.values[2] * pt.z + coefficients.values[3];
+  double f2 =
+      sqrt(pow(coefficients.values[0], 2) + pow(coefficients.values[1], 2) +
+           pow(coefficients.values[2], 2));
+  return f1 / f2;
+}
+
+double point2planedistnaceWithSign(const gu::Transform3 pose,
+                                   const pcl::ModelCoefficients& coefficients) {
+  pcl::PointXYZ pt;
+  pt.x = pose.translation.X();
+  pt.y = pose.translation.Y();
+  pt.z = pose.translation.Z();
+  return point2planedistnaceWithSign(pt, coefficients);
 }
 
 void PointCloudVisualizer::PoseGraphCallback(
@@ -220,8 +241,10 @@ void PointCloudVisualizer::PoseGraphCallback(
     for (const auto& keyed_scan : key_scans_to_update_) {
       PointCloud::Ptr temp_cloud(new PointCloud);
       GetTransformedPointCloudWorld(keyed_scan.first, temp_cloud.get());
+
       *robots_point_clouds_.at(keyed_scan.first.chr()) += *temp_cloud;
-      AddPointCloudToCorrespondingLevel(keyed_scan.first, temp_cloud);
+      //      AddPointCloudToCorrespondingLevel(keyed_scan.first, temp_cloud);
+      AddPointCloudToCorrespondingLevel2(keyed_scan.first, temp_cloud);
     }
     VisualizePointCloud();
     key_scans_to_update_.clear();
@@ -231,10 +254,9 @@ geometry_msgs::Point
 PointCloudVisualizer::GetPositionMsg(gtsam::Key key) const {
   geometry_msgs::Point p;
   if (!pose_graph_.HasKey(key)) {
-    ROS_WARN_STREAM(
-        " Key "
-        << gtsam::DefaultKeyFormatter(key)
-        << " does not exist in GetPositionMsg - returning zeros [TO IMPROVE]");
+    ROS_WARN_STREAM(" Key " << gtsam::DefaultKeyFormatter(key)
+                            << " does not exist in GetPositionMsg - "
+                               "returning zeros [TO IMPROVE]");
     return p;
   }
   auto pose = pose_graph_.GetPose(key);
@@ -257,14 +279,11 @@ void PointCloudVisualizer::VisualizePointCloud() {
   }
   for (auto& level : levels_) {
     if (level.pub_.getNumSubscribers() > 0) {
-      sensor_msgs::PointCloud2 pcl_pc2;
-      pcl::toROSMsg(*level.points_, pcl_pc2);
-      pcl_pc2.header.stamp = stamp_;
-      pcl_pc2.header.frame_id = level.points_->header.frame_id;
+      level.points_->header.stamp = stamp_.nsec;
+      level.points_->header.frame_id = level.points_->header.frame_id;
       level.tf_.stamp_ = stamp_;
       broadcaster_.sendTransform(level.tf_);
-
-      level.pub_.publish(pcl_pc2);
+      level.pub_.publish(*level.points_);
     }
   }
 }
@@ -308,9 +327,10 @@ bool PointCloudVisualizer::GetTransformedPointCloudWorld(
 }
 int id = 0;
 
-double base_height = 50.0;
-double base_radius = base_height * sqrt(3); // / 0.2; //* 10 * 2; // sqrt(3);
+double base_height = 9999.0;      // 50.0;
+double base_radius = base_height; //
 double height_min_ = 2.0;
+double offset = 25.0;
 visualization_msgs::Marker CreateConeMarker(const geometry_msgs::Pose& pose,
                                             /*double angle, */ double height,
                                             double radius) {
@@ -325,7 +345,7 @@ visualization_msgs::Marker CreateConeMarker(const geometry_msgs::Pose& pose,
   // Lifetime
   marker.lifetime = ros::Duration(0.0);
 
-  marker.id = 0;
+  marker.id = id++;
 
   marker.color.a = 0.5; // Don't forget to set the alpha!
   marker.color.r = 1.0;
@@ -369,6 +389,7 @@ visualization_msgs::Marker CreateConeMarker(const geometry_msgs::Pose& pose,
   return marker;
 }
 int id2 = 0;
+
 visualization_msgs::Marker CreateNodeMarker(const gu::Transform3& pose,
                                             double time = 0.0) {
   visualization_msgs::Marker marker;
@@ -404,13 +425,10 @@ visualization_msgs::Marker CreateNodeMarker(const gu::Transform3& pose,
   return marker;
 }
 
-bool PointCloudVisualizer::IsPointInInKindConePolygon(
-    const gu::Transform3& current_pose,
-    const gu::Transform3& point_to_test) const {}
-
 bool PointCloudVisualizer::IsPointInsideTheCone(
     const gu::Transform3& current_pose,
-    const gu::Transform3& point_to_test) const {
+    const gu::Transform3& point_to_test,
+    double offset /*= 0.0*/) const {
   gu::Vector3Base<double> dir{0.0, 0.0, 1.0};
   double radius = base_radius;     // 15.0 * sqrt(3);
   double height_max = base_height; // 15.0;
@@ -426,12 +444,13 @@ bool PointCloudVisualizer::IsPointInsideTheCone(
   auto orth_distance =
       ((point_to_test.translation - current_pose.translation) - cone_dist * dir)
           .Norm();
-  return (orth_distance <= cone_radius);
+  return (orth_distance <= cone_radius + offset);
 }
 
 bool PointCloudVisualizer::IsPointInsideTheNegativeCone(
     const gu::Transform3& current_pose,
-    const gu::Transform3& point_to_test) const {
+    const gu::Transform3& point_to_test,
+    double offset /*= 0.0*/) const {
   gu::Vector3Base<double> dir{0.0, 0.0, -1.0};
   double radius = base_radius;     // 15.0 * sqrt(3);
   double height_max = base_height; // 15.0;
@@ -451,7 +470,62 @@ bool PointCloudVisualizer::IsPointInsideTheNegativeCone(
       ((point_to_test.translation - current_pose.translation) - cone_dist * dir)
           .Norm();
   //  ROS_INFO_STREAM("Orthe distance: " << orth_distance);
-  return (orth_distance <= cone_radius);
+  return (orth_distance <= cone_radius + offset);
+}
+
+double calculateDistance(const gu::Transform3& current_pose,
+                         const gu::Transform3& node) {
+  double dx2 = std::pow(current_pose.translation.X() - node.translation.X(), 2);
+  double dy2 = std::pow(current_pose.translation.Y() - node.translation.Y(), 2);
+  double dz2 = std::pow(current_pose.translation.Z() - node.translation.Z(), 2);
+
+  return dx2 + dy2 + 100.0 * dz2; // 1000.0 *
+}
+
+pcl::ModelCoefficients SegmentPlane(const std::vector<gu::Transform3> nodes_) {
+  // Get segmentation ready
+  pcl::PointCloud<pcl::PointXYZ>::Ptr graph_as_cloud(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  graph_as_cloud->reserve(nodes_.size());
+  std::vector<gtsam::Symbol> keyes;
+
+  for (const auto& node : nodes_) {
+    pcl::PointXYZ pc;
+    pc.x = node.translation.X();
+    pc.y = node.translation.Y();
+    pc.z = node.translation.Z();
+    graph_as_cloud->push_back(pc);
+  }
+
+  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+  pcl::SACSegmentation<pcl::PointXYZ> seg;
+  pcl::ExtractIndices<pcl::PointXYZ> extract;
+
+  seg.setOptimizeCoefficients(true);
+  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setDistanceThreshold(1.5);
+  seg.setMaxIterations(100);
+  seg.setEpsAngle(0.1);
+  seg.setAxis(Eigen::Vector3f(0.0, 0.0, 1.0));
+
+  seg.setInputCloud(graph_as_cloud);
+  seg.segment(*inliers, *coefficients);
+
+  return *coefficients;
+}
+
+bool IsPoseBetweenConsecutiveLevels(const pcl::ModelCoefficients& level1,
+                                    const pcl::ModelCoefficients& level2,
+                                    const gu::Transform3& current_pose) {
+  if (point2planedistnaceWithSign(current_pose, level1) < 0.0 and
+      point2planedistnaceWithSign(current_pose, level2) > 0.0)
+    return true;
+  if (point2planedistnaceWithSign(current_pose, level1) > 0.0 and
+      point2planedistnaceWithSign(current_pose, level2) < 0.0)
+    return true;
+  return false;
 }
 
 size_t
@@ -459,97 +533,126 @@ PointCloudVisualizer::SelectLevelForNode(const gtsam::Symbol current_key) {
   const gu::Transform3 current_pose =
       utils::ToGu(pose_graph_.GetPose(current_key));
 
+  visualization_msgs::MarkerArray markers;
+  visualization_msgs::Marker marker;
+  marker.header.frame_id = "world";
+  marker.action = visualization_msgs::Marker::DELETEALL;
+  markers.markers.push_back(marker);
+  cone_pub_.publish(markers);
+  markers.markers.clear();
   auto cone_marker =
       CreateConeMarker(utils::GtsamToRosMsg(pose_graph_.GetPose(current_key)),
                        base_height,
                        base_radius);
-  cone_pub_.publish(cone_marker);
 
   auto cone_marker_neg =
       CreateConeMarker(utils::GtsamToRosMsg(pose_graph_.GetPose(current_key)),
                        -base_height,
                        base_radius);
-  cone_pub_neg_.publish(cone_marker_neg);
+  markers.markers.push_back(cone_marker_neg);
+  markers.markers.push_back(cone_marker);
 
-  //  if (pose_graph_.GetValues().size() == 0) {
-  //    levels_[0].nodes_.push_back(current_pose);
-  //    return selected_level;
-  //  }
+  cone_pub_.publish(markers);
 
   std::vector<std::pair<double, size_t>> potential_levels;
-  bool nothing_down = false;
-
+  ROS_INFO_STREAM(
+      "<-------------------------------------------------------------->");
+  ROS_INFO_STREAM("Levels to check: " << levels_.size());
   for (size_t i = 0; i < levels_.size(); ++i) {
     size_t index = 0;
-    ROS_INFO_STREAM("Level " << i << " has " << levels_[i].nodes_.size());
+    ROS_INFO_STREAM("Level "
+                    << i << " has " << levels_[i].nodes_.size()
+                    << " init nodes: " << levels_[i].init_nodes_.size());
+    bool node_between_planes = false;
+    bool crossed_cone = false;
+
+    if (levels_.size() > 1 and levels_.size() > i + 1 and
+        levels_[i].IsInitialized() and levels_[i + 1].IsInitialized()) {
+      if (IsPoseBetweenConsecutiveLevels(levels_[i].coefficients_,
+                                         levels_[i + 1].coefficients_,
+                                         current_pose)) {
+        ROS_INFO_STREAM(
+            "IsPoseBetweenConsecutiveLevels: Yes, THE NODE BETWEEN LEVELS!");
+        ROS_INFO_STREAM(
+            "Current level: "
+            << i << " coeff " << levels_[i].coefficients_.values[0] << " "
+            << levels_[i].coefficients_.values[1] << " "
+            << levels_[i].coefficients_.values[2] << " "
+            << levels_[i].coefficients_.values[3] << " distance: "
+            << point2planedistnace(current_pose, levels_[i].coefficients_));
+        ROS_INFO_STREAM("Next level: "
+                        << i + 1 << " coeff "
+                        << levels_[i + 1].coefficients_.values[0] << " "
+                        << levels_[i + 1].coefficients_.values[1] << " "
+                        << levels_[i + 1].coefficients_.values[2] << " "
+                        << levels_[i + 1].coefficients_.values[3]
+                        << " distance: "
+                        << point2planedistnace(current_pose,
+                                               levels_[i + 1].coefficients_));
+        ROS_INFO_STREAM("NO SENSE TO CHECK FURTHER!");
+        node_between_planes = true;
+      }
+    }
+    if (node_between_planes) {
+      if (point2planedistnace(current_pose, levels_[i].coefficients_) <
+          point2planedistnace(current_pose, levels_[i + 1].coefficients_))
+        potential_levels.emplace_back(std::pair<double, size_t>(
+            point2planedistnace(current_pose, levels_[i].coefficients_), i));
+      else
+        potential_levels.emplace_back(std::pair<double, size_t>(
+            point2planedistnace(current_pose, levels_[i + 1].coefficients_),
+            i + 1));
+      continue;
+    }
 
     double min_distance = std::numeric_limits<double>::infinity();
-    for (size_t j = 0; j < levels_[i].nodes_.size(); ++j) {
-      if (levels_[i].nodes_.size() > 10) {
-        if (IsPointInsideTheCone(current_pose, levels_[i].nodes_[j])) {
-          auto marker = CreateNodeMarker(levels_[i].nodes_[j]);
-          // ROS_INFO_STREAM("IsPointInsideTheCone: FOR SURE IT'S NOT THISNODE"
-          //                << current_pose << " AND " << levels_[i].nodes_[j]);
-          cone_pub_.publish(marker);
-          potential_levels.clear();
-          break;
-        }
 
-        if (IsPointInsideTheNegativeCone(current_pose, levels_[i].nodes_[j])) {
+    if (levels_[i].IsInitialized()) {
+      ROS_INFO_STREAM("Checking level: " << i);
+
+      for (size_t j = 0; j < levels_[i].nodes_.size(); ++j) {
+        if (IsPointInsideTheCone(current_pose, levels_[i].nodes_[j], offset) or
+            IsPointInsideTheNegativeCone(
+                current_pose, levels_[i].nodes_[j], offset)) {
+          crossed_cone = true;
           auto marker = CreateNodeMarker(levels_[i].nodes_[j]);
-          // ROS_INFO_STREAM(
-          //     "IsPointInsideTheNegativeCone : FOR SURE IT'S NOT THISNODE "
-          //     << current_pose << " AND " << levels_[i].nodes_[j]);
-          cone_pub_neg_.publish(marker);
-          if (potential_levels.size() == 0) {
-            potential_levels.emplace_back(
-                std::pair<double, size_t>(min_distance, i));
+          crossed_nodes_pub_.publish(marker);
+
+          if (crossed_cone) {
+            ROS_INFO_STREAM("BREAKING INSIDE THE CONE NODE!");
+            break;
           }
-          nothing_down = true;
-          break;
+        }
+
+        auto distance = calculateDistance(current_pose, levels_[i].nodes_[j]);
+        if (distance < min_distance) {
+          min_distance = distance;
+          index = j;
+        }
+        if (j == levels_[i].nodes_.size() - 1) {
+          ROS_INFO_STREAM("Adding potential level: " << i << " min distance: "
+                                                     << min_distance);
+          potential_levels.emplace_back(
+              std::pair<double, size_t>(min_distance, i));
         }
       }
-      if (nothing_down) {
-        break;
+    } else {
+      for (size_t k = 0; k < levels_[i].init_nodes_.size(); ++k) {
+        auto distance =
+            calculateDistance(current_pose, levels_[i].init_nodes_[k]);
+
+        if (distance < min_distance) {
+          min_distance = distance;
+          index = k;
+        }
       }
-      double dx2 = std::pow(current_pose.translation.X() -
-                                levels_[i].nodes_[j].translation.X(),
-                            2);
-      double dy2 = std::pow(current_pose.translation.Y() -
-                                levels_[i].nodes_[j].translation.Y(),
-                            2);
-      double dz2 = std::pow(current_pose.translation.Z() -
-                                levels_[i].nodes_[j].translation.Z(),
-                            2);
-
-      double distance = dx2 + dy2 + 1000.0 * dz2;
-
-      if (distance < min_distance) {
-        min_distance = distance;
-        index = j;
-      }
-
-      // ROS_INFO_STREAM("j: " << j << " / " << levels_[i].nodes_.size() - 1
-      //                       << " distance: " << distance);
-
-      if (j == levels_[i].nodes_.size() - 1) {
-        potential_levels.emplace_back(
-            std::pair<double, size_t>(min_distance, i));
-
-        auto marker_closest = CreateNodeMarker(levels_[i].nodes_[index], 3.0);
-        marker_closest.color.r = 1.0;
-        marker_closest.color.g = 0.0;
-        marker_closest.color.b = 1.0;
-        cone_pub_.publish(marker_closest);
-      }
+      potential_levels.emplace_back(std::pair<double, size_t>(min_distance, i));
     }
   }
 
   if (potential_levels.size() == 0) {
-    ROS_INFO_STREAM("NO LEVELS!!!");
     selected_level = levels_.size();
     CreateNewLevel();
-
   } else {
     auto min_pair = *std::min_element(
         potential_levels.cbegin(),
@@ -561,15 +664,35 @@ PointCloudVisualizer::SelectLevelForNode(const gtsam::Symbol current_key) {
                                               << min_pair.second);
     selected_level = min_pair.second;
   }
+  if (levels_[selected_level].init_nodes_.size() < 20) {
+    levels_[selected_level].init_nodes_.push_back(current_pose);
+    if (levels_[selected_level].init_nodes_.size() >= 15) {
+      levels_[selected_level].nodes_.push_back(current_pose);
+    }
+  } else {
+    levels_[selected_level].nodes_.push_back(current_pose);
+  }
 
-  //  if (potential_levels.size() == 0) {
-  //    selected_level = levels_.size();
-  //    CreateNewLevel();
-  //  }
-  levels_[selected_level].nodes_.push_back(current_pose);
+  if (levels_[selected_level].nodes_.size() != 0) {
+    if (levels_[selected_level].nodes_.size() % 5 == 0) {
+      ROS_INFO_STREAM("UPDATING " << selected_level << " PLANE");
+      levels_[selected_level].coefficients_ =
+          SegmentPlane(levels_[selected_level].nodes_);
+    }
+    for (size_t i = 0; i < levels_.size(); i++) {
+      ROS_INFO_STREAM("Current "
+                      "plane coefficients: "
+                      << i << " : " << levels_[i].coefficients_.values[0] << " "
+                      << levels_[i].coefficients_.values[1] << " "
+                      << levels_[i].coefficients_.values[2] << " "
+                      << levels_[i].coefficients_.values[3]);
+    }
+  }
+
   return selected_level;
 }
-void PointCloudVisualizer::AddPointCloudToCorrespondingLevel(
+
+void PointCloudVisualizer::AddPointCloudToCorrespondingLevel2(
     const gtsam::Symbol key, const PointCloud::Ptr& pc) {
   if (!pose_graph_.HasKey(key)) {
     ROS_WARN("Key %s does not exist in values in GetTransformedPointCloudWorld",
@@ -579,13 +702,61 @@ void PointCloudVisualizer::AddPointCloudToCorrespondingLevel(
 
   size_t selected_level = SelectLevelForNode(key);
 
-  *levels_[selected_level].points_ += *pc;
+  if (levels_[selected_level].init_nodes_.size() > 15) {
+    *levels_[selected_level].points_ += *pc;
+  }
+}
+
+void PointCloudVisualizer::AddPointCloudToCorrespondingLevel(
+    const gtsam::Symbol key, const PointCloud::Ptr& pc) {
+  if (!pose_graph_.HasKey(key)) {
+    ROS_WARN("Key %s does not exist in values in GetTransformedPointCloudWorld",
+             gtsam::DefaultKeyFormatter(key).c_str());
+    return;
+  }
+
+  const gu::Transform3 current_pose = utils::ToGu(pose_graph_.GetPose(key));
+  size_t theClosestLevelIndex = 0;
+
+  if (levels_.size() != 0) {
+    std::vector<double> min_levels;
+
+    int i = 0;
+    for (auto& level : levels_) {
+      ROS_INFO_STREAM("GOING THROUGH LEVEL " << i << "/" << levels_.size());
+      ROS_INFO_STREAM(level.coefficients_.values[0]
+                      << " " << level.coefficients_.values[1] << " "
+                      << level.coefficients_.values[2] << " "
+                      << level.coefficients_.values[3]);
+      i++;
+      auto lol = point2planedistnace(current_pose, level.coefficients_);
+
+      min_levels.push_back(lol);
+      ROS_INFO_STREAM("distance: " << lol
+                                   << " min levels: " << min_levels.back()
+                                   << " " << min_levels.size());
+    }
+
+    auto it = std::min_element(std::begin(min_levels), std::end(min_levels));
+    std::cout << "index of smallest element: "
+              << std::distance(std::begin(min_levels), it);
+
+    theClosestLevelIndex = std::distance(std::begin(min_levels), it);
+    ROS_INFO_STREAM("XD: " << theClosestLevelIndex);
+  }
+
+  //  size_t selected_level = SelectLevelForNode(key);
+  ROS_INFO_STREAM("THE CLOSEST INDEX " << theClosestLevelIndex);
+  *levels_[theClosestLevelIndex].points_ += *pc;
+  ROS_INFO_STREAM("Points: " << levels_[theClosestLevelIndex].points_->size());
 }
 
 void PointCloudVisualizer::CreateNewLevel() {
   std::string name = "level_" + std::to_string(levels_.size());
-  double x = static_cast<double>(levels_.size() + 1) * 80.0;
-  ROS_INFO_STREAM("New Level Detected " << x);
+  double x = static_cast<double>(levels_.size() + 1) * 0.0;
+  ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+  ROS_INFO_STREAM("CreateNewLevel  " << name);
+  ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
   tf::StampedTransform transform(
       tf::Transform(tf::Quaternion(0.0, 0.0, 0.0, 1.0),
                     tf::Vector3(0.0, x, 0.0)),
@@ -593,8 +764,204 @@ void PointCloudVisualizer::CreateNewLevel() {
       fixed_frame_id_,
       name);
   PointCloud::Ptr pc_level{new PointCloud};
+  pc_level->reserve(
+      1000000); // to have capacity enough to not allocate memory all the time
   pc_level->header.frame_id = name;
-  ros::Publisher pub = nh_.advertise<sensor_msgs::PointCloud2>(
-      "multilevel_map/" + name, 10, false);
-  levels_.emplace_back(Level{transform, pc_level, pub});
+
+  pcl::ModelCoefficients coeff;
+
+  coeff.values.push_back(0.0f);
+  coeff.values.push_back(0.0f);
+  coeff.values.push_back(1.0f);
+  coeff.values.push_back(99999.0f);
+  std::vector<gu::Transform3> nodes;
+  nodes.reserve(
+      10000); // to have capacity enough to not allocate memory all the time
+  std::vector<gu::Transform3> init_nodes;
+  init_nodes.reserve(10);
+  ros::Publisher pub =
+      nh_.advertise<PointCloud>("multilevel_map/" + name, 1, false);
+  levels_.emplace_back(
+      Level{transform, pc_level, pub, nodes, init_nodes, coeff, false});
+}
+
+void PointCloudVisualizer::SegmentLevelsBasedOnGraph() {
+  pcl::PointCloud<pcl::PointXYZ>::Ptr graph_as_cloud(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  graph_as_cloud->reserve(pose_graph_.GetValues().size());
+  std::vector<gtsam::Symbol> keyes;
+  keyes.reserve(pose_graph_.GetValues().size());
+
+  for (const auto& keyed_pose : pose_graph_.GetValues()) {
+    const gtsam::Symbol key = keyed_pose.key;
+    const gu::Transform3 pose =
+        utils::ToGu(pose_graph_.GetPose(keyed_pose.key));
+    pcl::PointXYZ pc;
+    pc.x = pose.translation.X();
+    pc.y = pose.translation.Y();
+    pc.z = pose.translation.Z();
+    graph_as_cloud->push_back(pc);
+    keyes.push_back(key);
+  }
+
+  // Get segmentation ready
+  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+  pcl::SACSegmentation<pcl::PointXYZ> seg;
+  pcl::ExtractIndices<pcl::PointXYZ> extract;
+
+  seg.setOptimizeCoefficients(true);
+  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setDistanceThreshold(1.5);
+  //  seg.setMaxIterations(100);
+  seg.setEpsAngle(0.1);
+  seg.setAxis(Eigen::Vector3f(0.0, 0.0, 1.0));
+
+  // Create pointcloud to publish inliers
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_pub(
+      new pcl::PointCloud<pcl::PointXYZRGB>);
+  int original_size(graph_as_cloud->height * graph_as_cloud->width);
+  int n_planes(0);
+
+  while (graph_as_cloud->height * graph_as_cloud->width > 20) {
+    ROS_INFO_STREAM("Starting segmenting plane: " << n_planes);
+    // Compute Standard deviation
+    std::vector<gtsam::Symbol> keyes_updated;
+    // Fit a plane
+    seg.setInputCloud(graph_as_cloud);
+    seg.segment(*inliers, *coefficients);
+    ROS_INFO_STREAM("Level: "
+                    << " " << coefficients->values[0] << " "
+                    << coefficients->values[1] << " " << coefficients->values[2]
+                    << " " << coefficients->values[3]);
+    if (std::abs(coefficients->values[2]) < 0.97) {
+      ROS_INFO_STREAM("Angle of the plane is off...");
+      extract.setInputCloud(graph_as_cloud);
+      extract.setIndices(inliers);
+
+      pcl::PointIndices::Ptr all(new pcl::PointIndices);
+      all->indices.resize(graph_as_cloud->size());
+      std::iota(all->indices.begin(), all->indices.end(), 0);
+
+      std::vector<int> diff;
+      std::set_difference(all->indices.begin(),
+                          all->indices.end(),
+                          inliers->indices.begin(),
+                          inliers->indices.end(),
+                          std::inserter(diff, diff.begin()));
+      keyes_updated.clear();
+      for (const auto& diff_elem : diff) {
+        keyes_updated.push_back(keyes[diff_elem]);
+      }
+
+      std::swap(keyes, keyes_updated);
+
+      extract.setNegative(true);
+      pcl::PointCloud<pcl::PointXYZ> cloudF;
+      extract.filter(cloudF);
+      graph_as_cloud->swap(cloudF);
+
+      continue;
+    }
+
+    if (inliers->indices.size() < 20)
+      break;
+
+    if (n_planes >= levels_.size()) {
+      CreateNewLevel();
+    }
+
+    double sigma(0);
+    for (int i = 0; i < inliers->indices.size(); i++) {
+      //      sigma += pow(err[i] - mean_error, 2);
+      //      ROS_INFO_STREAM("index: " << inliers->indices[i]);
+      //      // Get Point
+      pcl::PointXYZ pt = graph_as_cloud->points[inliers->indices[i]];
+      gu::Transform3 node;
+      node.translation.data[0] = graph_as_cloud->points[inliers->indices[i]].x;
+      node.translation.data[1] = graph_as_cloud->points[inliers->indices[i]].y;
+      node.translation.data[2] = graph_as_cloud->points[inliers->indices[i]].z;
+      levels_[n_planes].nodes_.push_back(node);
+      PointCloud::Ptr temp_cloud(new PointCloud);
+      GetTransformedPointCloudWorld(keyes[inliers->indices[i]],
+                                    temp_cloud.get());
+      *levels_[n_planes].points_ += *temp_cloud;
+    }
+    levels_[n_planes].coefficients_ = *coefficients;
+    //    sigma = sqrt(sigma / inliers->indices.size());
+
+    // Extract inliers
+
+    extract.setInputCloud(graph_as_cloud);
+    extract.setIndices(inliers);
+
+    pcl::PointIndices::Ptr all(new pcl::PointIndices);
+    all->indices.resize(graph_as_cloud->size());
+    std::iota(all->indices.begin(), all->indices.end(), 0);
+
+    std::vector<int> diff;
+    std::set_difference(all->indices.begin(),
+                        all->indices.end(),
+                        inliers->indices.begin(),
+                        inliers->indices.end(),
+                        std::inserter(diff, diff.begin()));
+    keyes_updated.clear();
+    for (const auto& diff_elem : diff) {
+      keyes_updated.push_back(keyes[diff_elem]);
+    }
+
+    std::swap(keyes, keyes_updated);
+
+    extract.setNegative(true);
+    pcl::PointCloud<pcl::PointXYZ> cloudF;
+    extract.filter(cloudF);
+    graph_as_cloud->swap(cloudF);
+    ROS_INFO_STREAM("Nodes in the level: "
+                    << n_planes << " / " << levels_.size() << " "
+                    << levels_[n_planes].nodes_.size()
+                    << " Graph has: " << pose_graph_.GetValues().size());
+    n_planes++;
+  }
+
+  std::sort(levels_.begin(), levels_.end(), [](const Level& x, const Level& y) {
+    return (x.coefficients_.values[3] < y.coefficients_.values[3]);
+  });
+  ROS_INFO_STREAM("LEVELS SORTED:");
+  for (const auto& level : levels_) {
+    ROS_INFO_STREAM("Level: "
+                    << " " << level.coefficients_.values[0] << " "
+                    << level.coefficients_.values[1] << " "
+                    << level.coefficients_.values[2] << " "
+                    << level.coefficients_.values[3]);
+  }
+}
+
+void PointCloudVisualizer::OptimizerUpdateCallback(
+    const pose_graph_msgs::PoseGraphConstPtr& msg) {
+  //  pose_graph_.UpdateFromMsg(msg);
+  //  ROS_INFO_STREAM("OptimizerUpdateCallback!");
+  //  for (auto& robot_point_cloud : robots_point_clouds_) {
+  //    robot_point_cloud.second->clear();
+  //  }
+
+  //  for (auto& level : levels_) {
+  //    level.nodes_.clear();
+  //    level.points_->clear();
+  //  }
+
+  //  for (const auto& keyed_pose : pose_graph_.GetValues()) {
+  //    const gtsam::Symbol key = keyed_pose.key;
+
+  //    // Append the world-frame point cloud to the output.
+  //    PointCloud::Ptr temp_cloud(new PointCloud);
+  //    GetTransformedPointCloudWorld(key, temp_cloud.get());
+  //    if (robots_point_clouds_.find(key.chr()) !=
+  //    robots_point_clouds_.end())
+  //    {
+  //      *robots_point_clouds_.at(key.chr()) += *temp_cloud;
+  //    }
+  //  }
+  //  SegmentLevelsBasedOnGraph();
+  //  VisualizePointCloud();
 }

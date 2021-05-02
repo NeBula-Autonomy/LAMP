@@ -65,8 +65,12 @@
 #include <visualization_msgs/Marker.h>
 
 #include <limits>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
 #include <visualization_msgs/MarkerArray.h>
-
 namespace gu = geometry_utils;
 
 class PointCloudVisualizer {
@@ -76,6 +80,12 @@ public:
     PointCloud::Ptr points_;
     ros::Publisher pub_;
     std::vector<gu::Transform3> nodes_;
+    std::vector<gu::Transform3> init_nodes_;
+    pcl::ModelCoefficients coefficients_;
+    bool initalized;
+    bool IsInitialized() {
+      return init_nodes_.size() >= 20;
+    }
   };
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::PointCloud<pcl::PointXYZRGB> ColorPointCloud;
@@ -100,11 +110,13 @@ private:
 
   // Math functions
   bool IsPointInsideTheCone(const gu::Transform3& current_pose,
-                            const gu::Transform3& point_to_test) const;
+                            const gu::Transform3& point_to_test,
+                            double offset = 0.0) const;
   bool IsPointInsideTheNegativeCone(const gu::Transform3& current_pose,
-                                    const gu::Transform3& point_to_test) const;
-  bool IsPointInInKindConePolygon(const gu::Transform3& current_pose,
-                                  const gu::Transform3& point_to_test) const;
+                                    const gu::Transform3& point_to_test,
+                                    double offset = 0.0) const;
+
+  void SegmentLevelsBasedOnGraph();
 
   // Callbacks
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -120,9 +132,12 @@ private:
 
   // Create a new level for data accumulation and static transform publisher
   void CreateNewLevel();
+
   // select the level to add point clouds
   void AddPointCloudToCorrespondingLevel(const gtsam::Symbol key,
                                          const PointCloud::Ptr& pc);
+  void AddPointCloudToCorrespondingLevel2(const gtsam::Symbol key,
+                                          const PointCloud::Ptr& pc);
   size_t SelectLevelForNode(const gtsam::Symbol key);
 
   geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
@@ -134,7 +149,8 @@ private:
 
   std::map<unsigned char, ros::Publisher> publishers_robots_point_clouds_;
   ros::Publisher cone_pub_;
-  ros::Publisher cone_pub_neg_;
+  ros::Publisher crossed_nodes_pub_;
+
   // The node's name.
   std::string name_;
 
