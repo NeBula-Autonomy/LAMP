@@ -7,6 +7,8 @@ project(loop_closure)
 
 SET(CMAKE_BUILD_TYPE Release)
 
+set (CMAKE_CXX_STANDARD 14)
+
 find_package(GTSAM REQUIRED)
 if (NOT GTSAM_FOUND)
   message(FATAL_ERROR "This program requires the GTSAM library.")
@@ -23,6 +25,7 @@ FIND_PACKAGE(Boost REQUIRED
   chrono
 )
 
+find_package(teaserpp REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   utils
@@ -37,6 +40,7 @@ find_package(catkin REQUIRED COMPONENTS
   pose_graph_msgs
   geometry_msgs
   multithreaded_gicp
+  teaserpp
 )
 
 find_package(OpenMP)
@@ -65,6 +69,8 @@ catkin_package(
   DEPENDS
     Boost
 )
+
+find_package(Eigen3 REQUIRED)
 
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
@@ -96,6 +102,10 @@ target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   gtsam
+  Eigen3::Eigen
+  teaserpp::teaser_registration
+  teaserpp::teaser_features
+  teaserpp::teaser_io
 )
 
 add_executable(laser_${PROJECT_NAME}_node src/laser_${PROJECT_NAME}_node.cc)
@@ -104,6 +114,10 @@ target_link_libraries(laser_${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   gtsam
+  Eigen3::Eigen
+  teaserpp::teaser_registration
+  teaserpp::teaser_features
+  teaserpp::teaser_io
 )
 
 add_executable(loop_generation_node src/loop_generation_node.cc)

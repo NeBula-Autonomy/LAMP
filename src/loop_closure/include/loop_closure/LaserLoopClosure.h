@@ -51,6 +51,12 @@ private:
       PointCloud::ConstPtr target,
       Eigen::Matrix4f* tf_out,
       double& sac_fitness_score);
+
+  void GetTEASERInitialAlignment(
+      PointCloud::ConstPtr source,
+      PointCloud::ConstPtr target,
+      Eigen::Matrix4f* tf_out,
+      double& n_inliers);
   
   bool FindLoopClosures(
       gtsam::Key new_key,
@@ -141,6 +147,8 @@ private:
   double sac_features_radius_;
   double sac_fitness_score_threshold_;
 
+  double teaser_inlier_threshold_;
+
   utils::HarrisParams harris_params_;
 
   double laser_lc_rot_sigma_;
@@ -153,7 +161,7 @@ private:
 
   PointCloudFilter filter_;
 
-  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES };
+  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASERPP };
 
   enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };
 
