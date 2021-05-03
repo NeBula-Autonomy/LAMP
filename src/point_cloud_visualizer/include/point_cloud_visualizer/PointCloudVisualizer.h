@@ -86,6 +86,8 @@ public:
     bool IsInitialized() {
       return init_nodes_.size() >= 20;
     }
+    void EstimatePlane();
+    double AngleWithXYPlaneRad() const;
   };
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::PointCloud<pcl::PointXYZRGB> ColorPointCloud;
@@ -129,6 +131,8 @@ private:
   bool GetTransformedPointCloudWorld(const gtsam::Symbol key,
                                      PointCloud* points);
   bool CombineKeyedScansWorld(PointCloud* points);
+
+  void RefreshPlanes();
 
   // Create a new level for data accumulation and static transform publisher
   void CreateNewLevel();

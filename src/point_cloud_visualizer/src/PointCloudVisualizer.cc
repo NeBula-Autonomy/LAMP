@@ -516,6 +516,76 @@ pcl::ModelCoefficients SegmentPlane(const std::vector<gu::Transform3> nodes_) {
   return *coefficients;
 }
 
+void PointCloudVisualizer::Level::EstimatePlane() {
+  Eigen::MatrixXd A(nodes_.size(), 4);
+  Eigen::VectorXd b = Eigen::VectorXd::Zero(nodes_.size());
+  ROS_INFO_STREAM("Matrx size: " << A.size() << " " << A.rows() << " "
+                                 << A.cols());
+  for (size_t i = 0; i < nodes_.size(); i++) {
+    A(i, 0) = nodes_[i].translation.X();
+    A(i, 1) = nodes_[i].translation.Y();
+    A(i, 2) = nodes_[i].translation.Z();
+    A(i, 3) = 1.0;
+  }
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(
+      A, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+  ROS_INFO_STREAM("SVD: \n " << svd.matrixV().col(3));
+  coefficients_.values[0] = svd.matrixV().col(3)(0);
+  coefficients_.values[1] = svd.matrixV().col(3)(1);
+  coefficients_.values[2] = svd.matrixV().col(3)(2);
+  coefficients_.values[3] = svd.matrixV().col(3)(3);
+
+  auto norm = std::sqrt(std::pow(coefficients_.values[0], 2) +
+                        std::pow(coefficients_.values[1], 2) +
+                        std::pow(coefficients_.values[2], 2));
+
+  for (size_t i = 0; i < coefficients_.values.size(); i++) {
+    coefficients_.values[i] = coefficients_.values[i] / norm;
+  }
+
+  //  double sum = 0.0;
+  //  for (size_t i = 0; i < nodes_.size(); i++) {
+  //    sum += coefficients_.values[0] * nodes_[i].translation.X() +
+  //        coefficients_.values[1] * nodes_[i].translation.Y() +
+  //        coefficients_.values[2] * nodes_[i].translation.Z();
+  //  }
+  //  auto D = sum / static_cast<double>(nodes_.size());
+
+  //  coefficients_.values[3] = D;
+  ROS_INFO_STREAM("Estimate plane: " << coefficients_.values[0] << " "
+                                     << coefficients_.values[1] << " "
+                                     << coefficients_.values[2] << " "
+                                     << coefficients_.values[3]);
+}
+
+double PointCloudVisualizer::Level::AngleWithXYPlaneRad() const {
+  Eigen::Vector3d plane_normal{static_cast<double>(coefficients_.values[0]),
+                               static_cast<double>(coefficients_.values[1]),
+                               static_cast<double>(coefficients_.values[2])};
+  plane_normal.normalize();
+  return std::acos(plane_normal.dot(Eigen::Vector3d(0.0, 0.0, 1.0)));
+}
+//
+
+////  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+////  pcl::SACSegmentation<pcl::PointXYZ> seg;
+////  pcl::ExtractIndices<pcl::PointXYZ> extract;
+
+////  seg.setOptimizeCoefficients(true);
+////  seg.setModelType(pcl::SACMODEL_PLANE);
+////  seg.setMethodType(pcl::SAC_RANSAC);
+////  seg.setDistanceThreshold(1.5);
+////  seg.setMaxIterations(100);
+////  seg.setEpsAngle(0.1);
+////  seg.setAxis(Eigen::Vector3f(0.0, 0.0, 1.0));
+
+////  seg.setInputCloud(graph_as_cloud);
+////  seg.segment(*inliers, *coefficients);
+
+//
+//}
+
 bool IsPoseBetweenConsecutiveLevels(const pcl::ModelCoefficients& level1,
                                     const pcl::ModelCoefficients& level2,
                                     const gu::Transform3& current_pose) {
@@ -676,8 +746,9 @@ PointCloudVisualizer::SelectLevelForNode(const gtsam::Symbol current_key) {
   if (levels_[selected_level].nodes_.size() != 0) {
     if (levels_[selected_level].nodes_.size() % 5 == 0) {
       ROS_INFO_STREAM("UPDATING " << selected_level << " PLANE");
-      levels_[selected_level].coefficients_ =
-          SegmentPlane(levels_[selected_level].nodes_);
+      levels_[selected_level].EstimatePlane();
+      //      levels_[selected_level].coefficients_ =
+      //          SegmentPlane(levels_[selected_level].nodes_);
     }
     for (size_t i = 0; i < levels_.size(); i++) {
       ROS_INFO_STREAM("Current "
@@ -692,6 +763,38 @@ PointCloudVisualizer::SelectLevelForNode(const gtsam::Symbol current_key) {
   return selected_level;
 }
 
+void PointCloudVisualizer::RefreshPlanes() {
+  std::vector<size_t> to_remove;
+  for (size_t i = 0; i < levels_.size(); i++) {
+    if (levels_[i].AngleWithXYPlaneRad() > 0.75) {
+      ROS_INFO_STREAM("REMOVING " << i << " DUE TO ANGLE");
+      to_remove.push_back(i);
+      continue;
+    }
+    if (std::find(to_remove.begin(), to_remove.end(), i) == to_remove.end()) {
+      for (size_t j = i + 1; j < levels_.size(); j++) {
+        if (std::abs(levels_[i].coefficients_.values[3] -
+                     levels_[j].coefficients_.values[3]) < 0.5f) {
+          to_remove.push_back(j);
+          ROS_INFO_STREAM("REMOVING " << j << " DUE TO being close");
+          levels_[i].nodes_.insert(levels_[i].nodes_.end(),
+                                   levels_[j].nodes_.begin(),
+                                   levels_[j].nodes_.end());
+          *levels_[i].points_ += *levels_[j].points_;
+          levels_[i].EstimatePlane();
+        }
+      }
+    }
+  }
+
+  for (int i = to_remove.size() - 1; i >= 0; i--) {
+    levels_.erase(levels_.begin() + to_remove[i]);
+  }
+  std::sort(levels_.begin(), levels_.end(), [](const Level& x, const Level& y) {
+    return (x.coefficients_.values[3] < y.coefficients_.values[3]);
+  });
+}
+
 void PointCloudVisualizer::AddPointCloudToCorrespondingLevel2(
     const gtsam::Symbol key, const PointCloud::Ptr& pc) {
   if (!pose_graph_.HasKey(key)) {
@@ -704,6 +807,15 @@ void PointCloudVisualizer::AddPointCloudToCorrespondingLevel2(
 
   if (levels_[selected_level].init_nodes_.size() > 15) {
     *levels_[selected_level].points_ += *pc;
+  }
+
+  if (levels_[selected_level].nodes_.size() != 0) {
+    if (levels_[selected_level].nodes_.size() % 5 == 0 and levels_.size() > 1) {
+      ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      ROS_INFO_STREAM("REFRESHING PLANES!");
+      ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      RefreshPlanes();
+    }
   }
 }
 
