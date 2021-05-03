@@ -243,7 +243,7 @@ void PointCloudVisualizer::PoseGraphCallback(
       GetTransformedPointCloudWorld(keyed_scan.first, temp_cloud.get());
 
       *robots_point_clouds_.at(keyed_scan.first.chr()) += *temp_cloud;
-      //      AddPointCloudToCorrespondingLevel(keyed_scan.first, temp_cloud);
+
       AddPointCloudToCorrespondingLevel2(keyed_scan.first, temp_cloud);
     }
     VisualizePointCloud();
@@ -473,8 +473,8 @@ bool PointCloudVisualizer::IsPointInsideTheNegativeCone(
   return (orth_distance <= cone_radius + offset);
 }
 
-double calculateDistance(const gu::Transform3& current_pose,
-                         const gu::Transform3& node) {
+double CalculateEuclideanDistance(const gu::Transform3& current_pose,
+                                  const gu::Transform3& node) {
   double dx2 = std::pow(current_pose.translation.X() - node.translation.X(), 2);
   double dy2 = std::pow(current_pose.translation.Y() - node.translation.Y(), 2);
   double dz2 = std::pow(current_pose.translation.Z() - node.translation.Z(), 2);
@@ -619,50 +619,6 @@ void PointCloudVisualizer::AddPointCloudToCorrespondingLevel2(
   }
 }
 
-void PointCloudVisualizer::AddPointCloudToCorrespondingLevel(
-    const gtsam::Symbol key, const PointCloud::Ptr& pc) {
-  if (!pose_graph_.HasKey(key)) {
-    ROS_WARN("Key %s does not exist in values in GetTransformedPointCloudWorld",
-             gtsam::DefaultKeyFormatter(key).c_str());
-    return;
-  }
-
-  const gu::Transform3 current_pose = utils::ToGu(pose_graph_.GetPose(key));
-  size_t theClosestLevelIndex = 0;
-
-  if (levels_.size() != 0) {
-    std::vector<double> min_levels;
-
-    int i = 0;
-    for (auto& level : levels_) {
-      ROS_INFO_STREAM("GOING THROUGH LEVEL " << i << "/" << levels_.size());
-      ROS_INFO_STREAM(level.coefficients_.values[0]
-                      << " " << level.coefficients_.values[1] << " "
-                      << level.coefficients_.values[2] << " "
-                      << level.coefficients_.values[3]);
-      i++;
-      auto lol = point2planedistnace(current_pose, level.coefficients_);
-
-      min_levels.push_back(lol);
-      ROS_INFO_STREAM("distance: " << lol
-                                   << " min levels: " << min_levels.back()
-                                   << " " << min_levels.size());
-    }
-
-    auto it = std::min_element(std::begin(min_levels), std::end(min_levels));
-    std::cout << "index of smallest element: "
-              << std::distance(std::begin(min_levels), it);
-
-    theClosestLevelIndex = std::distance(std::begin(min_levels), it);
-    ROS_INFO_STREAM("XD: " << theClosestLevelIndex);
-  }
-
-  //  size_t selected_level = SelectLevelForNode(key);
-  ROS_INFO_STREAM("THE CLOSEST INDEX " << theClosestLevelIndex);
-  *levels_[theClosestLevelIndex].points_ += *pc;
-  ROS_INFO_STREAM("Points: " << levels_[theClosestLevelIndex].points_->size());
-}
-
 void PointCloudVisualizer::CreateNewLevel() {
   std::string name = "level_" + std::to_string(levels_.size());
   double x = static_cast<double>(levels_.size() + 1) * 0.0;
@@ -781,13 +737,13 @@ double PointCloudVisualizer::Level::MinDistanceFromNodes(
   double min_distance = std::numeric_limits<double>::infinity();
   double distance = 0.0;
   for (size_t k = 0; k < init_nodes_.size(); ++k) {
-    distance = calculateDistance(node, init_nodes_[k]);
+    distance = CalculateEuclideanDistance(node, init_nodes_[k]);
     if (distance < min_distance) {
       min_distance = distance;
     }
   }
   for (size_t k = 0; k < nodes_.size(); ++k) {
-    distance = calculateDistance(node, nodes_[k]);
+    distance = CalculateEuclideanDistance(node, nodes_[k]);
     if (distance < min_distance) {
       min_distance = distance;
     }
