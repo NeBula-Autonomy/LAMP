@@ -75,6 +75,20 @@ namespace gu = geometry_utils;
 
 class PointCloudVisualizer {
 public:
+  struct BoundingBox {
+    Eigen::Vector3d max_pt{-std::numeric_limits<double>::infinity(),
+                           -std::numeric_limits<double>::infinity(),
+                           -std::numeric_limits<double>::infinity()};
+    Eigen::Vector3d min_pt{std::numeric_limits<double>::infinity(),
+                           std::numeric_limits<double>::infinity(),
+                           std::numeric_limits<double>::infinity()};
+
+    void Update(const Eigen::Vector3d& vec);
+    double DiagonalDistance() const {
+      return (max_pt - min_pt).norm();
+    }
+  };
+
   struct Level {
     tf::StampedTransform tf_;
     PointCloud::Ptr points_;
@@ -83,11 +97,17 @@ public:
     std::vector<gu::Transform3> init_nodes_;
     pcl::ModelCoefficients coefficients_;
     bool initalized;
-    bool IsInitialized() {
-      return init_nodes_.size() >= 20;
+    BoundingBox bounding_box_;
+    bool IsInitialized() const {
+      ROS_INFO_STREAM(
+          "Diagonal distance: " << bounding_box_.DiagonalDistance());
+      return init_nodes_.size() >= 20 and
+          bounding_box_.DiagonalDistance() > 10.0;
     }
     void EstimatePlane();
     double AngleWithXYPlaneRad() const;
+    void UpdateNodeInTheLevel(const gu::Transform3& node);
+    double MinDistanceFromNodes(const gu::Transform3& node) const;
   };
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::PointCloud<pcl::PointXYZRGB> ColorPointCloud;
@@ -117,8 +137,7 @@ private:
   bool IsPointInsideTheNegativeCone(const gu::Transform3& current_pose,
                                     const gu::Transform3& point_to_test,
                                     double offset = 0.0) const;
-
-  void SegmentLevelsBasedOnGraph();
+  bool AllLevelsAreInitialized() const;
 
   // Callbacks
   bool RegisterCallbacks(const ros::NodeHandle& n);
@@ -143,6 +162,7 @@ private:
   void AddPointCloudToCorrespondingLevel2(const gtsam::Symbol key,
                                           const PointCloud::Ptr& pc);
   size_t SelectLevelForNode(const gtsam::Symbol key);
+  size_t SelectLevelForNode2(const gtsam::Symbol key);
 
   geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
   ros::Subscriber keyed_scan_sub_;
