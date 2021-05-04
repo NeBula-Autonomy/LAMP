@@ -56,10 +56,15 @@ class IcpLoopComputation : public LoopComputation {
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance);
 
-  void GetInitialAlignment(PointCloud::ConstPtr source,
-                           PointCloud::ConstPtr target,
-                           Eigen::Matrix4f* tf_out,
-                           double& sac_fitness_score);
+  void GetSacInitialAlignment(PointCloud::ConstPtr source,
+                              PointCloud::ConstPtr target,
+                              Eigen::Matrix4f* tf_out,
+                              double& sac_fitness_score);
+
+  void GetTeaserInitialAlignment(PointCloud::ConstPtr source,
+                                 PointCloud::ConstPtr target,
+                                 Eigen::Matrix4f* tf_out,
+                                 int& n_inliers);
 
   bool ComputeICPCovariancePointPlane(
       const PointCloud::ConstPtr& query_cloud,
@@ -92,6 +97,7 @@ class IcpLoopComputation : public LoopComputation {
   unsigned int icp_iterations_;
   unsigned int icp_threads_;
 
+  // SAC feature alignment parameters
   unsigned int sac_iterations_;
   unsigned int sac_num_prev_scans_;
   unsigned int sac_num_next_scans_;
@@ -99,13 +105,22 @@ class IcpLoopComputation : public LoopComputation {
   double sac_features_radius_;
   double sac_fitness_score_threshold_;
 
+  // Teaser++ alignment parameters
+  int teaser_inlier_threshold_;
+
   utils::HarrisParams harris_params_;
 
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
   bool b_use_fixed_covariances_;
 
-  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES };
+  enum class IcpInitMethod {
+    IDENTITY,
+    ODOMETRY,
+    ODOM_ROTATION,
+    FEATURES,
+    TEASERPP
+  };
 
   enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };
 

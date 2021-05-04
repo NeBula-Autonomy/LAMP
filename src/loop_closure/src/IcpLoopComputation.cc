@@ -6,8 +6,11 @@
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/registration/ia_ransac.h>
+#include <teaser/matcher.h>
+#include <teaser/registration.h>
 #include <utils/CommonFunctions.h>
 #include <Eigen/LU>
+
 #include "loop_closure/PointCloudUtils.h"
 
 #include "loop_closure/IcpLoopComputation.h"
@@ -66,6 +69,11 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold",
                sac_fitness_score_threshold_))
+    return false;
+
+  // Load TEASER parameters
+  if (!pu::Get(param_ns_ + "/TEASERPP/num_inlier_threshold",
+               teaser_inlier_threshold_))
     return false;
 
   // Load Harris parameters
@@ -310,13 +318,23 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     } break;
     case IcpInitMethod::FEATURES: {
       double sac_fitness_score = sac_fitness_score_threshold_;
-      GetInitialAlignment(scan1, scan2, &initial_guess, sac_fitness_score);
+      GetSacInitialAlignment(scan1, scan2, &initial_guess, sac_fitness_score);
       if (sac_fitness_score >= sac_fitness_score_threshold_) {
         ROS_INFO("SAC fitness score is too high");
         return false;
       }
     } break;
-
+    case IcpInitMethod::TEASERPP: {
+      int n_inliers = teaser_inlier_threshold_;
+      GetTeaserInitialAlignment(
+          scan1, accumulated_target, &initial_guess, n_inliers);
+      if (n_inliers <= teaser_inlier_threshold_) {
+        ROS_INFO("Number of TEASER inliers is too low: %d <= %d",
+                 n_inliers,
+                 teaser_inlier_threshold_);
+        return false;
+      }
+    } break;
     default:  // identity as default (default in ICP anyways)
     {
       initial_guess = Eigen::Matrix4f::Identity(4, 4);
@@ -335,6 +353,9 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   if (icp_covariance_method_ == IcpCovarianceMethod::POINT2PLANE) {
     KdTree::Ptr search_tree = icp_.getSearchMethodTarget();
     for (auto point : icp_result->points) {
+      // Catch nan of infs in icp result
+      if (!pcl::isFinite(point)) return false;
+
       std::vector<int> matched_indices;
       std::vector<float> matched_distances;
       search_tree->nearestKSearch(point, 1, matched_indices, matched_distances);
@@ -396,10 +417,10 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   return true;
 }
 
-void IcpLoopComputation::GetInitialAlignment(PointCloud::ConstPtr source,
-                                             PointCloud::ConstPtr target,
-                                             Eigen::Matrix4f* tf_out,
-                                             double& sac_fitness_score) {
+void IcpLoopComputation::GetSacInitialAlignment(PointCloud::ConstPtr source,
+                                                PointCloud::ConstPtr target,
+                                                Eigen::Matrix4f* tf_out,
+                                                double& sac_fitness_score) {
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
@@ -685,6 +706,87 @@ void IcpLoopComputation::AccumulateScans(const gtsam::Key& key,
     pcl::transformPointCloud(*next_scan, *transformed, tf.matrix());
     *scan_out += *transformed;
   }
+}
+
+void IcpLoopComputation::GetTeaserInitialAlignment(PointCloud::ConstPtr source,
+                                                   PointCloud::ConstPtr target,
+                                                   Eigen::Matrix4f* tf_out,
+                                                   int& n_inliers) {
+  // Convert to teaser point cloud
+  teaser::PointCloud src_cloud;
+  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
+           source->points.begin();
+       it != source->points.end();
+       it++) {
+    src_cloud.push_back({it->x, it->y, it->z});
+  }
+
+  teaser::PointCloud tgt_cloud;
+  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
+           target->points.begin();
+       it != target->points.end();
+       it++) {
+    tgt_cloud.push_back({it->x, it->y, it->z});
+  }
+
+  // Compute FPFH
+  teaser::FPFHEstimation fpfh;
+  auto src_descriptors = fpfh.computeFPFHFeatures(src_cloud, 1.5, 2.5);
+  auto target_descriptors = fpfh.computeFPFHFeatures(tgt_cloud, 1.5, 2.5);
+
+  // Align
+  ROS_DEBUG("Finding TEASER Correspondences!");
+  teaser::Matcher matcher;
+  auto correspondences = matcher.calculateCorrespondences(src_cloud,
+                                                          tgt_cloud,
+                                                          *src_descriptors,
+                                                          *target_descriptors,
+                                                          false,
+                                                          true,
+                                                          false,
+                                                          0.95);
+  int corres_size = correspondences.size();
+  ROS_DEBUG("Found %d correspondences.", corres_size);
+
+  // Retrive the corresponding points from src and tgt point clouds into two
+  // 3-by-N Eigen matrices
+  Eigen::Matrix<double, 3, Eigen::Dynamic> src_corres_points(3, corres_size);
+  Eigen::Matrix<double, 3, Eigen::Dynamic> tgt_corres_points(3, corres_size);
+  for (size_t i = 0; i < corres_size; ++i) {
+    src_corres_points.col(i) << src_cloud[correspondences[i].first].x,
+        src_cloud[correspondences[i].first].y,
+        src_cloud[correspondences[i].first].z;
+    tgt_corres_points.col(i) << tgt_cloud[correspondences[i].second].x,
+        tgt_cloud[correspondences[i].second].y,
+        tgt_cloud[correspondences[i].second].z;
+  }
+  ROS_DEBUG("Completed TEASER Correspondences!");
+  // Run TEASER++ registration
+  // Prepare solver parameters
+  teaser::RobustRegistrationSolver::Params params;
+  params.noise_bound = 0.05;
+  params.cbar2 = 1;
+  params.estimate_scaling = false;
+  params.rotation_max_iterations = 100;
+  params.rotation_gnc_factor = 1.4;
+  ROS_INFO("Finding TEASER Rigid Transform...");
+  params.rotation_estimation_algorithm =
+      teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::GNC_TLS;
+  params.rotation_cost_threshold = 1.0;  // 0.005;
+
+  // Solve with TEASER++
+  teaser::RobustRegistrationSolver solver(params);
+  solver.solve(src_corres_points, tgt_corres_points);
+  ROS_INFO("");
+  auto solution = solver.getSolution();
+  Eigen::Matrix4d T;
+  T.topLeftCorner(3, 3) = solution.rotation;
+  T.topRightCorner(3, 1) = solution.translation;
+  *tf_out = T.cast<float>();
+
+  auto final_inliers = solver.getInlierMaxClique();
+  n_inliers = static_cast<int>(final_inliers.size());
+  ROS_INFO("Solved TEASER Rigid Transform with %d inliers", n_inliers);
 }
 
 }  // namespace lamp_loop_closure

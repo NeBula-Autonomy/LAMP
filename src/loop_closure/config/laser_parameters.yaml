@@ -122,7 +122,7 @@ robot:
 
 base: 
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 3
+  icp_initialization_method: 4
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
   icp_covariance_calculation: 1
