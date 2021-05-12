@@ -41,17 +41,19 @@
 
 #include <pcl_ros/point_cloud.h>
 
+#include <utils/CommonStructs.h>
+
 namespace pose_graph_tools {
 
 // Typedef for stored point clouds.
-typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+// typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 
 /**
  * \brief Algorithm PoseGraphToolsNode
  *
  */
 class PoseGraphToolsNode {
- private:
+private:
   // Candidate node to apply the new transformation
   uint64_t node_candidate_key_;
 
@@ -86,7 +88,7 @@ class PoseGraphToolsNode {
 
   HTransf last_d_pose_;
 
- public:
+public:
   /**
    * \brief Constructor
    *
@@ -112,7 +114,7 @@ class PoseGraphToolsNode {
    */
   void mainNodeThread(void);
 
- protected:
+protected:
   /**
    * \brief dynamic reconfigure server callback
    *
@@ -144,6 +146,6 @@ class PoseGraphToolsNode {
   bool AddTransformedPointCloudToMap(const uint64_t& key);
 };
 
-}  // namespace pose_graph_tools
+} // namespace pose_graph_tools
 
 #endif

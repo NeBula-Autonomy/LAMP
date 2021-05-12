@@ -86,7 +86,8 @@ typedef std::set<EdgeMessage, EdgeMessageComparator> EdgeSet;
 typedef std::set<NodeMessage, NodeMessageComparator> NodeSet;
 
 // Typedef for stored point clouds.
-typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+typedef pcl::PointXYZINormal Point;
+typedef pcl::PointCloud<Point> PointCloud;
 
 // Function that maps gtsam::Symbol to internal identifier string.
 typedef boost::function<std::string(gtsam::Symbol)> SymbolIdMapping;
@@ -155,7 +156,7 @@ struct AprilTagFactor {
 struct OdometryFactor {
   std::pair<ros::Time, ros::Time> stamps;
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr point_cloud;
+  pcl::PointCloud<Point>::Ptr point_cloud;
   bool b_has_point_cloud;
 
   gtsam::Pose3 transform;
@@ -269,7 +270,7 @@ public:
   virtual ~RobotPoseData(){};
 
   // Stores most recent pose for each robot
-  std::map< std::string, PoseData > poses;
+  std::map<std::string, PoseData> poses;
 };
 
 class AprilTagData : public FactorData {

@@ -53,10 +53,11 @@
 
 #include "IPointCloudMapper.h"
 
+#include <utils/CommonStructs.h>
+
 class PointCloudMapper : public IPointCloudMapper {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
-  typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZI> Octree;
+  typedef pcl::octree::OctreePointCloudSearch<Point> Octree;
 
   PointCloudMapper();
   ~PointCloudMapper();
@@ -145,7 +146,7 @@ private:
   mutable std::mutex map_frozen_mutex_;
 
   // Map Sliding Window 2 -----------------
-  pcl::CropBox<pcl::PointXYZI> box_filter_;
+  pcl::CropBox<Point> box_filter_;
   int box_filter_size_;
 };
 
