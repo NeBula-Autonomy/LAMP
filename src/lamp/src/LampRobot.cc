@@ -603,7 +603,7 @@ void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
 
   // // Apply random downsampling to the keyed scan
   if (params_.random_filter) {
-    pcl::RandomSample<pcl::PointXYZI> random_filter;
+    pcl::RandomSample<Point> random_filter;
     random_filter.setSample(n_points);
     random_filter.setInputCloud(new_scan);
     random_filter.filter(*new_scan);
@@ -612,7 +612,7 @@ void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
   // Apply voxel grid filter to the keyed scan
   if (params_.grid_filter) {
     // TODO - have option to turn on and off keyed scans
-    pcl::VoxelGrid<pcl::PointXYZI> grid;
+    pcl::VoxelGrid<Point> grid;
     grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
     grid.setInputCloud(new_scan);
     grid.filter(*new_scan);
@@ -800,7 +800,6 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     // TODO - handle this better - need to add covariances from the odom - do in
     // the function above
     // std::cout << msg_d.pose.covariance << '\n';
-
 
     // Check if it is a new artifact or not
     if (!pose_graph_.HasKey(cur_artifact_key)) {
