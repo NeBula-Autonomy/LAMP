@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   parameter_utils
   sensor_msgs
   pcl_ros
+  utils
 )
 
 catkin_package(
@@ -29,6 +30,7 @@ catkin_package(
     parameter_utils
     sensor_msgs
     pcl_ros
+    utils
   DEPENDS
     PCL
 )
@@ -48,6 +50,7 @@ add_library(${PROJECT_NAME} src/PointCloudVisualizer.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
+  gtsam
 )
 
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc)
