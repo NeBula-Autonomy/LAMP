@@ -71,7 +71,9 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
     if (!pu::Get(param_ns_ + "/gnc_alpha", gnc_alpha)) return false;
     rpgo_params_.setPcmSimple3DParams(
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
-    rpgo_params_.setGncInlierCostThresholdsAtProbability(gnc_alpha);
+    if (gnc_alpha > 0 && gnc_alpha < 1) {
+      rpgo_params_.setGncInlierCostThresholdsAtProbability(gnc_alpha);
+    }
   } else {
     rpgo_params_.setNoRejection(
         KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection

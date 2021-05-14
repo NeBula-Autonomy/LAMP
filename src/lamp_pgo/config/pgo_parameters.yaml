@@ -7,7 +7,7 @@ robot:
   b_use_outlier_rejection: true
 
   # GNC confidence threshold 
-  gnc_alpha: 0.99
+  gnc_alpha: 0
 
   # outlier rejection thresholds (distances)
   translation_check_threshold: 0.01 # 10 centimeters
@@ -23,7 +23,7 @@ base:
   b_use_outlier_rejection: true
 
   # GNC confidence threshold 
-  gnc_alpha: 0.8
+  gnc_alpha: 0
 
   # outlier rejection thresholds (distances)
   translation_check_threshold: 0.01 # 10 centimeters
