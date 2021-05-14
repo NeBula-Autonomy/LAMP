@@ -203,7 +203,7 @@ base:
     noise_bound: 0.05
     # For finding FPFH correspondences
     TEASER_FPFH_normals_radius: 1.5
-    TEASER_FPFH_features_radius: 2.5
+    TEASER_FPFH_features_radius: 2.0
 
   #--------------------------------------------------------------------------------
   # Harris keypoints Settings 

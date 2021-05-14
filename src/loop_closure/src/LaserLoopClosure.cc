@@ -303,6 +303,7 @@ void LaserLoopClosure::GetInitialAlignment(
   ComputeFeatures(source_keypoints, source, source_normals, source_features);
   ComputeFeatures(target_keypoints, target, target_normals, target_features);
 
+
   // Align
   pcl::SampleConsensusInitialAlignment<pcl::PointXYZI, pcl::PointXYZI, pcl::FPFHSignature33> sac_ia;
   sac_ia.setMaximumIterations(sac_iterations_);
@@ -345,9 +346,9 @@ void LaserLoopClosure::GetTEASERInitialAlignment(
        it++) {
          tgt_cloud.push_back({it->x, it->y, it->z});
        }
-  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
   
-  // // Get Normals
+  // Get Normals
   // Normals::Ptr source_normals(new Normals);
   // Normals::Ptr target_normals(new Normals);
   // ComputeNormals(source, source_normals);
@@ -363,21 +364,22 @@ void LaserLoopClosure::GetTEASERInitialAlignment(
   // Features::Ptr target_features(new Features);
   // ComputeFeatures(source_keypoints, source, source_normals, source_features);
   // ComputeFeatures(target_keypoints, target, target_normals, target_features);
-  // // teaser::FPFHCloud src_descriptors;
-  // // teaser::FPFHCloud target_descriptors;
+  // teaser::FPFHCloud src_descriptors;
+  // teaser::FPFHCloud target_descriptors;
   // teaser::FPFHCloudPtr src_descriptors(new Features);
   // teaser::FPFHCloudPtr target_descriptors(new Features);
  
   // pcl::copyPointCloud(*source_features, *src_descriptors);
   // pcl::copyPointCloud(*target_features, *target_descriptors);
   
+
   // Compute FPFH
   teaser::FPFHEstimation fpfh;
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   auto src_descriptors = fpfh.computeFPFHFeatures(src_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
   auto target_descriptors = fpfh.computeFPFHFeatures(tgt_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
-
+  
   // Align 
-  // ROS_INFO("Finding TEASER Correspondences!");
   teaser::Matcher matcher;
   ROS_INFO("Before TEASER matcher");
   auto correspondences = matcher.calculateCorrespondences(
