@@ -21,6 +21,19 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
     return false;
   }
 
+  bool success = true;
+
+  if (msg.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+    gtsam::Pose3 transform = utils::MessageToPose(msg);
+    Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
+    success = TrackArtifactFactor(gtsam::Symbol(msg.key_from),
+                                  gtsam::Symbol(msg.key_to),
+                                  transform,
+                                  noise,
+                                  true);
+    return success;
+  }
+
   if (edges_.find(msg) != edges_.end()) {
     ROS_DEBUG_STREAM("Edge of type " << msg.type << " from key "
                                      << gtsam::DefaultKeyFormatter(msg.key_from)
@@ -30,7 +43,6 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
     return false;
   }
 
-  bool success = true;
   if (msg.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
     success = TrackUWBFactor(gtsam::Symbol(msg.key_from),
                              gtsam::Symbol(msg.key_to),
@@ -75,15 +87,21 @@ bool PoseGraph::TrackFactor(const gtsam::Symbol& key_from,
     return TrackPrior(key, transform, covariance);
   }
 
+  if (type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+    return TrackArtifactFactor(
+        key_from, key_to, transform, covariance, create_msg);
+  }
+
   if (create_msg) {
     auto msg =
         utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
     if (edges_.find(msg) != edges_.end()) {
-      ROS_DEBUG_STREAM("Edge of type " << type << " from key "
-                                       << gtsam::DefaultKeyFormatter(key_from)
-                                       << " to key "
-                                       << gtsam::DefaultKeyFormatter(key_to)
-                                       << " already exists.");
+      // gtg
+      ROS_INFO_STREAM("Edge of type " << type << " from key "
+                                      << gtsam::DefaultKeyFormatter(key_from)
+                                      << " to key "
+                                      << gtsam::DefaultKeyFormatter(key_to)
+                                      << " already exists.");
       return false;
     }
     edges_.insert(msg);
@@ -177,13 +195,13 @@ bool PoseGraph::TrackIMUFactor(const gtsam::Symbol& key_to,
                                bool create_msg) {
   gtsam::noiseModel::Base::shared_ptr noise =
       gtsam::noiseModel::Isotropic::Sigma(2, att_noise);
-  
+
   ROS_INFO_STREAM("TrackIMUFactor - CreateAttitudeFactor for key " << gtsam::DefaultKeyFormatter(key_to));
-  gtsam::Unit3 ref_unit(ref.x, ref.y, ref.z); 
+  gtsam::Unit3 ref_unit(ref.x, ref.y, ref.z);
   gtsam::Unit3 meas_gt(meas.x, meas.y, meas.z);
-  
+
   gtsam::Pose3AttitudeFactor factor(key_to, meas_gt, noise, ref_unit);
-  
+
   if (create_msg) {
     auto msg = utils::GtsamToRosMsg(key_to,
                                     key_to,
@@ -198,12 +216,90 @@ bool PoseGraph::TrackIMUFactor(const gtsam::Symbol& key_to,
       return false;
     }
     msg.pose.position = meas;
-    // msg.covariance[0] = 
+    // msg.covariance[0] =
     edges_.insert(msg);
     edges_new_.insert(msg);
   }
 
   nfg_.add(factor);
+  return true;
+}
+
+bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
+                                    const gtsam::Symbol& key_to,
+                                    const gtsam::Pose3& transform,
+                                    const gtsam::SharedNoiseModel& covariance,
+                                    bool create_msg) {
+  int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+
+  EdgeSet updated_edges;
+  EdgeSet updated_edges_new;
+  auto msg =
+      utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
+  if (edges_.find(msg) != edges_.end()) {
+    ROS_INFO_STREAM("TrackArtifactFactor: Edge of type "
+                    << type << " from key "
+                    << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                    << gtsam::DefaultKeyFormatter(key_to)
+                    << " already exists.");
+
+    // Remove existing artifact edge message in edge_
+    auto e = edges_.begin();
+    while (e != edges_.end()) {
+      if (e->key_to == msg.key_to && e->key_from == msg.key_from) {
+        // ROS_INFO_STREAM("Skipping a factor");
+      } else {
+        updated_edges.insert(*e);
+      }
+      e++;
+    }
+
+    // Remove existing artifact edge message in edge_
+    e = edges_new_.begin();
+    while (e != edges_new_.end()) {
+      if (e->key_to == msg.key_to && e->key_from == msg.key_from) {
+        // ROS_INFO_STREAM("Skipping a factor");
+      } else {
+        updated_edges_new.insert(*e);
+      }
+      e++;
+    }
+
+    edges_ = updated_edges;
+    edges_new_ = updated_edges_new;
+
+    // Remove edge factor
+    gtsam::NonlinearFactorGraph new_nfg;
+    auto f = nfg_.begin();
+    while (f != nfg_.end()) {
+      auto factor = *f;
+      // TODO check if we really need gtsam::DefaultKeyFormatter
+      if (gtsam::DefaultKeyFormatter(factor->keys()[0]) ==
+              gtsam::DefaultKeyFormatter(key_from) &&
+          gtsam::DefaultKeyFormatter(factor->keys()[1]) ==
+              gtsam::DefaultKeyFormatter(key_to)) {
+        ROS_DEBUG_STREAM("Skipping a factor");
+      } else {
+        new_nfg.add(factor);
+      }
+      f++;
+    }
+    nfg_ = new_nfg;
+  }
+
+  if (create_msg) {
+    edges_.insert(msg);
+    edges_new_.insert(msg);
+  }
+
+  ROS_INFO_STREAM("\nTrackArtifactFactor: Adding artifact edge for key "
+                  << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                  << gtsam::DefaultKeyFormatter(key_to));
+
+  // Add the updated edge factor
+  nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(
+      key_from, key_to, transform, covariance));
+
   return true;
 }
 
@@ -339,7 +435,7 @@ bool PoseGraph::TrackPrior(const gtsam::Symbol& key,
   return true;
 }
 
-// Removal tools 
+// Removal tools
 void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
 
   // Get Prefixes
@@ -427,7 +523,7 @@ void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
 
   ROS_DEBUG("Removing edges gtsam");
   // Remove edge factors
-  gtsam::NonlinearFactorGraph new_nfg; 
+  gtsam::NonlinearFactorGraph new_nfg;
   auto f = nfg_.begin();
   while (f != nfg_.end()) {
     auto factor = *f;
@@ -439,7 +535,7 @@ void PoseGraph::RemoveEdgesWithPrefix(unsigned char prefix){
     }
     f++;
   }
-  nfg_ = new_nfg; 
+  nfg_ = new_nfg;
 }
 
 void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
@@ -451,9 +547,9 @@ void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
 
   while (n != nodes_.end()) {
     if (gtsam::Symbol(n->key).chr() != prefix){
-      // Is an edge to keep 
+      // Is an edge to keep
       new_nodes.insert(*n);
-    } 
+    }
     n++;
   }
 
@@ -472,7 +568,7 @@ void PoseGraph::RemoveValuesWithPrefix(unsigned char prefix){
 
       // Update the latest key
       key = value.key;
-    } 
+    }
     v++;
   }
 
@@ -523,6 +619,10 @@ void PoseGraph::InsertKeyedScan(const gtsam::Symbol& key,
 }
 
 void PoseGraph::InsertKeyedStamp(const gtsam::Symbol& key, const ros::Time& stamp) {
+  if (HasStamp(key)) {
+    auto itr = keyed_stamps.find(key);
+    itr->second = stamp;
+  }
   keyed_stamps.insert(std::pair<gtsam::Symbol, ros::Time>(key, stamp));
 }
 

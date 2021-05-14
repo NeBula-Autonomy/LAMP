@@ -34,8 +34,9 @@ using gtsam::Vector3;
 
 // Constructor
 LampRobot::LampRobot()
-    : is_artifact_initialized(false), b_init_pg_pub_(false), init_count_(0) {
+  : is_artifact_initialized(false), b_init_pg_pub_(false), init_count_(0) {
   b_run_optimization_ = false;
+  mapper_ = std::make_shared<PointCloudMapper>();
 }
 
 // Destructor
@@ -51,7 +52,7 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
-  if (!mapper_.Initialize(n)) {
+  if (!mapper_->Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize mapper.", name_.c_str());
     return false;
   }
@@ -85,31 +86,43 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
 
 bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   // Rates
-  if (!pu::Get("rate/update_rate", update_rate_)) return false;
-  if (!pu::Get("init_wait_time", init_wait_time_)) return false;
-  if (!pu::Get("repub_first_wait_time", repub_first_wait_time_)) return false;
+  if (!pu::Get("rate/update_rate", update_rate_))
+    return false;
+  if (!pu::Get("init_wait_time", init_wait_time_))
+    return false;
+  if (!pu::Get("repub_first_wait_time", repub_first_wait_time_))
+    return false;
 
   // Settings for precisions
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
 
   // Switch on/off flag for UWB
-  if (!pu::Get("b_use_uwb", b_use_uwb_)) return false;
+  if (!pu::Get("b_use_uwb", b_use_uwb_))
+    return false;
 
   // Switch on/off flag for IMU
-  if (!pu::Get("b_add_imu_factors", b_add_imu_factors_)) return false;
+  if (!pu::Get("b_add_imu_factors", b_add_imu_factors_))
+    return false;
 
   // Load frame ids.
-  if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id)) return false;
-  if (!pu::Get("frame_id/base", base_frame_id_)) return false;
+  if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
+    return false;
+  if (!pu::Get("frame_id/base", base_frame_id_))
+    return false;
 
-  if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_)) return false;
+  if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
+    return false;
 
-  if (!pu::Get("time_threshold", pose_graph_.time_threshold)) return false;
+  if (!pu::Get("time_threshold", pose_graph_.time_threshold))
+    return false;
   // Load filtering parameters.
-  if (!pu::Get("filtering/grid_filter", params_.grid_filter)) return false;
-  if (!pu::Get("filtering/grid_res", params_.grid_res)) return false;
-  if (!pu::Get("filtering/random_filter", params_.random_filter)) return false;
+  if (!pu::Get("filtering/grid_filter", params_.grid_filter))
+    return false;
+  if (!pu::Get("filtering/grid_res", params_.grid_res))
+    return false;
+  if (!pu::Get("filtering/random_filter", params_.random_filter))
+    return false;
   if (!pu::Get("filtering/decimate_percentage", params_.decimate_percentage))
     return false;
   // Cap to [0.0, 1.0].
@@ -248,12 +261,18 @@ bool LampRobot::SetInitialPosition() {
   // Load initial position and orientation noise.
   double sigma_x = 0.0, sigma_y = 0.0, sigma_z = 0.0;
   double sigma_roll = 0.0, sigma_pitch = 0.0, sigma_yaw = 0.0;
-  if (!pu::Get("init/position_sigma/x", sigma_x)) return false;
-  if (!pu::Get("init/position_sigma/y", sigma_y)) return false;
-  if (!pu::Get("init/position_sigma/z", sigma_z)) return false;
-  if (!pu::Get("init/orientation_sigma/roll", sigma_roll)) return false;
-  if (!pu::Get("init/orientation_sigma/pitch", sigma_pitch)) return false;
-  if (!pu::Get("init/orientation_sigma/yaw", sigma_yaw)) return false;
+  if (!pu::Get("init/position_sigma/x", sigma_x))
+    return false;
+  if (!pu::Get("init/position_sigma/y", sigma_y))
+    return false;
+  if (!pu::Get("init/position_sigma/z", sigma_z))
+    return false;
+  if (!pu::Get("init/orientation_sigma/roll", sigma_roll))
+    return false;
+  if (!pu::Get("init/orientation_sigma/pitch", sigma_pitch))
+    return false;
+  if (!pu::Get("init/orientation_sigma/yaw", sigma_yaw))
+    return false;
 
   // convert initial quaternion to Roll/Pitch/Yaw
   double init_roll = 0.0, init_pitch = 0.0, init_yaw = 0.0;
@@ -285,8 +304,7 @@ bool LampRobot::SetInitialPosition() {
 }
 
 bool LampRobot::InitializeGraph(
-    gtsam::Pose3& pose,
-    gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
+    gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
   pose_graph_.Initialize(GetInitialKey(), pose, covariance);
 
   // // Publish the first pose
@@ -351,7 +369,8 @@ bool LampRobot::CheckHandlers() {
   // Check for april tags
   b_have_new_april_tags = ProcessAprilTagData(april_tag_handler_.GetData());
   // Check for UWB data
-  if (b_use_uwb_) b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
+  if (b_use_uwb_)
+    b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
 
   if (b_add_imu_factors_ && stationary_handler_.has_data_) {
     // Force new odometry node
@@ -376,8 +395,10 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
         // Get a keyed scan
         PointCloud::Ptr new_scan(new PointCloud);
-        // Take away 0.1 from ros::Time::now() so the delay in getting point clouds is accounted for
-        if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now() - ros::Duration(0.1), new_scan)) {
+        // Take away 0.1 from ros::Time::now() so the delay in getting point
+        // clouds is accounted for
+        if (odometry_handler_.GetKeyedScanAtTime(
+                ros::Time::now() - ros::Duration(0.1), new_scan)) {
           AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
         } else {
           ROS_WARN("No point clouds from Odom Handler during init in lamp");
@@ -392,8 +413,10 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
       // Publish first point cloud
       PointCloud::Ptr new_scan(new PointCloud);
-      // Take away 0.1 from ros::Time::now() so the delay in getting point clouds is accounted for
-      if (odometry_handler_.GetKeyedScanAtTime(ros::Time::now() - ros::Duration(0.1), new_scan)) {
+      // Take away 0.1 from ros::Time::now() so the delay in getting point
+      // clouds is accounted for
+      if (odometry_handler_.GetKeyedScanAtTime(
+              ros::Time::now() - ros::Duration(0.1), new_scan)) {
         AddKeyedScanAndPublish(new_scan, pose_graph_.initial_key);
       } else {
         ROS_WARN("No point clouds from Odom Handler during init in lamp");
@@ -418,7 +441,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
     PublishPoseGraph();
 
     // Publish the full map (for debug)
-    mapper_.PublishMap();
+    mapper_->PublishMap();
 
     b_has_new_factor_ = false;
     if (!b_init_pg_pub_) {
@@ -472,8 +495,8 @@ void LampRobot::UpdateArtifactPositions() {
         pose_graph_.GetPose(artifact_key).translation();
 
     // Update global pose just for what has changed. returns bool
-    result = result || artifact_handler_.UpdateGlobalPosition(
-                           artifact_key, artifact_position);
+    result = result ||
+        artifact_handler_.UpdateGlobalPosition(artifact_key, artifact_position);
   }
 }
 
@@ -508,7 +531,7 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     // Get the transforms - odom transforms
     Pose3 transform = odom_factor.transform;
     gtsam::SharedNoiseModel covariance =
-        odom_factor.covariance;  // TODO - check format
+        odom_factor.covariance; // TODO - check format
 
     if (b_use_fixed_covariances_) {
       covariance = SetFixedNoiseModels("odom");
@@ -544,7 +567,7 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
     // add  node/keyframe to keyed stamps
     pose_graph_.InsertKeyedStamp(
         current_key,
-        times.second);  // TODO - check - can remove as duplicates TrackNode
+        times.second); // TODO - check - can remove as duplicates TrackNode
     pose_graph_.InsertStampedOdomKey(times.second.toSec(), current_key);
 
     // Track the edges that have been added
@@ -579,17 +602,21 @@ void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
       static_cast<int>((1.0 - params_.decimate_percentage) * new_scan->size());
 
   // // Apply random downsampling to the keyed scan
-  pcl::RandomSample<pcl::PointXYZI> random_filter;
-  random_filter.setSample(n_points);
-  random_filter.setInputCloud(new_scan);
-  random_filter.filter(*new_scan);
+  if (params_.random_filter) {
+    pcl::RandomSample<pcl::PointXYZI> random_filter;
+    random_filter.setSample(n_points);
+    random_filter.setInputCloud(new_scan);
+    random_filter.filter(*new_scan);
+  }
 
   // Apply voxel grid filter to the keyed scan
-  // TODO - have option to turn on and off keyed scans
-  pcl::VoxelGrid<pcl::PointXYZI> grid;
-  grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
-  grid.setInputCloud(new_scan);
-  grid.filter(*new_scan);
+  if (params_.grid_filter) {
+    // TODO - have option to turn on and off keyed scans
+    pcl::VoxelGrid<pcl::PointXYZI> grid;
+    grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
+    grid.setInputCloud(new_scan);
+    grid.filter(*new_scan);
+  }
 
   pose_graph_.InsertKeyedScan(current_key, new_scan);
 
@@ -608,7 +635,7 @@ void LampRobot::UpdateAndPublishOdom() {
   Pose3 last_pose = pose_graph_.LastPose();
 
   // Get the delta from the last pose to now
-  ros::Time stamp;  // = ros::Time::now();
+  ros::Time stamp; // = ros::Time::now();
   GtsamPosCov delta_pose_cov;
   // if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
   // Had a bad odom return - try latest time from odometry_handler
@@ -641,6 +668,7 @@ void LampRobot::UpdateAndPublishOdom() {
   // TODO - use the covariance when we have it
   // geometry_msgs::PoseWithCovarianceStamped msg;
   // msg.pose = utils::GtsamToRosMsg(new_pose, covariance);
+
   // msg.header.frame_id = pose_graph_.fixed_frame_id;
   // msg.header.stamp = stamp;
 
@@ -685,8 +713,9 @@ bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
   pose_graph_.TrackIMUFactor(
       imu_data->factors[0].attitude.front(), meas, ref, noise_sigma, true);
 
+  // Do not optimize on the robot
   // Optimize every "imu_factors_per_opt"
-  b_run_optimization_ = true;
+  // b_run_optimization_ = false;
   return true;
 }
 
@@ -751,11 +780,11 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     // Is a relative tranform, so need to handle linking to the pose-graph
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
+    ROS_INFO("HandleRelativePoseMeasurement");
 
     if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
-      ROS_ERROR(
-          "Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
-          "BE HANDLED OR LOSE ARTIFACTS!!");
+      ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
+                "BE HANDLED OR LOSE ARTIFACTS!!");
       b_has_new_factor_ = false;
       // Clean Artifact handler so that these set of
       // factors are removed from history
@@ -763,13 +792,16 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       return false;
     }
 
+    // Can only used fixed covariance for artifact edges TODO: use covariance
+    // from artifact msg
+    // covariance = SetFixedNoiseModels("artifact");
+    covariance = artifact.covariance;
+
     // Get the covariances (Should be in relative frame as well)
     // TODO - handle this better - need to add covariances from the odom - do in
     // the function above
-    covariance = artifact.covariance;
+    // std::cout << msg_d.pose.covariance << '\n';
 
-    // Can only used fixed covariance for artifact edges
-    covariance = SetFixedNoiseModels("artifact");
 
     // Check if it is a new artifact or not
     if (!pose_graph_.HasKey(cur_artifact_key)) {
@@ -787,18 +819,58 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       ROS_INFO("Calling Publish Artifacts");
       artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
 
-    } else {
-      // Second sighting of an artifact - we have a loop closure
-      ROS_INFO_STREAM("Artifact re-sighted with key: "
-                      << gtsam::DefaultKeyFormatter(cur_artifact_key));
-      b_run_optimization_ = true;
-    }
+      // Add and track the edges that have been added
+      int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+      pose_graph_.TrackFactor(
+          pose_key, cur_artifact_key, type, transform, covariance);
+      ROS_INFO("Added artifact to pose graph factors in lamp");
 
-    // Add and track the edges that have been added
-    int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
-    pose_graph_.TrackFactor(
-        pose_key, cur_artifact_key, type, transform, covariance);
-    ROS_INFO("Added artifact to pose graph factors in lamp");
+    } else {
+      ROS_INFO("Find edge");
+      // Find artifact edge that is already connected to cur_artifact_key
+      auto edge = pose_graph_.FindEdgeKeyTo(cur_artifact_key);
+
+      if (edge == nullptr) {
+        ROS_ERROR_STREAM("Edge is not found!!!");
+        if (pose_graph_.HasKey(cur_artifact_key)) {
+          ROS_INFO_STREAM("Posegraph has this key!! "
+                          << gtsam::DefaultKeyFormatter(cur_artifact_key));
+        }
+        return false;
+      }
+
+      // Second sighting of an artifact - we have a loop closure
+      ROS_WARN_STREAM("\nProcessArtifactData: Artifact re-sighted with key: "
+                      << gtsam::DefaultKeyFormatter(cur_artifact_key)
+                      << " and from pose key: "
+                      << gtsam::DefaultKeyFormatter(pose_key)
+                      << ". The artifact is already connected to key: "
+                      << gtsam::DefaultKeyFormatter(edge->key_from));
+
+      // Find the transform from the odom node that has been connected to the
+      // resighted artifact
+      HandleRelativePoseMeasurementWithFixedKey(
+          timestamp, temp_transform, edge->key_from, transform, global_pose);
+
+      // Insert into the values TODO - add unit covariance
+      std::string id = artifact_handler_.GetArtifactID(cur_artifact_key);
+      pose_graph_.TrackNode(
+          timestamp, cur_artifact_key, global_pose, covariance, id);
+
+      // TODO Add keyed stamps. If the time stamp changes, .
+      pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
+
+      // Publish the new artifact, with the global pose. FYI: We may removed
+      // this (check with Kyon)
+      ROS_INFO("Calling Publish Artifacts");
+      artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
+
+      // Add and track the edges that have been added
+      int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+      pose_graph_.TrackArtifactFactor(
+          edge->key_from, cur_artifact_key, transform, covariance);
+      ROS_INFO("Added resighted artifact to pose graph factors in lamp");
+    }
   }
 
   ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
@@ -877,9 +949,8 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
         timestamp, temp_transform, transform, global_pose, pose_key);
 
     if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
-      ROS_ERROR(
-          "Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
-          "BE HANDLED OR LOSE APRIL TAG!!");
+      ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
+                "BE HANDLED OR LOSE APRIL TAG!!");
       b_has_new_factor_ = false;
 
       // Clean all the new factors
@@ -946,10 +1017,11 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
 */
 bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
   std::shared_ptr<UwbData> uwb_data = std::dynamic_pointer_cast<UwbData>(data);
-  if (!uwb_data->b_has_data) return false;
+  if (!uwb_data->b_has_data)
+    return false;
   // New Factors to be added
   NonlinearFactorGraph new_factors;
-  Pose3 global_uwb_pose;  // TODO: How to initialize the pose of UWB node?
+  Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
 
   ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
   ROS_INFO_STREAM(
@@ -1059,10 +1131,56 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
       odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
 
   if (!delta_pose_cov.b_has_value) {
-    ROS_ERROR(
-        "----------Could not get delta between times - THIS CASE IS NOT "
-        "WELL HANDLED YET-----------");
+    ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
+              "WELL HANDLED YET-----------");
     key_from = utils::GTSAM_ERROR_SYMBOL;
+    return;
+  }
+
+  // TODO - do covariances as well
+
+  // Compose the transforms to get the between factor
+  gtsam::Pose3 delta_pose = delta_pose_cov.pose;
+  gtsam::SharedNoiseModel delta_cov = delta_pose_cov.covariance;
+  transform = delta_pose.compose(relative_pose);
+
+  // Compose from the node in the graph to get the global position
+  // TODO - maybe do this outside this function
+  global_pose = pose_graph_.GetPose(key_from).compose(transform);
+}
+
+// Function gets a relative pose and time, and returns the global pose and the
+// transform from the closest node in time.
+/*!
+  \brief  Function to handle relative measurements and adding them to the
+  pose-graph \param   stamp          - The time of the measurement \param
+  relative_pose  - The observed relative pose \param   transform      - The
+  output transform (for a between factor) \param   global pose    - The output
+  global pose estimate \param   key_from       - The output key from which the
+  new relative measurement is attached \warning ... \author
+*/
+void LampRobot::HandleRelativePoseMeasurementWithFixedKey(
+    const ros::Time& stamp,
+    const gtsam::Pose3& relative_pose,
+    const gtsam::Symbol& key_from,
+    gtsam::Pose3& transform,
+    gtsam::Pose3& global_pose) {
+  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
+    ROS_ERROR("Measurement is from a time out of range. Rejecting");
+    return;
+  }
+
+  // Time from this key - closest time that there is anode
+  ros::Time stamp_from = pose_graph_.keyed_stamps[key_from];
+
+  // Get the delta pose from the key_from to the time of the observation
+  GtsamPosCov delta_pose_cov;
+  delta_pose_cov =
+      odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
+
+  if (!delta_pose_cov.b_has_value) {
+    ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
+              "WELL HANDLED YET-----------");
     return;
   }
 

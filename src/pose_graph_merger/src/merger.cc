@@ -15,24 +15,65 @@ void Merger::InsertNewEdges(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     return;
   }
 
+  // New edges that we want to update with
+  std::map<std::tuple<gtsam::Key, gtsam::Key, int>,
+           pose_graph_msgs::PoseGraphEdge>
+      updated_artifact_edges;
+
+  // Add new edges and skip existing edges
   for (const GraphEdge& edge : msg->edges) {
-    
+    std::tuple<gtsam::Key, gtsam::Key, int> id =
+        std::make_tuple(edge.key_from, edge.key_to, edge.type);
     if (IsEdgeNew(edge)){
-      // Add to the merged graph 
+      // Add to the merged graph
       merged_graph_.edges.push_back(edge);
 
       // Add to stored set of edges
-      std::tuple<gtsam::Key, gtsam::Key, int> id = std::make_tuple(edge.key_from, edge.key_to, edge.type);
       unique_edges_.insert(id);
+    } else if (edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      ROS_DEBUG_STREAM("\nMerger: Repeated artifact with keyto "
+                       << gtsam::DefaultKeyFormatter(edge.key_to));
+      updated_artifact_edges[id] = edge;
     }
   }
+
+  // Replace the existing artifact edges with updated_artifact_edges
+  pose_graph_msgs::PoseGraph new_graph;
+
+  auto e = merged_graph_.edges.begin();
+  while (e != merged_graph_.edges.end()) {
+    auto edge_itr = *e;
+    if (edge_itr.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+      std::tuple<gtsam::Key, gtsam::Key, int> id =
+          std::make_tuple(edge_itr.key_from, edge_itr.key_to, edge_itr.type);
+      if (updated_artifact_edges.find(id) != updated_artifact_edges.end()) {
+        e++;
+        continue;
+      }
+    }
+    new_graph.edges.push_back(edge_itr);
+    e++;
+  }
+
+  auto itr = updated_artifact_edges.begin();
+  while (itr != updated_artifact_edges.end()) {
+    new_graph.edges.push_back(itr->second);
+    itr++;
+  }
+  merged_graph_.edges = new_graph.edges;
 }
 
 void Merger::InsertNode(const pose_graph_msgs::PoseGraphNode& node) {
-  
+  // Just update the node if it is already exist
+  if (merged_graph_KeyToIndex_.find(node.key) !=
+      merged_graph_KeyToIndex_.end()) {
+    merged_graph_.nodes[merged_graph_KeyToIndex_[node.key]] = node;
+    return;
+  }
+
   // Track the index at which the node was inserted
   merged_graph_KeyToIndex_[node.key] = merged_graph_.nodes.size();
-  
+
   // Add the node to the graph
   merged_graph_.nodes.push_back(node);
 
@@ -49,7 +90,6 @@ void Merger::ClearNodes() {
 }
 
 bool Merger::IsEdgeNew(const pose_graph_msgs::PoseGraphEdge& msg) {
-  
   // Checks to see if an edge is new
   std::tuple<gtsam::Key, gtsam::Key, int> id = std::make_tuple(msg.key_from, msg.key_to, msg.type);
   return unique_edges_.count(id) == 0;
@@ -76,7 +116,7 @@ std::set<char> Merger::GetNewRobots(const pose_graph_msgs::PoseGraphConstPtr& ms
 
 void Merger::OnSlowGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   ROS_DEBUG_STREAM("Received slow graph, size " << msg->nodes.size());
-  
+
   // Clear existing nodes
   ClearNodes();
 
@@ -103,16 +143,23 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     for (const GraphNode& node : msg->nodes) {
       InsertNode(node);
     }
-    
+
     InsertNewEdges(msg);
     return;
   }
 
   // Add new edges
   InsertNewEdges(msg);
-  
+
   // Get header from the fastGraph - most recent graph
   merged_graph_.header = msg->header;
+
+  std::map<long unsigned int, std::set<const GraphEdge*>> fastOutAdjList;
+  std::map<long unsigned int, std::set<const GraphEdge*>> fastInAdjList;
+  for (const GraphEdge& edge : msg->edges) {
+    fastOutAdjList[edge.key_from].insert(&edge);
+    fastInAdjList[edge.key_to].insert(&edge);
+  }
 
   // use map to order the new fast nodes by the order they were created in
   std::map<unsigned int, const GraphNode*> newFastNodes;
@@ -123,6 +170,20 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
       // Replace the stamp with the fast graph stamp (most correct)
       merged_graph_.nodes[merged_graph_KeyToIndex_[node.key]].header =
           node.header;
+      // TODO 1: we want to add the artifact anyway
+      // if artifact node -> add that
+
+      if (fastInAdjList.find(node.key) != fastInAdjList.end()) {
+        const GraphEdge* edge_to_check = *fastInAdjList[node.key].begin();
+        if (edge_to_check->type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
+          ROS_DEBUG_STREAM(
+              "\nDebug Merger: Adding the reobserved artifact to newfastnode "
+              << gtsam::DefaultKeyFormatter(node.key));
+          newFastNodes[node.header.seq] = &node;
+          fastKeyToNode[node.key] = &node;
+        }
+      }
+      //
       continue; // Then skip
     }
 
@@ -131,18 +192,12 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     // ROS_INFO_STREAM("Added new fast node, key " << node.key);
   }
 
-  std::map<long unsigned int, std::set<const GraphEdge*>> fastOutAdjList;
-  std::map<long unsigned int, std::set<const GraphEdge*>> fastInAdjList;
-  for (const GraphEdge& edge : msg->edges) {
-    fastOutAdjList[edge.key_from].insert(&edge);
-    fastInAdjList[edge.key_to].insert(&edge);
-  }
-
   // for each node in the fast graph which is not in the graph
   for (auto kv : fastKeyToNode) {
     // ROS_INFO_STREAM("Adding new node");
     // the fast node to add to the merged_graph_
     const GraphNode* fastNode = kv.second;
+    // TODO 2: we skip the artifact edge if there is no edge. Find == end
 
     // edge in the fast graph to this fast node
     const GraphEdge* edgeToFastNode = *fastInAdjList[fastNode->key].begin();

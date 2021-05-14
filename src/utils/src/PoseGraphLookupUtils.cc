@@ -76,19 +76,18 @@ gtsam::Symbol PoseGraph::GetClosestKeyAtTime(const ros::Time& stamp,
 }
 
 gtsam::Pose3 PoseGraph::LastPose(char c) const {
-    gtsam::Key latest = utils::GTSAM_ERROR_SYMBOL; 
-    
-    // Get the most recent pose from the given robot
-    for (auto v : values_) {
-      if (gtsam::Symbol(v.key).chr() != c) {
-        continue;
-      }
-      if (latest == utils::GTSAM_ERROR_SYMBOL) {
-        latest = v.key;
-      }
-      else {
-        latest = std::max(latest, v.key);
-      }
+  gtsam::Key latest = utils::GTSAM_ERROR_SYMBOL;
+
+  // Get the most recent pose from the given robot
+  for (auto v : values_) {
+    if (gtsam::Symbol(v.key).chr() != c) {
+      continue;
+    }
+    if (latest == utils::GTSAM_ERROR_SYMBOL) {
+      latest = v.key;
+    } else {
+      latest = std::max(latest, v.key);
+    }
     }
 
     if (latest == utils::GTSAM_ERROR_SYMBOL) {
@@ -112,6 +111,15 @@ const EdgeMessage* PoseGraph::FindEdge(const gtsam::Key& key_from,
                                        const gtsam::Key& key_to) const {
   for (const auto& edge : edges_) {
     if (edge.key_from == key_from && edge.key_to == key_to) {
+      return &edge;
+    }
+  }
+  return nullptr;
+}
+
+const EdgeMessage* PoseGraph::FindEdgeKeyTo(const gtsam::Key& key_to) const {
+  for (const auto& edge : edges_) {
+    if (edge.key_to == key_to) {
       return &edge;
     }
   }

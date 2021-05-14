@@ -7,6 +7,7 @@ Interface for ROS and KimeraRPGO
 #ifndef LAMP_PGO_H_
 #define LAMP_PGO_H_
 
+#include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
