@@ -4,44 +4,35 @@
 
 robot: 
 
-  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 4
-
-  # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
-  icp_covariance_calculation: 1
-
+  #--------------------------------------------------------------------------------
+  #### Loop closure generation 
+  #--------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------
   # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 10
-
-  # To compute a loop closure we perform ICP between the current scan and laser
-  # scans captured from nearby poses. In order to be considered a loop closure,
-  # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.04
+  proximity_threshold: 5
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
-  distance_to_skip_recent_poses: 10 #10 # 200
+  distance_to_skip_recent_poses: 15 #10 # 200
 
-  # If a loop has recently been closed, don't close a new one for at least this
-  # amount of translational distance (m).
-  distance_before_reclosing: 5 #10
+  #--------------------------------------------------------------------------------
+  #### Loop closure prioritization
+  #--------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------
+  # Loop closure prioritization method { GENERIC, OBSERVABILITY}
+  prioritization_method: 0
 
-  # If a batchloop has recently been closed, don't close a new one for at least this
-  # amount of translational distance (m).
-  distance_before_batch_reclosing: 10 #3
-
-  # if a loop closure is found but the angle is larger than this, reject it
-  max_rotation_deg: 50
-
-  # Only look for loop closures if current observability is above some threshold
-  b_check_observability: true
-
-  # Minimum allowed observability ratio (if low indicates possible slip in some direction)
-  min_observability_ratio: 0.1
+  #--------------------------------------------------------------------------------
+  # Generic prioritization loop closure (by order recieved)
+  #--------------------------------------------------------------------------------
+  gen_prioritization:
+    min_observability: 100
+    normals_search_radius: 1.0
+    choose_best: true # send only the best candidate for geometric verification
 
   #--------------------------------------------------------------------------------
   # Observability prioritization loop closure
@@ -52,8 +43,20 @@ robot:
     normals_search_radius: 1.0
 
   #--------------------------------------------------------------------------------
-  # ICP Settings for laser loop closure
+  #### Loop closure computation
   #--------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
+  icp_initialization_method: 3
+
+  # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
+  icp_covariance_calculation: 1
+
+  # To compute a loop closure we perform ICP between the current scan and laser
+  # scans captured from nearby poses. In order to be considered a loop closure,
+  # the ICP "fitness score" must be less than this number.
+  max_tolerable_fitness: 0.4 #0.04
+
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
@@ -61,7 +64,7 @@ robot:
 
     # During ICP, two points won't be considered a correspondence if they are at
     # least this far from one another.
-    corr_dist: 5.0
+    corr_dist: 1.0
 
     # Iterate ICP this many times.
     iterations: 5 # Default from original branch is 20: 
@@ -77,11 +80,11 @@ robot:
     # Iterate SAC-IA this many times.
     iterations: 10
 
-    # Number of previous and next scans to accumulate for target pointcloud
+    # Number of previous scans to accumulate for target pointcloud
     # 0 means no accumulation
     num_prev_scans: 2
     num_next_scans: 2
-
+    
     # Radii of area to consider when computing normals and features
     normals_radius: 1.0
     features_radius: 2.0
@@ -101,7 +104,7 @@ robot:
     noise_bound: 0.05
     # For finding FPFH correspondences
     TEASER_FPFH_normals_radius: 1.5
-    TEASER_FPFH_features_radius: 2.5
+    TEASER_FPFH_features_radius: 2.0
 
   #--------------------------------------------------------------------------------
   # Harris keypoints Settings 
@@ -128,12 +131,10 @@ robot:
 #############################################
 
 base: 
-  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 4
-
-  # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
-  icp_covariance_calculation: 1
-
+  #--------------------------------------------------------------------------------
+  #### Loop closure generation 
+  #--------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------
   # Translation threshold for new nodes to compute values for loop closure checking
   translation_threshold_nodes: 1.0
 
@@ -141,31 +142,24 @@ base:
   # that are within this distance of the current pose.
   proximity_threshold: 10
 
-  # To compute a loop closure we perform ICP between the current scan and laser
-  # scans captured from nearby poses. In order to be considered a loop closure,
-  # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 2.5 #0.04
-
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
   distance_to_skip_recent_poses: 15 #10 # 200
 
-  # If a loop has recently been closed, don't close a new one for at least this
-  # amount of translational distance (m).
-  distance_before_reclosing: 10
+  #--------------------------------------------------------------------------------
+  #### Loop closure prioritization
+  #--------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------
+  # Loop closure prioritization method { GENERIC, OBSERVABILITY}
+  prioritization_method: 0
 
-  # if a loop closure is found but the angle is larger than this, reject it
-  max_rotation_deg: 50
-
-  # If a batchloop has recently been closed, don't close a new one for at least this
-  # amount of translational distance (m).
-  distance_before_batch_reclosing: 10 #3
-
-  # Only look for loop closures if current observability is above some threshold
-  b_check_observability: true
-
-  # Minimum allowed observability ratio (if low indicates possible slip in some direction)
-  min_observability_ratio: 0.1
+  #--------------------------------------------------------------------------------
+  # Generic prioritization loop closure (by order recieved)
+  #--------------------------------------------------------------------------------
+  gen_prioritization:
+    min_observability: 0
+    normals_search_radius: 1.0
+    choose_best: true # send only the best candidate for geometric verification
 
   #--------------------------------------------------------------------------------
   # Observability prioritization loop closure
@@ -176,8 +170,20 @@ base:
     normals_search_radius: 1.0
 
   #--------------------------------------------------------------------------------
-  # ICP Settings for laser loop closure
+  #### Loop closure computation
   #--------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------
+  # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
+  icp_initialization_method: 3
+
+  # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
+  icp_covariance_calculation: 1
+
+  # To compute a loop closure we perform ICP between the current scan and laser
+  # scans captured from nearby poses. In order to be considered a loop closure,
+  # the ICP "fitness score" must be less than this number.
+  max_tolerable_fitness: 2.5 #0.04
+
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.

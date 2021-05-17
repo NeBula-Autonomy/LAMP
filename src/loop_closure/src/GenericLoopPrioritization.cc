@@ -1,5 +1,5 @@
 /**
- * @file   ObservabilityLoopPrioritization.cc
+ * @file   GenericLoopPrioritization.cc
  * @brief  Base class for classes to find "priority loop closures" from the
  * candidates
  * @author Yun Chang
@@ -12,18 +12,18 @@
 #include <numeric>
 #include "loop_closure/PointCloudUtils.h"
 
-#include "loop_closure/ObservabilityLoopPrioritization.h"
+#include "loop_closure/GenericLoopPrioritization.h"
 
 namespace pu = parameter_utils;
 
 namespace lamp_loop_closure {
 
-ObservabilityLoopPrioritization::ObservabilityLoopPrioritization() {}
-ObservabilityLoopPrioritization::~ObservabilityLoopPrioritization() {}
+GenericLoopPrioritization::GenericLoopPrioritization() {}
+GenericLoopPrioritization::~GenericLoopPrioritization() {}
 
-bool ObservabilityLoopPrioritization::Initialize(const ros::NodeHandle& n) {
+bool GenericLoopPrioritization::Initialize(const ros::NodeHandle& n) {
   std::string name =
-      ros::names::append(n.getNamespace(), "ObservabilityLoopPrioritization");
+      ros::names::append(n.getNamespace(), "GenericLoopPrioritization");
   // Add load params etc
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name.c_str());
@@ -42,56 +42,49 @@ bool ObservabilityLoopPrioritization::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
-  ROS_INFO_STREAM("Initialized ObservabilityLoopPrioritization."
-                  << "\npublish_n_best: " << publish_n_best_
+  ROS_INFO_STREAM("Initialized GenericLoopPrioritization."
+                  << "\nchoose_best: " << choose_best_
                   << "\nmin_observability: " << min_observability_);
 
   return true;
 }
 
-bool ObservabilityLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
+bool GenericLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
   if (!LoopPrioritization::LoadParameters(n)) return false;
 
-  if (!pu::Get(param_ns_ + "/obs_prioritization/publish_n_best",
-               publish_n_best_))
-    return false;
-
-  if (!pu::Get(param_ns_ + "/obs_prioritization/min_observability",
+  if (!pu::Get(param_ns_ + "/gen_prioritization/min_observability",
                min_observability_))
     return false;
 
-  if (!pu::Get(param_ns_ + "/obs_prioritization/normals_search_radius",
+  if (!pu::Get(param_ns_ + "/gen_prioritization/normals_search_radius",
                normals_radius_))
+    return false;
+  if (!pu::Get(param_ns_ + "/gen_prioritization/choose_best", choose_best_))
     return false;
 
   return true;
 }
 
-bool ObservabilityLoopPrioritization::CreatePublishers(
-    const ros::NodeHandle& n) {
+bool GenericLoopPrioritization::CreatePublishers(const ros::NodeHandle& n) {
   if (!LoopPrioritization::CreatePublishers(n)) return false;
 
   return true;
 }
 
-bool ObservabilityLoopPrioritization::RegisterCallbacks(
-    const ros::NodeHandle& n) {
+bool GenericLoopPrioritization::RegisterCallbacks(const ros::NodeHandle& n) {
   if (!LoopPrioritization::RegisterCallbacks(n)) return false;
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
-      "keyed_scans",
-      100,
-      &ObservabilityLoopPrioritization::KeyedScanCallback,
-      this);
+      "keyed_scans", 100, &GenericLoopPrioritization::KeyedScanCallback, this);
 
   update_timer_ = nl.createTimer(
-      2.0, &ObservabilityLoopPrioritization::ProcessTimerCallback, this);
+      2.0, &GenericLoopPrioritization::ProcessTimerCallback, this);
 
   return true;
 }
 
-void ObservabilityLoopPrioritization::ProcessTimerCallback(
+void GenericLoopPrioritization::ProcessTimerCallback(
     const ros::TimerEvent& ev) {
   PopulatePriorityQueue();
   if (priority_queue_.size() > 0 &&
@@ -100,8 +93,11 @@ void ObservabilityLoopPrioritization::ProcessTimerCallback(
   }
 }
 
-void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
+void GenericLoopPrioritization::PopulatePriorityQueue() {
   size_t n = candidate_queue_.size();
+  if (n == 0) return;
+  auto best_candidate = candidate_queue_.front();
+  double best_score = 0;
   for (size_t i = 0; i < n; i++) {
     auto candidate = candidate_queue_.front();
     candidate_queue_.pop();
@@ -122,37 +118,32 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     double min_obs_to = obs_eigenv_to.minCoeff();
     if (min_obs_to < min_observability_) continue;
 
-    double score = min_obs_from + min_obs_to;
-    candidate.value = score;
-    std::deque<double>::iterator score_it = observability_score_.begin();
-    std::deque<pose_graph_msgs::LoopCandidate>::iterator candidate_it =
-        priority_queue_.begin();
-    for (size_t i = 0; i < priority_queue_.size(); i++) {
-      if (score < observability_score_[i]) {
-        ++score_it;
-        ++candidate_it;
-      } else {
-        break;
-      }
+    if (!choose_best_) {
+      priority_queue_.push_back(best_candidate);
     }
-    observability_score_.insert(score_it, score);
-    priority_queue_.insert(candidate_it, candidate);
+    // Track best candidate
+    if (min_obs_from + min_obs_to > best_score) {
+      best_candidate = candidate;
+      best_score = min_obs_from + min_obs_to;
+      std::cout << "found new best score: " << best_score << std::endl;
+    }
   }
+  if (choose_best_ && best_score != 0)
+    priority_queue_.push_back(best_candidate);
   return;
 }
 
-void ObservabilityLoopPrioritization::PublishBestCandidates() {
+void GenericLoopPrioritization::PublishBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
-    if (i == publish_n_best_) break;
     output_msg.candidates.push_back(priority_queue_.front());
     priority_queue_.pop_front();
   }
   loop_candidate_pub_.publish(output_msg);
 }
 
-void ObservabilityLoopPrioritization::KeyedScanCallback(
+void GenericLoopPrioritization::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
   if (keyed_scans_.find(key) != keyed_scans_.end()) {
@@ -170,7 +161,7 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
 
-void ObservabilityLoopPrioritization::ComputeIcpObservability(
+void GenericLoopPrioritization::ComputeIcpObservability(
     PointCloud::ConstPtr cloud,
     Eigen::Matrix<double, 3, 1>* eigenvalues) const {
   // Get normals

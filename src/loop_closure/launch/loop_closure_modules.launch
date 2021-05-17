@@ -13,6 +13,7 @@
 
   <!-- Loop Prioritization -->
   <node pkg="loop_closure"
+        launch-prefix="xterm -e"
         name="loop_prioritization"
         type="loop_prioritization_node"
         output="screen">

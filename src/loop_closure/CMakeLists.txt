@@ -86,31 +86,18 @@ endif()
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
 add_library(${PROJECT_NAME} 
-  src/LaserLoopClosure.cc 
-  src/LoopClosureBase.cc 
   src/PointCloudUtils.cc
   src/LoopGeneration.cc
   src/LoopPrioritization.cc
   src/LoopComputation.cc
   src/ProximityLoopGeneration.cc
+  src/GenericLoopPrioritization.cc
   src/ObservabilityLoopPrioritization.cc
   src/IcpLoopComputation.cc
   src/LoopCandidateQueue.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES}
-  gtsam
-  Eigen3::Eigen
-  teaserpp::teaser_registration
-  teaserpp::teaser_features
-  teaserpp::teaser_io
-)
-
-add_executable(laser_${PROJECT_NAME}_node src/laser_${PROJECT_NAME}_node.cc)
-target_link_libraries(laser_${PROJECT_NAME}_node
-  ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   gtsam
@@ -159,6 +146,4 @@ if (CATKIN_ENABLE_TESTING)
 find_package(rostest REQUIRED)
   # add_subdirectory(test)
   ## Add gtest based cpp test target and link libraries
-  add_rostest_gtest(test_laser_loop_closure test/test_laser_loop_closure.test test/test_laser_loop_closure.cc)
-  target_link_libraries(test_laser_loop_closure ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()

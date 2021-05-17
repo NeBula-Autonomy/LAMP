@@ -1,6 +1,6 @@
 /**
- * @file   ObservabilityLoopPrioritization.h
- * @brief  Prioritize loop closures by observability
+ * @file   GenericLoopPrioritization.h
+ * @brief  Prioritize loop closures by the order received
  * @author Yun Chang
  */
 #pragma once
@@ -16,14 +16,14 @@
 
 namespace lamp_loop_closure {
 
-class ObservabilityLoopPrioritization : public LoopPrioritization {
+class GenericLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
 
  public:
-  ObservabilityLoopPrioritization();
-  ~ObservabilityLoopPrioritization();
+  GenericLoopPrioritization();
+  ~GenericLoopPrioritization();
 
   bool Initialize(const ros::NodeHandle& n) override;
 
@@ -48,9 +48,6 @@ class ObservabilityLoopPrioritization : public LoopPrioritization {
   // Store keyed scans
   std::map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
 
-  // Store observability in deque along with candidate
-  std::deque<double> observability_score_;
-
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
 
@@ -58,10 +55,11 @@ class ObservabilityLoopPrioritization : public LoopPrioritization {
   ros::Timer update_timer_;
 
   // Paramters
-  int publish_n_best_;        // Publish only the top n candidates
   double min_observability_;  // Discard any candidate with observability
                               // below threshold
   double normals_radius_;     // radius used for cloud normal computation
+
+  bool choose_best_;  // Send only best candidate
 };
 
 }  // namespace lamp_loop_closure
