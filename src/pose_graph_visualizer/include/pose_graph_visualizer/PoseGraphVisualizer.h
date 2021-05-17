@@ -1,13 +1,12 @@
 #ifndef POSE_GRAPH_VISUALIZER_H
 #define POSE_GRAPH_VISUALIZER_H
 
-#include <ros/ros.h>
 #include <functional>
+#include <ros/ros.h>
 #include <unordered_map>
 
 #include <pose_graph_visualizer/HighlightEdge.h>
 #include <pose_graph_visualizer/HighlightNode.h>
-
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
@@ -113,7 +112,7 @@ private:
 
   geometry_msgs::Point GetPositionMsg(gtsam::Key key) const;
 
-  bool IsArtifactBlacklisted(const std::string &parent_id) {
+  bool IsArtifactBlacklisted(const std::string& parent_id) {
     if (std::find(artifact_parentID_blacklist_.begin(),
                   artifact_parentID_blacklist_.end(),
                   parent_id) != artifact_parentID_blacklist_.end())
@@ -149,7 +148,6 @@ private:
   ros::Publisher uwb_node_pub_;
   ros::Publisher graph_node_pub_;
   ros::Publisher graph_node_id_pub_;
-  ros::Publisher keyframe_node_pub_;
   ros::Publisher closure_area_pub_;
   ros::Publisher highlight_pub_;
   ros::Publisher artifact_marker_pub_;

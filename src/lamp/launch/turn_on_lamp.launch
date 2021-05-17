@@ -24,9 +24,7 @@
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
       <!-- Topics -->
-      <remap from="~pcld" to="combined_point_cloud_filtered" unless="$(eval robot_namespace.startswith('spot'))"/> 
-      <remap from="~pcld" to="velodyne_points/transformed" if="$(eval robot_namespace.startswith('spot'))"/> 
-      <remap from="~pcld" to="velodyne_points/transformed" if="$(eval robot_namespace.startswith('xmaxx'))"/> 
+      <remap from="~pcld" to="locus_input"/> 
       <!-- <remap from="~pcld" to="velodyne_points/transformed"/> -->
       <!-- <remap from="~pcld" to="lo_frontend/local_scan_map" /> -->
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
@@ -40,7 +38,7 @@
       <remap from="~optimized_values" to="lamp_pgo/optimized_values"/>
 
       <remap from="~artifact" to="~artifact_global" />
-      <remap from="~artifact_relative" to="unreconciled_artifact" />
+      <remap from="~artifact_relative" to="artifact/update" />
 
       <remap from="~uwb_factors" to="uwb_frontend/uwb_factors"/>
       <remap from="~imu_topic" to="vn100/imu_wori_wcov"/>
@@ -63,7 +61,7 @@
       <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>
 
       <!-- Point cloud filter -->
-      <rosparam file="$(find point_cloud_filter)/config/parameters.yaml"/>
+      <rosparam file="$(find point_cloud_filter)/config/lamp_parameters.yaml"/>
 
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>

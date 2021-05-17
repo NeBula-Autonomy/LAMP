@@ -161,12 +161,12 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
     // update hash
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
-    
+
     // Add key to new_keys_
     new_keys_.push_back(cur_artifact_key);
   }
   // Generate gtsam pose
-  const gtsam::Pose3 relative_pose = gtsam::Pose3(gtsam::Rot3(), 
+  const gtsam::Pose3 relative_pose = gtsam::Pose3(gtsam::Rot3(),
                    gtsam::Point3(R_artifact_position[0],
                                  R_artifact_position[1],
                                  R_artifact_position[2]));
@@ -289,12 +289,12 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
     return;
   }
 
-  // Get label 
+  // Get label
   artifact_label = artifact_key2info_hash_[gtsam::Key(artifact_key)].msg.label;
-  
+
   // Increment update count
   // TODO: I am moving this in Artifact callback representing the
-  // number of measurements I receive of one particular 
+  // number of measurements I receive of one particular
   // artifact. Need to understand the use of this.
   // artifact_key2info_hash_[artifact_key].num_updates++;
 
@@ -351,23 +351,18 @@ void ArtifactHandler::PrintArtifactInputMessage(
 gtsam::SharedNoiseModel
 ArtifactHandler::ExtractCovariance(const boost::array<float, 9> covariance) const {
   // Extract covariance information from the message
-  gtsam::Matrix33 cov;
+  gtsam::Matrix66 cov = gtsam::Matrix66::Zero();
   for (int i = 0; i < 3; ++i)
-    for (int j = 0; j < 3; ++j)
-      cov(i, j) = static_cast<double>(covariance[3 * i + j]);
-  
-  // Convert covariance to gtsam
-  gtsam::SharedGaussian noise_cov = gtsam::noiseModel::Gaussian::Covariance(cov);
+    for (int j = 0; j < 3; ++j) {
+      cov(3+i, 3+j) = static_cast<double>(covariance[3 * i + j]);
+    }
+  cov(0, 0) = 1e10;
+  cov(1, 1) = 1e10;
+  cov(2, 2) = 1e10;
+  // std::cout << cov.matrix();
 
-  // Compute information matrix
-  Eigen::MatrixXd temp_info = Eigen::MatrixXd::Zero(6,6);
-
-  // Compute the full orientation and translational information matrix
-  temp_info.block(3,3,3,3) = noise_cov->information();
-
-  // Generate noise
-  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Gaussian::Information(temp_info);
-
+  gtsam::SharedNoiseModel noise = gtsam::noiseModel::Gaussian::Covariance(cov);
+  // noise->print();
   return noise;
 }
 

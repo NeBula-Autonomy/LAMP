@@ -5,25 +5,17 @@ Lidar pointcloud based loop closure
 */
 #include "loop_closure/LaserLoopClosure.h"
 
-#include <boost/range/as_array.hpp>
 #include <pcl/io/pcd_io.h>
-#include <pcl/registration/gicp.h>
-// #include <multithreaded_gicp/gicp.h>
-#include <pcl/features/fpfh_omp.h>
-#include <pcl/features/normal_3d_omp.h>
+#include <boost/range/as_array.hpp>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/keypoints/harris_3d.h>
 #include <pcl/registration/ia_ransac.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-#include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <utils/CommonFunctions.h>
 
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
-namespace gr = gu::ros;
 
 LaserLoopClosure::LaserLoopClosure(const ros::NodeHandle& n)
   : LoopClosure(n) {}
@@ -59,6 +51,10 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   // Parameters
   double distance_to_skip_recent_poses;
   // Load loop closing parameters.
+  if (!pu::Get(param_ns_ + "/b_check_observability", b_check_observability_))
+    return false;
+  if (!pu::Get(param_ns_ + "/min_observability_ratio", min_observability_ratio_))
+    return false;
   if (!pu::Get(param_ns_ + "/translation_threshold_nodes", translation_threshold_nodes_))
     return false;
   if (!pu::Get(param_ns_ + "/proximity_threshold", proximity_threshold_))
@@ -89,15 +85,20 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold", sac_fitness_score_threshold_)) return false;
 
   // Load Harris parameters
-  if (!pu::Get(param_ns_ + "/harris3D/harris_threshold", harris_threshold_))
+  if (!pu::Get(param_ns_ + "/harris3D/harris_threshold",
+               harris_params_.harris_threshold_))
     return false;
-  if (!pu::Get(param_ns_ + "/harris3D/harris_suppression", harris_suppression_))
+  if (!pu::Get(param_ns_ + "/harris3D/harris_suppression",
+               harris_params_.harris_suppression_))
     return false;
-  if (!pu::Get(param_ns_ + "/harris3D/harris_radius", harris_radius_))
+  if (!pu::Get(param_ns_ + "/harris3D/harris_radius",
+               harris_params_.harris_radius_))
     return false;
-  if (!pu::Get(param_ns_ + "/harris3D/harris_refine", harris_refine_))
+  if (!pu::Get(param_ns_ + "/harris3D/harris_refine",
+               harris_params_.harris_refine_))
     return false;
-  if (!pu::Get(param_ns_ + "/harris3D/harris_response", harris_response_))
+  if (!pu::Get(param_ns_ + "/harris3D/harris_response",
+               harris_params_.harris_response_))
     return false;
 
   // Hard coded covariances
@@ -127,6 +128,7 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   skip_recent_poses_ =
       (int)(distance_to_skip_recent_poses / translation_threshold_nodes_);
 
+  SetupICP();
   return true;
 }
 
@@ -180,78 +182,6 @@ void LaserLoopClosure::AccumulateScans(
   */
 }
 
-void LaserLoopClosure::ComputeNormals(PointCloud::ConstPtr input,
-                                      Normals::Ptr normals) {
-  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(
-      new pcl::search::KdTree<pcl::PointXYZI>);
-  pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> norm_est;
-  norm_est.setInputCloud(input);
-  norm_est.setSearchMethod(search_method);
-  norm_est.setRadiusSearch(sac_normals_radius_);
-  norm_est.setNumberOfThreads(icp_threads_);
-  norm_est.compute(*normals);
-}
-
-// returns a point cloud whose centroid is the origin, and that the mean of
-// the distances to the origin is 1
-void LaserLoopClosure::NormalizePCloud(PointCloud::ConstPtr cloud,
-                                       PointCloud::Ptr pclptr_normalized) {
-  Eigen::Vector4f centroid_4d;
-  pcl::compute3DCentroid(*cloud, centroid_4d);
-  Eigen::Vector3f centroid(centroid_4d.x(), centroid_4d.y(), centroid_4d.z());
-
-  float dist = 0;
-  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
-           cloud->points.begin();
-       it != cloud->points.end();
-       it++) {
-    Eigen::Vector3f a_i(it->x, it->y, it->z);
-    dist = dist + (a_i - centroid).norm();
-  }
-  float factor = cloud->points.size() / dist;
-  Eigen::Matrix4f transform;
-  transform = Eigen::Matrix4f::Identity();
-  transform.block(0, 0, 3, 3) = factor * Eigen::Matrix3f::Identity();
-  transform.block(0, 3, 4, 1) = -factor * centroid_4d;
-  pcl::transformPointCloud(*cloud, *pclptr_normalized, transform);
-  pcl::compute3DCentroid(*pclptr_normalized, centroid_4d);
-}
-
-void LaserLoopClosure::ComputeKeypoints(PointCloud::ConstPtr source,
-                                        Normals::Ptr source_normals,
-                                        PointCloud::Ptr source_keypoints) {
-  pcl::HarrisKeypoint3D<pcl::PointXYZI, pcl::PointXYZI> harris_detector;
-
-  harris_detector.setNonMaxSupression(harris_suppression_);
-  harris_detector.setRefine(harris_refine_);
-  harris_detector.setInputCloud(source);
-  harris_detector.setNormals(source_normals);
-  harris_detector.setNumberOfThreads(icp_threads_);
-  harris_detector.setRadius(harris_radius_);
-  harris_detector.setThreshold(harris_threshold_);
-  harris_detector.setMethod(
-      static_cast<pcl::HarrisKeypoint3D<pcl::PointXYZI,
-                                        pcl::PointXYZI>::ResponseMethod>(
-          harris_response_));
-  harris_detector.compute(*source_keypoints);
-}
-
-void LaserLoopClosure::ComputeFeatures(PointCloud::ConstPtr keypoints,
-                                       PointCloud::ConstPtr input,
-                                       Normals::Ptr normals,
-                                       Features::Ptr features) {
-  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(new pcl::search::KdTree<pcl::PointXYZI>);
-  pcl::FPFHEstimationOMP<pcl::PointXYZI, pcl::Normal, pcl::FPFHSignature33>
-      fpfh_est;
-  fpfh_est.setInputCloud(keypoints);
-  fpfh_est.setSearchSurface(input);
-  fpfh_est.setInputNormals(normals);
-  fpfh_est.setSearchMethod(search_method);
-  fpfh_est.setRadiusSearch(sac_features_radius_);
-  fpfh_est.setNumberOfThreads(icp_threads_);
-  fpfh_est.compute(*features);
-}
-
 void LaserLoopClosure::GetInitialAlignment(
     PointCloud::ConstPtr source,
     PointCloud::ConstPtr target,
@@ -260,19 +190,33 @@ void LaserLoopClosure::GetInitialAlignment(
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  ComputeNormals(source, source_normals);
-  ComputeNormals(target, target_normals);
+  utils::ComputeNormals(
+      source, sac_normals_radius_, icp_threads_, source_normals);
+  utils::ComputeNormals(
+      target, sac_normals_radius_, icp_threads_, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
-  ComputeKeypoints(source, source_normals, source_keypoints);
-  ComputeKeypoints(target, target_normals, target_keypoints);
+  utils::ComputeKeypoints(
+      source, harris_params_, icp_threads_, source_normals, source_keypoints);
+  utils::ComputeKeypoints(
+      target, harris_params_, icp_threads_, target_normals, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
-  ComputeFeatures(source_keypoints, source, source_normals, source_features);
-  ComputeFeatures(target_keypoints, target, target_normals, target_features);
+  utils::ComputeFeatures(source_keypoints,
+                         source,
+                         sac_features_radius_,
+                         icp_threads_,
+                         source_normals,
+                         source_features);
+  utils::ComputeFeatures(target_keypoints,
+                         target,
+                         sac_features_radius_,
+                         icp_threads_,
+                         target_normals,
+                         target_features);
 
   // Align
   pcl::SampleConsensusInitialAlignment<pcl::PointXYZI, pcl::PointXYZI, pcl::FPFHSignature33> sac_ia;
@@ -311,6 +255,13 @@ bool LaserLoopClosure::FindLoopClosures(
   const gtsam::Pose3 pose1 = keyed_poses_.at(new_key);
   const PointCloud::ConstPtr scan1 = keyed_scans_.at(new_key);
 
+  if (b_check_observability_) {
+    Eigen::Matrix<double, 3, 1> obs_eigenvals;
+    ComputeIcpObservability(scan1, &obs_eigenvals);
+    double obs_ratio = obs_eigenvals.minCoeff() / obs_eigenvals.maxCoeff();
+    if (obs_ratio < min_observability_ratio_) return false;
+  }
+
   // Create a temporary copy of last_closure_key_map so that updates in this iteration are not used
   std::map<std::pair<char,char>, gtsam::Key> last_closure_key_copy_(last_closure_key_);
 
@@ -336,12 +287,14 @@ bool LaserLoopClosure::FindLoopClosures(
 
     // Check for single robot loop closures
     if (utils::IsKeyFromSameRobot(new_key, other_key)) {
-      closed_loop |= CheckForLoopClosure(new_key, other_key, loop_closure_edges);
+      closed_loop |=
+          CheckForLoopClosure(new_key, other_key, false, loop_closure_edges);
     }
 
     // Check for inter robot loop closures
     else {
-      closed_loop |= CheckForInterRobotLoopClosure(new_key, other_key, loop_closure_edges);
+      closed_loop |=
+          CheckForLoopClosure(new_key, other_key, true, loop_closure_edges);
     }
   }
 
@@ -361,9 +314,10 @@ double LaserLoopClosure::DistanceBetweenKeys(gtsam::Symbol key1, gtsam::Symbol k
 bool LaserLoopClosure::CheckForLoopClosure(
         gtsam::Symbol key1,
         gtsam::Symbol key2,
+        bool b_inter_robot,
         std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
 
-  if (!utils::IsKeyFromSameRobot(key1, key2)) {
+  if (!b_inter_robot && !utils::IsKeyFromSameRobot(key1, key2)) {
     ROS_ERROR_STREAM("Checking for single robot loop closures on different robots");
     return false;
   }
@@ -373,29 +327,7 @@ bool LaserLoopClosure::CheckForLoopClosure(
     return false;
 
   // Don't compare against poses that were recently collected.
-  if (std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
-    return false;
-  
-  if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
-    return false;
-  }
-
-  // Perform loop closure without a provided prior transform
-  return PerformLoopClosure(key1, key2, false, gtsam::Pose3(), loop_closure_edges);
-}
-
-bool LaserLoopClosure::CheckForInterRobotLoopClosure(
-        gtsam::Symbol key1,
-        gtsam::Symbol key2,
-        std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
-
-  if (utils::IsKeyFromSameRobot(key1, key2)) {
-    ROS_ERROR_STREAM("Checking for inter robot loop closures on same robot");
-    return false;
-  }
-
-  // Don't self-check.
-  if (key1 == key2)
+  if (!b_inter_robot && std::llabs(key1.index() - key2.index()) < skip_recent_poses_)
     return false;
   
   if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
@@ -436,44 +368,14 @@ bool LaserLoopClosure::PerformLoopClosure(
     
 
     // Add the edge
-    pose_graph_msgs::PoseGraphEdge edge = CreateLoopClosureEdge(key1, key2, delta, covariance);
+    pose_graph_msgs::PoseGraphEdge edge =
+        CreateLoopClosureEdge(key1, key2, delta, covariance);
     loop_closure_edges->push_back(edge);
     return true;
   }
   
   return false;
 
-}
-
-pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreateLoopClosureEdge(
-        gtsam::Symbol key1, 
-        gtsam::Symbol key2,
-        geometry_utils::Transform3& delta, 
-        gtsam::Matrix66& covariance) {
-
-  // Store last time a new loop closure was added
-  if (key1 > last_closure_key_[{key1.chr(), key2.chr()}]) {
-    last_closure_key_[{key1.chr(), key2.chr()}] = key1;
-  }
-  if (key2 > last_closure_key_[{key2.chr(), key1.chr()}]) {
-    last_closure_key_[{key2.chr(), key1.chr()}] = key2;
-  }
-  
-  // Create the new loop closure edge
-  pose_graph_msgs::PoseGraphEdge edge;
-  edge.key_from = key1;
-  edge.key_to = key2;
-  edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
-  edge.pose = gr::ToRosPose(delta);
-
-  // Convert matrix covariance to vector
-  for (size_t i = 0; i < 6; ++i) {
-    for (size_t j = 0; j < 6; ++j) {
-      edge.covariance[6 * i + j] = covariance(i, j);
-    }
-  }
-
-  return edge;
 }
 
 bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1, 
@@ -516,20 +418,15 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     ROS_ERROR("PerformAlignment: empty point clouds.");
     return false;
   }
-  // Set up ICP.
-  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
-                                                     pcl::PointXYZI>
-      icp;
   // setVerbosityLevel(pcl::console::L_DEBUG);
-  SetupICP(icp);
 
   PointCloud::Ptr accumulated_target(new PointCloud);
   *accumulated_target = *scan2;
   AccumulateScans(key2, accumulated_target);
 
-  icp.setInputSource(scan1);
+  icp_.setInputSource(scan1);
 
-  icp.setInputTarget(accumulated_target);
+  icp_.setInputTarget(accumulated_target);
 
   ///// ICP initialization scheme
   // Default is to initialize by identity. Other options include
@@ -594,12 +491,25 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     initial_guess.block(0, 3, 3, 1) = guess.translation.Eigen().cast<float>();
   }
 
-  // Perform ICP.
+  // Perform ICP_.
   PointCloud::Ptr icp_result(new PointCloud);
-  icp.align(*icp_result, initial_guess);
+  icp_.align(*icp_result, initial_guess);
 
   // Get resulting transform.
-  const Eigen::Matrix4f T = icp.getFinalTransformation();
+  const Eigen::Matrix4f T = icp_.getFinalTransformation();
+
+  // Get the correspondence indices
+  std::vector<size_t> correspondences;
+  if (icp_covariance_method_ == IcpCovarianceMethod::POINT2PLANE) {
+    KdTree::Ptr search_tree = icp_.getSearchMethodTarget();
+    for (auto point : icp_result->points) {
+      std::vector<int> matched_indices;
+      std::vector<float> matched_distances;
+      search_tree->nearestKSearch(
+          point, 1, matched_indices, matched_distances);
+      correspondences.push_back(matched_indices[0]);
+    }
+  }
 
   delta->translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
   delta->rotation = gu::Rot3(T(0, 0),
@@ -613,13 +523,13 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
                              T(2, 2));
 
   // Is the transform good?
-  if (!icp.hasConverged()) {
-    ROS_INFO_STREAM("ICP: No converged, score is: " << icp.getFitnessScore());
+  if (!icp_.hasConverged()) {
+    ROS_INFO_STREAM("ICP: No converged, score is: " << icp_.getFitnessScore());
     return false;
   }
 
-  if (icp.getFitnessScore() > max_tolerable_fitness_) {
-    ROS_INFO_STREAM("ICP: Coverged but score is: " << icp.getFitnessScore());
+  if (icp_.getFitnessScore() > max_tolerable_fitness_) {
+    ROS_INFO_STREAM("ICP: Coverged but score is: " << icp_.getFitnessScore());
     return false;
   }
 
@@ -631,11 +541,11 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     return false;
   }  
 
-  ROS_INFO_STREAM("ICP: Found loop with score: " << icp.getFitnessScore());
-  fitness_score = icp.getFitnessScore();
+  ROS_INFO_STREAM("ICP: Found loop with score: " << icp_.getFitnessScore());
+  fitness_score = icp_.getFitnessScore();
   
 
-  // Find transform from pose2 to pose1 from output of ICP.
+  // Find transform from pose2 to pose1 from output of ICP_.
   *delta = gu::PoseInverse(*delta); // NOTE: gtsam need 2_Transform_1 while
                                     // ICP output 1_Transform_2
 
@@ -653,7 +563,7 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
         break;
       case (IcpCovarianceMethod::POINT2PLANE):
         ComputeICPCovariancePointPlane(
-            icp_result, T, fitness_score, *covariance);
+            scan1, accumulated_target, correspondences, T, covariance);
         break;
       default:
         ROS_ERROR(
@@ -755,12 +665,11 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   for (int i = 3; i < 6; ++i)
     covariance(i, i) = gt_trans_sigma_ * gt_trans_sigma_;
 
-  // Set up ICP.
+  // Set up ICP_.
   pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
                                                      pcl::PointXYZI>
       icp;
-  SetupICP(icp);
-  icp.setInputTarget(gt_pc_ptr);
+  icp_.setInputTarget(gt_pc_ptr);
 
   // ---------------------------------------------------------
   // Loop through keyed poses
@@ -795,14 +704,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     }
 
     // Set source
-    icp.setInputSource(keyed_scan_world);
+    icp_.setInputSource(keyed_scan_world);
 
-    // Perform ICP.
+    // Perform ICP_.
     PointCloud unused_result;
-    icp.align(unused_result);
+    icp_.align(unused_result);
 
     // Get resulting transform.
-    const Eigen::Matrix4f T = icp.getFinalTransformation();
+    const Eigen::Matrix4f T = icp_.getFinalTransformation();
 
     delta.translation = gu::Vec3(T(0, 3), T(1, 3), T(2, 3));
     delta.rotation = gu::Rot3(T(0, 0),
@@ -816,14 +725,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
                               T(2, 2));
 
     // Check it ICP has passed
-    if (!icp.hasConverged()) {
-      ROS_INFO_STREAM("ICP GT, key " << gtsam::DefaultKeyFormatter(it->first) << " : Not converged, score is: " << icp.getFitnessScore());
+    if (!icp_.hasConverged()) {
+      ROS_INFO_STREAM("ICP GT, key " << gtsam::DefaultKeyFormatter(it->first) << " : Not converged, score is: " << icp_.getFitnessScore());
       continue;
     }
 
     // Check our fitness threshold
-    if (icp.getFitnessScore() > max_tolerable_fitness_) {
-      ROS_INFO_STREAM("ICP GT, key " << gtsam::DefaultKeyFormatter(it->first) << ": Coverged but score is: " << icp.getFitnessScore());
+    if (icp_.getFitnessScore() > max_tolerable_fitness_) {
+      ROS_INFO_STREAM("ICP GT, key " << gtsam::DefaultKeyFormatter(it->first) << ": Coverged but score is: " << icp_.getFitnessScore());
       continue;
     }
 
@@ -858,7 +767,8 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
     }
 
     // Make prior here
-    pose_graph_msgs::PoseGraphEdge edge = CreatePriorEdge(it->first, gc_factor_gu, covariance);
+    pose_graph_msgs::PoseGraphEdge edge =
+        CreatePriorEdge(it->first, gc_factor_gu, covariance);
     ROS_INFO_STREAM("The added edge is " << gtsam::DefaultKeyFormatter(edge.key_from));
     // Push to gt_prior
     gt_edges.push_back(edge);
@@ -874,43 +784,14 @@ void LaserLoopClosure::GenerateGTFromPC(std::string gt_pc_filename) {
   }
 }
 
-pose_graph_msgs::PoseGraphEdge LaserLoopClosure::CreatePriorEdge(
-                gtsam::Symbol key,
-                geometry_utils::Transform3& delta, 
-                gtsam::Matrix66& covariance) {
-  pose_graph_msgs::PoseGraphEdge prior;
-  prior.key_from = key;
-  prior.key_to = key;
-  prior.type = pose_graph_msgs::PoseGraphEdge::PRIOR;
-  prior.pose.position.x = delta.translation.X();
-  prior.pose.position.y = delta.translation.Y();
-  prior.pose.position.z = delta.translation.Z();
-  prior.pose.orientation.w = utils::ToGtsam(delta).rotation().quaternion()[0];
-  prior.pose.orientation.x = utils::ToGtsam(delta).rotation().quaternion()[1];
-  prior.pose.orientation.y = utils::ToGtsam(delta).rotation().quaternion()[2];
-  prior.pose.orientation.z = utils::ToGtsam(delta).rotation().quaternion()[3];
-
-  // Convert matrix covariance to vector
-  for (size_t i = 0; i < 6; ++i) {
-    for (size_t j = 0; j < 6; ++j) {
-      if (i == j){
-        prior.covariance[6 * i + j] = covariance(i,j);
-      }
-    }
-  }
-  return prior;
-}
-
-bool LaserLoopClosure::SetupICP(
-    pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
-                                                       pcl::PointXYZI>& icp) {
-  icp.setTransformationEpsilon(icp_tf_epsilon_);
-  icp.setMaxCorrespondenceDistance(icp_corr_dist_);
-  icp.setMaximumIterations(icp_iterations_);
-  icp.setRANSACIterations(0);
-  icp.setMaximumOptimizerIterations(50);
-  icp.setNumThreads(icp_threads_);
-  icp.enableTimingOutput(true);
+bool LaserLoopClosure::SetupICP() {
+  icp_.setTransformationEpsilon(icp_tf_epsilon_);
+  icp_.setMaxCorrespondenceDistance(icp_corr_dist_);
+  icp_.setMaximumIterations(icp_iterations_);
+  icp_.setRANSACIterations(0);
+  icp_.setMaximumOptimizerIterations(50);
+  icp_.setNumThreads(icp_threads_);
+  icp_.enableTimingOutput(true);
   return true;
 }
 
@@ -1062,44 +943,35 @@ bool LaserLoopClosure::ComputeICPCovariancePointPoint(
 }
 
 bool LaserLoopClosure::ComputeICPCovariancePointPlane(
-    const PointCloud::ConstPtr& pointCloud,
+    const PointCloud::ConstPtr& query_cloud,
+    const PointCloud::ConstPtr& reference_cloud,
+    const std::vector<size_t>& correspondences,
     const Eigen::Matrix4f& T,
-    const double& icp_fitness,
-    Eigen::Matrix<double, 6, 6>& covariance) {     // Get normals
-  Normals::Ptr pcl_normals(new Normals);           // pc with normals
-  PointCloud::Ptr pcl_normalized(new PointCloud);  // pc whose points have been
-                                                   // rearranged.
-  ComputeNormals(pointCloud, pcl_normals);
-  NormalizePCloud(pointCloud, pcl_normalized);
+    Eigen::Matrix<double, 6, 6>* covariance) {
+  // Get normals
+  Normals::Ptr reference_normals(new Normals);       // pc with normals
+  PointCloud::Ptr query_normalized(new PointCloud);  // pc whose points have
+                                                     // been rearranged.
+  Eigen::Matrix<double, 6, 6> Ap;
 
-  covariance = Eigen::Matrix<double, 6, 6>::Zero();
-  Eigen::Matrix<double, 6, 6> H_i = Eigen::Matrix<double, 6, 6>::Zero();
+  utils::ComputeNormals(
+      reference_cloud, sac_normals_radius_, icp_threads_, reference_normals);
+  utils::NormalizePCloud(query_cloud, query_normalized);
 
-  Eigen::Vector3d a_i, n_i;
+  ComputeAp_ForPoint2PlaneICP(
+      query_normalized, reference_normals, correspondences, T, Ap);
+  // 1 cm covariance for now hard coded
+  *covariance = 0.01 * 0.01 * Ap.inverse();
 
-  for (uint32_t i = 0; i < pointCloud->size(); i++) {
-    a_i << pcl_normalized->points[i].x, pcl_normalized->points[i].y,
-        pcl_normalized->points[i].z;
-    n_i << pcl_normals->points[i].normal_x, pcl_normals->points[i].normal_y,
-        pcl_normals->points[i].normal_z;
-    Eigen::Vector3d ai_cross_ni = (a_i.cross(n_i));
-
-    H_i.block(0, 0, 3, 3) = ai_cross_ni * (ai_cross_ni.transpose());
-    H_i.block(0, 3, 3, 3) = ai_cross_ni * n_i.transpose();
-    H_i.block(3, 3, 3, 3) = n_i * n_i.transpose();
-    if (!H_i.hasNaN()) covariance += H_i;
-  }
-
-  covariance.block(3, 0, 3, 3) = covariance.block(0, 3, 3, 3).transpose();
   // Here bound the covariance using eigen values
   Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;
-  eigensolver.compute(covariance);
+  eigensolver.compute(*covariance);
   Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
   Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
   double lower_bound = 0.001;  // Should be positive semidef
   double upper_bound = 1000;
   if (eigen_values.size() < 6) {
-    covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
+    *covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
     ROS_ERROR("Failed to find eigen values when computing icp covariance");
     return false;
   }
@@ -1108,8 +980,63 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
     if (eigen_values(i) > upper_bound) eigen_values(i) = upper_bound;
   }
   // Update covariance matrix after bound
-  covariance = eigen_vectors * eigen_values.asDiagonal() *
-               eigen_vectors.inverse() * icp_fitness;
-
+  *covariance =
+      eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
   return true;
+}
+
+void LaserLoopClosure::ComputeIcpObservability(
+    PointCloud::ConstPtr cloud,
+    Eigen::Matrix<double, 3, 1>* eigenvalues) {
+  // Get normals
+  Normals::Ptr normals(new Normals);           // pc with normals
+  PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
+                                               // rearranged.
+  utils::ComputeNormals(cloud, sac_normals_radius_, icp_threads_, normals);
+  utils::NormalizePCloud(cloud, normalized);
+
+  // Correspondence with itself (not really used anyways)
+  std::vector<size_t> c(cloud->size());
+  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
+
+  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero();  // Unused
+
+  Eigen::Matrix<double, 6, 6> Ap;
+  // Compute Ap and its eigenvalues
+  ComputeAp_ForPoint2PlaneICP(normalized, normals, c, T_unsued, Ap);
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 3, 3>> eigensolver(
+      Ap.block(3, 3, 3, 3));
+  if (eigensolver.info() == Eigen::Success) {
+    *eigenvalues = eigensolver.eigenvalues();
+  } else {
+    ROS_WARN("Failed to decompose observability matrix. ");
+  }
+}
+
+void LaserLoopClosure::ComputeAp_ForPoint2PlaneICP(
+    const PointCloud::Ptr query_normalized,
+    const Normals::Ptr reference_normals,
+    const std::vector<size_t>& correspondences,
+    const Eigen::Matrix4f& T,
+    Eigen::Matrix<double, 6, 6>& Ap) {
+  Ap = Eigen::Matrix<double, 6, 6>::Zero();
+  Eigen::Matrix<double, 6, 6> A_i = Eigen::Matrix<double, 6, 6>::Zero();
+
+  Eigen::Vector3d a_i, n_i;
+  for (uint32_t i = 0; i < query_normalized->size(); i++) {
+    a_i << query_normalized->points[i].x,  //////
+        query_normalized->points[i].y,     //////
+        query_normalized->points[i].z;
+
+    n_i << reference_normals->points[correspondences[i]].normal_x,  //////
+        reference_normals->points[correspondences[i]].normal_y,     //////
+        reference_normals->points[correspondences[i]].normal_z;
+
+    if (a_i.hasNaN() || n_i.hasNaN()) continue;
+
+    Eigen::Matrix<double, 1, 6> H = Eigen::Matrix<double, 1, 6>::Zero();
+    H.block(0, 0, 1, 3) = (a_i.cross(n_i)).transpose();
+    H.block(0, 3, 1, 3) = n_i.transpose();
+    Ap += H.transpose() * H;
+  }
 }
