@@ -64,7 +64,7 @@ robot:
 
     # During ICP, two points won't be considered a correspondence if they are at
     # least this far from one another.
-    corr_dist: 1.0
+    corr_dist: 0.1
 
     # Iterate ICP this many times.
     iterations: 5 # Default from original branch is 20: 
@@ -140,7 +140,7 @@ base:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 10
+  proximity_threshold: 5
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
@@ -157,9 +157,9 @@ base:
   # Generic prioritization loop closure (by order recieved)
   #--------------------------------------------------------------------------------
   gen_prioritization:
-    min_observability: 0
+    min_observability: 200
     normals_search_radius: 1.0
-    choose_best: true # send only the best candidate for geometric verification
+    choose_best: false # send only the best candidate for geometric verification
 
   #--------------------------------------------------------------------------------
   # Observability prioritization loop closure
@@ -182,7 +182,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 2.5 #0.04
+  max_tolerable_fitness: 1.0 #0.04
 
 
   icp_lc:
@@ -191,7 +191,7 @@ base:
 
     # During ICP, two points won't be considered a correspondence if they are at
     # least this far from one another.
-    corr_dist: 1.0
+    corr_dist: 0.5
 
     # Iterate ICP this many times.
     # Check this

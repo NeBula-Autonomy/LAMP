@@ -376,13 +376,12 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
 
   // Is the transform good?
   if (!icp_.hasConverged()) {
-    ROS_DEBUG_STREAM(
-        "ICP: Not converged, score is: " << icp_.getFitnessScore());
+    ROS_INFO_STREAM("ICP: Not converged, score is: " << icp_.getFitnessScore());
     return false;
   }
 
   if (icp_.getFitnessScore() > max_tolerable_fitness_) {
-    ROS_DEBUG_STREAM("ICP: Coverged but score is: " << icp_.getFitnessScore());
+    ROS_INFO_STREAM("ICP: Coverged but score is: " << icp_.getFitnessScore());
     return false;
   }
 

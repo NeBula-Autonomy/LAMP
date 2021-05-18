@@ -85,8 +85,10 @@ bool ObservabilityLoopPrioritization::RegisterCallbacks(
       &ObservabilityLoopPrioritization::KeyedScanCallback,
       this);
 
-  update_timer_ = nl.createTimer(
-      2.0, &ObservabilityLoopPrioritization::ProcessTimerCallback, this);
+  update_timer_ =
+      nl.createTimer(ros::Duration(0.1),
+                     &ObservabilityLoopPrioritization::ProcessTimerCallback,
+                     this);
 
   return true;
 }

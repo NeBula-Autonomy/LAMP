@@ -78,8 +78,10 @@ bool GenericLoopPrioritization::RegisterCallbacks(const ros::NodeHandle& n) {
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans", 100, &GenericLoopPrioritization::KeyedScanCallback, this);
 
-  update_timer_ = nl.createTimer(
-      2.0, &GenericLoopPrioritization::ProcessTimerCallback, this);
+  update_timer_ =
+      nl.createTimer(ros::Duration(0.1),
+                     &GenericLoopPrioritization::ProcessTimerCallback,
+                     this);
 
   return true;
 }
@@ -125,11 +127,9 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
     if (min_obs_from + min_obs_to > best_score) {
       best_candidate = candidate;
       best_score = min_obs_from + min_obs_to;
-      std::cout << "found new best score: " << best_score << std::endl;
     }
   }
-  if (choose_best_ && best_score != 0)
-    priority_queue_.push_back(best_candidate);
+  if (choose_best_ && best_score > 0) priority_queue_.push_back(best_candidate);
   return;
 }
 
