@@ -157,7 +157,7 @@ base:
   # Generic prioritization loop closure (by order recieved)
   #--------------------------------------------------------------------------------
   gen_prioritization:
-    min_observability: 200
+    min_observability: 100
     normals_search_radius: 1.0
     choose_best: false # send only the best candidate for geometric verification
 
