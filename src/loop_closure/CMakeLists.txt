@@ -40,7 +40,6 @@ find_package(catkin REQUIRED COMPONENTS
   pose_graph_msgs
   geometry_msgs
   multithreaded_gicp
-  teaserpp
 )
 
 find_package(OpenMP)
