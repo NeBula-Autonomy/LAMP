@@ -88,6 +88,7 @@ typedef std::set<NodeMessage, NodeMessageComparator> NodeSet;
 // Typedef for stored point clouds.
 typedef pcl::PointXYZINormal Point;
 typedef pcl::PointCloud<Point> PointCloud;
+typedef pcl::PointCloud<Point>::ConstPtr PointCloudConstPtr;
 
 // Function that maps gtsam::Symbol to internal identifier string.
 typedef boost::function<std::string(gtsam::Symbol)> SymbolIdMapping;

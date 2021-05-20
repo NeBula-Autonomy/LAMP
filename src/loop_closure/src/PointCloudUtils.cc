@@ -16,20 +16,41 @@ Some utility functions for wokring with Point Clouds
 
 namespace utils {
 
+// void ComputeNormals(const PointCloud::ConstPtr& input,
+//                    const double& search_radius,
+//                    const int& num_threads,
+//                    Normals::Ptr normals) {
+//  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(
+//      new pcl::search::KdTree<pcl::PointXYZI>);
+//  pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> norm_est;
+//  norm_est.setInputCloud(input);
+//  norm_est.setSearchMethod(search_method);
+//  norm_est.setRadiusSearch(search_radius);
+//  norm_est.setNumberOfThreads(num_threads);
+//  norm_est.compute(*normals);
+//}
+
 void ComputeNormals(const PointCloud::ConstPtr& input,
-                    const double& search_radius,
                     const int& num_threads,
                     Normals::Ptr normals) {
-  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(
-      new pcl::search::KdTree<pcl::PointXYZI>);
-  pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> norm_est;
-  norm_est.setInputCloud(input);
-  norm_est.setSearchMethod(search_method);
-  norm_est.setRadiusSearch(search_radius);
-  norm_est.setNumberOfThreads(num_threads);
-  norm_est.compute(*normals);
+  normals->resize(input->size());
+  for (const auto& point : input->points) {
+    pcl::Normal normal;
+    normal._Normal::normal_x = point._PointXYZINormal::normal_x;
+    normal._Normal::normal_y = point._PointXYZINormal::normal_y;
+    normal._Normal::normal_z = point._PointXYZINormal::normal_z;
+    normal._Normal::curvature = point._PointXYZINormal::curvature;
+    normals->push_back(normal);
+  }
+  //  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(
+  //      new pcl::search::KdTree<pcl::PointXYZI>);
+  //  pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> norm_est;
+  //  norm_est.setInputCloud(input);
+  //  norm_est.setSearchMethod(search_method);
+  //  norm_est.setRadiusSearch(search_radius);
+  //  norm_est.setNumberOfThreads(num_threads);
+  //  norm_est.compute(*normals);
 }
-
 // returns a point cloud whose centroid is the origin, and that the mean of
 // the distances to the origin is 1
 void NormalizePCloud(const PointCloud::ConstPtr& cloud,
@@ -39,8 +60,7 @@ void NormalizePCloud(const PointCloud::ConstPtr& cloud,
   Eigen::Vector3f centroid(centroid_4d.x(), centroid_4d.y(), centroid_4d.z());
 
   float dist = 0;
-  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
-           cloud->points.begin();
+  for (pcl::PointCloud<Point>::const_iterator it = cloud->points.begin();
        it != cloud->points.end();
        it++) {
     Eigen::Vector3f a_i(it->x, it->y, it->z);
@@ -60,7 +80,7 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
                       const int& num_threads,
                       Normals::Ptr source_normals,
                       PointCloud::Ptr source_keypoints) {
-  pcl::HarrisKeypoint3D<pcl::PointXYZI, pcl::PointXYZI> harris_detector;
+  pcl::HarrisKeypoint3D<Point, Point> harris_detector;
 
   harris_detector.setNonMaxSupression(params.harris_suppression_);
   harris_detector.setRefine(params.harris_refine_);
@@ -70,8 +90,7 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
   harris_detector.setRadius(params.harris_radius_);
   harris_detector.setThreshold(params.harris_threshold_);
   harris_detector.setMethod(
-      static_cast<pcl::HarrisKeypoint3D<pcl::PointXYZI,
-                                        pcl::PointXYZI>::ResponseMethod>(
+      static_cast<pcl::HarrisKeypoint3D<Point, Point>::ResponseMethod>(
           params.harris_response_));
   harris_detector.compute(*source_keypoints);
 }
@@ -82,10 +101,8 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      const int& num_threads,
                      Normals::Ptr normals,
                      Features::Ptr features) {
-  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(
-      new pcl::search::KdTree<pcl::PointXYZI>);
-  pcl::FPFHEstimationOMP<pcl::PointXYZI, pcl::Normal, pcl::FPFHSignature33>
-      fpfh_est;
+  pcl::search::KdTree<Point>::Ptr search_method(new pcl::search::KdTree<Point>);
+  pcl::FPFHEstimationOMP<Point, pcl::Normal, pcl::FPFHSignature33> fpfh_est;
   fpfh_est.setInputCloud(keypoints);
   fpfh_est.setSearchSurface(input);
   fpfh_est.setInputNormals(normals);
@@ -95,4 +112,4 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
   fpfh_est.compute(*features);
 }
 
-}  // namespace utils
+} // namespace utils

@@ -28,6 +28,7 @@ Lidar pointcloud based loop closure
 #include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <map>
+#include <utils/CommonStructs.h>
 
 class LaserLoopClosure : public LoopClosure {
 public:
@@ -36,37 +37,31 @@ public:
 
   bool Initialize(const ros::NodeHandle& n);
 
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
-  typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
-  typedef pcl::search::KdTree<pcl::PointXYZI> KdTree;
 
 private:
-  void AccumulateScans(
-      gtsam::Key key,
-      PointCloud::Ptr scan_out);
-  void GetInitialAlignment(
-      PointCloud::ConstPtr source,
-      PointCloud::ConstPtr target,
-      Eigen::Matrix4f* tf_out,
-      double& sac_fitness_score);
-  
+  void AccumulateScans(gtsam::Key key, PointCloud::Ptr scan_out);
+  void GetInitialAlignment(PointCloud::ConstPtr source,
+                           PointCloud::ConstPtr target,
+                           Eigen::Matrix4f* tf_out,
+                           double& sac_fitness_score);
+
   bool FindLoopClosures(
       gtsam::Key new_key,
       std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
 
   bool CheckForLoopClosure(
-          gtsam::Symbol key1,
-          gtsam::Symbol key2,
-          bool b_inter_robot,
-          std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
+      gtsam::Symbol key1,
+      gtsam::Symbol key2,
+      bool b_inter_robot,
+      std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
   bool PerformLoopClosure(
-          gtsam::Symbol key1,
-          gtsam::Symbol key2,
-          bool b_use_prior,
-          gtsam::Pose3 prior,
-          std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
+      gtsam::Symbol key1,
+      gtsam::Symbol key2,
+      bool b_use_prior,
+      gtsam::Pose3 prior,
+      std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
   void SeedCallback(const pose_graph_msgs::PoseGraph::ConstPtr& msg);
@@ -93,12 +88,12 @@ private:
                                       const double& icp_fitness,
                                       Eigen::Matrix<double, 6, 6>& covariance);
 
-  bool ComputeICPCovariancePointPlane(
-      const PointCloud::ConstPtr& query_cloud,
-      const PointCloud::ConstPtr& reference_cloud,
-      const std::vector<size_t>& correspondences,
-      const Eigen::Matrix4f& T,
-      Eigen::Matrix<double, 6, 6>* covariance);
+  bool
+  ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& query_cloud,
+                                 const PointCloud::ConstPtr& reference_cloud,
+                                 const std::vector<size_t>& correspondences,
+                                 const Eigen::Matrix4f& T,
+                                 Eigen::Matrix<double, 6, 6>* covariance);
 
   void ComputeIcpObservability(PointCloud::ConstPtr cloud,
                                Eigen::Matrix<double, 3, 1>* eigenvalues);
@@ -109,7 +104,7 @@ private:
                                    const Eigen::Matrix4f& T,
                                    Eigen::Matrix<double, 6, 6>& Ap);
 
- private:
+private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
   ros::Subscriber pc_gt_trigger_sub_;
@@ -162,9 +157,7 @@ private:
   IcpCovarianceMethod icp_covariance_method_;
 
   // ICP
-  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
-                                                     pcl::PointXYZI>
-      icp_;
+  pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point> icp_;
 
   // Test class fixtures
   friend class TestLaserLoopClosure;

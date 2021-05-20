@@ -9,11 +9,10 @@ Some utility functions for wokring with Point Clouds
 
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
+#include <utils/CommonStructs.h>
 
 namespace utils {
 
-typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
-typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
 typedef pcl::PointCloud<pcl::Normal> Normals;
 typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
 
@@ -25,8 +24,11 @@ struct HarrisParams {
   int harris_response_;
 };
 
+// void ComputeNormals(const PointCloud::ConstPtr& input,
+//                    const double& search_radius,
+//                    const int& num_threads,
+//                    Normals::Ptr normals);
 void ComputeNormals(const PointCloud::ConstPtr& input,
-                    const double& search_radius,
                     const int& num_threads,
                     Normals::Ptr normals);
 void NormalizePCloud(const PointCloud::ConstPtr& cloud,
@@ -42,5 +44,5 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      const int& num_threads,
                      Normals::Ptr normals,
                      Features::Ptr features);
-}  // namespace utils
+} // namespace utils
 #endif

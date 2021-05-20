@@ -63,13 +63,13 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
-  // Init Handlers
+  //  // Init Handlers
   if (!InitializeHandlers(n)) {
     ROS_ERROR("%s: Failed to initialize handlers.", name_.c_str());
     return false;
   }
 
-  // Register Callbacks
+  //  // Register Callbacks
   if (!RegisterCallbacks(n)) {
     ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
     return false;
