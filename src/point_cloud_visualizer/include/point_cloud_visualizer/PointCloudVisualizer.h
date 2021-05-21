@@ -39,11 +39,10 @@
 
 #include <pcl_ros/point_cloud.h>
 #include <ros/ros.h>
-#include <utils/CommonStructs.h>
 
 class PointCloudVisualizer {
 public:
-  // typedef pcl::PointCloud<pcl::PointXY ZI> PointCloud;
+  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 
   PointCloudVisualizer();
   ~PointCloudVisualizer();

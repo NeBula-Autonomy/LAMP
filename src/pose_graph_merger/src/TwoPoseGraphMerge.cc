@@ -6,21 +6,23 @@
 
 #include <pose_graph_merger/TwoPoseGraphMerge.h>
 
-TwoPoseGraphMerge::TwoPoseGraphMerge()
-  : robot_prefix_('Z'), b_have_first_robot_graph_(false) {}
+
+
+TwoPoseGraphMerge::TwoPoseGraphMerge() : robot_prefix_('Z'), b_have_first_robot_graph_(false) {}
 
 TwoPoseGraphMerge::~TwoPoseGraphMerge() {}
 
+
 bool TwoPoseGraphMerge::Initialize(const ros::NodeHandle& n) {
+
   CreatePublishers(n);
   CreateSubscribers(n);
 
-  n.param<std::string>("frame_id_world1", this->world_fid_, "/world");
+  n.param<std::string>("frame_id_world1", this->world_fid_,  "/world");
   n.param<std::string>("frame_id_world2", this->world2_fid_, "/world_prime");
 
-  n.param<bool>(
-      "b_publish_on_slow_graph", this->b_publish_on_slow_graph_, true);
-
+  n.param<bool>("b_publish_on_slow_graph", this->b_publish_on_slow_graph_, true);
+  
   robot_prefix_ = utils::GetRobotPrefix(GetRobotName(n));
 
   return true;
@@ -40,11 +42,11 @@ bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   merged_graph_pub_ =
       nl.advertise<pose_graph_msgs::PoseGraph>("merged_pose_graph", 10, true);
-  rob_node_pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(
-      "robot_last_node_pose", 10, true);
-  merged_node_pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(
-      "merged_last_node_pose", 10, true);
-  merged_pose_pub_ =
+  rob_node_pose_pub_ =
+      nl.advertise<geometry_msgs::PoseStamped>("robot_last_node_pose", 10, true);
+  merged_node_pose_pub_ =
+      nl.advertise<geometry_msgs::PoseStamped>("merged_last_node_pose", 10, true);
+  merged_pose_pub_ = 
       nl.advertise<geometry_msgs::PoseStamped>("merged_pose", 10, false);
   return true;
 }
@@ -52,17 +54,22 @@ bool TwoPoseGraphMerge::CreatePublishers(const ros::NodeHandle& n) {
 // Create Subscribers
 bool TwoPoseGraphMerge::CreateSubscribers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
-  base_pose_graph_sub_ = nl.subscribe(
-      "base_graph", 10, &TwoPoseGraphMerge::ProcessBaseGraph, this);
-  robot_pose_graph_sub_ = nl.subscribe(
-      "robot_graph", 10, &TwoPoseGraphMerge::ProcessRobotGraph, this);
-  robot_pose_sub_ = nl.subscribe(
-      "robot_pose", 10, &TwoPoseGraphMerge::ProcessRobotPose, this);
+  base_pose_graph_sub_ = nl.subscribe("base_graph",
+                                          10,
+                                          &TwoPoseGraphMerge::ProcessBaseGraph, this);
+  robot_pose_graph_sub_ = nl.subscribe("robot_graph",
+                                          10,
+                                          &TwoPoseGraphMerge::ProcessRobotGraph, this);
+  robot_pose_sub_ = nl.subscribe("robot_pose",
+                                 10,
+                                 &TwoPoseGraphMerge::ProcessRobotPose, this);
   return true;
 }
 
 geometry_msgs::PoseStamped TwoPoseGraphMerge::GetLatestOdomPose(
-    const pose_graph_msgs::PoseGraphConstPtr& msg, char target_prefix) {
+        const pose_graph_msgs::PoseGraphConstPtr& msg, 
+        char target_prefix) {
+
   geometry_msgs::PoseStamped latest;
   GraphNode target;
 
@@ -85,15 +92,14 @@ geometry_msgs::PoseStamped TwoPoseGraphMerge::GetLatestOdomPose(
   return latest;
 }
 
-void TwoPoseGraphMerge::ProcessBaseGraph(
-    const pose_graph_msgs::PoseGraphConstPtr& msg) {
+void TwoPoseGraphMerge::ProcessBaseGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   // Store the graph as the slow graph
   merger_.OnSlowGraphMsg(msg);
   ROS_INFO("Received graph from base station");
 
-  // Process again straight away
-  if (b_publish_on_slow_graph_) {
-    if (last_robot_graph_ != NULL) {
+  // Process again straight away 
+  if (b_publish_on_slow_graph_){
+    if (last_robot_graph_ != NULL){
       ProcessRobotGraph(last_robot_graph_);
     } else {
       ProcessRobotGraph(msg);
@@ -102,8 +108,7 @@ void TwoPoseGraphMerge::ProcessBaseGraph(
   return;
 }
 
-void TwoPoseGraphMerge::ProcessRobotGraph(
-    const pose_graph_msgs::PoseGraphConstPtr& msg) {
+void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   // Combine the graph with the stored base graph and publish result
   pose_graph_msgs::PoseGraph merged_graph;
 
@@ -115,7 +120,7 @@ void TwoPoseGraphMerge::ProcessRobotGraph(
 
   // Get the fused graph
   pose_graph_msgs::PoseGraphConstPtr fused_graph(
-      new pose_graph_msgs::PoseGraph(merger_.GetCurrentGraph()));
+    new pose_graph_msgs::PoseGraph(merger_.GetCurrentGraph()));
 
   // Publish the graph
   merged_graph_pub_.publish(*fused_graph);
@@ -132,8 +137,7 @@ void TwoPoseGraphMerge::ProcessRobotGraph(
   return;
 }
 
-void TwoPoseGraphMerge::ProcessRobotPose(
-    const geometry_msgs::PoseStampedConstPtr& msg) {
+void TwoPoseGraphMerge::ProcessRobotPose(const geometry_msgs::PoseStampedConstPtr& msg) {
   gtsam::Pose3 robot_pose = utils::ToGtsam(msg->pose);
 
   gtsam::Pose3 robot_node_pose = utils::ToGtsam(robot_pose_.pose);
@@ -151,11 +155,12 @@ void TwoPoseGraphMerge::ProcessRobotPose(
   merged_pose_pub_.publish(output);
 }
 
-pose_graph_msgs::PoseGraph TwoPoseGraphMerge::GetMergedGraph() {
+pose_graph_msgs::PoseGraph TwoPoseGraphMerge::GetMergedGraph(){
   return merger_.GetCurrentGraph();
 }
 
-void TwoPoseGraphMerge::PublishPoses() {
+void TwoPoseGraphMerge::PublishPoses(){
+
   // Publish poses
   rob_node_pose_pub_.publish(robot_pose_);
   merged_node_pose_pub_.publish(merged_pose_);

@@ -46,6 +46,7 @@
 namespace pose_graph_tools {
 
 // Typedef for stored point clouds.
+// typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 
 /**
  * \brief Algorithm PoseGraphToolsNode
