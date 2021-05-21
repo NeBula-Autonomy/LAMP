@@ -86,6 +86,7 @@ protected:
   void WheelOdometryCallback(const Odometry::ConstPtr& msg);
 
   // Pointcloud Callback
+  // void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
   void PointCloudCallback(const PointCloud::ConstPtr& msg);
 
   // Odometry Storages

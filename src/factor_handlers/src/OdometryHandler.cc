@@ -168,10 +168,28 @@ void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {
   }
 }
 
+// void OdometryHandler::PointCloudCallback(
+//    const sensor_msgs::PointCloud2::ConstPtr& msg) {
+//  double current_timestamp = msg->header.stamp.toSec();
+//  PointCloud current_pointcloud;
+//  pcl::fromROSMsg(*msg, current_pointcloud);
+//  point_cloud_buffer_.insert({current_timestamp, current_pointcloud});
+//  // Clear start of buffer if buffer is too large
+//  if (point_cloud_buffer_.size() > pc_buffer_size_limit_) {
+//    // Clear the first entry in the buffer
+//    point_cloud_buffer_.erase(point_cloud_buffer_.begin());
+//  }
+//}
+
 void OdometryHandler::PointCloudCallback(const PointCloud::ConstPtr& msg) {
   ros::Time current_timestamp;
   pcl_conversions::fromPCL(msg->header.stamp, current_timestamp);
   point_cloud_buffer_.insert({current_timestamp.toSec(), *msg});
+
+  //  double current_timestamp = msg->header.stamp.toSec();
+  //  PointCloud current_pointcloud;
+  //  pcl::fromROSMsg(*msg, current_pointcloud);
+  //  point_cloud_buffer_.insert({current_timestamp, current_pointcloud});
   // Clear start of buffer if buffer is too large
   if (point_cloud_buffer_.size() > pc_buffer_size_limit_) {
     // Clear the first entry in the buffer
