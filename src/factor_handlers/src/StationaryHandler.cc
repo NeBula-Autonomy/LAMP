@@ -92,7 +92,7 @@ std::shared_ptr<FactorData> StationaryHandler::GetData() {
 gtsam::Pose3AttitudeFactor StationaryHandler::CreateAttitudeFactor(
     const geometry_msgs::Vector3& gravity_vec) const {
   gtsam::Point3 gravity(gravity_vec.x, gravity_vec.y, gravity_vec.z);
-  gtsam::Unit3 gravity_dir(gravity.normalize());
+  gtsam::Unit3 gravity_dir(gravity.normalized());
   gtsam::Unit3 ref(0, 0, 1);
   gtsam::SharedNoiseModel model =
       gtsam::noiseModel::Isotropic::Sigma(2, noise_sigma_);
