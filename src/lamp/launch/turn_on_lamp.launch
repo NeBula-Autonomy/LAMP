@@ -24,9 +24,7 @@
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
       <!-- Topics -->
-      <remap from="~pcld" to="locus_input" unless="$(eval robot_namespace.startswith('spot'))"/> 
-      <remap from="~pcld" to="velodyne_points/transformed" if="$(eval robot_namespace.startswith('spot'))"/> 
-      <remap from="~pcld" to="velodyne_points/transformed" if="$(eval robot_namespace.startswith('xmaxx'))"/> 
+      <remap from="~pcld" to="locus_input"/> 
       <!-- <remap from="~pcld" to="velodyne_points/transformed"/> -->
       <!-- <remap from="~pcld" to="lo_frontend/local_scan_map" /> -->
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
