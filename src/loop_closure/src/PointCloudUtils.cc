@@ -16,41 +16,20 @@ Some utility functions for wokring with Point Clouds
 
 namespace utils {
 
-// void ComputeNormals(const PointCloud::ConstPtr& input,
-//                    const double& search_radius,
-//                    const int& num_threads,
-//                    Normals::Ptr normals) {
-//  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(
-//      new pcl::search::KdTree<pcl::PointXYZI>);
-//  pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> norm_est;
-//  norm_est.setInputCloud(input);
-//  norm_est.setSearchMethod(search_method);
-//  norm_est.setRadiusSearch(search_radius);
-//  norm_est.setNumberOfThreads(num_threads);
-//  norm_est.compute(*normals);
-//}
-
 void ComputeNormals(const PointCloud::ConstPtr& input,
+                    const double& search_radius,
                     const int& num_threads,
                     Normals::Ptr normals) {
-  normals->resize(input->size());
-  for (const auto& point : input->points) {
-    pcl::Normal normal;
-    normal._Normal::normal_x = point._PointXYZINormal::normal_x;
-    normal._Normal::normal_y = point._PointXYZINormal::normal_y;
-    normal._Normal::normal_z = point._PointXYZINormal::normal_z;
-    normal._Normal::curvature = point._PointXYZINormal::curvature;
-    normals->push_back(normal);
-  }
-  //  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(
-  //      new pcl::search::KdTree<pcl::PointXYZI>);
-  //  pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> norm_est;
-  //  norm_est.setInputCloud(input);
-  //  norm_est.setSearchMethod(search_method);
-  //  norm_est.setRadiusSearch(search_radius);
-  //  norm_est.setNumberOfThreads(num_threads);
-  //  norm_est.compute(*normals);
+  pcl::search::KdTree<pcl::PointXYZINormal>::Ptr search_method(
+      new pcl::search::KdTree<pcl::PointXYZINormal>);
+  pcl::NormalEstimationOMP<pcl::PointXYZINormal, pcl::Normal> norm_est;
+  norm_est.setInputCloud(input);
+  norm_est.setSearchMethod(search_method);
+  norm_est.setRadiusSearch(search_radius);
+  norm_est.setNumberOfThreads(num_threads);
+  norm_est.compute(*normals);
 }
+
 // returns a point cloud whose centroid is the origin, and that the mean of
 // the distances to the origin is 1
 void NormalizePCloud(const PointCloud::ConstPtr& cloud,

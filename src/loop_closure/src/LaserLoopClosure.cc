@@ -194,13 +194,11 @@ void LaserLoopClosure::GetInitialAlignment(PointCloud::ConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  //  utils::ComputeNormals(
-  //      source, sac_normals_radius_, icp_threads_, source_normals);
-  //  utils::ComputeNormals(
-  //      target, sac_normals_radius_, icp_threads_, target_normals);
+  utils::ComputeNormals(
+      source, sac_normals_radius_, icp_threads_, source_normals);
+  utils::ComputeNormals(
+      target, sac_normals_radius_, icp_threads_, target_normals);
 
-  utils::ComputeNormals(source, icp_threads_, source_normals);
-  utils::ComputeNormals(target, icp_threads_, target_normals);
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
@@ -975,9 +973,8 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
                                                     // been rearranged.
   Eigen::Matrix<double, 6, 6> Ap;
 
-  // utils::ComputeNormals(
-  //     reference_cloud, sac_normals_radius_, icp_threads_, reference_normals);
-  utils::ComputeNormals(reference_cloud, icp_threads_, reference_normals);
+  utils::ComputeNormals(
+      reference_cloud, sac_normals_radius_, icp_threads_, reference_normals);
   utils::NormalizePCloud(query_cloud, query_normalized);
 
   ComputeAp_ForPoint2PlaneICP(
@@ -1015,8 +1012,7 @@ void LaserLoopClosure::ComputeIcpObservability(
   Normals::Ptr normals(new Normals);          // pc with normals
   PointCloud::Ptr normalized(new PointCloud); // pc whose points have been
                                               // rearranged.
-  // utils::ComputeNormals(cloud, sac_normals_radius_, icp_threads_, normals);
-  utils::ComputeNormals(cloud, icp_threads_, normals);
+  utils::ComputeNormals(cloud, sac_normals_radius_, icp_threads_, normals);
   utils::NormalizePCloud(cloud, normalized);
 
   // Correspondence with itself (not really used anyways)

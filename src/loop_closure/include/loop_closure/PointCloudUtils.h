@@ -24,11 +24,8 @@ struct HarrisParams {
   int harris_response_;
 };
 
-// void ComputeNormals(const PointCloud::ConstPtr& input,
-//                    const double& search_radius,
-//                    const int& num_threads,
-//                    Normals::Ptr normals);
 void ComputeNormals(const PointCloud::ConstPtr& input,
+                    const double& search_radius,
                     const int& num_threads,
                     Normals::Ptr normals);
 void NormalizePCloud(const PointCloud::ConstPtr& cloud,
