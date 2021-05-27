@@ -49,6 +49,9 @@ bool IcpLoopComputation::Initialize(const ros::NodeHandle& n) {
 bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
   if (!LoopComputation::LoadParameters(n)) return false;
 
+  if (!pu::Get(param_ns_ + "/keyed_scans_max_delay", keyed_scans_max_delay_))
+    return false;
+
   if (!pu::Get(param_ns_ + "/max_tolerable_fitness", max_tolerable_fitness_))
     return false;
   // Load ICP parameters (from point_cloud localization)
@@ -161,6 +164,8 @@ void IcpLoopComputation::ComputeTransforms() {
     // Keyed scans do not exist
     if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
         keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
+      if ((ros::Time::now() - candidate.header.stamp).toSec() < keyed_scans_max_delay_)
+        input_queue_.push(candidate);
       continue;
     }
 

@@ -108,6 +108,7 @@ void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
 
     // If all the checks pass create candidate and add to queue
     pose_graph_msgs::LoopCandidate candidate;
+    candidate.header.stamp = ros::Time::now();
     candidate.key_from = new_key;
     candidate.key_to = other_key;
     candidate.pose_from = utils::GtsamToRosMsg(keyed_poses_[new_key]);

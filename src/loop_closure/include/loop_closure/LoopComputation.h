@@ -54,6 +54,8 @@ class LoopComputation {
   std::vector<pose_graph_msgs::PoseGraphEdge> output_queue_;
   // Loop closure queue as received from candidate generation
   std::queue<pose_graph_msgs::LoopCandidate> input_queue_;
+  // Duration (sec) allowed to wait for keyed scans until removed
+  double keyed_scans_max_delay_;
 
   std::string param_ns_;
 };

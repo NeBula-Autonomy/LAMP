@@ -57,6 +57,8 @@ robot:
   # the ICP "fitness score" must be less than this number.
   max_tolerable_fitness: 0.4 #0.04
 
+  # How long to "wait" for keyed scans 
+  keyed_scans_max_delay: 0.1
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
@@ -184,6 +186,8 @@ base:
   # the ICP "fitness score" must be less than this number.
   max_tolerable_fitness: 1.0 #0.04
 
+  # How long to "wait" for keyed scans 
+  keyed_scans_max_delay: 1.0
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
