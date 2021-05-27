@@ -395,6 +395,6 @@ void LampPgo::PublishIgnoredList() const {
   std_msgs::String msg;
   msg.data = list_str;
 
-  ignored_list_pub_.publish(list_str);
+  ignored_list_pub_.publish(msg);
   return;
 }
