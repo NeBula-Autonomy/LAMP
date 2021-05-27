@@ -28,6 +28,7 @@ void ComputeNormals(const PointCloud::ConstPtr& input,
                     const double& search_radius,
                     const int& num_threads,
                     Normals::Ptr normals);
+
 void NormalizePCloud(const PointCloud::ConstPtr& cloud,
                      PointCloud::Ptr pclptr_normalized);
 void ComputeKeypoints(const PointCloud::ConstPtr& source,

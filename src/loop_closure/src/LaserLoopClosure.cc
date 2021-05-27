@@ -452,7 +452,8 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     pose_21.print();
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
-    initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
+    initial_guess.block(0, 3, 3, 1) =
+        pose_21.translation().matrix().cast<float>();
   } break;
 
   case IcpInitMethod::ODOM_ROTATION: // initialize with zero translation but
@@ -975,6 +976,7 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
 
   utils::ComputeNormals(
       reference_cloud, sac_normals_radius_, icp_threads_, reference_normals);
+
   utils::NormalizePCloud(query_cloud, query_normalized);
 
   ComputeAp_ForPoint2PlaneICP(
