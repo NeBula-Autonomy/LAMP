@@ -40,9 +40,6 @@ class GenericLoopPrioritization : public LoopPrioritization {
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 
-  void ComputeIcpObservability(PointCloud::ConstPtr cloud,
-                               Eigen::Matrix<double, 3, 1>* eigenvalues) const;
-
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
   // Store keyed scans

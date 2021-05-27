@@ -115,12 +115,14 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     }
 
     Eigen::Matrix<double, 3, 1> obs_eigenv_from;
-    ComputeIcpObservability(keyed_scans_[candidate.key_from], &obs_eigenv_from);
+    utils::ComputeIcpObservability(
+        keyed_scans_[candidate.key_from], normals_radius_, &obs_eigenv_from);
     double min_obs_from = obs_eigenv_from.minCoeff();
     if (min_obs_from < min_observability_) continue;
 
     Eigen::Matrix<double, 3, 1> obs_eigenv_to;
-    ComputeIcpObservability(keyed_scans_[candidate.key_to], &obs_eigenv_to);
+    utils::ComputeIcpObservability(
+        keyed_scans_[candidate.key_to], normals_radius_, &obs_eigenv_to);
     double min_obs_to = obs_eigenv_to.minCoeff();
     if (min_obs_to < min_observability_) continue;
 
@@ -170,34 +172,6 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
 
   // Add the key and scan.
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
-}
-
-void ObservabilityLoopPrioritization::ComputeIcpObservability(
-    PointCloud::ConstPtr cloud,
-    Eigen::Matrix<double, 3, 1>* eigenvalues) const {
-  // Get normals
-  Normals::Ptr normals(new Normals);           // pc with normals
-  PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
-                                               // rearranged.
-  utils::ComputeNormals(cloud, normals_radius_, 1, normals);
-  utils::NormalizePCloud(cloud, normalized);
-
-  // Correspondence with itself (not really used anyways)
-  std::vector<size_t> c(cloud->size());
-  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
-
-  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero();  // Unused
-
-  Eigen::Matrix<double, 6, 6> Ap;
-  // Compute Ap and its eigenvalues
-  utils::ComputeAp_ForPoint2PlaneICP(normalized, normals, c, T_unsued, Ap);
-  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 3, 3>> eigensolver(
-      Ap.block(3, 3, 3, 3));
-  if (eigensolver.info() == Eigen::Success) {
-    *eigenvalues = eigensolver.eigenvalues();
-  } else {
-    ROS_WARN("Failed to decompose observability matrix. ");
-  }
 }
 
 }  // namespace lamp_loop_closure

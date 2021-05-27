@@ -122,4 +122,32 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
   }
 }
 
+void ComputeIcpObservability(PointCloud::ConstPtr cloud,
+                             const double& normals_radius,
+                             Eigen::Matrix<double, 3, 1>* eigenvalues) {
+  // Get normals
+  Normals::Ptr normals(new Normals);           // pc with normals
+  PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
+                                               // rearranged.
+  utils::ComputeNormals(cloud, normals_radius, 1, normals);
+  utils::NormalizePCloud(cloud, normalized);
+
+  // Correspondence with itself (not really used anyways)
+  std::vector<size_t> c(cloud->size());
+  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
+
+  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero();  // Unused
+
+  Eigen::Matrix<double, 6, 6> Ap;
+  // Compute Ap and its eigenvalues
+  utils::ComputeAp_ForPoint2PlaneICP(normalized, normals, c, T_unsued, Ap);
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 3, 3>> eigensolver(
+      Ap.block(3, 3, 3, 3));
+  if (eigensolver.info() == Eigen::Success) {
+    *eigenvalues = eigensolver.eigenvalues();
+  } else {
+    ROS_WARN("Failed to decompose observability matrix. ");
+  }
+}
+
 }  // namespace utils

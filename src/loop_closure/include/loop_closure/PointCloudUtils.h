@@ -44,6 +44,7 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      Features::Ptr features);
 
 void ComputeIcpObservability(PointCloudConstPtr scan,
+                             const double& normals_radius,
                              Eigen::Matrix<double, 3, 1>* eigenvalues);
 
 bool ComputeICPCovariancePointPoint(const PointCloud::ConstPtr& pointCloud,
