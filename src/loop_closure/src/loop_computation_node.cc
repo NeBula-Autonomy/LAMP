@@ -15,9 +15,8 @@ int main(int argc, char** argv) {
 
   lc::IcpLoopComputation loop_computation;
   if (!loop_computation.Initialize(n)) {
-    ROS_ERROR(
-        "%s: Failed to initialize Loop Candidate Prioritization module. .",
-        ros::this_node::getName().c_str());
+    ROS_ERROR("%s: Failed to initialize Loop Candidate Computation module.",
+              ros::this_node::getName().c_str());
     return EXIT_FAILURE;
   }
   ros::spin();
