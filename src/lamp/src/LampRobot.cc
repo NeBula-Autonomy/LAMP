@@ -826,7 +826,6 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       ROS_INFO("Added artifact to pose graph factors in lamp");
 
     } else {
-      ROS_INFO("Find edge");
       // Find artifact edge that is already connected to cur_artifact_key
       auto edge = pose_graph_.FindEdgeKeyTo(cur_artifact_key);
 
@@ -868,7 +867,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       // Add and track the edges that have been added
       int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
       pose_graph_.TrackArtifactFactor(
-          edge->key_from, cur_artifact_key, transform, covariance);
+          edge->key_from, cur_artifact_key, transform, covariance, true, true);
       ROS_INFO("Added resighted artifact to pose graph factors in lamp");
     }
   }

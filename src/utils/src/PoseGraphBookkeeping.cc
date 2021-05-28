@@ -229,44 +229,73 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
                                     const gtsam::Symbol& key_to,
                                     const gtsam::Pose3& transform,
                                     const gtsam::SharedNoiseModel& covariance,
-                                    bool create_msg) {
+                                    bool create_msg,
+                                    bool update_value) {
   int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
-
-  EdgeSet updated_edges;
-  EdgeSet updated_edges_new;
   auto msg =
       utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
-  if (edges_.find(msg) != edges_.end()) {
-    ROS_INFO_STREAM("TrackArtifactFactor: Edge of type "
+  auto msg_found = edges_.find(msg);
+
+  if (msg_found != edges_.end()) {
+    ROS_WARN_STREAM("TrackArtifactFactor: Edge of type "
                     << type << " from key "
                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
                     << gtsam::DefaultKeyFormatter(key_to)
                     << " already exists.");
 
-    // Remove existing artifact edge message in edge_
-    auto e = edges_.begin();
-    while (e != edges_.end()) {
-      if (e->key_to == msg.key_to && e->key_from == msg.key_from) {
-        // ROS_INFO_STREAM("Skipping a factor");
-      } else {
-        updated_edges.insert(*e);
-      }
-      e++;
+    // Check if there is any changes in the updated factor
+    bool diff_position = true, diff_covariance = true;
+
+    if (std::sqrt(
+            std::pow(msg_found->pose.position.x - msg.pose.position.x, 2) +
+            std::pow(msg_found->pose.position.y - msg.pose.position.y, 2) +
+            std::pow(msg_found->pose.position.z - msg.pose.position.z, 2)) <
+        0.01) {
+      diff_position = false;
+      ROS_WARN_STREAM("Same position");
     }
 
-    // Remove existing artifact edge message in edge_
-    e = edges_new_.begin();
-    while (e != edges_new_.end()) {
-      if (e->key_to == msg.key_to && e->key_from == msg.key_from) {
-        // ROS_INFO_STREAM("Skipping a factor");
-      } else {
-        updated_edges_new.insert(*e);
-      }
-      e++;
+    // Check the lower right diagonal value of the covariance,
+    // that corresponds to position
+    if (std::sqrt(std::pow(msg_found->covariance[35] - msg.covariance[35], 2) +
+                  std::pow(msg_found->covariance[28] - msg.covariance[28], 2) +
+                  std::pow(msg_found->covariance[21] - msg.covariance[21], 2)) <
+        0.001) {
+      diff_covariance = false;
+      ROS_WARN_STREAM("Same covariance");
     }
 
-    edges_ = updated_edges;
-    edges_new_ = updated_edges_new;
+    // Hack: Removing loop closure edge
+    auto loopclose_msg =
+        utils::GtsamToRosMsg(key_from,
+                             key_to,
+                             pose_graph_msgs::PoseGraphEdge::LOOPCLOSE,
+                             transform,
+                             covariance);
+    auto loopclose_msg_found = edges_.find(loopclose_msg);
+    if (loopclose_msg_found != edges_.end()) {
+      ROS_WARN_STREAM(
+          "TrackArtifactFactor: Found and Removing Loop CLosure Edge (Hack)");
+      edges_.erase(loopclose_msg_found);
+    }
+
+    if (!diff_position && !diff_covariance) {
+      ROS_WARN_STREAM("TrackArtifactFactor: Not updating values because same "
+                      "position and covariance");
+      return true;
+    }
+
+
+    ROS_WARN_STREAM("TrackArtifactFactor: Updating existing artifact factor");
+    // Remove existing artifact edge message in edge_
+    edges_.erase(msg_found);
+
+    // Remove existing artifact edge message in edges_new
+    auto new_msg_found = edges_new_.find(msg);
+    if (new_msg_found != edges_new_.end()) {
+      ROS_WARN_STREAM("TrackArtifactFactor: NEW MSG is found");
+      edges_new_.erase(new_msg_found);
+    }
 
     // Remove edge factor
     gtsam::NonlinearFactorGraph new_nfg;
@@ -278,7 +307,7 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
               gtsam::DefaultKeyFormatter(key_from) &&
           gtsam::DefaultKeyFormatter(factor->keys()[1]) ==
               gtsam::DefaultKeyFormatter(key_to)) {
-        ROS_DEBUG_STREAM("Skipping a factor");
+        // ROS_DEBUG_STREAM("Skipping a factor");
       } else {
         new_nfg.add(factor);
       }
