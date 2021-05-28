@@ -72,7 +72,7 @@ bool SimplePointCloudMapper::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 void SimplePointCloudMapper::Reset() {
-  map_data_.reset(new PointCloud);
+  map_data_->clear();
   map_data_->header.frame_id = fixed_frame_id_;
   initialized_ = true;
 }
