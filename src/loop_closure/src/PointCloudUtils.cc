@@ -16,18 +16,31 @@ Some utility functions for wokring with Point Clouds
 
 namespace utils {
 
+// void ComputeNormals(const PointCloud::ConstPtr& input,
+//                    const double& search_radius,
+//                    const int& num_threads,
+//                    Normals::Ptr normals) {
+//  pcl::search::KdTree<pcl::PointXYZINormal>::Ptr search_method(
+//      new pcl::search::KdTree<pcl::PointXYZINormal>);
+//  pcl::NormalEstimationOMP<pcl::PointXYZINormal, pcl::Normal> norm_est;
+//  norm_est.setInputCloud(input);
+//  norm_est.setSearchMethod(search_method);
+//  norm_est.setRadiusSearch(search_radius);
+//  norm_est.setNumberOfThreads(num_threads);
+//  norm_est.compute(*normals);
+//}
+
 void ComputeNormals(const PointCloud::ConstPtr& input,
-                    const double& search_radius,
                     const int& num_threads,
                     Normals::Ptr normals) {
-  pcl::search::KdTree<pcl::PointXYZINormal>::Ptr search_method(
-      new pcl::search::KdTree<pcl::PointXYZINormal>);
-  pcl::NormalEstimationOMP<pcl::PointXYZINormal, pcl::Normal> norm_est;
-  norm_est.setInputCloud(input);
-  norm_est.setSearchMethod(search_method);
-  norm_est.setRadiusSearch(search_radius);
-  norm_est.setNumberOfThreads(num_threads);
-  norm_est.compute(*normals);
+  normals->resize(input->size());
+  int enable_omp = (1 < num_threads);
+#pragma omp parallel for schedule(dynamic, 1) if (enable_omp)
+  for (size_t i = 0; i < input->size(); ++i) {
+    normals->points[i].normal_x = input->points[i].normal_x;
+    normals->points[i].normal_y = input->points[i].normal_y;
+    normals->points[i].normal_z = input->points[i].normal_z;
+  }
 }
 
 // returns a point cloud whose centroid is the origin, and that the mean of
