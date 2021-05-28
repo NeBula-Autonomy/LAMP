@@ -95,7 +95,7 @@ void UpdateCovariance(MessageT& msg, const gtsam::Matrix66& covariance) {
 template <typename MessageT>
 void UpdateCovariance(MessageT& msg, const gtsam::SharedNoiseModel& noise) {
   // ROS_INFO_STREAM("In UpdateCovariance before gtsam cast");
-  noise->print();
+  // noise->print();
   gtsam::Matrix66 covariance =
       boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>(noise)
           ->covariance();
@@ -168,13 +168,12 @@ inline gtsam::Point3 ToGtsam(const gu::Vec3& point) {
 }
 
 inline gtsam::Pose3 ToGtsam(const geometry_msgs::Pose msg) {
-  gtsam::Pose3 pose(gtsam::Rot3(msg.orientation.w, 
-                                msg.orientation.x,
-                                msg.orientation.y,
-                                msg.orientation.z),
-                    gtsam::Point3(msg.position.x,
-                                  msg.position.y,
-                                  msg.position.z));
+  gtsam::Pose3 pose(
+      gtsam::Rot3(msg.orientation.w,
+                  msg.orientation.x,
+                  msg.orientation.y,
+                  msg.orientation.z),
+      gtsam::Point3(msg.position.x, msg.position.y, msg.position.z));
   return pose;
 }
 
