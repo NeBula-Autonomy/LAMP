@@ -12,6 +12,8 @@
 namespace lamp_loop_closure {
 
 class ProximityLoopGeneration : public LoopGeneration {
+  friend class TestLoopGeneration;
+
  public:
   ProximityLoopGeneration();
   ~ProximityLoopGeneration();
