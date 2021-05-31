@@ -6,6 +6,9 @@ robot:
   # Toggle outlier rejection
   b_use_outlier_rejection: true
 
+  # GNC confidence threshold 
+  gnc_alpha: 0
+
   # outlier rejection thresholds (distances)
   translation_check_threshold: 0.01 # 1 centimeter
   rotation_check_threshold: 0.005 # ~0.3 degrees
@@ -18,6 +21,9 @@ base:
 
   # Toggle outlier rejection
   b_use_outlier_rejection: true
+
+  # GNC confidence threshold 
+  gnc_alpha: 0
 
   # outlier rejection thresholds (distances)
   translation_check_threshold: 0.005 # 1 centimeter
