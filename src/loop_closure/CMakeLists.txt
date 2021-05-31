@@ -147,4 +147,8 @@ find_package(rostest REQUIRED)
   ## Add gtest based cpp test target and link libraries
   add_rostest_gtest(test_loop_generation test/test_loop_generation.test test/test_loop_generation.cc)
   target_link_libraries(test_loop_generation ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_loop_prioritization test/test_loop_prioritization.test test/test_loop_prioritization.cc)
+  target_link_libraries(test_loop_prioritization ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_loop_computation test/test_loop_computation.test test/test_loop_computation.cc)
+  target_link_libraries(test_loop_computation ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()

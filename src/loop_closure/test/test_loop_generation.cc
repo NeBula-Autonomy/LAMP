@@ -1,5 +1,5 @@
 /**
- *  @brief Testing the Lamp Robot class
+ *  @brief Testing the Loop Closure Generation Classes
  *
  */
 

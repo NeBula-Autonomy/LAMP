@@ -20,6 +20,7 @@ class GenericLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
+  friend class TestLoopPrioritization;
 
  public:
   GenericLoopPrioritization();

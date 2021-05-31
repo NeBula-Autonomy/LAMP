@@ -24,6 +24,7 @@ class IcpLoopComputation : public LoopComputation {
   typedef pcl::PointCloud<pcl::Normal> Normals;
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
   typedef pcl::search::KdTree<pcl::PointXYZI> KdTree;
+  friend class TestLoopComputation;
 
  public:
   IcpLoopComputation();
