@@ -29,9 +29,13 @@ class TestLoopGeneration : public ::testing::Test {
     proximity_lc_.KeyedPoseCallback(graph_msg);
   }
 
+  std::vector<pose_graph_msgs::LoopCandidate> getCandidates() {
+    return proximity_lc_.candidates_;
+  }
+
   double distanceBetweenKeys(const gtsam::Symbol& key1,
                              const gtsam::Symbol& key2) {
-    proximity_lc_.DistanceBetweenKeys(key1, key2);
+    return proximity_lc_.DistanceBetweenKeys(key1, key2);
   }
 
   ProximityLoopGeneration proximity_lc_;
@@ -41,6 +45,47 @@ TEST_F(TestLoopGeneration, TestInitialize) {
   ros::NodeHandle nh;
   bool init = proximity_lc_.Initialize(nh);
   ASSERT_TRUE(init);
+}
+
+TEST_F(TestLoopGeneration, TestBetweenDistance) {
+  ros::NodeHandle nh;
+  bool init = proximity_lc_.Initialize(nh);
+  pose_graph_msgs::PoseGraph::Ptr graph_msg(new pose_graph_msgs::PoseGraph);
+  pose_graph_msgs::PoseGraphNode node1, node2;
+  node1.key = gtsam::Symbol('a', 0);
+  node2.key = gtsam::Symbol('b', 0);
+  node2.pose.position.x = 3;
+  graph_msg->nodes.push_back(node1);
+  graph_msg->nodes.push_back(node2);
+
+  keyedPoseCallback(graph_msg);
+
+  double dist =
+      distanceBetweenKeys(gtsam::Symbol('a', 0), gtsam::Symbol('b', 0));
+  EXPECT_EQ(3, dist);
+}
+
+TEST_F(TestLoopGeneration, TestGenerateLoops) {
+  ros::NodeHandle nh;
+  bool init = proximity_lc_.Initialize(nh);
+  pose_graph_msgs::PoseGraph::Ptr graph_msg(new pose_graph_msgs::PoseGraph);
+  pose_graph_msgs::PoseGraphNode node1, node2, node3;
+  node1.key = gtsam::Symbol('a', 0);
+  node2.key = gtsam::Symbol('b', 0);
+  node3.key = gtsam::Symbol('c', 0);
+  node2.pose.position.x = 3;
+  node3.pose.position.x = 1000;
+  graph_msg->nodes.push_back(node1);
+  graph_msg->nodes.push_back(node2);
+  graph_msg->nodes.push_back(node3);
+
+  keyedPoseCallback(graph_msg);
+
+  std::vector<pose_graph_msgs::LoopCandidate> candidates = getCandidates();
+  EXPECT_EQ(1, candidates.size());
+  auto candidate = candidates[0];
+  EXPECT_EQ(gtsam::Symbol('b', 0), candidate.key_from);
+  EXPECT_EQ(gtsam::Symbol('a', 0), candidate.key_to);
 }
 
 }  // namespace lamp_loop_closure
