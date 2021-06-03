@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
       loop_prioritize = std::unique_ptr<lc::GenericLoopPrioritization>(
           new lc::GenericLoopPrioritization);
     } break;
-    case1 : {
+    case 1 : {
       loop_prioritize = std::unique_ptr<lc::ObservabilityLoopPrioritization>(
           new lc::ObservabilityLoopPrioritization);
     } break;
