@@ -10,8 +10,8 @@ robot:
   gnc_alpha: 0
 
   # outlier rejection thresholds (distances)
-  translation_check_threshold: 0.01 # 10 centimeters
-  rotation_check_threshold: 0.01 # ~5.7 degrees
+  translation_check_threshold: 0.01 # 1 centimeter
+  rotation_check_threshold: 0.005 # ~0.3 degrees
   # TODO make these dynamic with the translation threshold for nodes
 
 base:
@@ -26,6 +26,6 @@ base:
   gnc_alpha: 0
 
   # outlier rejection thresholds (distances)
-  translation_check_threshold: 0.01 # 10 centimeters
-  rotation_check_threshold: 0.01 # ~5.7 degrees
+  translation_check_threshold: 0.005 # 1 centimeter
+  rotation_check_threshold: 0.001 # ~0.3 degrees
   # TODO make these dynamic with the translation threshold for nodes

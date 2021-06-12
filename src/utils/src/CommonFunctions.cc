@@ -260,7 +260,8 @@ void PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
   //   gtsam::Point3 pose_translation(msg_prior.pose.position.x,
   //                                  msg_prior.pose.position.y,
   //                                  msg_prior.pose.position.z);
-  //   gtsam::Rot3 pose_orientation(msg_prior.pose.orientation.w,
+  //   gtsam::Rot3 pose_orientation(
+  //       msg_prior.pose.orientation.w,
   //                               msg_prior.pose.orientation.x,
   //                               msg_prior.pose.orientation.y,
   //                               msg_prior.pose.orientation.z);

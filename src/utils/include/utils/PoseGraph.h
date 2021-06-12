@@ -111,7 +111,8 @@ class PoseGraph {
                            const gtsam::Symbol& key_to,
                            const gtsam::Pose3& transform,
                            const gtsam::SharedNoiseModel& covariance,
-                           bool create_msg = true);
+                           bool create_msg = true,
+                           bool update_value = true);
 
   // Tracks nodes and updates values. Returns true if new node is added.
   // Updates the internal keyed_stamp map for this key.
