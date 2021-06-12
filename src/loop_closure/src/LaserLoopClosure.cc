@@ -19,6 +19,7 @@ Lidar pointcloud based loop closure
 
 #include <parameter_utils/ParameterUtils.h>
 #include <utils/CommonFunctions.h>
+#include <utils/CommonStructs.h>
 
 #include <teaser/registration.h>
 #include <teaser/matcher.h>
@@ -289,19 +290,17 @@ void LaserLoopClosure::GetTEASERInitialAlignment(
   
   // Convert to teaser point cloud
   teaser::PointCloud src_cloud;
-  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
-           source->points.begin();
+  for (pcl::PointCloud<Point>::const_iterator it = source->points.begin();
        it != source->points.end();
        it++) {
-         src_cloud.push_back({it->x, it->y, it->z});
+    src_cloud.push_back({it->x, it->y, it->z});
        }
 
   teaser::PointCloud tgt_cloud;
-  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
-           target->points.begin();
+  for (pcl::PointCloud<Point>::const_iterator it = target->points.begin();
        it != target->points.end();
        it++) {
-         tgt_cloud.push_back({it->x, it->y, it->z});
+    tgt_cloud.push_back({it->x, it->y, it->z});
        }
 
   

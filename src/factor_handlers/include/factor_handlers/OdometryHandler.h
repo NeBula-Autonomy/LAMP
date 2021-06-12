@@ -87,7 +87,7 @@ protected:
 
   // Pointcloud Callback
   // void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
-  void PointCloudCallback(const PointCloud::ConstPtr& msg);
+  void PointCloudCallback(const PointCloudConstPtr& msg);
 
   // Odometry Storages
   OdomPoseBuffer lidar_odometry_buffer_;

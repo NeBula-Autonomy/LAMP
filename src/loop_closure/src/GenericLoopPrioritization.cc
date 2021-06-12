@@ -5,12 +5,13 @@
  * @author Yun Chang
  */
 
-#include <parameter_utils/ParameterUtils.h>
-#include <pcl_conversions/pcl_conversions.h>
+#include "loop_closure/PointCloudUtils.h"
 #include <Eigen/Eigenvalues>
 #include <algorithm>
 #include <numeric>
-#include "loop_closure/PointCloudUtils.h"
+#include <parameter_utils/ParameterUtils.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <utils/CommonStructs.h>
 
 #include "loop_closure/GenericLoopPrioritization.h"
 
@@ -155,8 +156,7 @@ void GenericLoopPrioritization::KeyedScanCallback(
     return;
   }
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr scan(
-      new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PointCloud<Point>::Ptr scan(new pcl::PointCloud<Point>);
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
   // Add the key and scan.

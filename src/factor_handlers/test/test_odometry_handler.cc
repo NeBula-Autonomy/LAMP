@@ -138,6 +138,9 @@ protected:
   void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
     return oh.PointCloudCallback(msg);
   }
+  void PointCloudCallback(const PointCloud::ConstPtr& msg) {
+    return oh.PointCloudCallback(msg);
+  }
   bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg,
                          OdomPoseBuffer& buffer) {
     return oh.InsertMsgInBuffer(odom_msg, buffer);

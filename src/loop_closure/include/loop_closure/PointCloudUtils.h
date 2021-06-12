@@ -29,7 +29,7 @@ struct HarrisParams {
 //                    const int& num_threads,
 //                    Normals::Ptr normals);
 
-void ComputeNormals(const PointCloud::ConstPtr& inpu,
+void ComputeNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
                     Normals::Ptr normals);
 

@@ -138,7 +138,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   Normals::Ptr normals(new Normals);           // pc with normals
   PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
                                                // rearranged.
-  utils::ComputeNormals(cloud, normals_radius, 1, normals);
+  utils::ComputeNormals(cloud, normals_radius, normals);
   utils::NormalizePCloud(cloud, normalized);
 
   // Correspondence with itself (not really used anyways)

@@ -181,7 +181,7 @@ void OdometryHandler::WheelOdometryCallback(const Odometry::ConstPtr& msg) {
 //  }
 //}
 
-void OdometryHandler::PointCloudCallback(const PointCloud::ConstPtr& msg) {
+void OdometryHandler::PointCloudCallback(const PointCloudConstPtr& msg) {
   ros::Time current_timestamp;
   pcl_conversions::fromPCL(msg->header.stamp, current_timestamp);
   point_cloud_buffer_.insert({current_timestamp.toSec(), *msg});
