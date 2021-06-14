@@ -261,7 +261,7 @@ void LampPgo::PublishValues() const {
   // Then store the values as nodes
   gtsam::KeyVector key_list = values_.keys();
   // Extract the marginal/covariances of the optimized values
-  gtsam::Marginals marginal(nfg_, values_);
+  // gtsam::Marginals marginal(nfg_, values_);
   // marginal.print();
   // marginal.bayesTree_.print("Bayes Tree: ");
 
@@ -314,7 +314,7 @@ void LampPgo::PublishValues() const {
         ROS_WARN_STREAM("Key is not found in the clique" << gtsam::DefaultKeyFormatter(key));
       }
     }
-  } catch (gtsam::IndeterminantLinearSystemException e) {
+  } catch (const gtsam::IndeterminantLinearSystemException& e) {
     ROS_ERROR_STREAM("LampPgo System is indeterminant, not computing covariance");
     for (size_t k = 0 ; k < key_list.size(); ++k) {
       auto key = key_list[k];
