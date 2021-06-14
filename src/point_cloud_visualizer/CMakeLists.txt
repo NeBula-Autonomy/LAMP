@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   parameter_utils
   sensor_msgs
   pcl_ros
+  utils
 )
 
 catkin_package(
@@ -29,6 +30,7 @@ catkin_package(
     parameter_utils
     sensor_msgs
     pcl_ros
+    utils
   DEPENDS
     PCL
 )
