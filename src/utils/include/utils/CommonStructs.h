@@ -27,8 +27,8 @@
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
 
-#include <utils/PrefixHandling.h>
 #include <utils/PointCloudTypes.h>
+#include <utils/PrefixHandling.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
