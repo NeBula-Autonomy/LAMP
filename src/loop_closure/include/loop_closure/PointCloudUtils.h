@@ -42,5 +42,27 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      const int& num_threads,
                      Normals::Ptr normals,
                      Features::Ptr features);
+
+void ComputeIcpObservability(PointCloudConstPtr scan,
+                             const double& normals_radius,
+                             Eigen::Matrix<double, 3, 1>* eigenvalues);
+
+bool ComputeICPCovariancePointPoint(const PointCloud::ConstPtr& pointCloud,
+                                    const Eigen::Matrix4f& T,
+                                    const double& icp_fitness,
+                                    Eigen::Matrix<double, 6, 6>& covariance);
+
+bool ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& query_cloud,
+                                    const PointCloud::ConstPtr& reference_cloud,
+                                    const std::vector<size_t>& correspondences,
+                                    const Eigen::Matrix4f& T,
+                                    Eigen::Matrix<double, 6, 6>* covariance);
+
+void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
+                                 const Normals::Ptr reference_normals,
+                                 const std::vector<size_t>& correspondences,
+                                 const Eigen::Matrix4f& T,
+                                 Eigen::Matrix<double, 6, 6>& Ap);
+
 }  // namespace utils
 #endif

@@ -83,7 +83,7 @@
     </node>
 
     <!-- Loop Closure  -->
-    <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
+    <include file="$(find loop_closure)/launch/loop_closure_modules.launch"/>
 
   </group>
 
@@ -110,6 +110,7 @@
           output="screen">
       <!-- <remap from="~pose_graph_to_optimize" to="pg_sim/pose_graph_to_optimize" /> -->
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>
+      <param name="log_path" value="$(find lamp_pgo)/log" />
     </node>
   </group>
 

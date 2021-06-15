@@ -18,6 +18,7 @@ Lidar pointcloud based loop closure
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <std_msgs/Float64.h>
 #include <std_msgs/String.h>
 
 #include <gtsam/inference/Symbol.h>
@@ -51,7 +52,12 @@ private:
       PointCloud::ConstPtr target,
       Eigen::Matrix4f* tf_out,
       double& sac_fitness_score);
-  
+
+  void GetTEASERInitialAlignment(PointCloud::ConstPtr source,
+                                 PointCloud::ConstPtr target,
+                                 Eigen::Matrix4f* tf_out,
+                                 double& n_inliers);
+
   bool FindLoopClosures(
       gtsam::Key new_key,
       std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
@@ -109,7 +115,10 @@ private:
                                    const Eigen::Matrix4f& T,
                                    Eigen::Matrix<double, 6, 6>& Ap);
 
- private:
+  void PublishLCComputationTime(const double& lc_computation_time,
+                                const ros::Publisher& pub);
+
+private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
   ros::Subscriber pc_gt_trigger_sub_;
@@ -119,6 +128,7 @@ private:
   ros::Publisher gt_pub_;
   ros::Publisher current_scan_pub_;
   ros::Publisher aligned_scan_pub_;
+  ros::Publisher lc_computation_time_pub_;
 
   bool b_check_observability_;
   double min_observability_ratio_;
@@ -141,6 +151,13 @@ private:
   double sac_features_radius_;
   double sac_fitness_score_threshold_;
 
+  double teaser_inlier_threshold_;
+  double rotation_cost_threshold_;
+  double rotation_max_iterations_;
+  double noise_bound_;
+  double TEASER_FPFH_normals_radius_;
+  double TEASER_FPFH_features_radius_;
+
   utils::HarrisParams harris_params_;
 
   double laser_lc_rot_sigma_;
@@ -153,7 +170,13 @@ private:
 
   PointCloudFilter filter_;
 
-  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES };
+  enum class IcpInitMethod {
+    IDENTITY,
+    ODOMETRY,
+    ODOM_ROTATION,
+    FEATURES,
+    TEASERPP
+  };
 
   enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };
 

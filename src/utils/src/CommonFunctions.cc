@@ -262,10 +262,10 @@ void PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
   //                                  msg_prior.pose.position.y,
   //                                  msg_prior.pose.position.z);
   //   gtsam::Rot3 pose_orientation(
-  //       gtsam::Rot3::quaternion(msg_prior.pose.orientation.w,
+  //       msg_prior.pose.orientation.w,
   //                               msg_prior.pose.orientation.x,
   //                               msg_prior.pose.orientation.y,
-  //                               msg_prior.pose.orientation.z));
+  //                               msg_prior.pose.orientation.z);
   //   gtsam::Pose3 prior_pose = gtsam::Pose3(pose_orientation,
   //   pose_translation);
 
