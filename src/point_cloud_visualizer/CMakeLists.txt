@@ -12,11 +12,6 @@ if(NOT PCL_FOUND)
   message(FATAL_ERROR "This program requires the PCL library.")
 endif(NOT PCL_FOUND)
 
-find_package(GTSAM REQUIRED)
-if (NOT GTSAM_FOUND)
-  message(FATAL_ERROR "This program requires the GTSAM library.")
-endif(NOT GTSAM_FOUND)
-
 FIND_PACKAGE(Boost REQUIRED
   date_time
   serialization
@@ -79,5 +74,5 @@ target_link_libraries(${PROJECT_NAME}_node
 # Add Gtest for the package
 if(CATKIN_ENABLE_TESTING)
   catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cpp)
-  target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES} gtsam)  
+  target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})  
 endif(CATKIN_ENABLE_TESTING)
