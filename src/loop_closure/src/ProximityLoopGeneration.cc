@@ -129,8 +129,11 @@ void ProximityLoopGeneration::KeyedPoseCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
   pose_graph_msgs::PoseGraphNode node_msg;
   for (const auto& node_msg : graph_msg->nodes) {
-    gtsam::Key new_key = node_msg.key;           // extract new key
+    gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract new key
     ros::Time timestamp = node_msg.header.stamp; // extract new timestamp
+
+    if (!utils::IsRobotPrefix(new_key.chr()))
+      continue;
 
     // Check if the node is new
     if (keyed_poses_.count(new_key) > 0) {
