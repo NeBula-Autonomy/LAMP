@@ -28,6 +28,7 @@
 #include <pose_graph_msgs/PoseGraph.h>
 
 #include <utils/PrefixHandling.h>
+#include <utils/PointCloudTypes.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
@@ -84,11 +85,6 @@ struct NodeMessageComparator {
 // Use sets of edges/nodes to avoid duplicates.
 typedef std::set<EdgeMessage, EdgeMessageComparator> EdgeSet;
 typedef std::set<NodeMessage, NodeMessageComparator> NodeSet;
-
-// Typedef for stored point clouds.
-typedef pcl::PointXYZINormal Point;
-typedef pcl::PointCloud<Point> PointCloud;
-typedef pcl::PointCloud<Point>::ConstPtr PointCloudConstPtr;
 
 // Function that maps gtsam::Symbol to internal identifier string.
 typedef boost::function<std::string(gtsam::Symbol)> SymbolIdMapping;
