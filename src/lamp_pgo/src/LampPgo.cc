@@ -261,7 +261,7 @@ void LampPgo::PublishValues() const {
   // Then store the values as nodes
   gtsam::KeyVector key_list = values_.keys();
   // Extract the marginal/covariances of the optimized values
-  gtsam::Marginals marginal(nfg_, values_);
+  // gtsam::Marginals marginal(nfg_, values_);
   // marginal.print();
   // marginal.bayesTree_.print("Bayes Tree: ");
 
@@ -287,25 +287,46 @@ void LampPgo::PublishValues() const {
         values_.at<gtsam::Pose3>(key).rotation().toQuaternion().z();
     node.pose.orientation.w =
         values_.at<gtsam::Pose3>(key).rotation().toQuaternion().w();
-    // covariance
-    try {
-      auto cov_matrix = marginal.marginalCovariance(gtsam::Symbol(key));
-      int iter = 0;
-      for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-          node.covariance[iter] = cov_matrix(i, j);
-          iter++;
-        }
-      }
-    }
-    catch (std::exception& e) {
-      ROS_WARN_STREAM("Key is not found in the clique" << gtsam::DefaultKeyFormatter(key));
-    }
+
 
 
     // ROS_WARN_STREAM("Debug get covariance");
 
     pose_graph_msg.nodes.push_back(node);
+  }
+  try {
+    gtsam::Marginals marginal(nfg_, values_);
+    for (size_t k = 0 ; k < key_list.size(); ++k) {
+      auto key = key_list[k];
+      auto node = pose_graph_msg.nodes[k];
+      // covariance
+      try {
+        auto cov_matrix = marginal.marginalCovariance(gtsam::Symbol(key));
+        int iter = 0;
+        for (int i = 0; i < 6; i++) {
+          for (int j = 0; j < 6; j++) {
+            node.covariance[iter] = cov_matrix(i, j);
+            iter++;
+          }
+        }
+      }
+      catch (std::exception& e) {
+        ROS_WARN_STREAM("Key is not found in the clique" << gtsam::DefaultKeyFormatter(key));
+      }
+    }
+  } catch (const gtsam::IndeterminantLinearSystemException& e) {
+    ROS_ERROR_STREAM("LampPgo System is indeterminant, not computing covariance");
+    for (size_t k = 0 ; k < key_list.size(); ++k) {
+      auto key = key_list[k];
+      auto node = pose_graph_msg.nodes[k];
+      int iter = 0;
+      for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+          node.covariance[iter] = 1e-4;
+          iter++;
+        }
+      }
+    }
   }
 
   for (const auto& factor : nfg_) {
