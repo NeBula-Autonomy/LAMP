@@ -319,9 +319,8 @@ void LampPgo::PublishValues() const {
         ROS_WARN_STREAM("Key is not found in the clique" << gtsam::DefaultKeyFormatter(key));
       }
     }
-  } catch (...) {
-    ROS_ERROR_STREAM(
-        "Invalid system in marginalization, not computing covariance. ");
+  } catch (gtsam::IndeterminantLinearSystemException e) {
+    ROS_ERROR_STREAM("LampPgo System is indeterminant, not computing covariance");
     for (size_t k = 0 ; k < key_list.size(); ++k) {
       auto key = key_list[k];
       auto node = pose_graph_msg.nodes[k];
