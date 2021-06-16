@@ -325,17 +325,12 @@ void LampPgo::PublishValues() const {
     }
   } catch (const gtsam::IndeterminantLinearSystemException& e) {
     ROS_ERROR_STREAM("LampPgo System is indeterminant, not computing covariance");
-    for (size_t k = 0 ; k < key_list.size(); ++k) {
-      auto key = key_list[k];
-      auto node = pose_graph_msg.nodes[k];
-      int iter = 0;
-      for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-          node.covariance[iter] = 1e-4;
-          iter++;
+      boost::array<float, 36> default_covariance;
+      default_covariance.assign(1e-4);
+      for (size_t k = 0 ; k < key_list.size(); ++k) {
+          auto node = pose_graph_msg.nodes[k];
+          node.covariance = default_covariance;
         }
-      }
-    }
   }
 
   for (const auto& factor : nfg_) {
