@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   core_msgs
   parameter_utils
   geometry_utils
+  utils
 )
 
 catkin_package(
@@ -32,6 +33,7 @@ catkin_package(
     std_msgs
     parameter_utils
     geometry_utils
+    utils
 )
 
 include(CheckCXXCompilerFlag)
@@ -60,6 +62,7 @@ add_library(${PROJECT_NAME} src/PointCloudMapper.cc src/PointCloudMultiThreadedM
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
+  gtsam
 )
 
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc)

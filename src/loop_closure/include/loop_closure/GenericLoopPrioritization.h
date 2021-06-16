@@ -11,14 +11,13 @@
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <utils/CommonStructs.h>
 
 #include "loop_closure/LoopPrioritization.h"
 
 namespace lamp_loop_closure {
 
 class GenericLoopPrioritization : public LoopPrioritization {
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
-  typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
 
 public:

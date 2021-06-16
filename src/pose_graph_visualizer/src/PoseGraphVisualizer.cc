@@ -288,8 +288,7 @@ void PoseGraphVisualizer::KeyedScanCallback(
     return;
   }
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr scan(
-      new pcl::PointCloud<pcl::PointXYZI>);
+  PointCloud::Ptr scan(new PointCloud);
   pcl::fromROSMsg(msg->scan, *scan);
 
   // The first key should be treated differently; we need to use the laser

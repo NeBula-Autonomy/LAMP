@@ -217,12 +217,11 @@ void IcpLoopComputation::KeyedScanCallback(
     return;
   }
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr scan(
-      new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PointCloud<Point>::Ptr scan(new pcl::PointCloud<Point>);
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
   // Add the key and scan.
-  keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
+  keyed_scans_.insert(std::pair<gtsam::Key, PointCloudConstPtr>(key, scan));
 }
 
 void IcpLoopComputation::KeyedPoseCallback(
@@ -280,8 +279,8 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   }
 
   // Get poses and keys
-  const PointCloud::ConstPtr scan1 = keyed_scans_.at(key1.key());
-  const PointCloud::ConstPtr scan2 = keyed_scans_.at(key2.key());
+  const PointCloudConstPtr scan1 = keyed_scans_.at(key1.key());
+  const PointCloudConstPtr scan2 = keyed_scans_.at(key2.key());
 
   if (scan1 == NULL || scan2 == NULL) {
     ROS_ERROR("PerformAlignment: Null point clouds.");
@@ -430,17 +429,15 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   return true;
 }
 
-void IcpLoopComputation::GetSacInitialAlignment(PointCloud::ConstPtr source,
-                                                PointCloud::ConstPtr target,
+void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
+                                                PointCloudConstPtr target,
                                                 Eigen::Matrix4f* tf_out,
                                                 double& sac_fitness_score) {
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ComputeNormals(
-      source, sac_normals_radius_, icp_threads_, source_normals);
-  utils::ComputeNormals(
-      target, sac_normals_radius_, icp_threads_, target_normals);
+  utils::ComputeNormals(source, sac_normals_radius_, source_normals);
+  utils::ComputeNormals(target, sac_normals_radius_, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
@@ -466,9 +463,7 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloud::ConstPtr source,
                          target_features);
 
   // Align
-  pcl::SampleConsensusInitialAlignment<pcl::PointXYZI,
-                                       pcl::PointXYZI,
-                                       pcl::FPFHSignature33>
+  pcl::SampleConsensusInitialAlignment<Point, Point, pcl::FPFHSignature33>
       sac_ia;
   sac_ia.setMaximumIterations(sac_iterations_);
   sac_ia.setInputSource(source_keypoints);
@@ -485,8 +480,8 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloud::ConstPtr source,
 }
 
 bool IcpLoopComputation::ComputeICPCovariancePointPlane(
-    const PointCloud::ConstPtr& query_cloud,
-    const PointCloud::ConstPtr& reference_cloud,
+    const PointCloudConstPtr& query_cloud,
+    const PointCloudConstPtr& reference_cloud,
     const std::vector<size_t>& correspondences,
     const Eigen::Matrix4f& T,
     Eigen::Matrix<double, 6, 6>* covariance) {
@@ -496,8 +491,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
                                                     // been rearranged.
   Eigen::Matrix<double, 6, 6> Ap;
 
-  utils::ComputeNormals(
-      reference_cloud, sac_normals_radius_, icp_threads_, reference_normals);
+  utils::ComputeNormals(reference_cloud, icp_threads_, reference_normals);
   utils::NormalizePCloud(query_cloud, query_normalized);
 
   utils::ComputeAp_ForPoint2PlaneICP(
@@ -547,7 +541,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
 }
 
 bool IcpLoopComputation::ComputeICPCovariancePointPoint(
-    const PointCloud::ConstPtr& pointCloud,
+    const PointCloudConstPtr& pointCloud,
     const Eigen::Matrix4f& T,
     const double& icp_fitness,
     Eigen::Matrix<double, 6, 6>& covariance) {
@@ -694,7 +688,7 @@ void IcpLoopComputation::AccumulateScans(const gtsam::Key& key,
     if (!keyed_poses_.count(prev_key) || !keyed_scans_.count(prev_key)) {
       continue;
     }
-    const PointCloud::ConstPtr prev_scan = keyed_scans_[prev_key];
+    const PointCloudConstPtr prev_scan = keyed_scans_[prev_key];
 
     // Transform and Accumulate
     const gtsam::Pose3 new_pose = keyed_poses_.at(key);
@@ -712,7 +706,7 @@ void IcpLoopComputation::AccumulateScans(const gtsam::Key& key,
     if (!keyed_poses_.count(next_key) || !keyed_scans_.count(next_key)) {
       continue;
     }
-    const PointCloud::ConstPtr next_scan = keyed_scans_[next_key];
+    const PointCloudConstPtr next_scan = keyed_scans_[next_key];
 
     // Transform and Accumulate
     const gtsam::Pose3 new_pose = keyed_poses_.at(key);
@@ -725,22 +719,20 @@ void IcpLoopComputation::AccumulateScans(const gtsam::Key& key,
   }
 }
 
-void IcpLoopComputation::GetTeaserInitialAlignment(PointCloud::ConstPtr source,
-                                                   PointCloud::ConstPtr target,
+void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
+                                                   PointCloudConstPtr target,
                                                    Eigen::Matrix4f* tf_out,
                                                    int& n_inliers) {
   // Convert to teaser point cloud
   teaser::PointCloud src_cloud;
-  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
-           source->points.begin();
+  for (pcl::PointCloud<Point>::const_iterator it = source->points.begin();
        it != source->points.end();
        it++) {
     src_cloud.push_back({it->x, it->y, it->z});
   }
 
   teaser::PointCloud tgt_cloud;
-  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
-           target->points.begin();
+  for (pcl::PointCloud<Point>::const_iterator it = target->points.begin();
        it != target->points.end();
        it++) {
     tgt_cloud.push_back({it->x, it->y, it->z});

@@ -13,17 +13,16 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
+#include <utils/CommonStructs.h>
 
 #include "loop_closure/LoopComputation.h"
 
 namespace lamp_loop_closure {
 
 class IcpLoopComputation : public LoopComputation {
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
-  typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
   typedef pcl::PointCloud<pcl::Normal> Normals;
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
-  typedef pcl::search::KdTree<pcl::PointXYZI> KdTree;
+  typedef pcl::search::KdTree<Point> KdTree;
 
 public:
   IcpLoopComputation();
@@ -129,9 +128,7 @@ protected:
   IcpCovarianceMethod icp_covariance_method_;
 
   // ICP
-  pcl::MultithreadedGeneralizedIterativeClosestPoint<pcl::PointXYZI,
-                                                     pcl::PointXYZI>
-      icp_;
+  pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point> icp_;
 };
 
 } // namespace lamp_loop_closure

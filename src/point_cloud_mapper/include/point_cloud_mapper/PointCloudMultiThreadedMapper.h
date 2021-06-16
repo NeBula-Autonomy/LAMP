@@ -16,11 +16,11 @@
 
 #include "IPointCloudMapper.h"
 
+#include <utils/CommonStructs.h>
+
 class PointCloudMultiThreadedMapper : public IPointCloudMapper {
 public:
-
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
-  typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZI> Octree;
+  typedef pcl::octree::OctreePointCloudSearch<Point> Octree;
   typedef std::vector<PointCloud> PointCloudBuffer;
 
   PointCloudMultiThreadedMapper();
@@ -97,7 +97,7 @@ private:
   PointCloud::Ptr map_data_b_;
   Octree::Ptr map_octree_;
   Octree::Ptr map_octree_b_;
-  
+
   // Map parameters.
   double octree_resolution_;
 
@@ -117,14 +117,13 @@ private:
   mutable std::mutex map_mutex_b_;
   mutable std::mutex map_frozen_mutex_;
 
-  pcl::CropBox<pcl::PointXYZI> box_filter_;
+  pcl::CropBox<Point> box_filter_;
   int box_filter_size_;
 
   std::string refresh_id_;
 
   PointCloud::Ptr history_;
   bool b_keep_history_;
-  bool b_add_history_to_a_; 
+  bool b_add_history_to_a_;
   bool b_add_history_to_b_;
-
 };

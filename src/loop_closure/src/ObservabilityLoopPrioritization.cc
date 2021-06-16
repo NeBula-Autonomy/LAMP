@@ -172,8 +172,7 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
     return;
   }
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr scan(
-      new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PointCloud<Point>::Ptr scan(new pcl::PointCloud<Point>);
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
   // Add the key and scan.
