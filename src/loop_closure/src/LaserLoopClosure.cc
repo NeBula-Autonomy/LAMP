@@ -19,7 +19,6 @@ Lidar pointcloud based loop closure
 
 #include <parameter_utils/ParameterUtils.h>
 #include <utils/CommonFunctions.h>
-#include <utils/CommonStructs.h>
 
 #include <teaser/registration.h>
 #include <teaser/matcher.h>

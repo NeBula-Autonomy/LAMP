@@ -10,7 +10,6 @@
 #include <teaser/matcher.h>
 #include <teaser/registration.h>
 #include <utils/CommonFunctions.h>
-#include <utils/CommonStructs.h>
 
 #include "loop_closure/PointCloudUtils.h"
 

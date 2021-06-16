@@ -11,7 +11,6 @@
 #include <numeric>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <utils/CommonStructs.h>
 
 #include "loop_closure/GenericLoopPrioritization.h"
 
