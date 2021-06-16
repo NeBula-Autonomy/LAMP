@@ -69,4 +69,4 @@ void LoopCandidateQueue::PublishLoopCandidate(
   loop_candidate_pub_.publish(candidates);
 }
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

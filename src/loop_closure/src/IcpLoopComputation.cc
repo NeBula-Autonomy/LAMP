@@ -3,13 +3,13 @@
  * @brief  Find transform of loop closures via ICP
  * @author Yun Chang
  */
+#include <Eigen/LU>
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/registration/ia_ransac.h>
 #include <teaser/matcher.h>
 #include <teaser/registration.h>
 #include <utils/CommonFunctions.h>
-#include <Eigen/LU>
 
 #include "loop_closure/PointCloudUtils.h"
 
@@ -47,7 +47,8 @@ bool IcpLoopComputation::Initialize(const ros::NodeHandle& n) {
 }
 
 bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
-  if (!LoopComputation::LoadParameters(n)) return false;
+  if (!LoopComputation::LoadParameters(n))
+    return false;
 
   if (!pu::Get(param_ns_ + "/keyed_scans_max_delay", keyed_scans_max_delay_))
     return false;
@@ -55,13 +56,18 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/max_tolerable_fitness", max_tolerable_fitness_))
     return false;
   // Load ICP parameters (from point_cloud localization)
-  if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_)) return false;
-  if (!pu::Get(param_ns_ + "/icp_lc/corr_dist", icp_corr_dist_)) return false;
-  if (!pu::Get(param_ns_ + "/icp_lc/iterations", icp_iterations_)) return false;
-  if (!pu::Get(param_ns_ + "/icp_lc/threads", icp_threads_)) return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_))
+    return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/corr_dist", icp_corr_dist_))
+    return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/iterations", icp_iterations_))
+    return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/threads", icp_threads_))
+    return false;
 
   // Load SAC parameters
-  if (!pu::Get(param_ns_ + "/sac_ia/iterations", sac_iterations_)) return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/iterations", sac_iterations_))
+    return false;
   if (!pu::Get(param_ns_ + "/sac_ia/num_prev_scans", sac_num_prev_scans_))
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/num_next_scans", sac_num_next_scans_))
@@ -109,8 +115,10 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
   SetupICP();
 
   // Hard coded covariances
-  if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_)) return false;
-  if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_)) return false;
+  if (!pu::Get("laser_lc_rot_sigma", laser_lc_rot_sigma_))
+    return false;
+  if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_))
+    return false;
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
 
@@ -118,12 +126,14 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
 }
 
 bool IcpLoopComputation::CreatePublishers(const ros::NodeHandle& n) {
-  if (!LoopComputation::CreatePublishers(n)) return false;
+  if (!LoopComputation::CreatePublishers(n))
+    return false;
   return true;
 }
 
 bool IcpLoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
-  if (!LoopComputation::RegisterCallbacks(n)) return false;
+  if (!LoopComputation::RegisterCallbacks(n))
+    return false;
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
@@ -164,7 +174,8 @@ void IcpLoopComputation::ComputeTransforms() {
     // Keyed scans do not exist
     if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
         keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
-      if ((ros::Time::now() - candidate.header.stamp).toSec() < keyed_scans_max_delay_)
+      if ((ros::Time::now() - candidate.header.stamp).toSec() <
+          keyed_scans_max_delay_)
         input_queue_.push(candidate);
       continue;
     }
@@ -218,10 +229,10 @@ void IcpLoopComputation::KeyedPoseCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
   pose_graph_msgs::PoseGraphNode node_msg;
   for (const auto& node_msg : graph_msg->nodes) {
-    gtsam::Key new_key = node_msg.key;  // extract new key
+    gtsam::Key new_key = node_msg.key; // extract new key
     // Check if the node is new
     if (keyed_poses_.count(new_key) > 0) {
-      continue;  // Not a new node
+      continue; // Not a new node
     }
 
     // also extract poses (NOTE(Yun) this pose will not be updated...)
@@ -299,51 +310,49 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   Eigen::Matrix4f initial_guess;
 
   switch (icp_init_method_) {
-    case IcpInitMethod::IDENTITY:  // initialize with idientity
-    {
-      initial_guess = Eigen::Matrix4f::Identity(4, 4);
-    } break;
+  case IcpInitMethod::IDENTITY: // initialize with idientity
+  {
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+  } break;
 
-    case IcpInitMethod::ODOMETRY:  // initialize with odometry
-    {
-      gtsam::Pose3 pose_21 = pose2.between(pose1);
-      initial_guess = Eigen::Matrix4f::Identity(4, 4);
-      initial_guess.block(0, 0, 3, 3) =
-          pose_21.rotation().matrix().cast<float>();
-      initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
-    } break;
+  case IcpInitMethod::ODOMETRY: // initialize with odometry
+  {
+    gtsam::Pose3 pose_21 = pose2.between(pose1);
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+    initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
+    initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
+  } break;
 
-    case IcpInitMethod::ODOM_ROTATION:  // initialize with zero translation but
-                                        // rot from odom
-    {
-      gtsam::Pose3 pose_21 = pose2.between(pose1);
-      initial_guess = Eigen::Matrix4f::Identity(4, 4);
-      initial_guess.block(0, 0, 3, 3) =
-          pose_21.rotation().matrix().cast<float>();
-    } break;
-    case IcpInitMethod::FEATURES: {
-      double sac_fitness_score = sac_fitness_score_threshold_;
-      GetSacInitialAlignment(scan1, scan2, &initial_guess, sac_fitness_score);
-      if (sac_fitness_score >= sac_fitness_score_threshold_) {
-        ROS_INFO("SAC fitness score is too high");
-        return false;
-      }
-    } break;
-    case IcpInitMethod::TEASERPP: {
-      int n_inliers = teaser_inlier_threshold_;
-      GetTeaserInitialAlignment(
-          scan1, accumulated_target, &initial_guess, n_inliers);
-      if (n_inliers <= teaser_inlier_threshold_) {
-        ROS_INFO("Number of TEASER inliers is too low: %d <= %d",
-                 n_inliers,
-                 teaser_inlier_threshold_);
-        return false;
-      }
-    } break;
-    default:  // identity as default (default in ICP anyways)
-    {
-      initial_guess = Eigen::Matrix4f::Identity(4, 4);
+  case IcpInitMethod::ODOM_ROTATION: // initialize with zero translation but
+                                     // rot from odom
+  {
+    gtsam::Pose3 pose_21 = pose2.between(pose1);
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+    initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
+  } break;
+  case IcpInitMethod::FEATURES: {
+    double sac_fitness_score = sac_fitness_score_threshold_;
+    GetSacInitialAlignment(scan1, scan2, &initial_guess, sac_fitness_score);
+    if (sac_fitness_score >= sac_fitness_score_threshold_) {
+      ROS_INFO("SAC fitness score is too high");
+      return false;
     }
+  } break;
+  case IcpInitMethod::TEASERPP: {
+    int n_inliers = teaser_inlier_threshold_;
+    GetTeaserInitialAlignment(
+        scan1, accumulated_target, &initial_guess, n_inliers);
+    if (n_inliers <= teaser_inlier_threshold_) {
+      ROS_INFO("Number of TEASER inliers is too low: %d <= %d",
+               n_inliers,
+               teaser_inlier_threshold_);
+      return false;
+    }
+  } break;
+  default: // identity as default (default in ICP anyways)
+  {
+    initial_guess = Eigen::Matrix4f::Identity(4, 4);
+  }
   }
 
   // Perform ICP_.
@@ -359,7 +368,8 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     KdTree::Ptr search_tree = icp_.getSearchMethodTarget();
     for (auto point : icp_result->points) {
       // Catch nan of infs in icp result
-      if (!pcl::isFinite(point)) return false;
+      if (!pcl::isFinite(point))
+        return false;
 
       std::vector<int> matched_indices;
       std::vector<float> matched_distances;
@@ -393,8 +403,8 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   double fitness_score = icp_.getFitnessScore();
 
   // Find transform from pose2 to pose1 from output of ICP_.
-  *delta = gu::PoseInverse(*delta);  // NOTE: gtsam need 2_Transform_1 while
-                                     // ICP output 1_Transform_2
+  *delta = gu::PoseInverse(*delta); // NOTE: gtsam need 2_Transform_1 while
+                                    // ICP output 1_Transform_2
 
   if (b_use_fixed_covariances_) {
     for (int i = 0; i < 3; ++i)
@@ -403,18 +413,17 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
       (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
   } else {
     switch (icp_covariance_method_) {
-      case (IcpCovarianceMethod::POINT2POINT):
-        ComputeICPCovariancePointPoint(
-            icp_result, T, fitness_score, *covariance);
-        break;
-      case (IcpCovarianceMethod::POINT2PLANE):
-        ComputeICPCovariancePointPlane(
-            scan1, scan2, correspondences, T, covariance);
-        break;
-      default:
-        ROS_ERROR(
-            "Unknown method for ICP covariance calculation for loop closures. "
-            "Check config.");
+    case (IcpCovarianceMethod::POINT2POINT):
+      ComputeICPCovariancePointPoint(icp_result, T, fitness_score, *covariance);
+      break;
+    case (IcpCovarianceMethod::POINT2PLANE):
+      ComputeICPCovariancePointPlane(
+          scan1, scan2, correspondences, T, covariance);
+      break;
+    default:
+      ROS_ERROR(
+          "Unknown method for ICP covariance calculation for loop closures. "
+          "Check config.");
     }
   }
 
@@ -482,9 +491,9 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
     const Eigen::Matrix4f& T,
     Eigen::Matrix<double, 6, 6>* covariance) {
   // Get normals
-  Normals::Ptr reference_normals(new Normals);       // pc with normals
-  PointCloud::Ptr query_normalized(new PointCloud);  // pc whose points have
-                                                     // been rearranged.
+  Normals::Ptr reference_normals(new Normals);      // pc with normals
+  PointCloud::Ptr query_normalized(new PointCloud); // pc whose points have
+                                                    // been rearranged.
   Eigen::Matrix<double, 6, 6> Ap;
 
   utils::ComputeNormals(
@@ -509,7 +518,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   eigensolver.compute(*covariance);
   Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
   Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
-  double lower_bound = 1e-6;  // Should be positive semidef
+  double lower_bound = 1e-6; // Should be positive semidef
   double upper_bound = 1e6;
   if (eigen_values.size() < 6) {
     *covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
@@ -517,14 +526,16 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
     return false;
   }
   for (size_t i = 0; i < eigen_values.size(); i++) {
-    if (eigen_values(i) < lower_bound) eigen_values(i) = lower_bound;
-    if (eigen_values(i) > upper_bound) eigen_values(i) = upper_bound;
+    if (eigen_values(i) < lower_bound)
+      eigen_values(i) = lower_bound;
+    if (eigen_values(i) > upper_bound)
+      eigen_values(i) = upper_bound;
   }
   // Update covariance matrix after bound
   *covariance =
       eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
 
-  if (covariance->array().hasNaN()) {  // Prevent NaNs in covariance
+  if (covariance->array().hasNaN()) { // Prevent NaNs in covariance
     *covariance = Eigen::MatrixXd::Zero(6, 6);
     for (int i = 0; i < 3; ++i)
       (*covariance)(i, i) = laser_lc_rot_sigma_ * laser_lc_rot_sigma_;
@@ -577,68 +588,68 @@ bool IcpLoopComputation::ComputeICPCovariancePointPoint(
 
     J11 = 0.0;
     J12 = -2.0 *
-          (p_z * sin(p) + p_x * cos(p) * cos(y) - p_y * cos(p) * sin(y)) *
-          (t_x - p_x + p_z * cos(p) - p_x * cos(y) * sin(p) +
-           p_y * sin(p) * sin(y));
+        (p_z * sin(p) + p_x * cos(p) * cos(y) - p_y * cos(p) * sin(y)) *
+        (t_x - p_x + p_z * cos(p) - p_x * cos(y) * sin(p) +
+         p_y * sin(p) * sin(y));
     J13 = 2.0 * (p_y * cos(y) * sin(p) + p_x * sin(p) * sin(y)) *
-          (t_x - p_x + p_z * cos(p) - p_x * cos(y) * sin(p) +
-           p_y * sin(p) * sin(y));
+        (t_x - p_x + p_z * cos(p) - p_x * cos(y) * sin(p) +
+         p_y * sin(p) * sin(y));
     J14 = 2.0 * t_x - 2.0 * p_x + 2.0 * p_z * cos(p) -
-          2.0 * p_x * cos(y) * sin(p) + 2.0 * p_y * sin(p) * sin(y);
+        2.0 * p_x * cos(y) * sin(p) + 2.0 * p_y * sin(p) * sin(y);
     J15 = 0.0;
     J16 = 0.0;
 
     J21 = 2.0 *
-          (p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
-           p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
-           p_z * sin(p) * sin(r)) *
-          (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
-           p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
-           p_z * cos(r) * sin(p));
+        (p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+         p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+         p_z * sin(p) * sin(r)) *
+        (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
+         p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+         p_z * cos(r) * sin(p));
     J22 = -2.0 *
-          (p_z * cos(p) * cos(r) - p_x * cos(r) * cos(y) * sin(p) +
-           p_y * cos(r) * sin(p) * sin(y)) *
-          (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
-           p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
-           p_z * cos(r) * sin(p));
+        (p_z * cos(p) * cos(r) - p_x * cos(r) * cos(y) * sin(p) +
+         p_y * cos(r) * sin(p) * sin(y)) *
+        (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
+         p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+         p_z * cos(r) * sin(p));
     J23 = 2.0 *
-          (p_x * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
-           p_y * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y))) *
-          (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
-           p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
-           p_z * cos(r) * sin(p));
+        (p_x * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+         p_y * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y))) *
+        (p_y - t_y + p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
+         p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+         p_z * cos(r) * sin(p));
     J24 = 0.0;
     J25 = 2.0 * t_y - 2.0 * p_y -
-          2.0 * p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) -
-          2.0 * p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) +
-          2.0 * p_z * cos(r) * sin(p);
+        2.0 * p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) -
+        2.0 * p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) +
+        2.0 * p_z * cos(r) * sin(p);
     J26 = 0.0;
 
     J31 = -2.0 *
-          (p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
-           p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
-           p_z * cos(r) * sin(p)) *
-          (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
-           p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
-           p_z * sin(p) * sin(r));
+        (p_x * (sin(r) * sin(y) - cos(p) * cos(r) * cos(y)) +
+         p_y * (cos(y) * sin(r) + cos(p) * cos(r) * sin(y)) -
+         p_z * cos(r) * sin(p)) *
+        (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+         p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+         p_z * sin(p) * sin(r));
     J32 = 2.0 *
-          (p_z * cos(p) * sin(r) - p_x * cos(y) * sin(p) * sin(r) +
-           p_y * sin(p) * sin(r) * sin(y)) *
-          (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
-           p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
-           p_z * sin(p) * sin(r));
+        (p_z * cos(p) * sin(r) - p_x * cos(y) * sin(p) * sin(r) +
+         p_y * sin(p) * sin(r) * sin(y)) *
+        (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+         p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+         p_z * sin(p) * sin(r));
     J33 = 2.0 *
-          (p_x * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) -
-           p_y * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r))) *
-          (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
-           p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
-           p_z * sin(p) * sin(r));
+        (p_x * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) -
+         p_y * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r))) *
+        (t_z - p_z + p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+         p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+         p_z * sin(p) * sin(r));
     J34 = 0.0;
     J35 = 0.0;
     J36 = 2.0 * t_z - 2.0 * p_z +
-          2.0 * p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
-          2.0 * p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
-          2.0 * p_z * sin(p) * sin(r);
+        2.0 * p_x * (cos(r) * sin(y) + cos(p) * cos(y) * sin(r)) +
+        2.0 * p_y * (cos(r) * cos(y) - cos(p) * sin(r) * sin(y)) +
+        2.0 * p_z * sin(p) * sin(r);
 
     // Form the 3X6 Jacobian matrix
     Eigen::Matrix<double, 3, 6> J;
@@ -655,7 +666,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPoint(
   eigensolver.compute(covariance);
   Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
   Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
-  double lower_bound = 0.001;  // Should be positive semidef
+  double lower_bound = 0.001; // Should be positive semidef
   double upper_bound = 1000;
   if (eigen_values.size() < 6) {
     covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
@@ -663,8 +674,10 @@ bool IcpLoopComputation::ComputeICPCovariancePointPoint(
     return false;
   }
   for (size_t i = 0; i < 6; i++) {
-    if (eigen_values[i] < lower_bound) eigen_values[i] = lower_bound;
-    if (eigen_values[i] > upper_bound) eigen_values[i] = upper_bound;
+    if (eigen_values[i] < lower_bound)
+      eigen_values[i] = lower_bound;
+    if (eigen_values[i] > upper_bound)
+      eigen_values[i] = upper_bound;
   }
   // Update covariance matrix after bound
   covariance =
@@ -776,7 +789,7 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloud::ConstPtr source,
   ROS_INFO("Finding TEASER Rigid Transform...");
   params.rotation_estimation_algorithm =
       teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::GNC_TLS;
-  params.rotation_cost_threshold = 1.0;  // 0.005;
+  params.rotation_cost_threshold = 1.0; // 0.005;
 
   // Solve with TEASER++
   teaser::RobustRegistrationSolver solver(params);
@@ -793,4 +806,4 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloud::ConstPtr source,
   ROS_INFO("Solved TEASER Rigid Transform with %d inliers", n_inliers);
 }
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

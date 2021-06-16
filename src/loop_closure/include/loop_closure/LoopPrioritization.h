@@ -19,7 +19,7 @@
 namespace lamp_loop_closure {
 
 class LoopPrioritization {
- public:
+public:
   LoopPrioritization();
   ~LoopPrioritization();
 
@@ -31,7 +31,7 @@ class LoopPrioritization {
 
   virtual bool RegisterCallbacks(const ros::NodeHandle& n);
 
- protected:
+protected:
   // Use different priority metrics to populate output (priority) queue
   virtual void PopulatePriorityQueue() = 0;
 
@@ -52,4 +52,4 @@ class LoopPrioritization {
   std::string param_ns_;
 };
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

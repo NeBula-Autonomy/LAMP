@@ -5,12 +5,12 @@
  * @author Yun Chang
  */
 
-#include <parameter_utils/ParameterUtils.h>
-#include <pcl_conversions/pcl_conversions.h>
+#include "loop_closure/PointCloudUtils.h"
 #include <Eigen/Eigenvalues>
 #include <algorithm>
 #include <numeric>
-#include "loop_closure/PointCloudUtils.h"
+#include <parameter_utils/ParameterUtils.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include "loop_closure/GenericLoopPrioritization.h"
 
@@ -50,7 +50,8 @@ bool GenericLoopPrioritization::Initialize(const ros::NodeHandle& n) {
 }
 
 bool GenericLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
-  if (!LoopPrioritization::LoadParameters(n)) return false;
+  if (!LoopPrioritization::LoadParameters(n))
+    return false;
 
   if (!pu::Get(param_ns_ + "/gen_prioritization/min_observability",
                min_observability_))
@@ -66,13 +67,15 @@ bool GenericLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
 }
 
 bool GenericLoopPrioritization::CreatePublishers(const ros::NodeHandle& n) {
-  if (!LoopPrioritization::CreatePublishers(n)) return false;
+  if (!LoopPrioritization::CreatePublishers(n))
+    return false;
 
   return true;
 }
 
 bool GenericLoopPrioritization::RegisterCallbacks(const ros::NodeHandle& n) {
-  if (!LoopPrioritization::RegisterCallbacks(n)) return false;
+  if (!LoopPrioritization::RegisterCallbacks(n))
+    return false;
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
@@ -97,7 +100,8 @@ void GenericLoopPrioritization::ProcessTimerCallback(
 
 void GenericLoopPrioritization::PopulatePriorityQueue() {
   size_t n = candidate_queue_.size();
-  if (n == 0) return;
+  if (n == 0)
+    return;
   auto best_candidate = candidate_queue_.front();
   double best_score = 0;
   for (size_t i = 0; i < n; i++) {
@@ -114,13 +118,15 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
     utils::ComputeIcpObservability(
         keyed_scans_[candidate.key_from], normals_radius_, &obs_eigenv_from);
     double min_obs_from = obs_eigenv_from.minCoeff();
-    if (min_obs_from < min_observability_) continue;
+    if (min_obs_from < min_observability_)
+      continue;
 
     Eigen::Matrix<double, 3, 1> obs_eigenv_to;
     utils::ComputeIcpObservability(
         keyed_scans_[candidate.key_to], normals_radius_, &obs_eigenv_to);
     double min_obs_to = obs_eigenv_to.minCoeff();
-    if (min_obs_to < min_observability_) continue;
+    if (min_obs_to < min_observability_)
+      continue;
 
     if (!choose_best_) {
       priority_queue_.push_back(best_candidate);
@@ -131,7 +137,8 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
       best_score = min_obs_from + min_obs_to;
     }
   }
-  if (choose_best_ && best_score > 0) priority_queue_.push_back(best_candidate);
+  if (choose_best_ && best_score > 0)
+    priority_queue_.push_back(best_candidate);
   return;
 }
 
@@ -163,4 +170,4 @@ void GenericLoopPrioritization::KeyedScanCallback(
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

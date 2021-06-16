@@ -14,7 +14,7 @@ LoopPrioritization::LoopPrioritization() {}
 LoopPrioritization::~LoopPrioritization() {}
 
 bool LoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
   param_ns_ = utils::GetParamNamespace(n.getNamespace());
   return true;
 }
@@ -29,10 +29,7 @@ bool LoopPrioritization::CreatePublishers(const ros::NodeHandle& n) {
 bool LoopPrioritization::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_candidate_sub_ = nl.subscribe<pose_graph_msgs::LoopCandidateArray>(
-      "loop_candidates",
-      100,
-      &LoopPrioritization::InputCallback,
-      this);
+      "loop_candidates", 100, &LoopPrioritization::InputCallback, this);
   return true;
 }
 
@@ -43,4 +40,4 @@ void LoopPrioritization::InputCallback(
   }
   return;
 }
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

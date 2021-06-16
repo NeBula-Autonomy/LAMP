@@ -18,12 +18,11 @@ Lidar pointcloud based loop closure
 #include <parameter_utils/ParameterUtils.h>
 #include <utils/CommonFunctions.h>
 
-#include <teaser/registration.h>
 #include <teaser/matcher.h>
 #include <teaser/ply_io.h>
+#include <teaser/registration.h>
 
 #include <Eigen/Core>
-
 
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
@@ -98,12 +97,23 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold", sac_fitness_score_threshold_)) return false;
 
   // Load TEASER parameters
-  if (!pu::Get(param_ns_ + "/TEASERPP/num_inlier_threshold", teaser_inlier_threshold_)) return false;
-  if (!pu::Get(param_ns_ + "/TEASERPP/rotation_cost_threshold", rotation_cost_threshold_)) return false;
-  if (!pu::Get(param_ns_ + "/TEASERPP/rotation_max_iterations", rotation_max_iterations_)) return false;
-  if (!pu::Get(param_ns_ + "/TEASERPP/noise_bound", noise_bound_)) return false;
-  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_normals_radius", TEASER_FPFH_normals_radius_)) return false;
-  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_features_radius", TEASER_FPFH_features_radius_)) return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/num_inlier_threshold",
+               teaser_inlier_threshold_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/rotation_cost_threshold",
+               rotation_cost_threshold_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/rotation_max_iterations",
+               rotation_max_iterations_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/noise_bound", noise_bound_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_normals_radius",
+               TEASER_FPFH_normals_radius_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_features_radius",
+               TEASER_FPFH_features_radius_))
+    return false;
 
   // Load Harris parameters
   if (!pu::Get(param_ns_ + "/harris3D/harris_threshold",
@@ -154,14 +164,12 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
 }
 
 void LaserLoopClosure::PublishLCComputationTime(
-    const double& lc_computation_time,
-    const ros::Publisher& pub) {
+    const double& lc_computation_time, const ros::Publisher& pub) {
   // Convert slipage value value to ROS format and publish.
   std_msgs::Float64 computation_time;
   computation_time.data = lc_computation_time;
   pub.publish(computation_time);
 }
-
 
 void LaserLoopClosure::AccumulateScans(
     gtsam::Key key,
@@ -219,7 +227,8 @@ void LaserLoopClosure::GetInitialAlignment(
     Eigen::Matrix4f* tf_out,
     double& sac_fitness_score) {
   // Get Normals
-  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point begin =
+      std::chrono::steady_clock::now();
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
   utils::ComputeNormals(
@@ -250,7 +259,6 @@ void LaserLoopClosure::GetInitialAlignment(
                          target_normals,
                          target_features);
 
-
   // Align
   pcl::SampleConsensusInitialAlignment<pcl::PointXYZI, pcl::PointXYZI, pcl::FPFHSignature33> sac_ia;
   sac_ia.setMaximumIterations(sac_iterations_);
@@ -266,35 +274,34 @@ void LaserLoopClosure::GetInitialAlignment(
 
   *tf_out = sac_ia.getFinalTransformation();
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  double duration = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000000.0;
+  double duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+          .count() /
+      1000000.0;
   PublishLCComputationTime(duration, lc_computation_time_pub_);
-
 }
 
-void LaserLoopClosure::GetTEASERInitialAlignment(
-    PointCloud::ConstPtr source,
-    PointCloud::ConstPtr target,
-    Eigen::Matrix4f* tf_out,
-    double& n_inliers) {
-  
+void LaserLoopClosure::GetTEASERInitialAlignment(PointCloud::ConstPtr source,
+                                                 PointCloud::ConstPtr target,
+                                                 Eigen::Matrix4f* tf_out,
+                                                 double& n_inliers) {
   // Convert to teaser point cloud
   teaser::PointCloud src_cloud;
   for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
            source->points.begin();
        it != source->points.end();
        it++) {
-         src_cloud.push_back({it->x, it->y, it->z});
-       }
+    src_cloud.push_back({it->x, it->y, it->z});
+  }
 
   teaser::PointCloud tgt_cloud;
   for (pcl::PointCloud<pcl::PointXYZI>::const_iterator it =
            target->points.begin();
        it != target->points.end();
        it++) {
-         tgt_cloud.push_back({it->x, it->y, it->z});
-       }
+    tgt_cloud.push_back({it->x, it->y, it->z});
+  }
 
-  
   // Get Normals
   // Normals::Ptr source_normals(new Normals);
   // Normals::Ptr target_normals(new Normals);
@@ -315,32 +322,45 @@ void LaserLoopClosure::GetTEASERInitialAlignment(
   // teaser::FPFHCloud target_descriptors;
   // teaser::FPFHCloudPtr src_descriptors(new Features);
   // teaser::FPFHCloudPtr target_descriptors(new Features);
- 
+
   // pcl::copyPointCloud(*source_features, *src_descriptors);
   // pcl::copyPointCloud(*target_features, *target_descriptors);
-  
 
   // Compute FPFH
   teaser::FPFHEstimation fpfh;
-  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-  auto src_descriptors = fpfh.computeFPFHFeatures(src_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
-  auto target_descriptors = fpfh.computeFPFHFeatures(tgt_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
-  
-  // Align 
+  std::chrono::steady_clock::time_point begin =
+      std::chrono::steady_clock::now();
+  auto src_descriptors = fpfh.computeFPFHFeatures(
+      src_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
+  auto target_descriptors = fpfh.computeFPFHFeatures(
+      tgt_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
+
+  // Align
   teaser::Matcher matcher;
   ROS_INFO("Before TEASER matcher");
-  auto correspondences = matcher.calculateCorrespondences(
-      src_cloud, tgt_cloud, *src_descriptors, *target_descriptors, false, true, false, 0.95);
+  auto correspondences = matcher.calculateCorrespondences(src_cloud,
+                                                          tgt_cloud,
+                                                          *src_descriptors,
+                                                          *target_descriptors,
+                                                          false,
+                                                          true,
+                                                          false,
+                                                          0.95);
   ROS_INFO("After TEASER matcher");
   int corres_size = correspondences.size();
   // ROS_INFO_STREAM("Correspondence Size is: "<< corres_size);
-  
-  // Retrive the corresponding points from src and tgt point clouds into two 3-by-N Eigen matrices
+
+  // Retrive the corresponding points from src and tgt point clouds into two
+  // 3-by-N Eigen matrices
   Eigen::Matrix<double, 3, Eigen::Dynamic> src_corres_points(3, corres_size);
   Eigen::Matrix<double, 3, Eigen::Dynamic> tgt_corres_points(3, corres_size);
   for (size_t i = 0; i < corres_size; ++i) {
-    src_corres_points.col(i) << src_cloud[correspondences[i].first].x, src_cloud[correspondences[i].first].y, src_cloud[correspondences[i].first].z;
-    tgt_corres_points.col(i) << tgt_cloud[correspondences[i].second].x, tgt_cloud[correspondences[i].second].y, tgt_cloud[correspondences[i].second].z;
+    src_corres_points.col(i) << src_cloud[correspondences[i].first].x,
+        src_cloud[correspondences[i].first].y,
+        src_cloud[correspondences[i].first].z;
+    tgt_corres_points.col(i) << tgt_cloud[correspondences[i].second].x,
+        tgt_cloud[correspondences[i].second].y,
+        tgt_cloud[correspondences[i].second].z;
   }
   // ROS_INFO_STREAM("Matrix src is: "<< src_corres_points);
   // ROS_INFO("Completed TEASER Correspondences!");
@@ -365,12 +385,15 @@ void LaserLoopClosure::GetTEASERInitialAlignment(
   Eigen::Matrix4d T;
   T.topLeftCorner(3, 3) = solution.rotation;
   T.topRightCorner(3, 1) = solution.translation;
-  *tf_out = T.cast <float> ();
+  *tf_out = T.cast<float>();
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
   auto final_inliers = solver.getInlierMaxClique();
   n_inliers = final_inliers.size();
-  double duration = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000000.0;
+  double duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+          .count() /
+      1000000.0;
   PublishLCComputationTime(duration, lc_computation_time_pub_);
   // ROS_INFO_STREAM("TEASER++ number of inliers" << n_inliers);
 }
@@ -608,18 +631,18 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
     }
   } break;
 
-  case IcpInitMethod::TEASERPP:
-  {
+  case IcpInitMethod::TEASERPP: {
     ROS_INFO("TEASERPP is selected!");
     double n_inliers = teaser_inlier_threshold_;
     ROS_INFO_STREAM("teaser_inlier_threshold " << teaser_inlier_threshold_);
-    GetTEASERInitialAlignment(scan1, accumulated_target, &initial_guess, n_inliers);
+    GetTEASERInitialAlignment(
+        scan1, accumulated_target, &initial_guess, n_inliers);
     if (n_inliers <= teaser_inlier_threshold_) {
       ROS_INFO_STREAM("Number of TEASER inliers is too low" << n_inliers);
       return false;
     }
   } break;
-  
+
   default: // identity as default (default in ICP anyways)
   {
     initial_guess = Eigen::Matrix4f::Identity(4, 4);

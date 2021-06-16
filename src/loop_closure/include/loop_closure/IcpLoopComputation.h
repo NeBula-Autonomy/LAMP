@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "loop_closure/PointCloudUtils.h"
 #include <geometry_utils/GeometryUtils.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>
@@ -12,7 +13,6 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
-#include "loop_closure/PointCloudUtils.h"
 
 #include "loop_closure/LoopComputation.h"
 
@@ -25,7 +25,7 @@ class IcpLoopComputation : public LoopComputation {
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
   typedef pcl::search::KdTree<pcl::PointXYZI> KdTree;
 
- public:
+public:
   IcpLoopComputation();
   ~IcpLoopComputation();
 
@@ -37,7 +37,7 @@ class IcpLoopComputation : public LoopComputation {
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
- protected:
+protected:
   // Compute transform and populate output queue
   void ComputeTransforms() override;
 
@@ -66,12 +66,12 @@ class IcpLoopComputation : public LoopComputation {
                                  Eigen::Matrix4f* tf_out,
                                  int& n_inliers);
 
-  bool ComputeICPCovariancePointPlane(
-      const PointCloud::ConstPtr& query_cloud,
-      const PointCloud::ConstPtr& reference_cloud,
-      const std::vector<size_t>& correspondences,
-      const Eigen::Matrix4f& T,
-      Eigen::Matrix<double, 6, 6>* covariance);
+  bool
+  ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& query_cloud,
+                                 const PointCloud::ConstPtr& reference_cloud,
+                                 const std::vector<size_t>& correspondences,
+                                 const Eigen::Matrix4f& T,
+                                 Eigen::Matrix<double, 6, 6>* covariance);
 
   bool ComputeICPCovariancePointPoint(const PointCloud::ConstPtr& pointCloud,
                                       const Eigen::Matrix4f& T,
@@ -134,4 +134,4 @@ class IcpLoopComputation : public LoopComputation {
       icp_;
 };
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

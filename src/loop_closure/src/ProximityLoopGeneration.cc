@@ -5,8 +5,8 @@
  */
 
 #include <parameter_utils/ParameterUtils.h>
-#include <utils/CommonFunctions.h>
 #include <string>
+#include <utils/CommonFunctions.h>
 
 #include "loop_closure/ProximityLoopGeneration.h"
 
@@ -42,7 +42,8 @@ bool ProximityLoopGeneration::Initialize(const ros::NodeHandle& n) {
 }
 
 bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
-  if (!LoopGeneration::LoadParameters(n)) return false;
+  if (!LoopGeneration::LoadParameters(n))
+    return false;
 
   double distance_to_skip_recent_poses, translation_threshold_nodes;
   if (!pu::Get(param_ns_ + "/translation_threshold_nodes",
@@ -60,7 +61,8 @@ bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
 }
 
 bool ProximityLoopGeneration::CreatePublishers(const ros::NodeHandle& n) {
-  if (!LoopGeneration::CreatePublishers(n)) return false;
+  if (!LoopGeneration::CreatePublishers(n))
+    return false;
   return true;
 }
 
@@ -74,9 +76,9 @@ bool ProximityLoopGeneration::RegisterCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
-double ProximityLoopGeneration::DistanceBetweenKeys(
-    const gtsam::Symbol& key1,
-    const gtsam::Symbol& key2) const {
+double
+ProximityLoopGeneration::DistanceBetweenKeys(const gtsam::Symbol& key1,
+                                             const gtsam::Symbol& key2) const {
   const gtsam::Pose3 pose1 = keyed_poses_.at(key1);
   const gtsam::Pose3 pose2 = keyed_poses_.at(key2);
   const gtsam::Pose3 delta = pose1.between(pose2);
@@ -86,14 +88,16 @@ double ProximityLoopGeneration::DistanceBetweenKeys(
 
 void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
   // Loop closure off. No candidates generated
-  if (!b_check_for_loop_closures_) return;
+  if (!b_check_for_loop_closures_)
+    return;
 
   const gtsam::Symbol key = gtsam::Symbol(new_key);
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
 
     // Don't self-check.
-    if (key == other_key) continue;
+    if (key == other_key)
+      continue;
 
     // Don't compare against poses that were recently collected.
     if (utils::IsKeyFromSameRobot(key, other_key) &&
@@ -125,12 +129,15 @@ void ProximityLoopGeneration::KeyedPoseCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
   pose_graph_msgs::PoseGraphNode node_msg;
   for (const auto& node_msg : graph_msg->nodes) {
-    gtsam::Key new_key = node_msg.key;            // extract new key
-    ros::Time timestamp = node_msg.header.stamp;  // extract new timestamp
+    gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract new key
+    ros::Time timestamp = node_msg.header.stamp; // extract new timestamp
+
+    if (!utils::IsRobotPrefix(new_key.chr()))
+      continue;
 
     // Check if the node is new
     if (keyed_poses_.count(new_key) > 0) {
-      continue;  // Not a new node
+      continue; // Not a new node
     }
 
     // also extract poses (NOTE(Yun) this pose will not be updated...)
@@ -157,4 +164,4 @@ void ProximityLoopGeneration::KeyedPoseCallback(
   return;
 }
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure
