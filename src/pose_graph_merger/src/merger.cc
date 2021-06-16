@@ -222,8 +222,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     tf::poseMsgToEigen(merged_graph_PrevNode->pose, merged_graph_PrevNodeTf);
     // ROS_INFO_STREAM("prev node tf is " << merged_graph_PrevNodeTf.matrix());
 
-    Eigen::Affine3d currGraphNodeTf;
-    currGraphNodeTf = merged_graph_PrevNodeTf * new_merged_graph_edge_tf;
+    Eigen::Affine3d currGraphNodeTf = merged_graph_PrevNodeTf * new_merged_graph_edge_tf;
     // ROS_INFO_STREAM("Resulting tf is " << currGraphNodeTf.matrix());
     tf::poseEigenToMsg(currGraphNodeTf, new_merged_graph_node.pose);
 
