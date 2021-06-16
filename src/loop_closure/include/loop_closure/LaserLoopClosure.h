@@ -18,8 +18,8 @@ Lidar pointcloud based loop closure
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
-#include <std_msgs/String.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/String.h>
 
 #include <gtsam/inference/Symbol.h>
 
@@ -51,12 +51,11 @@ private:
       Eigen::Matrix4f* tf_out,
       double& sac_fitness_score);
 
-  void GetTEASERInitialAlignment(
-      PointCloud::ConstPtr source,
-      PointCloud::ConstPtr target,
-      Eigen::Matrix4f* tf_out,
-      double& n_inliers);
-  
+  void GetTEASERInitialAlignment(PointCloud::ConstPtr source,
+                                 PointCloud::ConstPtr target,
+                                 Eigen::Matrix4f* tf_out,
+                                 double& n_inliers);
+
   bool FindLoopClosures(
       gtsam::Key new_key,
       std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges);
@@ -115,9 +114,9 @@ private:
                                    Eigen::Matrix<double, 6, 6>& Ap);
 
   void PublishLCComputationTime(const double& lc_computation_time,
-                              const ros::Publisher& pub);
-                              
- private:
+                                const ros::Publisher& pub);
+
+private:
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber loop_closure_seed_sub_;
   ros::Subscriber pc_gt_trigger_sub_;
@@ -169,7 +168,13 @@ private:
 
   PointCloudFilter filter_;
 
-  enum class IcpInitMethod { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASERPP };
+  enum class IcpInitMethod {
+    IDENTITY,
+    ODOMETRY,
+    ODOM_ROTATION,
+    FEATURES,
+    TEASERPP
+  };
 
   enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };
 

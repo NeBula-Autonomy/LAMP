@@ -114,15 +114,16 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
 
   Eigen::Vector3d a_i, n_i;
   for (uint32_t i = 0; i < query_normalized->size(); i++) {
-    a_i << query_normalized->points[i].x,  //////
-        query_normalized->points[i].y,     //////
+    a_i << query_normalized->points[i].x, //////
+        query_normalized->points[i].y,    //////
         query_normalized->points[i].z;
 
-    n_i << reference_normals->points[correspondences[i]].normal_x,  //////
-        reference_normals->points[correspondences[i]].normal_y,     //////
+    n_i << reference_normals->points[correspondences[i]].normal_x, //////
+        reference_normals->points[correspondences[i]].normal_y,    //////
         reference_normals->points[correspondences[i]].normal_z;
 
-    if (a_i.hasNaN() || n_i.hasNaN()) continue;
+    if (a_i.hasNaN() || n_i.hasNaN())
+      continue;
 
     Eigen::Matrix<double, 1, 6> H = Eigen::Matrix<double, 1, 6>::Zero();
     H.block(0, 0, 1, 3) = (a_i.cross(n_i)).transpose();
@@ -143,9 +144,9 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
 
   // Correspondence with itself (not really used anyways)
   std::vector<size_t> c(cloud->size());
-  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
+  std::iota(std::begin(c), std::end(c), 0); // Fill with 0, 1, ...
 
-  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero();  // Unused
+  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero(); // Unused
 
   Eigen::Matrix<double, 6, 6> Ap;
   // Compute Ap and its eigenvalues

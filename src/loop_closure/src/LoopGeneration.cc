@@ -17,7 +17,7 @@ LoopGeneration::LoopGeneration() : b_check_for_loop_closures_(false) {}
 LoopGeneration::~LoopGeneration() {}
 
 bool LoopGeneration::LoadParameters(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
   param_ns_ = utils::GetParamNamespace(n.getNamespace());
   if (!pu::Get(param_ns_ + "/b_find_laser_loop_closures",
                b_check_for_loop_closures_))
@@ -32,4 +32,4 @@ bool LoopGeneration::CreatePublishers(const ros::NodeHandle& n) {
   return true;
 }
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

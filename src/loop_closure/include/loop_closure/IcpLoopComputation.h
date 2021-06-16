@@ -36,7 +36,7 @@ public:
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
- protected:
+protected:
   // Compute transform and populate output queue
   void ComputeTransforms() override;
 
@@ -65,12 +65,12 @@ public:
                                  Eigen::Matrix4f* tf_out,
                                  int& n_inliers);
 
-  bool ComputeICPCovariancePointPlane(
-      const PointCloud::ConstPtr& query_cloud,
-      const PointCloud::ConstPtr& reference_cloud,
-      const std::vector<size_t>& correspondences,
-      const Eigen::Matrix4f& T,
-      Eigen::Matrix<double, 6, 6>* covariance);
+  bool
+  ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& query_cloud,
+                                 const PointCloud::ConstPtr& reference_cloud,
+                                 const std::vector<size_t>& correspondences,
+                                 const Eigen::Matrix4f& T,
+                                 Eigen::Matrix<double, 6, 6>* covariance);
 
   bool ComputeICPCovariancePointPoint(const PointCloud::ConstPtr& pointCloud,
                                       const Eigen::Matrix4f& T,
@@ -131,4 +131,4 @@ public:
   pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point> icp_;
 };
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

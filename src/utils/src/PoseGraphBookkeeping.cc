@@ -237,7 +237,7 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
   auto msg_found = edges_.find(msg);
 
   if (msg_found != edges_.end()) {
-    ROS_WARN_STREAM("TrackArtifactFactor: Edge of type "
+    ROS_INFO_STREAM("TrackArtifactFactor: Edge of type "
                     << type << " from key "
                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
                     << gtsam::DefaultKeyFormatter(key_to)
@@ -252,7 +252,6 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
             std::pow(msg_found->pose.position.z - msg.pose.position.z, 2)) <
         0.01) {
       diff_position = false;
-      ROS_WARN_STREAM("Same position");
     }
 
     // Check the lower right diagonal value of the covariance,
@@ -262,7 +261,6 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
                   std::pow(msg_found->covariance[21] - msg.covariance[21], 2)) <
         0.001) {
       diff_covariance = false;
-      ROS_WARN_STREAM("Same covariance");
     }
 
     // Hack: Removing loop closure edge
@@ -274,26 +272,24 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
                              covariance);
     auto loopclose_msg_found = edges_.find(loopclose_msg);
     if (loopclose_msg_found != edges_.end()) {
-      ROS_WARN_STREAM(
+      ROS_DEBUG_STREAM(
           "TrackArtifactFactor: Found and Removing Loop CLosure Edge (Hack)");
       edges_.erase(loopclose_msg_found);
     }
 
     if (!diff_position && !diff_covariance) {
-      ROS_WARN_STREAM("TrackArtifactFactor: Not updating values because same "
-                      "position and covariance");
+      ROS_DEBUG_STREAM("TrackArtifactFactor: Not updating values because same "
+                       "position and covariance");
       return true;
     }
 
 
-    ROS_WARN_STREAM("TrackArtifactFactor: Updating existing artifact factor");
     // Remove existing artifact edge message in edge_
     edges_.erase(msg_found);
 
     // Remove existing artifact edge message in edges_new
     auto new_msg_found = edges_new_.find(msg);
     if (new_msg_found != edges_new_.end()) {
-      ROS_WARN_STREAM("TrackArtifactFactor: NEW MSG is found");
       edges_new_.erase(new_msg_found);
     }
 
@@ -320,10 +316,6 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
     edges_.insert(msg);
     edges_new_.insert(msg);
   }
-
-  ROS_INFO_STREAM("\nTrackArtifactFactor: Adding artifact edge for key "
-                  << gtsam::DefaultKeyFormatter(key_from) << " to key "
-                  << gtsam::DefaultKeyFormatter(key_to));
 
   // Add the updated edge factor
   nfg_.add(gtsam::BetweenFactor<gtsam::Pose3>(

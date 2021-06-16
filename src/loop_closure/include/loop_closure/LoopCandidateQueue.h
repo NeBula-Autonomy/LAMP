@@ -19,7 +19,7 @@
 namespace lamp_loop_closure {
 
 class LoopCandidateQueue {
- public:
+public:
   LoopCandidateQueue();
   ~LoopCandidateQueue();
 
@@ -31,12 +31,12 @@ class LoopCandidateQueue {
 
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
- protected:
+protected:
   void InputCallback(
       const pose_graph_msgs::LoopCandidateArray::ConstPtr& input_candidates);
 
-  void PublishLoopCandidate(
-      const pose_graph_msgs::LoopCandidateArray& candidates);
+  void
+  PublishLoopCandidate(const pose_graph_msgs::LoopCandidateArray& candidates);
 
   // Define publishers and subscribers
   ros::Publisher loop_candidate_pub_;
@@ -45,4 +45,4 @@ class LoopCandidateQueue {
   std::string param_ns_;
 };
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

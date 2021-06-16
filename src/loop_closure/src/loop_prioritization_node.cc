@@ -5,10 +5,10 @@
  */
 #include <loop_closure/GenericLoopPrioritization.h>
 #include <loop_closure/ObservabilityLoopPrioritization.h>
+#include <memory>
 #include <parameter_utils/ParameterUtils.h>
 #include <ros/ros.h>
 #include <utils/CommonFunctions.h>
-#include <memory>
 
 namespace pu = parameter_utils;
 namespace lc = lamp_loop_closure;
@@ -25,17 +25,17 @@ int main(int argc, char** argv) {
   std::unique_ptr<lc::LoopPrioritization> loop_prioritize;
 
   switch (prioritization_method) {
-    case 0: {
-      loop_prioritize = std::unique_ptr<lc::GenericLoopPrioritization>(
-          new lc::GenericLoopPrioritization);
-    } break;
-    case 1 : {
-      loop_prioritize = std::unique_ptr<lc::ObservabilityLoopPrioritization>(
-          new lc::ObservabilityLoopPrioritization);
-    } break;
-    default: {
-      ROS_ERROR("loop_prioritization: Unrecognized prioritization method. ");
-    }
+  case 0: {
+    loop_prioritize = std::unique_ptr<lc::GenericLoopPrioritization>(
+        new lc::GenericLoopPrioritization);
+  } break;
+  case 1: {
+    loop_prioritize = std::unique_ptr<lc::ObservabilityLoopPrioritization>(
+        new lc::ObservabilityLoopPrioritization);
+  } break;
+  default: {
+    ROS_ERROR("loop_prioritization: Unrecognized prioritization method. ");
+  }
   }
   if (!loop_prioritize->Initialize(n)) {
     ROS_ERROR(

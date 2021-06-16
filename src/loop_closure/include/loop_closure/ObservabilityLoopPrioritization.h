@@ -20,7 +20,7 @@ namespace lamp_loop_closure {
 class ObservabilityLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::Normal> Normals;
 
- public:
+public:
   ObservabilityLoopPrioritization();
   ~ObservabilityLoopPrioritization();
 
@@ -32,7 +32,7 @@ class ObservabilityLoopPrioritization : public LoopPrioritization {
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
- protected:
+protected:
   void PopulatePriorityQueue() override;
 
   void PublishBestCandidates() override;
@@ -54,10 +54,10 @@ class ObservabilityLoopPrioritization : public LoopPrioritization {
   ros::Timer update_timer_;
 
   // Paramters
-  int publish_n_best_;        // Publish only the top n candidates
-  double min_observability_;  // Discard any candidate with observability
-                              // below threshold
-  double normals_radius_;     // radius used for cloud normal computation
+  int publish_n_best_;       // Publish only the top n candidates
+  double min_observability_; // Discard any candidate with observability
+                             // below threshold
+  double normals_radius_;    // radius used for cloud normal computation
 };
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

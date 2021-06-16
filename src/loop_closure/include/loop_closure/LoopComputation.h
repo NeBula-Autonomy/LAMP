@@ -19,7 +19,7 @@
 namespace lamp_loop_closure {
 
 class LoopComputation {
- public:
+public:
   LoopComputation();
   ~LoopComputation();
 
@@ -31,7 +31,7 @@ class LoopComputation {
 
   virtual bool RegisterCallbacks(const ros::NodeHandle& n);
 
- protected:
+protected:
   // Compute transform and populate output queue
   virtual void ComputeTransforms() = 0;
 
@@ -40,11 +40,11 @@ class LoopComputation {
   void InputCallback(
       const pose_graph_msgs::LoopCandidateArray::ConstPtr& input_candidates);
 
-  pose_graph_msgs::PoseGraphEdge CreateLoopClosureEdge(
-      const gtsam::Symbol& key1,
-      const gtsam::Symbol& key2,
-      const geometry_utils::Transform3& delta,
-      const gtsam::Matrix66& covariance) const;
+  pose_graph_msgs::PoseGraphEdge
+  CreateLoopClosureEdge(const gtsam::Symbol& key1,
+                        const gtsam::Symbol& key2,
+                        const geometry_utils::Transform3& delta,
+                        const gtsam::Matrix66& covariance) const;
 
   // Define publishers and subscribers
   ros::Publisher loop_closure_pub_;
@@ -60,4 +60,4 @@ class LoopComputation {
   std::string param_ns_;
 };
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

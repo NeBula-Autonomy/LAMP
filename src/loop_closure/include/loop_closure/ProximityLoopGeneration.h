@@ -12,7 +12,7 @@
 namespace lamp_loop_closure {
 
 class ProximityLoopGeneration : public LoopGeneration {
- public:
+public:
   ProximityLoopGeneration();
   ~ProximityLoopGeneration();
 
@@ -24,7 +24,7 @@ class ProximityLoopGeneration : public LoopGeneration {
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
- protected:
+protected:
   void GenerateLoops(const gtsam::Key& new_key);
 
   void KeyedPoseCallback(
@@ -37,4 +37,4 @@ class ProximityLoopGeneration : public LoopGeneration {
   size_t skip_recent_poses_;
 };
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

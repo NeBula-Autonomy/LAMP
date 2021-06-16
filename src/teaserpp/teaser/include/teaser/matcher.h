@@ -56,7 +56,8 @@ private:
   std::vector<std::pair<int, int>> corres_;
   std::vector<teaser::PointCloud> pointcloud_;
   std::vector<Feature> features_;
-  std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > means_; // for normalization
+  std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>
+      means_; // for normalization
   float global_scale_;
 };
 

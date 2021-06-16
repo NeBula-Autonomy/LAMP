@@ -50,7 +50,8 @@ bool ObservabilityLoopPrioritization::Initialize(const ros::NodeHandle& n) {
 }
 
 bool ObservabilityLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
-  if (!LoopPrioritization::LoadParameters(n)) return false;
+  if (!LoopPrioritization::LoadParameters(n))
+    return false;
 
   if (!pu::Get(param_ns_ + "/obs_prioritization/publish_n_best",
                publish_n_best_))
@@ -69,14 +70,16 @@ bool ObservabilityLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
 
 bool ObservabilityLoopPrioritization::CreatePublishers(
     const ros::NodeHandle& n) {
-  if (!LoopPrioritization::CreatePublishers(n)) return false;
+  if (!LoopPrioritization::CreatePublishers(n))
+    return false;
 
   return true;
 }
 
 bool ObservabilityLoopPrioritization::RegisterCallbacks(
     const ros::NodeHandle& n) {
-  if (!LoopPrioritization::RegisterCallbacks(n)) return false;
+  if (!LoopPrioritization::RegisterCallbacks(n))
+    return false;
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
@@ -118,13 +121,15 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     utils::ComputeIcpObservability(
         keyed_scans_[candidate.key_from], normals_radius_, &obs_eigenv_from);
     double min_obs_from = obs_eigenv_from.minCoeff();
-    if (min_obs_from < min_observability_) continue;
+    if (min_obs_from < min_observability_)
+      continue;
 
     Eigen::Matrix<double, 3, 1> obs_eigenv_to;
     utils::ComputeIcpObservability(
         keyed_scans_[candidate.key_to], normals_radius_, &obs_eigenv_to);
     double min_obs_to = obs_eigenv_to.minCoeff();
-    if (min_obs_to < min_observability_) continue;
+    if (min_obs_to < min_observability_)
+      continue;
 
     double score = min_obs_from + min_obs_to;
     candidate.value = score;
@@ -149,7 +154,8 @@ void ObservabilityLoopPrioritization::PublishBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
-    if (i == publish_n_best_) break;
+    if (i == publish_n_best_)
+      break;
     output_msg.candidates.push_back(priority_queue_.front());
     priority_queue_.pop_front();
   }
@@ -173,4 +179,4 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

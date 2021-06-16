@@ -19,7 +19,7 @@
 namespace lamp_loop_closure {
 
 class LoopGeneration {
- public:
+public:
   LoopGeneration();
   ~LoopGeneration();
 
@@ -31,7 +31,7 @@ class LoopGeneration {
 
   virtual bool RegisterCallbacks(const ros::NodeHandle& n) = 0;
 
- protected:
+protected:
   // Key -> odometry-pose
   std::map<gtsam::Key, gtsam::Pose3> keyed_poses_;
   // Possible loop closure candidates along with their odometry transform
@@ -41,21 +41,24 @@ class LoopGeneration {
   ros::Publisher loop_candidate_pub_;
   ros::Subscriber keyed_poses_sub_;
 
-  virtual void KeyedPoseCallback(
-      const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) = 0;
+  virtual void
+  KeyedPoseCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) = 0;
 
   inline void PublishLoops() const {
-    if (candidates_.size() == 0) return;
+    if (candidates_.size() == 0)
+      return;
     pose_graph_msgs::LoopCandidateArray candidates_msg;
     candidates_msg.candidates = candidates_;
     loop_candidate_pub_.publish(candidates_msg);
   }
 
-  inline void ClearLoops() { candidates_.clear(); }
+  inline void ClearLoops() {
+    candidates_.clear();
+  }
 
   std::string param_ns_;
 
   bool b_check_for_loop_closures_;
 };
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure

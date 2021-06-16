@@ -13,7 +13,7 @@ LoopComputation::LoopComputation() {}
 LoopComputation::~LoopComputation() {}
 
 bool LoopComputation::LoadParameters(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);  // Nodehandle for subscription/publishing
+  ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
   param_ns_ = utils::GetParamNamespace(n.getNamespace());
   return true;
 }
@@ -28,7 +28,10 @@ bool LoopComputation::CreatePublishers(const ros::NodeHandle& n) {
 bool LoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_candidate_sub_ = nl.subscribe<pose_graph_msgs::LoopCandidateArray>(
-      "prioritized_loop_candidates", 100, &LoopComputation::InputCallback, this);
+      "prioritized_loop_candidates",
+      100,
+      &LoopComputation::InputCallback,
+      this);
   return true;
 }
 
@@ -69,4 +72,4 @@ pose_graph_msgs::PoseGraphEdge LoopComputation::CreateLoopClosureEdge(
   return edge;
 }
 
-}  // namespace lamp_loop_closure
+} // namespace lamp_loop_closure
