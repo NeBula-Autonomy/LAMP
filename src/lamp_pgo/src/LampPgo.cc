@@ -242,9 +242,14 @@ void LampPgo::InputCallback(
 
   // nfg_.print("nfg");
   ROS_INFO_STREAM("FACTORS AFTER");
+  std::vector<double> bad_errors;
   for (auto f : nfg_) {
     f->printKeys();
-    ROS_INFO_STREAM("Error: " << f->error(values_));
+    double error = f->error(values_);
+    ROS_INFO_STREAM("Error: " << error);
+    if (error > 10.0){
+      bad_errors.push_back(error);
+    }
   }
 
   ROS_INFO_STREAM("PGO stored values of size " << values_.size());
@@ -252,6 +257,10 @@ void LampPgo::InputCallback(
 
   // publish posegraph
   PublishValues();
+
+  if (!bad_errors.empty()) {
+    ROS_WARN_STREAM("Pose Graph solve may have been bad, " << bad_errors.size() << " factors had high error.");
+  }
 }
 
 // TODO - check that this is ok including just the positions in the message
