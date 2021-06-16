@@ -54,9 +54,9 @@ TEST_F(TestArtifactHandler, ArtifactInfoInitialize) {
   // Check if ArtifactInfo is initialised correctly
   EXPECT_EQ(art_.num_updates, 0);
   EXPECT_EQ(art_.id, "");
-  EXPECT_NEAR(art_.global_position[0], 0.0);
-  EXPECT_NEAR(art_.global_position[1], 0.0);
-  EXPECT_NEAR(art_.global_position[2], 0.0);
+  EXPECT_NEAR(art_.global_position[0], 0.0, 1e-6);
+  EXPECT_NEAR(art_.global_position[1], 0.0, 1e-6);
+  EXPECT_NEAR(art_.global_position[2], 0.0, 1e-6);
 }
 
 // TEST_F(TestArtifactHandler, LoadParameters) {
