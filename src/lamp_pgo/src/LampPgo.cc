@@ -63,13 +63,17 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
     return false;
   if (b_use_outlier_rejection) {
     // outlier rejection on: set up PCM params
-    double trans_threshold, rot_threshold;
+    double trans_threshold, rot_threshold, gnc_alpha;
     if (!pu::Get(param_ns_ + "/translation_check_threshold", trans_threshold))
       return false;
     if (!pu::Get(param_ns_ + "/rotation_check_threshold", rot_threshold))
       return false;
+    if (!pu::Get(param_ns_ + "/gnc_alpha", gnc_alpha)) return false;
     rpgo_params_.setPcmSimple3DParams(
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
+    if (gnc_alpha > 0 && gnc_alpha < 1) {
+      rpgo_params_.setGncInlierCostThresholdsAtProbability(gnc_alpha);
+    }
   } else {
     rpgo_params_.setNoRejection(
         KimeraRPGO::Verbosity::VERBOSE);  // set no outlier rejection
@@ -93,6 +97,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   }
   // Use incremental max clique
   rpgo_params_.setIncremental();
+
   std::string log_path;
   if (pu::Get("log_path", log_path)) {
     rpgo_params_.logOutput(log_path);
@@ -395,6 +400,6 @@ void LampPgo::PublishIgnoredList() const {
   std_msgs::String msg;
   msg.data = list_str;
 
-  ignored_list_pub_.publish(list_str);
+  ignored_list_pub_.publish(msg);
   return;
 }
