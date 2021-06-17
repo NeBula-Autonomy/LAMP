@@ -11,6 +11,7 @@ author: Yun Chang, Luca Carlone
 #include <utility>
 #include <vector>
 
+#include <gtsam/inference/inferenceExceptions.h>
 #include <gtsam/nonlinear/DoglegOptimizer.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/GncOptimizer.h>
@@ -136,8 +137,8 @@ void RobustSolver::optimize() {
       auto opt_start_t = std::chrono::high_resolution_clock::now();
       try {
         values_ = gnc_optimizer.optimize();
-      } catch (gtsam::IndeterminantLinearSystemException e) {
-        log<WARNING>("Optimize: Indeterminant Linear System. ");
+      } catch (...) {
+        log<WARNING>("GNC LevenbergMarquardtOptimizer failed.");
       }
       gnc_weights_ = gnc_optimizer.getWeights();
       gnc_num_inliers_ = static_cast<size_t>(gnc_weights_.sum()) -
@@ -156,8 +157,8 @@ void RobustSolver::optimize() {
       try {
         values_ = gtsam::LevenbergMarquardtOptimizer(nfg_, values_, lmParams)
                       .optimize();
-      } catch (gtsam::IndeterminantLinearSystemException e) {
-        log<WARNING>("Optimize: Indeterminant Linear System. ");
+      } catch (...) {
+        log<WARNING>("LevenbergMarquardtOptimizer failed.");
       }
     }
   } else if (solver_type_ == Solver::GN) {
@@ -195,8 +196,8 @@ void RobustSolver::optimize() {
       auto opt_start_t = std::chrono::high_resolution_clock::now();
       try {
         values_ = gnc_optimizer.optimize();
-      } catch (gtsam::IndeterminantLinearSystemException e) {
-        log<WARNING>("Optimize: Indeterminant Linear System. ");
+      } catch (...) {
+        log<WARNING>("GNC GaussNewtonOptimizer failed.");
       }
       gnc_weights_ = gnc_optimizer.getWeights();
       gnc_num_inliers_ = static_cast<size_t>(gnc_weights_.sum()) -
@@ -215,8 +216,8 @@ void RobustSolver::optimize() {
       try {
         values_ =
             gtsam::GaussNewtonOptimizer(nfg_, values_, gnParams).optimize();
-      } catch (gtsam::IndeterminantLinearSystemException e) {
-        log<WARNING>("Optimize: Indeterminant Linear System. ");
+      } catch (...) {
+        log<WARNING>("GaussNewtonOptimizer failed. ");
       }
     }
   } else {

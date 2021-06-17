@@ -1,10 +1,9 @@
 #pragma once
 
 #include "IPointCloudMapper.h"
-
+#include <utils/CommonStructs.h>
 class SimplePointCloudMapper : public IPointCloudMapper {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   SimplePointCloudMapper();
   ~SimplePointCloudMapper();
 
