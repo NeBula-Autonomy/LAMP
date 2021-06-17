@@ -34,8 +34,7 @@
   </node>
 
   <!-- Loop Computation -->
-  <node launch-prefix="xterm -e"
-        pkg="loop_closure"
+  <node pkg="loop_closure"
         name="loop_computation"
         type="loop_computation_node"
         output="screen">
