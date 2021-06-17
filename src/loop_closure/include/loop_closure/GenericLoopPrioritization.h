@@ -55,6 +55,8 @@ protected:
                              // below threshold
   double normals_radius_;    // radius used for cloud normal computation
 
+  int num_threads_; // number of threads for normal computation
+
   bool choose_best_; // Send only best candidate
 };
 

@@ -23,7 +23,7 @@ base:
   b_use_outlier_rejection: true
 
   # GNC confidence threshold 
-  gnc_alpha: 0.7
+  gnc_alpha: 0.9
 
   # outlier rejection thresholds (distances)
   translation_check_threshold: 1 # 1 centimeter

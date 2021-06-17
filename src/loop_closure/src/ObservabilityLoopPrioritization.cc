@@ -44,7 +44,8 @@ bool ObservabilityLoopPrioritization::Initialize(const ros::NodeHandle& n) {
 
   ROS_INFO_STREAM("Initialized ObservabilityLoopPrioritization."
                   << "\npublish_n_best: " << publish_n_best_
-                  << "\nmin_observability: " << min_observability_);
+                  << "\nmin_observability: " << min_observability_
+                  << "\nthreads: " << num_threads_);
 
   return true;
 }
@@ -118,15 +119,19 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     }
 
     Eigen::Matrix<double, 3, 1> obs_eigenv_from;
-    utils::ComputeIcpObservability(
-        keyed_scans_[candidate.key_from], normals_radius_, &obs_eigenv_from);
+    utils::ComputeIcpObservability(keyed_scans_[candidate.key_from],
+                                   normals_radius_,
+                                   num_threads_,
+                                   &obs_eigenv_from);
     double min_obs_from = obs_eigenv_from.minCoeff();
     if (min_obs_from < min_observability_)
       continue;
 
     Eigen::Matrix<double, 3, 1> obs_eigenv_to;
-    utils::ComputeIcpObservability(
-        keyed_scans_[candidate.key_to], normals_radius_, &obs_eigenv_to);
+    utils::ComputeIcpObservability(keyed_scans_[candidate.key_to],
+                                   normals_radius_,
+                                   num_threads_,
+                                   &obs_eigenv_to);
     double min_obs_to = obs_eigenv_to.minCoeff();
     if (min_obs_to < min_observability_)
       continue;

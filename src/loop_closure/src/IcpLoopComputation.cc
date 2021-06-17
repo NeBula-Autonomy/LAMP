@@ -436,8 +436,10 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ComputeNormals(source, sac_normals_radius_, source_normals);
-  utils::ComputeNormals(target, sac_normals_radius_, target_normals);
+  utils::ComputeNormals(
+      source, sac_normals_radius_, icp_threads_, source_normals);
+  utils::ComputeNormals(
+      target, sac_normals_radius_, icp_threads_, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);

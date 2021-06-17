@@ -58,6 +58,8 @@ protected:
   double min_observability_; // Discard any candidate with observability
                              // below threshold
   double normals_radius_;    // radius used for cloud normal computation
+
+  int num_threads_; // number of threads for normal computation
 };
 
 } // namespace lamp_loop_closure
