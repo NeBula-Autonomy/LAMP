@@ -6,7 +6,7 @@
 
   <!-- List of robots with hovermap mounted -->
   <arg name="hovermap_robots" value="spot3 spot4" />
-  <arg name="b_use_hovermap" value="$(arg robot_namespace in hovermap_robots)" />
+  <arg name="b_use_hovermap" value="$(eval robot_namespace in hovermap_robots)" />
 
   <!-- Select odometry source -->
   <arg if="$(eval b_use_hero)" name="odom_input" value="hero/odometry"/>
