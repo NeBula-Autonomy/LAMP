@@ -11,6 +11,9 @@
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default="" />
 
+  <!-- List of robots with hovermap mounted -->
+  <arg name="hovermap_robots" value="spot3 spot4" />
+
   <group ns="$(arg robot_namespace)">
 
 
@@ -25,8 +28,8 @@
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
       <!-- Topics -->
-      <!--<remap from="~pcld" to="locus_input"/>-->
-      <remap from="~pcld" to="hvm/lidar/sweep"/>
+      <remap from="~pcld" to="locus_input" unless="$(eval robot_namespace in hovermap_robots)"/>
+      <remap from="~pcld" to="hvm/lidar/sweep" if="$(eval robot_namespace in hovermap_robots)"/>
       <!-- <remap from="~pcld" to="velodyne_points/transformed"/> -->
       <!-- <remap from="~pcld" to="lo_frontend/local_scan_map" /> -->
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
