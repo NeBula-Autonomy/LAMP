@@ -41,6 +41,7 @@ robot:
   obs_prioritization:
     publish_n_best: 10
     min_observability: 100
+    horizon: 600
     normals_search_radius: 1.0
     therads: 4
 
@@ -170,8 +171,9 @@ base:
   # Observability prioritization loop closure
   #--------------------------------------------------------------------------------
   obs_prioritization:
-    publish_n_best: 20
+    publish_n_best: 100
     min_observability: 200
+    horizon: 600
     normals_search_radius: 1.0
     threads: 8
 

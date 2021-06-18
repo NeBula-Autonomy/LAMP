@@ -35,6 +35,8 @@ public:
 protected:
   void PopulatePriorityQueue() override;
 
+  void PrunePriorityQueue();
+
   void PublishBestCandidates() override;
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
@@ -58,6 +60,7 @@ protected:
   double min_observability_; // Discard any candidate with observability
                              // below threshold
   double normals_radius_;    // radius used for cloud normal computation
+  double horizon_;           // time until a candidate is discarded
 
   int num_threads_; // number of threads for normal computation
 };
