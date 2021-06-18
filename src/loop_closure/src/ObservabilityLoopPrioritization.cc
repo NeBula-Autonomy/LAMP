@@ -118,6 +118,7 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     // Check if keyed scans exist
     if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
         keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
+      ROS_WARN("Keyed scans do not exist. ");
       if ((ros::Time::now() - candidate.header.stamp).toSec() <
           keyed_scans_max_delay_)
         candidate_queue_.push(candidate);
@@ -143,6 +144,7 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
       continue;
 
     double score = min_obs_from + min_obs_to;
+    ROS_INFO_STREAM("Observability score: " << score);
     candidate.value = score;
     std::deque<double>::iterator score_it = observability_score_.begin();
     std::deque<pose_graph_msgs::LoopCandidate>::iterator candidate_it =
