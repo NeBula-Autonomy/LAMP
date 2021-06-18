@@ -129,21 +129,32 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
       continue;
     }
 
+    // Get prefix
+    char prefix_from = gtsam::Symbol(candidate.key_from).chr();
     Eigen::Matrix<double, 3, 1> obs_eigenv_from;
     utils::ComputeIcpObservability(keyed_scans_[candidate.key_from],
                                    normals_radius_,
                                    num_threads_,
                                    &obs_eigenv_from);
-    double min_obs_from = obs_eigenv_from.minCoeff();
+    if (max_observability_.find(prefix_from) == max_observability_.end() ||
+        max_observability_[prefix_from] < obs_eigenv_from.minCoeff())
+      max_observability_[prefix_from] = obs_eigenv_from.minCoeff();
+    double min_obs_from =
+        obs_eigenv_from.minCoeff() / max_observability_[prefix_from];
     if (min_obs_from < min_observability_)
       continue;
 
+    char prefix_to = gtsam::Symbol(candidate.key_to).chr();
     Eigen::Matrix<double, 3, 1> obs_eigenv_to;
     utils::ComputeIcpObservability(keyed_scans_[candidate.key_to],
                                    normals_radius_,
                                    num_threads_,
                                    &obs_eigenv_to);
-    double min_obs_to = obs_eigenv_to.minCoeff();
+    if (max_observability_.find(prefix_to) == max_observability_.end() ||
+        max_observability_[prefix_to] < obs_eigenv_to.minCoeff())
+      max_observability_[prefix_to] = obs_eigenv_to.minCoeff();
+    double min_obs_to =
+        obs_eigenv_to.minCoeff() / max_observability_[prefix_to];
     if (min_obs_to < min_observability_)
       continue;
 

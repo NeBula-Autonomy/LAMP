@@ -40,7 +40,7 @@ robot:
   #--------------------------------------------------------------------------------
   obs_prioritization:
     publish_n_best: 10
-    min_observability: 100
+    min_observability: 0.2
     horizon: 120
     normals_search_radius: 1.0
     therads: 4
@@ -162,7 +162,7 @@ base:
   # Generic prioritization loop closure (by order recieved)
   #--------------------------------------------------------------------------------
   gen_prioritization:
-    min_observability: 150
+    min_observability: 100
     normals_search_radius: 1.0
     choose_best: false # send only the best candidate for geometric verification
     threads: 8
@@ -172,7 +172,7 @@ base:
   #--------------------------------------------------------------------------------
   obs_prioritization:
     publish_n_best: 30
-    min_observability: 200
+    min_observability: 0.2 # normalized from 0 to 1
     horizon: 300
     normals_search_radius: 1.0
     threads: 8
@@ -190,10 +190,10 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 2.0 #0.04
+  max_tolerable_fitness: 0.8 #0.04
 
   # How long to "wait" for keyed scans 
-  keyed_scans_max_delay: 1.0
+  keyed_scans_max_delay: 60.0
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
