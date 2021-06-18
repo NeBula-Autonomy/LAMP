@@ -54,6 +54,9 @@ bool ObservabilityLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
   if (!LoopPrioritization::LoadParameters(n))
     return false;
 
+  if (!pu::Get(param_ns_ + "/keyed_scans_max_delay", keyed_scans_max_delay_))
+    return false;
+
   if (!pu::Get(param_ns_ + "/obs_prioritization/publish_n_best",
                publish_n_best_))
     return false;
@@ -115,6 +118,9 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     // Check if keyed scans exist
     if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
         keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
+      if ((ros::Time::now() - candidate.header.stamp).toSec() <
+          keyed_scans_max_delay_)
+        candidate_queue_.push(candidate);
       continue;
     }
 
