@@ -80,6 +80,8 @@
       <remap if="$(arg sim)" from="/telemax1/artifact" to="/telemax1/lamp/artifact_global"/>
       <remap if="$(arg sim)" from="/spot1/artifact" to="/spot1/lamp/artifact_global"/>
       <remap if="$(arg sim)" from="/spot2/artifact" to="/spot2/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/spot3/artifact" to="/spot2/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/spot4/artifact" to="/spot2/lamp/artifact_global"/>
     </node>
 
     <!-- Loop Closure  -->

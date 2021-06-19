@@ -33,6 +33,7 @@ namespace utils {
       {"robot",   'e'},
       {"spot1",   'g'},
       {"spot2",   'h'},
+      {"spot3",   'k'},
       {"handheld1",   'i'},
       {"xmaxx1",   'j'}
   };
@@ -46,6 +47,7 @@ namespace utils {
       {"robot",   'p'},
       {"spot1",   'r'},
       {"spot2",   's'},
+      {"spot3",   'v'},
       {"handheld1",   't'},
       {"xmaxx1",   'u'}
   };
