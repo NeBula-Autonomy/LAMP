@@ -4,8 +4,14 @@
 
   <arg name="b_use_hero" default="false"/>
 
-  <arg if="$(arg b_use_hero)" name="odom_input" value="hero/odometry"/>
-  <arg unless="$(arg b_use_hero)" name="odom_input" value="lo_frontend/odometry"/>
+  <!-- List of robots with hovermap mounted -->
+  <arg name="hovermap_robots" value="spot3 spot4" />
+  <arg name="b_use_hovermap" value="$(eval robot_namespace in hovermap_robots)" />
+
+  <!-- Select odometry source -->
+  <arg if="$(eval b_use_hero)" name="odom_input" value="hero/odometry"/>
+  <arg unless="$(eval not b_use_hero and b_use_hovermap)" name="odom_input" value="hvm/odometry"/>
+  <arg unless="$(eval not b_use_hero and not b_use_hovermap)" name="odom_input" value="lo_frontend/odometry"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default="" />
@@ -24,7 +30,8 @@
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
       <!-- Topics -->
-      <remap from="~pcld" to="locus_input"/>
+      <remap from="~pcld" to="locus_input" unless="$(arg b_use_hovermap)"/>
+      <remap from="~pcld" to="hvm/lidar/sweep/filtered" if="$(arg b_use_hovermap)"/>
       <!-- <remap from="~pcld" to="velodyne_points/transformed"/> -->
       <!-- <remap from="~pcld" to="lo_frontend/local_scan_map" /> -->
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
@@ -77,6 +84,7 @@
       <param name="robot_prefix" value="h" if="$(eval robot_namespace == 'spot2')"/>
       <param name="robot_prefix" value="i" if="$(eval robot_namespace == 'handheld1')"/>
       <param name="robot_prefix" value="j" if="$(eval robot_namespace == 'xmaxx1')"/>
+      <param name="robot_prefix" value="k" if="$(eval robot_namespace == 'spot3')"/>
 
       <!-- The artifact prefix dependent of robot_namespace -->
       <param name="artifact_prefix" value="l" if="$(eval robot_namespace == 'husky1')" />
@@ -89,6 +97,7 @@
       <param name="artifact_prefix" value="s" if="$(eval robot_namespace == 'spot2')"/>
       <param name="artifact_prefix" value="t" if="$(eval robot_namespace == 'handheld1')"/>
       <param name="artifact_prefix" value="u" if="$(eval robot_namespace == 'xmaxx1')"/>
+      <param name="artifact_prefix" value="v" if="$(eval robot_namespace == 'spot3')"/>
     </node>
 
     <!-- Pose graph optimizer -->
