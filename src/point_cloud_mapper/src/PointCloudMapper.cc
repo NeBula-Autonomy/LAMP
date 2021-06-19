@@ -143,7 +143,7 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
     // Iterate over points in the input point cloud, inserting them into the map
     // if there is not already a point in the same voxel.
     for (size_t ii = 0; ii < points->points.size(); ++ii) {
-      const pcl::PointXYZI p = points->points[ii];
+      const Point p = points->points[ii];
       map_octree_->getBoundingBox(min_x, min_y, min_z, max_x, max_y, max_z);
 
       isInBox = (p.x >= min_x && p.x <= max_x) &&

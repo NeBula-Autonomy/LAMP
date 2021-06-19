@@ -111,7 +111,7 @@
     </node>
 
     <!-- Loop Closure  -->
-    <include file="$(find loop_closure)/launch/laser_loop_closure.launch"/>
+    <include file="$(find loop_closure)/launch/loop_closure_modules.launch"/>
 
   </group>
 

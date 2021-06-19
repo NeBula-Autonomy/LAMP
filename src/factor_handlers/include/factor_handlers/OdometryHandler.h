@@ -12,6 +12,7 @@
 
 // Includes
 #include <factor_handlers/LampDataHandlerBase.h>
+#include <utils/CommonStructs.h>
 
 // Typedefs
 typedef nav_msgs::Odometry Odometry;
@@ -19,8 +20,7 @@ typedef geometry_msgs::PoseWithCovarianceStamped PoseCovStamped;
 typedef std::pair<PoseCovStamped, PoseCovStamped> PoseCovStampedPair;
 typedef std::map<double, PoseCovStamped> OdomPoseBuffer;
 typedef std::pair<ros::Time, ros::Time> TimeStampedPair;
-typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
-typedef std::map<double, PointCloud> PointCloudBuffer; 
+typedef std::map<double, PointCloud> PointCloudBuffer;
 
 typedef struct {
   bool b_has_value;
@@ -40,22 +40,19 @@ const unsigned int LIDAR_ODOM_BUFFER_ID = 0;
 const unsigned int VISUAL_ODOM_BUFFER_ID = 1;
 const unsigned int WHEEL_ODOM_BUFFER_ID = 2;
 
-// Class Definition 
-class OdometryHandler : public LampDataHandlerBase{
-
+// Class Definition
+class OdometryHandler : public LampDataHandlerBase {
   friend class OdometryHandlerTest;
   friend class TestLampRobot;
   friend class TestLampRobotArtifact;
 
-
 public:
-
   // Constructors and Destructors
   OdometryHandler();
-  ~OdometryHandler(); 
+  ~OdometryHandler();
 
   // Public methods
-  bool Initialize (const ros::NodeHandle& n);
+  bool Initialize(const ros::NodeHandle& n);
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
@@ -70,8 +67,7 @@ public:
                                             const ros::Time t2);
 
 protected:
-
-  // Odometry Subscribers 
+  // Odometry Subscribers
   ros::Subscriber lidar_odom_sub_;
   ros::Subscriber visual_odom_sub_;
   ros::Subscriber wheel_odom_sub_;
@@ -80,43 +76,48 @@ protected:
   ros::Subscriber point_cloud_sub_;
 
   // Subscriptions
-  bool b_register_lidar_sub_; 
+  bool b_register_lidar_sub_;
   bool b_register_visual_sub_;
   bool b_register_wheel_sub_;
 
-  // Odometry Callbacks 
-  void LidarOdometryCallback(const Odometry::ConstPtr& msg); 
+  // Odometry Callbacks
+  void LidarOdometryCallback(const Odometry::ConstPtr& msg);
   void VisualOdometryCallback(const Odometry::ConstPtr& msg);
   void WheelOdometryCallback(const Odometry::ConstPtr& msg);
 
-  // Pointcloud Callback 
-  void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
+  // Pointcloud Callback
+  // void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
+  void PointCloudCallback(const PointCloudConstPtr& msg);
 
   // Odometry Storages
   OdomPoseBuffer lidar_odometry_buffer_;
   OdomPoseBuffer visual_odometry_buffer_;
-  OdomPoseBuffer wheel_odometry_buffer_; 
-      
+  OdomPoseBuffer wheel_odometry_buffer_;
+
   // Point Cloud Storage (Time stamp and point cloud)
   PointCloudBuffer point_cloud_buffer_;
 
   // Utilities
   void InitializePoseCovStampedMsgValue(PoseCovStamped& msg);
   template <typename T1, typename T2>
-  int CheckBufferSize(const std::map<T1, T2>& x){
-      return x.size();
+  int CheckBufferSize(const std::map<T1, T2>& x) {
+    return x.size();
   }
 
-  void InitializeOdomValueAtKey(const Odometry::ConstPtr& msg, const unsigned int odom_buffer_id);
+  void InitializeOdomValueAtKey(const Odometry::ConstPtr& msg,
+                                const unsigned int odom_buffer_id);
 
   bool CheckOdomSize();
   bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg,
                          OdomPoseBuffer& buffer);
-  void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer, GtsamPosCov& measurement, 
-                           const ros::Time t1, const ros::Time t2, const int odom_buffer_id) const;
+  void FillGtsamPosCovOdom(const OdomPoseBuffer& odom_buffer,
+                           GtsamPosCov& measurement,
+                           const ros::Time t1,
+                           const ros::Time t2,
+                           const int odom_buffer_id) const;
   double CalculatePoseDelta(const GtsamPosCov gtsam_pos_cov) const;
   void ResetFactorData();
-  
+
   // Setters
   void SetOdomValuesAtKey(const ros::Time query);
 
@@ -130,13 +131,15 @@ protected:
                                 gtsam::Pose3* transform,
                                 gtsam::SharedNoiseModel* covariance,
                                 const int odom_buffer_id) const;
-  gtsam::Pose3 GetTransform(
-      const PoseCovStampedPair pose_cov_stamped_pair) const;
-  gtsam::SharedNoiseModel GetCovariance(const PoseCovStampedPair pose_cov_stamped_pair) const; 
+  gtsam::Pose3
+  GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const;
+  gtsam::SharedNoiseModel
+  GetCovariance(const PoseCovStampedPair pose_cov_stamped_pair) const;
   bool GetClosestLidarTime(const ros::Time time, ros::Time& closest_time) const;
 
   // Converters
-  gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const; // TODO: This function should be defined in the base class
+  gtsam::Pose3 ToGtsam(const gu::Transform3& pose)
+      const; // TODO: This function should be defined in the base class
 
   // The node's name.
   std::string name_;
@@ -149,8 +152,8 @@ protected:
 
   // Fusion logic
   bool b_is_first_query_;
-  double ts_threshold_; 
-  ros::Time query_timestamp_first_; 
+  double ts_threshold_;
+  ros::Time query_timestamp_first_;
   GtsamPosCov fused_odom_;
 
   // Factor data
@@ -159,21 +162,20 @@ protected:
   /*
   Corner case handling
 
-    - Specify a maximum buffer size to store history 
-      of Odometric data stream  
-    
-    - Store individual odometric values in protected class members 
+    - Specify a maximum buffer size to store history
+      of Odometric data stream
+
+    - Store individual odometric values in protected class members
       whenever a new key is created
-      
-  */ 
+
+  */
   OdomValueAtKeyInitializedStatus b_odom_value_initialized_;
-  int max_buffer_size_; 
-  PoseCovStamped lidar_odom_value_at_key_; 
-  PoseCovStamped visual_odom_value_at_key_; 
+  int max_buffer_size_;
+  PoseCovStamped lidar_odom_value_at_key_;
+  PoseCovStamped visual_odom_value_at_key_;
   PoseCovStamped wheel_odom_value_at_key_;
 
 private:
-
 };
 
 #endif

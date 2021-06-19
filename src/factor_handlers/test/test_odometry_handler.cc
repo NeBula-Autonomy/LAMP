@@ -135,7 +135,7 @@ protected:
   gtsam::Pose3 ToGtsam(const gu::Transform3& pose) const {
     return oh.ToGtsam(pose);
   }
-  void PointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+  void PointCloudCallback(const PointCloudConstPtr& msg) {
     return oh.PointCloudCallback(msg);
   }
   bool InsertMsgInBuffer(const Odometry::ConstPtr& odom_msg,
@@ -735,22 +735,18 @@ TEST_F(OdometryHandlerTest, TestGetData) {
   LidarOdometryCallback(msg_second_odomPtr);
   LidarOdometryCallback(msg_third_odomPtr);
 
-  sensor_msgs::PointCloud2 msg1;
-  sensor_msgs::PointCloud2 msg2;
-  sensor_msgs::PointCloud2 msg3;
-  sensor_msgs::PointCloud2 msg4;
-  msg1.header.stamp = t1_ros;
-  msg2.header.stamp = t2_ros;
-  msg3.header.stamp = t3_ros;
-  msg4.header.stamp = t4_ros;
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
-      new sensor_msgs::PointCloud2(msg1));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
-      new sensor_msgs::PointCloud2(msg2));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
-      new sensor_msgs::PointCloud2(msg3));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
-      new sensor_msgs::PointCloud2(msg4));
+  PointCloud msg1;
+  PointCloud msg2;
+  PointCloud msg3;
+  PointCloud msg4;
+  pcl_conversions::toPCL(t1_ros, msg1.header.stamp);
+  pcl_conversions::toPCL(t2_ros, msg2.header.stamp);
+  pcl_conversions::toPCL(t3_ros, msg3.header.stamp);
+  pcl_conversions::toPCL(t4_ros, msg4.header.stamp);
+  PointCloudConstPtr pc_ptr1(new PointCloud(msg1));
+  PointCloudConstPtr pc_ptr2(new PointCloud(msg2));
+  PointCloudConstPtr pc_ptr3(new PointCloud(msg3));
+  PointCloudConstPtr pc_ptr4(new PointCloud(msg4));
   PointCloudCallback(pc_ptr1);
   PointCloudCallback(pc_ptr2);
   PointCloudCallback(pc_ptr3);
@@ -800,22 +796,18 @@ TEST_F(OdometryHandlerTest, TestGetDataVLPStop) {
 
   ros::Time pc_time;
   pc_time.fromSec(t1 - 1.0);
-  sensor_msgs::PointCloud2 msg1;
-  sensor_msgs::PointCloud2 msg2;
-  sensor_msgs::PointCloud2 msg3;
-  sensor_msgs::PointCloud2 msg4;
-  msg1.header.stamp = pc_time;
-  msg2.header.stamp = pc_time.fromSec(t1 - 0.9);
-  msg3.header.stamp = pc_time.fromSec(t1 - 0.8);
-  msg4.header.stamp = pc_time.fromSec(t1 - 0.7);
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
-      new sensor_msgs::PointCloud2(msg1));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
-      new sensor_msgs::PointCloud2(msg2));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
-      new sensor_msgs::PointCloud2(msg3));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
-      new sensor_msgs::PointCloud2(msg4));
+  PointCloud msg1;
+  PointCloud msg2;
+  PointCloud msg3;
+  PointCloud msg4;
+  msg1.header.stamp = pc_time.toSec();
+  msg2.header.stamp = (pc_time.fromSec(t1 - 0.9)).toSec();
+  msg3.header.stamp = (pc_time.fromSec(t1 - 0.8)).toSec();
+  msg4.header.stamp = (pc_time.fromSec(t1 - 0.7)).toSec();
+  PointCloudConstPtr pc_ptr1(new PointCloud(msg1));
+  PointCloudConstPtr pc_ptr2(new PointCloud(msg2));
+  PointCloudConstPtr pc_ptr3(new PointCloud(msg3));
+  PointCloudConstPtr pc_ptr4(new PointCloud(msg4));
   PointCloudCallback(pc_ptr1);
   PointCloudCallback(pc_ptr2);
   PointCloudCallback(pc_ptr3);
@@ -867,22 +859,18 @@ TEST_F(OdometryHandlerTest, TestGetDataOldOdom) {
 
   ros::Time pc_time;
   pc_time.fromSec(t3 + 2.0);
-  sensor_msgs::PointCloud2 msg1;
-  sensor_msgs::PointCloud2 msg2;
-  sensor_msgs::PointCloud2 msg3;
-  sensor_msgs::PointCloud2 msg4;
-  msg1.header.stamp = pc_time;
-  msg2.header.stamp = pc_time.fromSec(t3 + 2.1);
-  msg3.header.stamp = pc_time.fromSec(t3 + 2.2);
-  msg4.header.stamp = pc_time.fromSec(t3 + 2.3);
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
-      new sensor_msgs::PointCloud2(msg1));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
-      new sensor_msgs::PointCloud2(msg2));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
-      new sensor_msgs::PointCloud2(msg3));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
-      new sensor_msgs::PointCloud2(msg4));
+  PointCloud msg1;
+  PointCloud msg2;
+  PointCloud msg3;
+  PointCloud msg4;
+  msg1.header.stamp = pc_time.toSec();
+  msg2.header.stamp = (pc_time.fromSec(t3 + 2.1)).toSec();
+  msg3.header.stamp = (pc_time.fromSec(t3 + 2.2)).toSec();
+  msg4.header.stamp = (pc_time.fromSec(t3 + 2.3)).toSec();
+  PointCloudConstPtr pc_ptr1(new PointCloud(msg1));
+  PointCloudConstPtr pc_ptr2(new PointCloud(msg2));
+  PointCloudConstPtr pc_ptr3(new PointCloud(msg3));
+  PointCloudConstPtr pc_ptr4(new PointCloud(msg4));
   PointCloudCallback(pc_ptr1);
   PointCloudCallback(pc_ptr2);
   PointCloudCallback(pc_ptr3);
@@ -1039,27 +1027,22 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   system("rosparam set ts_threshold 0.6");
   oh.Initialize(nh);
   // Create keyed scans
-  sensor_msgs::PointCloud2 msg1;
-  sensor_msgs::PointCloud2 msg2;
-  sensor_msgs::PointCloud2 msg3;
-  sensor_msgs::PointCloud2 msg4;
-  sensor_msgs::PointCloud2 msg5;
-  sensor_msgs::PointCloud2 msg6;
-  msg1.header.stamp = t1_ros;
-  msg2.header.stamp = t2_ros;
-  msg3.header.stamp = t3_ros;
-  msg4.header.stamp = t4_ros;
-  msg5.header.stamp = t5_ros;
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
-      new sensor_msgs::PointCloud2(msg1));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
-      new sensor_msgs::PointCloud2(msg2));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
-      new sensor_msgs::PointCloud2(msg3));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
-      new sensor_msgs::PointCloud2(msg4));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr5(
-      new sensor_msgs::PointCloud2(msg5));
+  PointCloud msg1;
+  PointCloud msg2;
+  PointCloud msg3;
+  PointCloud msg4;
+  PointCloud msg5;
+  PointCloud msg6;
+  pcl_conversions::toPCL(t1_ros, msg1.header.stamp);
+  pcl_conversions::toPCL(t2_ros, msg2.header.stamp);
+  pcl_conversions::toPCL(t3_ros, msg3.header.stamp);
+  pcl_conversions::toPCL(t4_ros, msg4.header.stamp);
+  pcl_conversions::toPCL(t5_ros, msg5.header.stamp);
+  PointCloudConstPtr pc_ptr1(new PointCloud(msg1));
+  PointCloudConstPtr pc_ptr2(new PointCloud(msg2));
+  PointCloudConstPtr pc_ptr3(new PointCloud(msg3));
+  PointCloudConstPtr pc_ptr4(new PointCloud(msg4));
+  PointCloudConstPtr pc_ptr5(new PointCloud(msg5));
   PointCloudCallback(pc_ptr1);
   PointCloudCallback(pc_ptr2);
   PointCloudCallback(pc_ptr3);
@@ -1077,27 +1060,22 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTimeError) {
   system("rosparam set ts_threshold 0.6");
   oh.Initialize(nh);
   // Create keyed scans
-  sensor_msgs::PointCloud2 msg1;
-  sensor_msgs::PointCloud2 msg2;
-  sensor_msgs::PointCloud2 msg3;
-  sensor_msgs::PointCloud2 msg4;
-  sensor_msgs::PointCloud2 msg5;
-  sensor_msgs::PointCloud2 msg6;
-  msg1.header.stamp = t1_ros;
-  msg2.header.stamp = t2_ros;
-  msg3.header.stamp = t3_ros;
-  msg4.header.stamp = t4_ros;
-  msg5.header.stamp = t5_ros;
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
-      new sensor_msgs::PointCloud2(msg1));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
-      new sensor_msgs::PointCloud2(msg2));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
-      new sensor_msgs::PointCloud2(msg3));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr4(
-      new sensor_msgs::PointCloud2(msg4));
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr5(
-      new sensor_msgs::PointCloud2(msg5));
+  PointCloud msg1;
+  PointCloud msg2;
+  PointCloud msg3;
+  PointCloud msg4;
+  PointCloud msg5;
+  PointCloud msg6;
+  pcl_conversions::toPCL(t1_ros, msg1.header.stamp);
+  pcl_conversions::toPCL(t2_ros, msg2.header.stamp);
+  pcl_conversions::toPCL(t3_ros, msg3.header.stamp);
+  pcl_conversions::toPCL(t4_ros, msg4.header.stamp);
+  pcl_conversions::toPCL(t5_ros, msg5.header.stamp);
+  PointCloudConstPtr pc_ptr1(new PointCloud(msg1));
+  PointCloudConstPtr pc_ptr2(new PointCloud(msg2));
+  PointCloudConstPtr pc_ptr3(new PointCloud(msg3));
+  PointCloudConstPtr pc_ptr4(new PointCloud(msg4));
+  PointCloudConstPtr pc_ptr5(new PointCloud(msg5));
   PointCloudCallback(pc_ptr1);
   PointCloudCallback(pc_ptr2);
   PointCloudCallback(pc_ptr3);
@@ -1121,21 +1099,18 @@ TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {
   ros::NodeHandle nh("~");
   oh.Initialize(nh);
 
-  sensor_msgs::PointCloud2 msg1;
-  msg1.header.stamp = t1_ros;
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr1(
-      new sensor_msgs::PointCloud2(msg1));
-      
-  sensor_msgs::PointCloud2 msg2;
-  msg2.header.stamp = t2_ros;
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr2(
-      new sensor_msgs::PointCloud2(msg2));
+  PointCloud msg1;
+  pcl_conversions::toPCL(t1_ros, msg1.header.stamp);
+  PointCloudConstPtr pc_ptr1(new PointCloud(msg1));
 
-  sensor_msgs::PointCloud2 msg3;
-  msg3.header.stamp = t3_ros;
-  sensor_msgs::PointCloud2::ConstPtr pc_ptr3(
-      new sensor_msgs::PointCloud2(msg3));
-  
+  PointCloud msg2;
+  pcl_conversions::toPCL(t2_ros, msg2.header.stamp);
+  PointCloudConstPtr pc_ptr2(new PointCloud(msg2));
+
+  PointCloud msg3;
+  pcl_conversions::toPCL(t3_ros, msg3.header.stamp);
+  PointCloudConstPtr pc_ptr3(new PointCloud(msg3));
+
   PointCloudCallback(pc_ptr1);
   PointCloudCallback(pc_ptr2);
   PointCloudCallback(pc_ptr3);
