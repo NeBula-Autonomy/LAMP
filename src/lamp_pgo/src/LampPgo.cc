@@ -225,16 +225,13 @@ void LampPgo::InputCallback(
 
   ROS_INFO_STREAM("PGO adding new values " << new_values.size());
   for (auto k : new_values) {
-    ROS_INFO_STREAM("\t" << gtsam::DefaultKeyFormatter(k.key));
+    ROS_DEBUG_STREAM("\t" << gtsam::DefaultKeyFormatter(k.key));
   }
   ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
 
   // new_factors.print("new factors");
 
-  ROS_INFO_STREAM("FACTORS BEFORE");
-  for (auto f : new_factors) {
-    f->printKeys();
-  }
+  ROS_DEBUG_STREAM("FACTORS BEFORE");
 
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
@@ -245,13 +242,12 @@ void LampPgo::InputCallback(
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
-  // nfg_.print("nfg");
   ROS_INFO_STREAM("FACTORS AFTER");
   std::vector<double> bad_errors;
   for (auto f : nfg_) {
     f->printKeys();
     double error = f->error(values_);
-    ROS_INFO_STREAM("Error: " << error);
+    ROS_DEBUG_STREAM("Error: " << error);
     if (error > 10.0){
       bad_errors.push_back(error);
     }
@@ -325,7 +321,8 @@ void LampPgo::PublishValues() const {
         }
       }
       catch (std::exception& e) {
-        ROS_WARN_STREAM("Key is not found in the clique" << gtsam::DefaultKeyFormatter(key));
+        ROS_DEBUG_STREAM("Key is not found in the clique"
+                         << gtsam::DefaultKeyFormatter(key));
       }
     }
   } catch (gtsam::IndeterminantLinearSystemException e) {

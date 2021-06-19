@@ -44,13 +44,17 @@ bool GenericLoopPrioritization::Initialize(const ros::NodeHandle& n) {
 
   ROS_INFO_STREAM("Initialized GenericLoopPrioritization."
                   << "\nchoose_best: " << choose_best_
-                  << "\nmin_observability: " << min_observability_);
+                  << "\nmin_observability: " << min_observability_
+                  << "\nthreads: " << num_threads_);
 
   return true;
 }
 
 bool GenericLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
   if (!LoopPrioritization::LoadParameters(n))
+    return false;
+
+  if (!pu::Get(param_ns_ + "/keyed_scans_max_delay", keyed_scans_max_delay_))
     return false;
 
   if (!pu::Get(param_ns_ + "/gen_prioritization/min_observability",
@@ -61,6 +65,9 @@ bool GenericLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
                normals_radius_))
     return false;
   if (!pu::Get(param_ns_ + "/gen_prioritization/choose_best", choose_best_))
+    return false;
+
+  if (!pu::Get(param_ns_ + "/gen_prioritization/threads", num_threads_))
     return false;
 
   return true;
@@ -111,20 +118,30 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
     // Check if keyed scans exist
     if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
         keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
+      ROS_WARN("Keyed scans do not exist. ");
+      if ((ros::Time::now() - candidate.header.stamp).toSec() <
+          keyed_scans_max_delay_)
+        candidate_queue_.push(candidate);
       continue;
     }
 
     Eigen::Matrix<double, 3, 1> obs_eigenv_from;
-    utils::ComputeIcpObservability(
-        keyed_scans_[candidate.key_from], normals_radius_, &obs_eigenv_from);
+    utils::ComputeIcpObservability(keyed_scans_[candidate.key_from],
+                                   normals_radius_,
+                                   num_threads_,
+                                   &obs_eigenv_from);
     double min_obs_from = obs_eigenv_from.minCoeff();
+    ROS_INFO_STREAM("Min observability scan 1: " << min_obs_from);
     if (min_obs_from < min_observability_)
       continue;
 
     Eigen::Matrix<double, 3, 1> obs_eigenv_to;
-    utils::ComputeIcpObservability(
-        keyed_scans_[candidate.key_to], normals_radius_, &obs_eigenv_to);
+    utils::ComputeIcpObservability(keyed_scans_[candidate.key_to],
+                                   normals_radius_,
+                                   num_threads_,
+                                   &obs_eigenv_to);
     double min_obs_to = obs_eigenv_to.minCoeff();
+    ROS_INFO_STREAM("Min observability scan 2: " << min_obs_to);
     if (min_obs_to < min_observability_)
       continue;
 
