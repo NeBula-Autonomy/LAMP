@@ -31,7 +31,7 @@
 
       <!-- Topics -->
       <remap from="~pcld" to="locus_input" unless="$(arg b_use_hovermap)"/>
-      <remap from="~pcld" to="hvm/lidar/sweep" if="$(arg b_use_hovermap)"/>
+      <remap from="~pcld" to="hvm/lidar/sweep/filtered" if="$(arg b_use_hovermap)"/>
       <!-- <remap from="~pcld" to="velodyne_points/transformed"/> -->
       <!-- <remap from="~pcld" to="lo_frontend/local_scan_map" /> -->
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
