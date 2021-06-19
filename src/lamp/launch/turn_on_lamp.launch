@@ -10,8 +10,8 @@
 
   <!-- Select odometry source -->
   <arg if="$(eval b_use_hero)" name="odom_input" value="hero/odometry"/>
-  <arg unless="$(eval not b_use_hero and b_use_hovermap)" name="odom_input" value="hvm/odometry"/>
-  <arg unless="$(eval not b_use_hero and not b_use_hovermap)" name="odom_input" value="lo_frontend/odometry"/>
+  <arg if="$(eval not b_use_hero and b_use_hovermap)" name="odom_input" value="hvm/odometry"/>
+  <arg if="$(eval not b_use_hero and not b_use_hovermap)" name="odom_input" value="lo_frontend/odometry"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default="" />
