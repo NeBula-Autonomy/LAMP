@@ -145,7 +145,7 @@ base:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 15
+  proximity_threshold: 20
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
