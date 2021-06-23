@@ -11,9 +11,9 @@
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 
+#include <utils/CommonStructs.h>
 class IPointCloudMapper {
 public:
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
   using Ptr = std::shared_ptr<IPointCloudMapper>;
   IPointCloudMapper(){};
   virtual ~IPointCloudMapper(){};
