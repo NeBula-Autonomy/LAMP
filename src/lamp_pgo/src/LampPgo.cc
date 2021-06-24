@@ -192,6 +192,11 @@ void LampPgo::InputCallback(
     }
   }
 
+  // Track edge types
+  for (auto e : graph_msg->edges) {
+    edge_to_type_[std::make_pair(e.key_to, e.key_from)] = e.type;
+  }
+
   // Extract new values
   // TODO - use the merger here? In case the state of the graph here is
   // different from the lamp node Will that ever be the case?
@@ -220,16 +225,13 @@ void LampPgo::InputCallback(
 
   ROS_INFO_STREAM("PGO adding new values " << new_values.size());
   for (auto k : new_values) {
-    ROS_INFO_STREAM("\t" << gtsam::DefaultKeyFormatter(k.key));
+    ROS_DEBUG_STREAM("\t" << gtsam::DefaultKeyFormatter(k.key));
   }
   ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
 
   // new_factors.print("new factors");
 
-  ROS_INFO_STREAM("FACTORS BEFORE");
-  for (auto f : new_factors) {
-    f->printKeys();
-  }
+  ROS_DEBUG_STREAM("FACTORS BEFORE");
 
   // Run the optimizer
   pgo_solver_->update(new_factors, new_values);
@@ -240,11 +242,15 @@ void LampPgo::InputCallback(
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
-  // nfg_.print("nfg");
   ROS_INFO_STREAM("FACTORS AFTER");
+  std::vector<double> bad_errors;
   for (auto f : nfg_) {
     f->printKeys();
-    ROS_INFO_STREAM("Error: " << f->error(values_));
+    double error = f->error(values_);
+    ROS_DEBUG_STREAM("Error: " << error);
+    if (error > 10.0){
+      bad_errors.push_back(error);
+    }
   }
 
   ROS_INFO_STREAM("PGO stored values of size " << values_.size());
@@ -252,6 +258,10 @@ void LampPgo::InputCallback(
 
   // publish posegraph
   PublishValues();
+
+  if (!bad_errors.empty()) {
+    ROS_WARN_STREAM("Pose Graph solve may have been bad, " << bad_errors.size() << " factors had high error.");
+  }
 }
 
 // TODO - check that this is ok including just the positions in the message
@@ -261,7 +271,7 @@ void LampPgo::PublishValues() const {
   // Then store the values as nodes
   gtsam::KeyVector key_list = values_.keys();
   // Extract the marginal/covariances of the optimized values
-  gtsam::Marginals marginal(nfg_, values_);
+  // gtsam::Marginals marginal(nfg_, values_);
   // marginal.print();
   // marginal.bayesTree_.print("Bayes Tree: ");
 
@@ -287,25 +297,47 @@ void LampPgo::PublishValues() const {
         values_.at<gtsam::Pose3>(key).rotation().toQuaternion().z();
     node.pose.orientation.w =
         values_.at<gtsam::Pose3>(key).rotation().toQuaternion().w();
-    // covariance
-    try {
-      auto cov_matrix = marginal.marginalCovariance(gtsam::Symbol(key));
-      int iter = 0;
-      for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-          node.covariance[iter] = cov_matrix(i, j);
-          iter++;
-        }
-      }
-    }
-    catch (std::exception& e) {
-      ROS_WARN_STREAM("Key is not found in the clique" << gtsam::DefaultKeyFormatter(key));
-    }
+
 
 
     // ROS_WARN_STREAM("Debug get covariance");
 
     pose_graph_msg.nodes.push_back(node);
+  }
+  try {
+    gtsam::Marginals marginal(nfg_, values_);
+    for (size_t k = 0 ; k < key_list.size(); ++k) {
+      auto key = key_list[k];
+      auto node = pose_graph_msg.nodes[k];
+      // covariance
+      try {
+        auto cov_matrix = marginal.marginalCovariance(gtsam::Symbol(key));
+        int iter = 0;
+        for (int i = 0; i < 6; i++) {
+          for (int j = 0; j < 6; j++) {
+            node.covariance[iter] = cov_matrix(i, j);
+            iter++;
+          }
+        }
+      }
+      catch (std::exception& e) {
+        ROS_DEBUG_STREAM("Key is not found in the clique"
+                         << gtsam::DefaultKeyFormatter(key));
+      }
+    }
+  } catch (gtsam::IndeterminantLinearSystemException e) {
+    ROS_ERROR_STREAM("LampPgo System is indeterminant, not computing covariance");
+    for (size_t k = 0 ; k < key_list.size(); ++k) {
+      auto key = key_list[k];
+      auto node = pose_graph_msg.nodes[k];
+      int iter = 0;
+      for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+          node.covariance[iter] = 1e-4;
+          iter++;
+        }
+      }
+    }
   }
 
   for (const auto& factor : nfg_) {
@@ -313,9 +345,19 @@ void LampPgo::PublishValues() const {
       pose_graph_msgs::PoseGraphEdge edge;
       edge.key_from = factor->front();
       edge.key_to = factor->back();
-      if (factor->front() + 1 == factor->back()) {
-        edge.type = pose_graph_msgs::PoseGraphEdge::ODOM;
+
+      // TODO this makes the assumption that any two nodes has at most one edge
+      // which may not be true in the case of e.g. multiple loop closure
+      // modalities
+      auto it1 = edge_to_type_.find(std::make_pair(edge.key_to, edge.key_from));
+      auto it2 = edge_to_type_.find(std::make_pair(edge.key_from, edge.key_to));
+      if (it1 != edge_to_type_.end()) {
+        edge.type = it1->second;
+      } else if (it2 != edge_to_type_.end()) {
+        edge.type = it2->second;
       } else {
+        ROS_ERROR_STREAM("Couldn't find edge type for edge from: "
+                         << edge.key_from << ", to: " << edge.key_to);
         edge.type = pose_graph_msgs::PoseGraphEdge::LOOPCLOSE;
       }
       pose_graph_msg.edges.push_back(edge);

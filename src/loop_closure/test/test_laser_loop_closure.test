@@ -1,5 +1,0 @@
-<launch>
-  <test test-name="test_laser_loop_closure"
-        pkg="loop_closure"
-        type="test_laser_loop_closure"/>
-</launch>
