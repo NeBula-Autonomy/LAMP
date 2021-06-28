@@ -3,6 +3,10 @@
  * @brief  Find transform of loop closures via ICP
  * @author Yun Chang
  */
+#include <chrono>
+#include <iostream>
+#include <fstream>
+
 #include <Eigen/LU>
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
@@ -444,23 +448,39 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
+
+  auto start = std::chrono::steady_clock::now();
+
   utils::ComputeKeypoints(
-      source, harris_params_, icp_threads_, source_keypoints);
+      source, harris_params_, icp_threads_, source_normals, source_keypoints);
   utils::ComputeKeypoints(
-      target, harris_params_, icp_threads_, target_keypoints);
+      target, harris_params_, icp_threads_, target_normals, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
   utils::ComputeFeatures(source_keypoints,
                          source,
+                         source_normals,
                          sac_features_radius_,
                          icp_threads_,
                          source_features);
   utils::ComputeFeatures(target_keypoints,
                          target,
+                         target_normals,
                          sac_features_radius_,
                          icp_threads_,
                          target_features);
+
+  auto end = std::chrono::steady_clock::now();
+
+  std::ofstream myfile("/home/user/Desktop/timing.txt",
+                       std::ios::out | std::ios::app);
+  if (myfile.is_open()) {
+    myfile << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
+                  .count()
+           << "\n";
+    myfile.close();
+  }
 
   // Align
   pcl::SampleConsensusInitialAlignment<Point, Point, pcl::FPFHSignature33>

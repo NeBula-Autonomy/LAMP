@@ -73,7 +73,6 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
                       const int& num_threads,
                       PointCloud::Ptr source_keypoints) {
   pcl::HarrisKeypoint3D<Point, Point> harris_detector;
-
   harris_detector.setNonMaxSupression(params.harris_suppression_);
   harris_detector.setRefine(params.harris_refine_);
   harris_detector.setInputCloud(source);
@@ -98,6 +97,7 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
   harris_detector.setInputCloud(source);
   harris_detector.setNormals(source_normals);
   harris_detector.setNumberOfThreads(num_threads);
+  harris_detector.setRadius(params.harris_radius_);
   harris_detector.setThreshold(params.harris_threshold_);
   harris_detector.setMethod(
       static_cast<pcl::HarrisKeypoint3D<Point, Point>::ResponseMethod>(
@@ -107,6 +107,7 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
 
 void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      const PointCloud::ConstPtr& input,
+                     const Normals::Ptr& normals,
                      const double& search_radius,
                      const int& num_threads,
                      Features::Ptr features) {
@@ -114,23 +115,9 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
   pcl::FPFHEstimationOMP<Point, pcl::Normal, pcl::FPFHSignature33> fpfh_est;
   fpfh_est.setInputCloud(keypoints);
   fpfh_est.setSearchSurface(input);
-  fpfh_est.setSearchMethod(search_method);
-  fpfh_est.setRadiusSearch(search_radius);
-  fpfh_est.setNumberOfThreads(num_threads);
-  fpfh_est.compute(*features);
-}
-
-void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
-                     const PointCloud::ConstPtr& input,
-                     const int& num_threads,
-                     Normals::Ptr normals,
-                     Features::Ptr features) {
-  pcl::search::KdTree<Point>::Ptr search_method(new pcl::search::KdTree<Point>);
-  pcl::FPFHEstimationOMP<Point, pcl::Normal, pcl::FPFHSignature33> fpfh_est;
-  fpfh_est.setInputCloud(keypoints);
-  fpfh_est.setSearchSurface(input);
   fpfh_est.setInputNormals(normals);
   fpfh_est.setSearchMethod(search_method);
+  fpfh_est.setRadiusSearch(search_radius);
   fpfh_est.setNumberOfThreads(num_threads);
   fpfh_est.compute(*features);
 }
