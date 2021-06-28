@@ -31,7 +31,7 @@ void ComputeNormals(const PointCloud::ConstPtr& input,
   norm_est.compute(*normals);
 }
 
-void ComputeNormals(const PointCloud::ConstPtr& input,
+void ExtractNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
                     Normals::Ptr normals) {
   normals->resize(input->size());
@@ -71,6 +71,24 @@ void NormalizePCloud(const PointCloud::ConstPtr& cloud,
 void ComputeKeypoints(const PointCloud::ConstPtr& source,
                       const HarrisParams& params,
                       const int& num_threads,
+                      PointCloud::Ptr source_keypoints) {
+  pcl::HarrisKeypoint3D<Point, Point> harris_detector;
+
+  harris_detector.setNonMaxSupression(params.harris_suppression_);
+  harris_detector.setRefine(params.harris_refine_);
+  harris_detector.setInputCloud(source);
+  harris_detector.setNumberOfThreads(num_threads);
+  harris_detector.setRadius(params.harris_radius_);
+  harris_detector.setThreshold(params.harris_threshold_);
+  harris_detector.setMethod(
+      static_cast<pcl::HarrisKeypoint3D<Point, Point>::ResponseMethod>(
+          params.harris_response_));
+  harris_detector.compute(*source_keypoints);
+}
+
+void ComputeKeypoints(const PointCloud::ConstPtr& source,
+                      const HarrisParams& params,
+                      const int& num_threads,
                       Normals::Ptr source_normals,
                       PointCloud::Ptr source_keypoints) {
   pcl::HarrisKeypoint3D<Point, Point> harris_detector;
@@ -80,7 +98,6 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
   harris_detector.setInputCloud(source);
   harris_detector.setNormals(source_normals);
   harris_detector.setNumberOfThreads(num_threads);
-  harris_detector.setRadius(params.harris_radius_);
   harris_detector.setThreshold(params.harris_threshold_);
   harris_detector.setMethod(
       static_cast<pcl::HarrisKeypoint3D<Point, Point>::ResponseMethod>(
@@ -92,6 +109,20 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      const PointCloud::ConstPtr& input,
                      const double& search_radius,
                      const int& num_threads,
+                     Features::Ptr features) {
+  pcl::search::KdTree<Point>::Ptr search_method(new pcl::search::KdTree<Point>);
+  pcl::FPFHEstimationOMP<Point, pcl::Normal, pcl::FPFHSignature33> fpfh_est;
+  fpfh_est.setInputCloud(keypoints);
+  fpfh_est.setSearchSurface(input);
+  fpfh_est.setSearchMethod(search_method);
+  fpfh_est.setRadiusSearch(search_radius);
+  fpfh_est.setNumberOfThreads(num_threads);
+  fpfh_est.compute(*features);
+}
+
+void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
+                     const PointCloud::ConstPtr& input,
+                     const int& num_threads,
                      Normals::Ptr normals,
                      Features::Ptr features) {
   pcl::search::KdTree<Point>::Ptr search_method(new pcl::search::KdTree<Point>);
@@ -100,7 +131,6 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
   fpfh_est.setSearchSurface(input);
   fpfh_est.setInputNormals(normals);
   fpfh_est.setSearchMethod(search_method);
-  fpfh_est.setRadiusSearch(search_radius);
   fpfh_est.setNumberOfThreads(num_threads);
   fpfh_est.compute(*features);
 }
@@ -155,7 +185,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   Normals::Ptr normals(new Normals);           // pc with normals
   PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
                                                // rearranged.
-  utils::ComputeNormals(cloud, normals_radius, num_threads, normals);
+  utils::ExtractNormals(cloud, num_threads, normals);
   utils::NormalizePCloud(cloud, normalized);
 
   for (size_t i = 0; i < cloud->size(); i++) {
