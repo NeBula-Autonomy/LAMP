@@ -19,6 +19,7 @@ namespace lamp_loop_closure {
 
 class GenericLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::Normal> Normals;
+  friend class TestLoopPrioritization;
 
 public:
   GenericLoopPrioritization();

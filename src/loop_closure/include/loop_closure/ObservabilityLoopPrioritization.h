@@ -19,6 +19,7 @@ namespace lamp_loop_closure {
 
 class ObservabilityLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::Normal> Normals;
+  friend class TestLoopPrioritization;
 
 public:
   ObservabilityLoopPrioritization();
