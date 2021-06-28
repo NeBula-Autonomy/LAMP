@@ -180,7 +180,7 @@ void LampPgo::InputCallback(
   NonlinearFactorGraph all_factors, new_factors;
   Values all_values, new_values;
 
-  ROS_WARN_STREAM("PGO received graph of size " << graph_msg->nodes.size());
+  ROS_INFO_STREAM("PGO received graph of size " << graph_msg->nodes.size());
 
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
@@ -242,10 +242,10 @@ void LampPgo::InputCallback(
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
-  ROS_INFO_STREAM("FACTORS AFTER");
+  ROS_DEBUG_STREAM("FACTORS AFTER");
   std::vector<double> bad_errors;
   for (auto f : nfg_) {
-    f->printKeys();
+    // f->printKeys();
     double error = f->error(values_);
     ROS_DEBUG_STREAM("Error: " << error);
     if (error > 10.0){
