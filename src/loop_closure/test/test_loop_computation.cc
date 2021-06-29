@@ -3,10 +3,13 @@
  *
  */
 
+#include <geometry_utils/Transform3.h>
 #include <gtest/gtest.h>
 
 #include "loop_closure/IcpLoopComputation.h"
 #include "loop_closure/LoopComputation.h"
+
+#include "test_artifacts.h"
 
 namespace lamp_loop_closure {
 class TestLoopComputation : public ::testing::Test {
@@ -60,12 +63,116 @@ class TestLoopComputation : public ::testing::Test {
   }
 
   IcpLoopComputation icp_compute_;
+  double tolerance_ = 1e-5;
 };
 
 TEST_F(TestLoopComputation, TestInitialize) {
   ros::NodeHandle nh;
   bool init = icp_compute_.Initialize(nh);
   ASSERT_TRUE(init);
+}
+
+TEST_F(TestLoopComputation, TestSacInitialAlign) {
+  ros::NodeHandle nh;
+  icp_compute_.Initialize(nh);
+
+  // Add some keyed scans
+  PointCloud::Ptr corner(new PointCloud);
+  PointCloud::Ptr box(new PointCloud);
+  corner = GenerateCorner();
+  // Perturb a bit
+  PointCloud::Ptr corner_moved(new PointCloud);
+  Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+  T(0, 3) = 1;
+  T(1, 3) = -0.001;
+  pcl::transformPointCloudWithNormals(*corner, *corner_moved, T, true);
+
+  Eigen::Matrix4f T_est;
+  double fitness_score;
+  getSacInitialAlignment(corner, corner_moved, &T_est, fitness_score);
+
+  EXPECT_TRUE(T.isApprox(T_est));
+  EXPECT_EQ(0, fitness_score);
+}
+
+// TODO: Fix teaser unittests
+// TEST_F(TestLoopComputation, TestTeaserInitialAlign) {
+//   ros::NodeHandle nh;
+//   icp_compute_.Initialize(nh);
+
+//   // Add some keyed scans
+//   PointCloud::Ptr corner(new PointCloud);
+//   PointCloud::Ptr box(new PointCloud);
+//   corner = GenerateCorner();
+//   // Perturb a bit
+//   PointCloud::Ptr corner_moved(new PointCloud);
+//   Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+//   T(0, 3) = 1;
+//   T(1, 3) = -0.001;
+//   pcl::transformPointCloudWithNormals(*corner, *corner_moved, T, true);
+
+//   Eigen::Matrix4f T_est;
+//   int inliers;
+//   getTeaserInitialAlignment(corner, corner_moved, &T_est, inliers);
+
+//   EXPECT_TRUE(T.isApprox(T_est));
+//   EXPECT_EQ(300, inliers);
+// }
+
+TEST_F(TestLoopComputation, PerformAlignment) {
+  ros::NodeHandle nh;
+  icp_compute_.Initialize(nh);
+
+  // Add some keyed scans
+  PointCloud::Ptr corner(new PointCloud);
+  PointCloud::Ptr box(new PointCloud);
+  corner = GenerateCorner();
+  // Perturb a bit
+  PointCloud::Ptr corner_moved(new PointCloud);
+  Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+  T(0, 3) = 1;
+  T(1, 3) = -0.001;
+  pcl::transformPointCloudWithNormals(*corner, *corner_moved, T, true);
+
+  pose_graph_msgs::KeyedScan::Ptr ks0(new pose_graph_msgs::KeyedScan);
+  *ks0 = PointCloudToKeyedScan(corner, gtsam::Symbol('a', 0));
+  pose_graph_msgs::KeyedScan::Ptr ks1(new pose_graph_msgs::KeyedScan);
+  *ks1 = PointCloudToKeyedScan(corner_moved, gtsam::Symbol('a', 1));
+
+  keyedScanCallback(ks0);
+  keyedScanCallback(ks1);
+
+  pose_graph_msgs::PoseGraph::Ptr kp(new pose_graph_msgs::PoseGraph);
+  pose_graph_msgs::PoseGraphNode kp0, kp1;
+  kp0.key = gtsam::Symbol('a', 0);
+  kp1.key = gtsam::Symbol('a', 1);
+  kp1.pose.position.x = 0.99;
+  kp->nodes.push_back(kp0);
+  kp->nodes.push_back(kp1);
+
+  keyedPoseCallback(kp);
+
+  geometry_utils::Transform3 tf, tf_exp;
+  gtsam::Matrix66 covar;
+  performAlignment(gtsam::Symbol('a', 1),
+                   gtsam::Symbol('a', 0),
+                   gtsam::Pose3(),
+                   gtsam::Pose3(gtsam::Point3(0, 0, 0.99)),
+                   &tf,
+                   &covar);
+
+  tf_exp.translation = geometry_utils::Vec3(T(0, 3), T(1, 3), T(2, 3));
+  tf_exp.rotation = geometry_utils::Rot3(T(0, 0),
+                                         T(0, 1),
+                                         T(0, 2),
+                                         T(1, 0),
+                                         T(1, 1),
+                                         T(1, 2),
+                                         T(2, 0),
+                                         T(2, 1),
+                                         T(2, 2));
+
+  EXPECT_EQ(tf_exp, tf);
 }
 
 }  // namespace lamp_loop_closure
