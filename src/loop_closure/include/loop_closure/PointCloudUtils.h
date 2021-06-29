@@ -44,9 +44,9 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
 
 // With precomputed normals
 void ComputeKeypoints(const PointCloud::ConstPtr& source,
+                      const Normals::ConstPtr& source_normals,
                       const HarrisParams& params,
                       const int& num_threads,
-                      Normals::Ptr source_normals,
                       PointCloud::Ptr source_keypoints);
 
 void ComputeFeatures(const PointCloud::ConstPtr& keypoints,

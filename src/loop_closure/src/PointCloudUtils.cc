@@ -86,9 +86,9 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
 }
 
 void ComputeKeypoints(const PointCloud::ConstPtr& source,
+                      const Normals::ConstPtr& source_normals,
                       const HarrisParams& params,
                       const int& num_threads,
-                      Normals::Ptr source_normals,
                       PointCloud::Ptr source_keypoints) {
   pcl::HarrisKeypoint3D<Point, Point> harris_detector;
 
@@ -124,14 +124,13 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
 
 void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
                                  const Normals::Ptr reference_normals,
-                                 const std::vector<size_t> &correspondences,
-                                 const Eigen::Matrix4f &T,
-                                 Eigen::Matrix<double, 6, 6> &Ap) {
+                                 const std::vector<size_t>& correspondences,
+                                 const Eigen::Matrix4f& T,
+                                 Eigen::Matrix<double, 6, 6>& Ap) {
   Ap = Eigen::Matrix<double, 6, 6>::Zero();
   double tol = 1e-10;
   Eigen::Vector3d a_i, n_i;
   for (uint32_t i = 0; i < query_normalized->size(); i++) {
-
     if (i >= correspondences.size()) {
       continue;
     }
@@ -139,23 +138,22 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
       a_i << query_normalized->points[i].x,  //////
           query_normalized->points[i].y,     //////
           query_normalized->points[i].z;
-    } else{
-      a_i << 0,0,0;
+    } else {
+      a_i << 0, 0, 0;
       ROS_ERROR("Query is null");
     }
 
-    if ((reference_normals != NULL) && (reference_normals->points.size() > correspondences[i])) {
+    if ((reference_normals != NULL) &&
+        (reference_normals->points.size() > correspondences[i])) {
       n_i << reference_normals->points[correspondences[i]].normal_x,  //////
           reference_normals->points[correspondences[i]].normal_y,     //////
           reference_normals->points[correspondences[i]].normal_z;
     } else {
-      n_i << 0,0,0;
+      n_i << 0, 0, 0;
       ROS_ERROR("Issue with reference_normals, setting covariance 0");
     }
 
-    if (a_i.hasNaN() || n_i.hasNaN())
-      continue;
-
+    if (a_i.hasNaN() || n_i.hasNaN()) continue;
 
     Eigen::Matrix<double, 1, 6> H = Eigen::Matrix<double, 1, 6>::Zero();
     H.block(0, 0, 1, 3) = (a_i.cross(n_i)).transpose();
@@ -182,9 +180,9 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
 
   // Correspondence with itself (not really used anyways)
   std::vector<size_t> c(cloud->size());
-  std::iota(std::begin(c), std::end(c), 0); // Fill with 0, 1, ...
+  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
 
-  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero(); // Unused
+  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero();  // Unused
 
   Eigen::Matrix<double, 6, 6> Ap;
   // Compute Ap and its eigenvalues

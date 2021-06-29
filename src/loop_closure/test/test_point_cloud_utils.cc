@@ -124,19 +124,18 @@ TEST_F(TestPointCloudUtils, ComputeKeypoints1) {
   pcl::transformPointCloudWithNormals(
       *plane, *transformed_plane1, T_plane, true);
 
-  // Add another 
+  // Add another
   PointCloud::Ptr transformed_plane2(new PointCloud);
   T_plane = Eigen::Matrix4f::Zero();
   T_plane(0, 2) = -1;
   T_plane(1, 1) = 1;
   T_plane(2, 0) = 1;
-  T_plane(3, 3) = 1; 
+  T_plane(3, 3) = 1;
   pcl::transformPointCloudWithNormals(
       *plane, *transformed_plane2, T_plane, true);
   *plane += *transformed_plane1;
   *plane += *transformed_plane2;
 
-  pcl::io::savePCDFileASCII ("/home/user/Desktop/test_pcd.pcd", *plane);
   HarrisParams params = GenerateHarrisParams();
 
   ComputeKeypoints(plane, params, 4, plane_keypts);
@@ -153,17 +152,146 @@ TEST_F(TestPointCloudUtils, ComputeKeypoints1) {
   EXPECT_NEAR(0.3, plane_keypts->points[2].z, tolerance_);
 }
 
-TEST_F(TestPointCloudUtils, ComputeKeypoints2) {}
+TEST_F(TestPointCloudUtils, ComputeKeypoints2) {
+  PointCloud::Ptr plane(new PointCloud);
+  PointCloud::Ptr plane_keypts(new PointCloud);
+  plane = GeneratePlane();
 
-TEST_F(TestPointCloudUtils, ComputeFeatures) {}
+  // Perform transformation
+  PointCloud::Ptr transformed_plane1(new PointCloud);
+  Eigen::Matrix4f T_plane = Eigen::Matrix4f::Zero();
+  T_plane(0, 0) = 1;
+  T_plane(1, 2) = -1;
+  T_plane(2, 1) = 1;
+  T_plane(3, 3) = 1;
+  pcl::transformPointCloudWithNormals(
+      *plane, *transformed_plane1, T_plane, true);
 
-TEST_F(TestPointCloudUtils, ComputeIcpObservability) {}
+  // Add another
+  PointCloud::Ptr transformed_plane2(new PointCloud);
+  T_plane = Eigen::Matrix4f::Zero();
+  T_plane(0, 2) = -1;
+  T_plane(1, 1) = 1;
+  T_plane(2, 0) = 1;
+  T_plane(3, 3) = 1;
+  pcl::transformPointCloudWithNormals(
+      *plane, *transformed_plane2, T_plane, true);
+  *plane += *transformed_plane1;
+  *plane += *transformed_plane2;
 
-TEST_F(TestPointCloudUtils, ComputeICPCovariancePointPoint) {}
+  Normals::Ptr plane_normals(new Normals);
+  ExtractNormals(plane, 4, plane_normals);
 
-TEST_F(TestPointCloudUtils, ComputeICPCovariancePointPlane) {}
+  HarrisParams params = GenerateHarrisParams();
 
-TEST_F(TestPointCloudUtils, ComputeAp_ForPoint2PlaneICP) {}
+  ComputeKeypoints(plane, plane_normals, params, 4, plane_keypts);
+
+  EXPECT_EQ(3, plane_keypts->size());
+  EXPECT_NEAR(0, plane_keypts->points[0].x, tolerance_);
+  EXPECT_NEAR(0, plane_keypts->points[0].y, tolerance_);
+  EXPECT_NEAR(0, plane_keypts->points[0].z, tolerance_);
+}
+
+TEST_F(TestPointCloudUtils, ComputeFeatures) {
+  PointCloud::Ptr plane(new PointCloud);
+  PointCloud::Ptr plane_keypts(new PointCloud);
+  plane = GeneratePlane();
+
+  // Perform transformation
+  PointCloud::Ptr transformed_plane1(new PointCloud);
+  Eigen::Matrix4f T_plane = Eigen::Matrix4f::Zero();
+  T_plane(0, 0) = 1;
+  T_plane(1, 2) = -1;
+  T_plane(2, 1) = 1;
+  T_plane(3, 3) = 1;
+  pcl::transformPointCloudWithNormals(
+      *plane, *transformed_plane1, T_plane, true);
+
+  // Add another
+  PointCloud::Ptr transformed_plane2(new PointCloud);
+  T_plane = Eigen::Matrix4f::Zero();
+  T_plane(0, 2) = -1;
+  T_plane(1, 1) = 1;
+  T_plane(2, 0) = 1;
+  T_plane(3, 3) = 1;
+  pcl::transformPointCloudWithNormals(
+      *plane, *transformed_plane2, T_plane, true);
+  *plane += *transformed_plane1;
+  *plane += *transformed_plane2;
+
+  Normals::Ptr plane_normals(new Normals);
+  ExtractNormals(plane, 4, plane_normals);
+
+  HarrisParams params = GenerateHarrisParams();
+
+  ComputeKeypoints(plane, plane_normals, params, 4, plane_keypts);
+
+  Features::Ptr plane_features(new Features);
+  ComputeFeatures(plane_keypts, plane, plane_normals, 1.0, 4, plane_features);
+
+  EXPECT_EQ(3, plane_features->size());
+}
+
+TEST_F(TestPointCloudUtils, ComputeIcpObservability) {
+  Eigen::Matrix<double, 3, 1> eigenvalues_new =
+      Eigen::Matrix<double, 3, 1>::Zero();
+  auto query = GeneratePlane();
+  ComputeIcpObservability(query, 1.0, 4, &eigenvalues_new);
+  // Note Eigen sorts this automatically
+  EXPECT_NEAR(eigenvalues_new(0), 0, tolerance_);
+  EXPECT_NEAR(eigenvalues_new(1), 0, tolerance_);
+  EXPECT_NEAR(eigenvalues_new(2), 100, tolerance_);
+}
+
+TEST_F(TestPointCloudUtils, ComputeAp_ForPoint2PlaneICP) {
+  PointCloud::Ptr plane(new PointCloud);
+  plane = GeneratePlane();
+  Normals::Ptr plane_normals(new Normals);
+  Eigen::Matrix<double, 6, 6> Ap = Eigen::Matrix<double, 6, 6>::Zero();
+  PointCloud::Ptr plane_normalized(new PointCloud);
+  ExtractNormals(plane, 4, plane_normals);
+  NormalizePCloud(plane, plane_normalized);
+  std::vector<size_t> correspondences(plane->size());
+  std::iota(std::begin(correspondences), std::end(correspondences), 0);
+  // Generate Ap manually
+  Eigen::MatrixXf Ap_ref = Eigen::MatrixXf::Zero(6, 6);
+  Eigen::Vector3d a_i, n_i;
+  for (size_t i = 0; i < plane->size(); i++) {
+    a_i << plane_normalized->points[i].x,  //////
+        plane_normalized->points[i].y,     //////
+        plane_normalized->points[i].z;
+
+    n_i << plane_normals->points[correspondences[i]].normal_x,  //////
+        plane_normals->points[correspondences[i]].normal_y,     //////
+        plane_normals->points[correspondences[i]].normal_z;
+    double a, b, c;
+    a = (a_i.cross(n_i))(0);
+    b = (a_i.cross(n_i))(1);
+    c = n_i(2);
+    Ap_ref(0, 0) += a * a;
+    Ap_ref(0, 1) += a * b;
+    Ap_ref(1, 0) += a * b;
+    Ap_ref(1, 1) += b * b;
+    Ap_ref(0, 5) += a * c;
+    Ap_ref(1, 5) += b * c;
+    Ap_ref(5, 0) += a * c;
+    Ap_ref(5, 1) += b * c;
+    Ap_ref(5, 5) += c * c;
+  }
+
+  Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+  ComputeAp_ForPoint2PlaneICP(
+      plane_normalized, plane_normals, correspondences, T, Ap);
+
+  for (size_t i = 0; i < 6; i++) {
+    for (size_t j = 0; j < 6; j++) {
+      EXPECT_NEAR(Ap(i, j), Ap_ref(i, j), tolerance_);
+    }
+  }
+  EXPECT_NEAR(Ap(0, 0), 56.77534, tolerance_);
+  EXPECT_NEAR(Ap(1, 1), 56.77534, tolerance_);
+  EXPECT_NEAR(Ap(5, 5), 100, tolerance_);
+}
 
 }  // namespace utils
 
