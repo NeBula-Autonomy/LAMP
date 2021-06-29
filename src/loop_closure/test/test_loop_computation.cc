@@ -10,10 +10,6 @@
 
 namespace lamp_loop_closure {
 class TestLoopComputation : public ::testing::Test {
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
-  typedef pcl::PointCloud<pcl::PointXYZI>::ConstPtr PointCloudConstPtr;
-  typedef pcl::PointCloud<pcl::Normal> Normals;
-
  protected:
   TestLoopComputation() {
     // Load params
