@@ -160,13 +160,19 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
 }
 
 void GenericLoopPrioritization::PublishBestCandidates() {
+  pose_graph_msgs::LoopCandidateArray output_msg = GetBestCandidates();
+  loop_candidate_pub_.publish(output_msg);
+}
+
+pose_graph_msgs::LoopCandidateArray
+GenericLoopPrioritization::GetBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
     output_msg.candidates.push_back(priority_queue_.front());
     priority_queue_.pop_front();
   }
-  loop_candidate_pub_.publish(output_msg);
+  return output_msg;
 }
 
 void GenericLoopPrioritization::KeyedScanCallback(

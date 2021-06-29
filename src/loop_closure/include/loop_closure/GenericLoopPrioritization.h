@@ -38,6 +38,8 @@ protected:
 
   void PublishBestCandidates() override;
 
+  pose_graph_msgs::LoopCandidateArray GetBestCandidates() override;
+
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 
   void ProcessTimerCallback(const ros::TimerEvent& ev);
