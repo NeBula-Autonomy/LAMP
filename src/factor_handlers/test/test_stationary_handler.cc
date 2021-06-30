@@ -15,7 +15,9 @@ class StationaryHandlerTest : public ::testing::Test {
   double tolerance_;
 
  protected:
-  std::shared_ptr<FactorData> getData() { return sh_.GetData(); }
+  std::shared_ptr<ImuData> getData() {
+    return std::dynamic_pointer_cast<ImuData>(sh_.GetData());
+  }
 
   bool SetKeyForImuAttitude(const gtsam::Symbol& key) {
     return sh_.SetKeyForImuAttitude(key);
@@ -38,6 +40,8 @@ class StationaryHandlerTest : public ::testing::Test {
   }
 
   void resetFactorData() { sh_.ResetFactorData(); }
+
+  bool isCurrentlyStationary() { return sh_.currently_stationary_; }
 };
 
 /* TEST Initialize */
@@ -86,6 +90,51 @@ TEST_F(StationaryHandlerTest, CreateAttitudeFactor) {
   EXPECT_NEAR(error_2_exp[0], error_2[0], tolerance_);
   EXPECT_NEAR(error_2_exp[1], error_2[1], tolerance_);
   EXPECT_NEAR(error_2_exp[2], error_2[2], tolerance_);
+}
+
+TEST_F(StationaryHandlerTest, StationaryCallback) {
+  ros::NodeHandle nh;
+  sh_.Initialize(nh);
+
+  StationaryMessage::Ptr msg1(new StationaryMessage);
+  msg1->status = 1;
+  msg1->average_acceleration.x = 0;
+  msg1->average_acceleration.y = 0.01;
+  msg1->average_acceleration.z = 0.99;
+
+  StationaryMessage::Ptr msg2(new StationaryMessage);
+  msg2->status = 0;
+  msg2->average_acceleration.x = 0;
+  msg2->average_acceleration.y = 1;
+  msg2->average_acceleration.z = 0;
+
+  stationaryCallback(msg1);
+  EXPECT_FALSE(isCurrentlyStationary());
+
+  std::shared_ptr<ImuData> factor_data(new ImuData);
+  factor_data = getData();
+
+  EXPECT_FALSE(factor_data->b_has_data);
+
+  stationaryCallback(msg2);
+  EXPECT_TRUE(isCurrentlyStationary());
+
+  SetKeyForImuAttitude(gtsam::Symbol('a', 1));
+  factor_data = getData();
+
+  EXPECT_TRUE(factor_data->b_has_data);
+  EXPECT_EQ("imu", factor_data->type);
+  EXPECT_EQ(1, factor_data->factors.size());
+
+  gtsam::Pose3AttitudeFactor factor = factor_data->factors[0].attitude;
+
+  EXPECT_EQ(gtsam::Symbol('a', 1), factor.key());
+  EXPECT_NEAR(0, factor.nZ().unitVector()[0], tolerance_);
+  EXPECT_NEAR(0, factor.nZ().unitVector()[1], tolerance_);
+  EXPECT_NEAR(1, factor.nZ().unitVector()[2], tolerance_);
+  EXPECT_NEAR(0, factor.bRef().unitVector()[0], tolerance_);
+  EXPECT_NEAR(1, factor.bRef().unitVector()[1], tolerance_);
+  EXPECT_NEAR(0, factor.bRef().unitVector()[2], tolerance_);
 }
 
 int main(int argc, char** argv) {
