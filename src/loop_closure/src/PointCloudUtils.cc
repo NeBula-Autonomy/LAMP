@@ -33,8 +33,15 @@ void ComputeNormals(const PointCloud::ConstPtr& input,
 
 void ExtractNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
-                    Normals::Ptr normals) {
+                    Normals::Ptr normals,
+                    const double& search_radius) {
   normals->resize(input->size());
+  if (input->size() == 0) return;
+  // Check that there are normals to extract
+  if (input->points[0].normal_x == 0 && input->points[0].normal_y == 0 &&
+      input->points[0].normal_z == 0) {
+    return ComputeNormals(input, search_radius, num_threads, normals);
+  }
   int enable_omp = (1 < num_threads);
 #pragma omp parallel for schedule(dynamic, 1) if (enable_omp)
   for (size_t i = 0; i < input->size(); ++i) {
@@ -170,7 +177,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   Normals::Ptr normals(new Normals);           // pc with normals
   PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
                                                // rearranged.
-  utils::ExtractNormals(cloud, num_threads, normals);
+  utils::ExtractNormals(cloud, num_threads, normals, normals_radius);
   utils::NormalizePCloud(cloud, normalized);
 
   for (size_t i = 0; i < cloud->size(); i++) {
