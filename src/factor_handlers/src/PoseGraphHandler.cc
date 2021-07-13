@@ -178,18 +178,26 @@ void PoseGraphHandler::KeyedScanCallback(const pose_graph_msgs::KeyedScan::Const
       ROS_INFO_STREAM("PoseGraphHandler: Repeated keyed Scan for key " << msg->key);
   } else {
       keyed_scans_keys_.insert(msg->key);
-  }
 
-  gtsam::Symbol node_symbol(msg->key);
-  if (last_keyed_scan_key_from_robot_.count(node_symbol.chr()) > 0){
-        uint64_t cur_key = node_symbol.key();
-        uint64_t last_key = last_keyed_scan_key_from_robot_[node_symbol.chr()];
-        if (cur_key < last_key) {
-            ROS_WARN_STREAM("PoseGraphHandler: Keyed scans arriving out of order for " << node_symbol.chr() << ". Last key " << last_key << ", Current Key: " << cur_key);
-        }
-        if (cur_key != (last_key + 1)) {
-            ROS_WARN_STREAM("PoseGraphHandler: Keyed scan key does not increase by 1 for " << node_symbol.chr() << ". Last Key " << last_key << ", Current Key:" << cur_key);
-        }
-    }
-    last_keyed_scan_key_from_robot_[node_symbol.chr()] = node_symbol.key();
+      gtsam::Symbol node_symbol(msg->key);
+      if (last_keyed_scan_key_from_robot_.count(node_symbol.chr()) > 0) {
+          uint64_t cur_key = node_symbol.key();
+          uint64_t last_key = last_keyed_scan_key_from_robot_[node_symbol.chr()];
+          if (cur_key < last_key) {
+              ROS_WARN_STREAM(
+                      "PoseGraphHandler: Keyed scans arriving out of order for " << node_symbol.chr() << ". Last key "
+                                                                                 << last_key << ", Current Key: "
+                                                                                 << cur_key);
+          }
+          if (cur_key != (last_key + 1)) {
+              ROS_WARN_STREAM("PoseGraphHandler: Keyed scan key does not increase by 1 for " << node_symbol.chr()
+                                                                                             << ". Last Key "
+                                                                                             << last_key
+                                                                                             << ", Current Key:"
+                                                                                             << cur_key);
+          }
+      }
+
+      last_keyed_scan_key_from_robot_[node_symbol.chr()] = node_symbol.key();
+  }
 }
