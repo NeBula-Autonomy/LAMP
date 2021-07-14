@@ -50,6 +50,8 @@ protected:
   std::queue<pose_graph_msgs::LoopCandidate> candidate_queue_;
 
   std::string param_ns_;
+
+  double keyed_scans_max_delay_;
 };
 
 } // namespace lamp_loop_closure

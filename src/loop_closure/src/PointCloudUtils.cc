@@ -17,19 +17,19 @@ Some utility functions for wokring with Point Clouds
 
 namespace utils {
 
-// void ComputeNormals(const PointCloud::ConstPtr& input,
-//                    const double& search_radius,
-//                    const int& num_threads,
-//                    Normals::Ptr normals) {
-//  pcl::search::KdTree<pcl::PointXYZINormal>::Ptr search_method(
-//      new pcl::search::KdTree<pcl::PointXYZINormal>);
-//  pcl::NormalEstimationOMP<pcl::PointXYZINormal, pcl::Normal> norm_est;
-//  norm_est.setInputCloud(input);
-//  norm_est.setSearchMethod(search_method);
-//  norm_est.setRadiusSearch(search_radius);
-//  norm_est.setNumberOfThreads(num_threads);
-//  norm_est.compute(*normals);
-//}
+void ComputeNormals(const PointCloud::ConstPtr& input,
+                    const double& search_radius,
+                    const int& num_threads,
+                    Normals::Ptr normals) {
+  pcl::search::KdTree<pcl::PointXYZINormal>::Ptr search_method(
+      new pcl::search::KdTree<pcl::PointXYZINormal>);
+  pcl::NormalEstimationOMP<pcl::PointXYZINormal, pcl::Normal> norm_est;
+  norm_est.setInputCloud(input);
+  norm_est.setSearchMethod(search_method);
+  norm_est.setRadiusSearch(search_radius);
+  norm_est.setNumberOfThreads(num_threads);
+  norm_est.compute(*normals);
+}
 
 void ComputeNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
@@ -149,13 +149,19 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
 
 void ComputeIcpObservability(PointCloud::ConstPtr cloud,
                              const double& normals_radius,
+                             const size_t& num_threads,
                              Eigen::Matrix<double, 3, 1>* eigenvalues) {
   // Get normals
   Normals::Ptr normals(new Normals);           // pc with normals
   PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
                                                // rearranged.
-  utils::ComputeNormals(cloud, normals_radius, normals);
+  utils::ComputeNormals(cloud, normals_radius, num_threads, normals);
   utils::NormalizePCloud(cloud, normalized);
+
+  for (size_t i = 0; i < cloud->size(); i++) {
+    Point p = cloud->points[i];
+    pcl::Normal n = normals->points[i];
+  }
 
   // Correspondence with itself (not really used anyways)
   std::vector<size_t> c(cloud->size());

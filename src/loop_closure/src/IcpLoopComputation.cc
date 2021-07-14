@@ -436,8 +436,10 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ComputeNormals(source, sac_normals_radius_, source_normals);
-  utils::ComputeNormals(target, sac_normals_radius_, target_normals);
+  utils::ComputeNormals(
+      source, sac_normals_radius_, icp_threads_, source_normals);
+  utils::ComputeNormals(
+      target, sac_normals_radius_, icp_threads_, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
@@ -497,15 +499,15 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   utils::ComputeAp_ForPoint2PlaneICP(
       query_normalized, reference_normals, correspondences, T, Ap);
   // If matrix not invertible, use fixed
-  if (covariance->determinant() == 0) {
+  if (Ap.determinant() == 0) {
     for (int i = 0; i < 3; ++i)
       (*covariance)(i, i) = laser_lc_rot_sigma_ * laser_lc_rot_sigma_;
     for (int i = 3; i < 6; ++i)
       (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
     return true;
+  } else {
+    *covariance = 0.01 * 0.01 * Ap.inverse();
   }
-
-  *covariance = 0.01 * 0.01 * Ap.inverse();
 
   // Here bound the covariance using eigen values
   Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;

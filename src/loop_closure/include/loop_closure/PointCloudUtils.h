@@ -24,10 +24,10 @@ struct HarrisParams {
   int harris_response_;
 };
 
-// void ComputeNormals(const PointCloud::ConstPtr& input,
-//                    const double& search_radius,
-//                    const int& num_threads,
-//                    Normals::Ptr normals);
+void ComputeNormals(const PointCloud::ConstPtr& input,
+                    const double& search_radius,
+                    const int& num_threads,
+                    Normals::Ptr normals);
 
 void ComputeNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
@@ -49,6 +49,7 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
 
 void ComputeIcpObservability(PointCloudConstPtr scan,
                              const double& normals_radius,
+                             const size_t& num_threads,
                              Eigen::Matrix<double, 3, 1>* eigenvalues);
 
 bool ComputeICPCovariancePointPoint(const PointCloud::ConstPtr& pointCloud,
