@@ -39,6 +39,7 @@
 
 #include <pcl_ros/point_cloud.h>
 #include <ros/ros.h>
+#include <utils/PointCloudTypes.h>
 
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>

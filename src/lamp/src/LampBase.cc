@@ -235,6 +235,7 @@ bool LampBase::ReGenerateMapPointCloud() {
 
   // Publish map
   mapper_->PublishMap();
+  return true;
 }
 
 // For combining all the scans together

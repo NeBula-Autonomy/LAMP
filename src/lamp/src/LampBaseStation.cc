@@ -243,6 +243,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     // Update the internal pose graph using the merger output
     pose_graph_msgs::PoseGraphConstPtr fused_graph(
         new pose_graph_msgs::PoseGraph(merger_.GetCurrentGraph()));
+    ROS_INFO_STREAM("Fused Graph: UpdateFromMsg");
     pose_graph_.UpdateFromMsg(fused_graph);
 
     // Check for new loop closure edges
@@ -291,8 +292,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     b_has_new_scan_ = true;
 
     // Create new PCL pointer
-    pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(
-        new pcl::PointCloud<pcl::PointXYZI>);
+    PointCloud::Ptr scan_ptr(new PointCloud);
 
     // Copy from ROS to PCL
     pcl::fromROSMsg(s->scan, *scan_ptr);

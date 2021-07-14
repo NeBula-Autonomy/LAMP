@@ -54,8 +54,9 @@ TEST_F(TestArtifactHandler, ArtifactInfoInitialize) {
   // Check if ArtifactInfo is initialised correctly
   EXPECT_EQ(art_.num_updates, 0);
   EXPECT_EQ(art_.id, "");
-  EXPECT_EQ(art_.global_position.vector(),
-            Eigen::Vector3d(0.0, 0.0, 0.0));
+  EXPECT_NEAR(art_.global_position[0], 0.0, 1e-6);
+  EXPECT_NEAR(art_.global_position[1], 0.0, 1e-6);
+  EXPECT_NEAR(art_.global_position[2], 0.0, 1e-6);
 }
 
 // TEST_F(TestArtifactHandler, LoadParameters) {
@@ -81,7 +82,7 @@ TEST_F(TestArtifactHandler, UpdateGlobalPosition) {
   // Update global position
   UpdateGlobalPosition(artifact_key, global_position);
   // Check if translation part of position is updated
-  EXPECT_EQ(ArtifactKeyToInfo[artifact_key].global_position.vector(),
+  EXPECT_EQ(ArtifactKeyToInfo[artifact_key].global_position,
             Eigen::Vector3d(1.0, 1.0, 1.0));
 }
 
@@ -176,7 +177,7 @@ TEST_F(TestArtifactHandler, AddArtifactData) {
   EXPECT_TRUE(factor.b_has_data);
   EXPECT_EQ(artifact_factor.key, gtsam::Symbol('l',0));
   EXPECT_EQ(artifact_factor.stamp, ros::Time(0.1));
-  EXPECT_EQ(artifact_factor.position.vector(), Eigen::Vector3d(1.0,1.0,1.0));
+  EXPECT_EQ(artifact_factor.position, Eigen::Vector3d(1.0, 1.0, 1.0));
 }
 
 TEST_F(TestArtifactHandler, ArtifactCallback) {
@@ -200,7 +201,7 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   ArtifactFactor artifact_factor = stored_data.factors[0];
 
   std::cout << "retrieved artifact, position " << artifact_factor.position.x() << ", " << artifact_factor.position.y() << std::endl;
-  std::cout << "vector: " << artifact_factor.position.vector();
+  std::cout << "vector: " << artifact_factor.position;
   // Check if data is flowing correctly
   EXPECT_EQ(stored_data.type, "artifact");
   ASSERT_TRUE(stored_data.b_has_data);
@@ -216,8 +217,9 @@ TEST_F(TestArtifactHandler, ArtifactCallback) {
   // Get the ArtifactInfo
   auto KeyInfoMap = GetKeyInfoMap();
   // Is the data in ArtifactInfo correct
-  EXPECT_EQ(KeyInfoMap[artifact_factor.key].global_position.vector(), Eigen::Vector3d (0.9,0.3,0.5));
-  
+  EXPECT_EQ(KeyInfoMap[artifact_factor.key].global_position,
+            Eigen::Vector3d(0.9, 0.3, 0.5));
+
   // Construct a new message
   msg.parent_id = "distal";
   msg.header.stamp = ros::Time(1.0);

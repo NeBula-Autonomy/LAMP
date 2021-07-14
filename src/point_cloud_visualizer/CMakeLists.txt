@@ -12,6 +12,17 @@ if(NOT PCL_FOUND)
   message(FATAL_ERROR "This program requires the PCL library.")
 endif(NOT PCL_FOUND)
 
+FIND_PACKAGE(Boost REQUIRED
+  date_time
+  serialization
+  thread
+  filesystem
+  system
+  regex
+  timer
+  chrono
+)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   geometry_utils
@@ -31,8 +42,10 @@ catkin_package(
     parameter_utils
     sensor_msgs
     pcl_ros
+    utils
   DEPENDS
     PCL
+    Boost
 )
 
 find_package(GTSAM REQUIRED)

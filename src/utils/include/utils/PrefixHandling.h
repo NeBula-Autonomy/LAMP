@@ -16,46 +16,53 @@
 
 namespace utils {
 
-// Base station
-const std::string LAMP_BASE_PREFIX = "base";
-const gtsam::Symbol GTSAM_ERROR_SYMBOL('x', 9999);
+  // Base station
+  const std::string LAMP_BASE_PREFIX = "base";
+  const gtsam::Symbol GTSAM_ERROR_SYMBOL('x', 9999);
 
-// UWB
-const char UWB_PREFIX = 'u';
+  // UWB
+  const char UWB_PREFIX = 'u';
 
-// Define prefixes for ALL VALID ROBOTS in this file
-const std::map<std::string, unsigned char> ROBOT_PREFIXES = {{"husky1", 'a'},
-                                                             {"husky2", 'b'},
-                                                             {"husky3", 'c'},
-                                                             {"husky4", 'f'},
-                                                             {"telemax1", 'd'},
-                                                             {"robot", 'e'},
-                                                             {"spot1", 'g'},
-                                                             {"spot2", 'h'},
-                                                             {"handheld1", 'i'},
-                                                             {"xmaxx1", 'j'}};
+  // Define prefixes for ALL VALID ROBOTS in this file
+  const std::map<std::string, char> ROBOT_PREFIXES = {
+      {"husky1",  'a'},
+      {"husky2",  'b'},
+      {"husky3",  'c'},
+      {"husky4",  'f'},
+      {"telemax1",'d'},
+      {"robot",   'e'},
+      {"spot1",   'g'},
+      {"spot2",   'h'},
+      {"spot3",   'k'},
+      {"handheld1",   'i'},
+      {"xmaxx1",   'j'}
+  };
 
-const std::map<std::string, unsigned char> ARTIFACT_PREFIXES = {
-    {"husky1", 'l'},
-    {"husky2", 'm'},
-    {"husky3", 'n'},
-    {"husky4", 'q'},
-    {"telemax1", 'o'},
-    {"robot", 'p'},
-    {"spot1", 'r'},
-    {"spot2", 's'},
-    {"handheld1", 't'},
-    {"xmaxx1", 'u'}};
+  const std::map<std::string, char> ARTIFACT_PREFIXES = {
+      {"husky1",  'l'},
+      {"husky2",  'm'},
+      {"husky3",  'n'},
+      {"husky4",  'q'},
+      {"telemax1",'o'},
+      {"robot",   'p'},
+      {"spot1",   'r'},
+      {"spot2",   's'},
+      {"spot3",   'v'},
+      {"handheld1",   't'},
+      {"xmaxx1",   'u'}
+  };
 
-// ---------------------------------------------------------
-//                    Query functions
-// ---------------------------------------------------------
+  // ---------------------------------------------------------
+  //                    Query functions
+  // ---------------------------------------------------------
 
-// Checks if the character is a robot node prefix;
-inline bool IsRobotPrefix(unsigned char c) {
-  for (auto k : ROBOT_PREFIXES) {
-    if (k.second == c) {
-      return true;
+
+  // Checks if the character is a robot node prefix;
+  inline bool IsRobotPrefix(unsigned char c) {
+    for (auto k : ROBOT_PREFIXES) {  
+      if (k.second == c) {
+        return true;
+      }
     }
   }
   return false;

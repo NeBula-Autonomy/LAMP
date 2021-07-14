@@ -43,11 +43,10 @@ template <typename MessageT>
 gtsam::Pose3 MessageToPose(const MessageT& msg) {
   gtsam::Point3 delta_translation(
       msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
-  gtsam::Rot3 delta_orientation(
-      gtsam::Rot3::quaternion(msg.pose.orientation.w,
-                              msg.pose.orientation.x,
-                              msg.pose.orientation.y,
-                              msg.pose.orientation.z));
+  gtsam::Rot3 delta_orientation(msg.pose.orientation.w,
+                                msg.pose.orientation.x,
+                                msg.pose.orientation.y,
+                                msg.pose.orientation.z);
   gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
 
   // Normalize the rotation
@@ -95,7 +94,7 @@ void UpdateCovariance(MessageT& msg, const gtsam::Matrix66& covariance) {
 template <typename MessageT>
 void UpdateCovariance(MessageT& msg, const gtsam::SharedNoiseModel& noise) {
   // ROS_INFO_STREAM("In UpdateCovariance before gtsam cast");
-  noise->print();
+  // noise->print();
   gtsam::Matrix66 covariance =
       boost::dynamic_pointer_cast<gtsam::noiseModel::Gaussian>(noise)
           ->covariance();
@@ -168,13 +167,12 @@ inline gtsam::Point3 ToGtsam(const gu::Vec3& point) {
 }
 
 inline gtsam::Pose3 ToGtsam(const geometry_msgs::Pose msg) {
-  gtsam::Pose3 pose(gtsam::Rot3(msg.orientation.w, 
-                                msg.orientation.x,
-                                msg.orientation.y,
-                                msg.orientation.z),
-                    gtsam::Point3(msg.position.x,
-                                  msg.position.y,
-                                  msg.position.z));
+  gtsam::Pose3 pose(
+      gtsam::Rot3(msg.orientation.w,
+                  msg.orientation.x,
+                  msg.orientation.y,
+                  msg.orientation.z),
+      gtsam::Point3(msg.position.x, msg.position.y, msg.position.z));
   return pose;
 }
 

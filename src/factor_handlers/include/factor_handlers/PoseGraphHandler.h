@@ -9,6 +9,8 @@
 
 // Includes 
 #include <factor_handlers/LampDataHandlerBase.h>
+#include <unordered_set>
+#include <unordered_map>
 
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
@@ -57,6 +59,10 @@ class PoseGraphHandler : public LampDataHandlerBase {
     // Robots that the base station subscribes to
     std::set<std::string> robot_names_;
 
+    std::unordered_set<uint64_t> keyed_scans_keys_;
+    std::unordered_map<unsigned char,uint64_t> last_keyed_scan_key_from_robot_;
+    std::unordered_set<uint64_t> pose_graph_node_keys_;
+    std::unordered_map<unsigned char,uint64_t> last_odom_node_key_from_robot_;
 
   private:
 

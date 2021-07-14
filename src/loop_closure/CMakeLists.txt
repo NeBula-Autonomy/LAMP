@@ -7,6 +7,8 @@ project(loop_closure)
 
 SET(CMAKE_BUILD_TYPE Release)
 
+set (CMAKE_CXX_STANDARD 14)
+
 find_package(GTSAM REQUIRED)
 if (NOT GTSAM_FOUND)
   message(FATAL_ERROR "This program requires the GTSAM library.")
@@ -23,6 +25,7 @@ FIND_PACKAGE(Boost REQUIRED
   chrono
 )
 
+find_package(teaserpp REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   utils
@@ -66,6 +69,8 @@ catkin_package(
     Boost
 )
 
+find_package(Eigen3 REQUIRED)
+
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
 check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
@@ -79,15 +84,54 @@ endif()
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
-add_library(${PROJECT_NAME} src/LaserLoopClosure.cc src/LoopClosureBase.cc src/PointCloudUtils.cc)
+add_library(${PROJECT_NAME} 
+  src/PointCloudUtils.cc
+  src/LoopGeneration.cc
+  src/LoopPrioritization.cc
+  src/LoopComputation.cc
+  src/ProximityLoopGeneration.cc
+  src/GenericLoopPrioritization.cc
+  src/ObservabilityLoopPrioritization.cc
+  src/IcpLoopComputation.cc
+  src/LoopCandidateQueue.cc
+)
+
 target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+  Eigen3::Eigen
+  teaserpp::teaser_registration
+  teaserpp::teaser_features
+  teaserpp::teaser_io
+)
+
+add_executable(loop_generation_node src/loop_generation_node.cc)
+target_link_libraries(loop_generation_node
+  ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   gtsam
 )
 
-add_executable(laser_${PROJECT_NAME}_node src/laser_${PROJECT_NAME}_node.cc)
-target_link_libraries(laser_${PROJECT_NAME}_node
+add_executable(loop_prioritization_node src/loop_prioritization_node.cc)
+target_link_libraries(loop_prioritization_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+add_executable(loop_candidate_queue_node src/loop_candidate_queue_node.cc)
+target_link_libraries(loop_candidate_queue_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+add_executable(loop_computation_node src/loop_computation_node.cc)
+target_link_libraries(loop_computation_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
@@ -101,6 +145,12 @@ if (CATKIN_ENABLE_TESTING)
 find_package(rostest REQUIRED)
   # add_subdirectory(test)
   ## Add gtest based cpp test target and link libraries
-  add_rostest_gtest(test_laser_loop_closure test/test_laser_loop_closure.test test/test_laser_loop_closure.cc)
-  target_link_libraries(test_laser_loop_closure ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_loop_generation test/test_loop_generation.test test/test_loop_generation.cc)
+  target_link_libraries(test_loop_generation ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_loop_prioritization test/test_loop_prioritization.test test/test_loop_prioritization.cc)
+  target_link_libraries(test_loop_prioritization ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_loop_computation test/test_loop_computation.test test/test_loop_computation.cc)
+  target_link_libraries(test_loop_computation ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_point_cloud_utils test/test_point_cloud_utils.test test/test_point_cloud_utils.cc)
+  target_link_libraries(test_point_cloud_utils ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()

@@ -76,13 +76,14 @@ class LampPgo {
   gtsam::Values values_;
   gtsam::NonlinearFactorGraph nfg_;
   gtsam::NonlinearFactorGraph nfg_all_;
-  gtsam::Marginals marginals_;
 
   // Parameter namespace ("robot" or "base")
   std::string param_ns_;
 
   // Keep track of node IDs for output message (not stored by GTSAM types)
   std::map<gtsam::Key, std::string> key_to_id_map_;
+
+  std::map<std::pair<gtsam::Key, gtsam::Key>, int32_t> edge_to_type_;
 
   // Ignored list of robots that is not fused
   std::vector<std::string> ignored_list_;

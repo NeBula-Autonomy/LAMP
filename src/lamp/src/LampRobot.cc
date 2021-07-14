@@ -63,13 +63,13 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
-  // Init Handlers
+  //  // Init Handlers
   if (!InitializeHandlers(n)) {
     ROS_ERROR("%s: Failed to initialize handlers.", name_.c_str());
     return false;
   }
 
-  // Register Callbacks
+  //  // Register Callbacks
   if (!RegisterCallbacks(n)) {
     ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
     return false;
@@ -603,7 +603,7 @@ void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
 
   // // Apply random downsampling to the keyed scan
   if (params_.random_filter) {
-    pcl::RandomSample<pcl::PointXYZI> random_filter;
+    pcl::RandomSample<Point> random_filter;
     random_filter.setSample(n_points);
     random_filter.setInputCloud(new_scan);
     random_filter.filter(*new_scan);
@@ -612,7 +612,7 @@ void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
   // Apply voxel grid filter to the keyed scan
   if (params_.grid_filter) {
     // TODO - have option to turn on and off keyed scans
-    pcl::VoxelGrid<pcl::PointXYZI> grid;
+    pcl::VoxelGrid<Point> grid;
     grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
     grid.setInputCloud(new_scan);
     grid.filter(*new_scan);
@@ -713,8 +713,9 @@ bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
   pose_graph_.TrackIMUFactor(
       imu_data->factors[0].attitude.front(), meas, ref, noise_sigma, true);
 
+  // Do not optimize on the robot
   // Optimize every "imu_factors_per_opt"
-  b_run_optimization_ = true;
+  // b_run_optimization_ = false;
   return true;
 }
 
@@ -801,7 +802,6 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     // the function above
     // std::cout << msg_d.pose.covariance << '\n';
 
-
     // Check if it is a new artifact or not
     if (!pose_graph_.HasKey(cur_artifact_key)) {
       ROS_INFO("Have a new artifact in LAMP");
@@ -825,7 +825,6 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       ROS_INFO("Added artifact to pose graph factors in lamp");
 
     } else {
-      ROS_INFO("Find edge");
       // Find artifact edge that is already connected to cur_artifact_key
       auto edge = pose_graph_.FindEdgeKeyTo(cur_artifact_key);
 
@@ -867,7 +866,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       // Add and track the edges that have been added
       int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
       pose_graph_.TrackArtifactFactor(
-          edge->key_from, cur_artifact_key, transform, covariance);
+          edge->key_from, cur_artifact_key, transform, covariance, true, true);
       ROS_INFO("Added resighted artifact to pose graph factors in lamp");
     }
   }
