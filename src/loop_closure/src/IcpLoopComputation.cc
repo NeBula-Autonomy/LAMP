@@ -512,26 +512,28 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   }
 
   // Here bound the covariance using eigen values
-  Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;
-  eigensolver.compute(*covariance);
-  Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
-  Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
-  double lower_bound = 1e-6; // Should be positive semidef
-  double upper_bound = 1e6;
-  if (eigen_values.size() < 6) {
-    *covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
-    ROS_ERROR("Failed to find eigen values when computing icp covariance");
-    return false;
+  //// First find ldlt decomposition
+  auto ldlt = covariance->ldlt();
+  Eigen::MatrixXd L = ldlt.matrixL();
+  Eigen::VectorXd vecD = ldlt.vectorD();
+
+  double lower_bound = 1e-12;
+  double upper_bound = 1e-2;
+
+  bool recompute = false;
+  for (size_t i = 0; i < vecD.size(); i++) {
+    if (vecD(i) <= 0) {
+      vecD(i) = lower_bound;
+      recompute = true;
+    }
+    if (vecD(i) > upper_bound) {
+      vecD(i) = upper_bound;
+      recompute = true;
+    }
   }
-  for (size_t i = 0; i < eigen_values.size(); i++) {
-    if (eigen_values(i) < lower_bound)
-      eigen_values(i) = lower_bound;
-    if (eigen_values(i) > upper_bound)
-      eigen_values(i) = upper_bound;
-  }
-  // Update covariance matrix after bound
-  *covariance =
-      eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
+
+  if (recompute)
+    *covariance = L * vecD.asDiagonal() * L.transpose();
 
   if (covariance->array().hasNaN()) { // Prevent NaNs in covariance
     *covariance = Eigen::MatrixXd::Zero(6, 6);
