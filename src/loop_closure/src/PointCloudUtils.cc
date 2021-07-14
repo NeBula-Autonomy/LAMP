@@ -137,6 +137,8 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
   Ap = Eigen::Matrix<double, 6, 6>::Zero();
   double tol = 1e-10;
   Eigen::Vector3d a_i, n_i;
+  bool reference_normals_null = false;
+  bool query_null = false;
   for (uint32_t i = 0; i < query_normalized->size(); i++) {
     if (i >= correspondences.size()) {
       continue;
@@ -145,9 +147,9 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
       a_i << query_normalized->points[i].x,  //////
           query_normalized->points[i].y,     //////
           query_normalized->points[i].z;
-    } else {
-      a_i << 0, 0, 0;
-      ROS_ERROR("Query is null");
+    } else{
+      a_i << 0,0,0;
+      query_null = true;
     }
 
     if ((reference_normals != NULL) &&
@@ -156,8 +158,8 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
           reference_normals->points[correspondences[i]].normal_y,     //////
           reference_normals->points[correspondences[i]].normal_z;
     } else {
-      n_i << 0, 0, 0;
-      ROS_ERROR("Issue with reference_normals, setting covariance 0");
+      n_i << 0,0,0;
+      reference_normals_null = true;
     }
 
     if (a_i.hasNaN() || n_i.hasNaN()) continue;
@@ -166,6 +168,12 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
     H.block(0, 0, 1, 3) = (a_i.cross(n_i)).transpose();
     H.block(0, 3, 1, 3) = n_i.transpose();
     Ap += H.transpose() * H;
+  }
+  if (query_null) {
+      ROS_ERROR("Query was null, setting query 0");
+  }
+  if (reference_normals_null) {
+      ROS_ERROR("Reference normal was null, setting normals to 0");
   }
 }
 
