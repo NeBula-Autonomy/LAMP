@@ -436,32 +436,33 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ComputeNormals(
-      source, sac_normals_radius_, icp_threads_, source_normals);
-  utils::ComputeNormals(
-      target, sac_normals_radius_, icp_threads_, target_normals);
+  utils::ExtractNormals(
+      source, icp_threads_, source_normals, sac_features_radius_);
+  utils::ExtractNormals(
+      target, icp_threads_, target_normals, sac_features_radius_);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
+
   utils::ComputeKeypoints(
-      source, harris_params_, icp_threads_, source_normals, source_keypoints);
+      source, source_normals, harris_params_, icp_threads_, source_keypoints);
   utils::ComputeKeypoints(
-      target, harris_params_, icp_threads_, target_normals, target_keypoints);
+      target, target_normals, harris_params_, icp_threads_, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
   utils::ComputeFeatures(source_keypoints,
                          source,
+                         source_normals,
                          sac_features_radius_,
                          icp_threads_,
-                         source_normals,
                          source_features);
   utils::ComputeFeatures(target_keypoints,
                          target,
+                         target_normals,
                          sac_features_radius_,
                          icp_threads_,
-                         target_normals,
                          target_features);
 
   // Align
@@ -493,7 +494,8 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
                                                     // been rearranged.
   Eigen::Matrix<double, 6, 6> Ap;
 
-  utils::ComputeNormals(reference_cloud, icp_threads_, reference_normals);
+  utils::ExtractNormals(
+      reference_cloud, icp_threads_, reference_normals, sac_features_radius_);
   utils::NormalizePCloud(query_cloud, query_normalized);
 
   utils::ComputeAp_ForPoint2PlaneICP(

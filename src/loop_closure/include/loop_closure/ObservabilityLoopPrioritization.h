@@ -19,6 +19,7 @@ namespace lamp_loop_closure {
 
 class ObservabilityLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::Normal> Normals;
+  friend class TestLoopPrioritization;
 
 public:
   ObservabilityLoopPrioritization();
@@ -38,6 +39,8 @@ protected:
   void PrunePriorityQueue();
 
   void PublishBestCandidates() override;
+
+  pose_graph_msgs::LoopCandidateArray GetBestCandidates() override;
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 
