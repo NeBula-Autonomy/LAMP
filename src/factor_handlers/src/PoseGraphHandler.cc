@@ -71,14 +71,14 @@ bool PoseGraphHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     // Pose graph
     pose_graph_sub = nl.subscribe<pose_graph_msgs::PoseGraph>(
         "/" + robot + "/lamp/pose_graph_incremental",
-        10000,
+        100000,
         &PoseGraphHandler::PoseGraphCallback,
         this);
 
     // Keyed scans
     keyed_scan_sub = nl.subscribe<pose_graph_msgs::KeyedScan>(
         "/" + robot + "/lamp/keyed_scans",
-        10000,
+        100000,
         &PoseGraphHandler::KeyedScanCallback,
         this);
 
@@ -95,7 +95,8 @@ bool PoseGraphHandler::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Keyed scans are republished at the base station as soon as they are received
-  keyed_scan_pub_ = nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 10, false);
+  keyed_scan_pub_ =
+      nl.advertise<pose_graph_msgs::KeyedScan>("keyed_scans", 1000000, false);
   return true;
 }
 

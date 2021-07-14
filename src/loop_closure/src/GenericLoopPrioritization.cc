@@ -86,7 +86,7 @@ bool GenericLoopPrioritization::RegisterCallbacks(const ros::NodeHandle& n) {
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
-      "keyed_scans", 100, &GenericLoopPrioritization::KeyedScanCallback, this);
+      "keyed_scans", 100000, &GenericLoopPrioritization::KeyedScanCallback, this);
 
   update_timer_ =
       nl.createTimer(ros::Duration(0.1),

@@ -137,11 +137,11 @@ bool IcpLoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
-      "keyed_scans", 100, &IcpLoopComputation::KeyedScanCallback, this);
+      "keyed_scans", 100000, &IcpLoopComputation::KeyedScanCallback, this);
 
   keyed_poses_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_incremental",
-      100,
+      100000,
       &IcpLoopComputation::KeyedPoseCallback,
       this);
 

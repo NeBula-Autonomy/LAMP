@@ -94,7 +94,7 @@ bool ObservabilityLoopPrioritization::RegisterCallbacks(
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans",
-      100,
+      100000,
       &ObservabilityLoopPrioritization::KeyedScanCallback,
       this);
 
