@@ -84,6 +84,20 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/TEASERPP/num_inlier_threshold",
                teaser_inlier_threshold_))
     return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/rotation_cost_threshold",
+               rotation_cost_threshold_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/rotation_max_iterations",
+               rotation_max_iterations_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/noise_bound", noise_bound_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_normals_radius",
+               TEASER_FPFH_normals_radius_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_features_radius",
+               TEASER_FPFH_features_radius_))
+    return false;
 
   // Load Harris parameters
   if (!pu::Get(param_ns_ + "/harris3D/harris_threshold",
@@ -742,8 +756,8 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
 
   // Compute FPFH
   teaser::FPFHEstimation fpfh;
-  auto src_descriptors = fpfh.computeFPFHFeatures(src_cloud, 1.5, 2.5);
-  auto target_descriptors = fpfh.computeFPFHFeatures(tgt_cloud, 1.5, 2.5);
+  auto src_descriptors = fpfh.computeFPFHFeatures(src_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
+  auto target_descriptors = fpfh.computeFPFHFeatures(tgt_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
 
   // Align
   ROS_DEBUG("Finding TEASER Correspondences!");
@@ -775,15 +789,15 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
   // Run TEASER++ registration
   // Prepare solver parameters
   teaser::RobustRegistrationSolver::Params params;
-  params.noise_bound = 0.05;
+  params.noise_bound = noise_bound_;
   params.cbar2 = 1;
   params.estimate_scaling = false;
-  params.rotation_max_iterations = 100;
+  params.rotation_max_iterations = rotation_max_iterations_;
   params.rotation_gnc_factor = 1.4;
   ROS_INFO("Finding TEASER Rigid Transform...");
   params.rotation_estimation_algorithm =
       teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::GNC_TLS;
-  params.rotation_cost_threshold = 1.0; // 0.005;
+  params.rotation_cost_threshold = rotation_cost_threshold_; // 0.005;
 
   // Solve with TEASER++
   teaser::RobustRegistrationSolver solver(params);
