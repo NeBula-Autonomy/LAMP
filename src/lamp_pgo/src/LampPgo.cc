@@ -340,6 +340,11 @@ void LampPgo::PublishValues() const {
       pose_graph_msgs::PoseGraphEdge edge;
       edge.key_from = factor->front();
       edge.key_to = factor->back();
+      utils::UpdateCovariance(
+          edge,
+          boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3>>(
+              factor)
+              ->noiseModel());
 
       // TODO this makes the assumption that any two nodes has at most one edge
       // which may not be true in the case of e.g. multiple loop closure
