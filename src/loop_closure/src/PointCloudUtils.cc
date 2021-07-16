@@ -198,7 +198,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   std::vector<size_t> c(cloud->size());
   std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
 
-  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero();  // Unused
+  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Identity(); // Unused
 
   Eigen::Matrix<double, 6, 6> Ap;
   // Compute Ap and its eigenvalues
