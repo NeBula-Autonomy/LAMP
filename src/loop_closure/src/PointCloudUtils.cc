@@ -165,8 +165,9 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
     if (a_i.hasNaN() || n_i.hasNaN()) continue;
 
     Eigen::Matrix<double, 1, 6> H = Eigen::Matrix<double, 1, 6>::Zero();
-    H.block(0, 0, 1, 3) = (a_i.cross(n_i)).transpose();
-    H.block(0, 3, 1, 3) = n_i.transpose();
+    Eigen::Matrix3d R = T.block<3, 3>(0, 0).cast<double>();
+    H.block(0, 0, 1, 3) = (a_i.cross(R * n_i)).transpose();
+    H.block(0, 3, 1, 3) = (R * n_i).transpose();
     Ap += H.transpose() * H;
   }
   if (query_null) {
@@ -197,7 +198,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   std::vector<size_t> c(cloud->size());
   std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
 
-  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero();  // Unused
+  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Identity(); // Unused
 
   Eigen::Matrix<double, 6, 6> Ap;
   // Compute Ap and its eigenvalues
