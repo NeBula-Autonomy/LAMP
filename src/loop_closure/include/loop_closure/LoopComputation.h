@@ -31,7 +31,6 @@ public:
 
   virtual bool RegisterCallbacks(const ros::NodeHandle& n);
 
-protected:
   // Compute transform and populate output queue
   virtual void ComputeTransforms() = 0;
 
@@ -45,7 +44,9 @@ protected:
                         const gtsam::Symbol& key2,
                         const geometry_utils::Transform3& delta,
                         const gtsam::Matrix66& covariance) const;
+  std::vector<pose_graph_msgs::PoseGraphEdge> GetCurrentOutputQueue();
 
+protected:
   // Define publishers and subscribers
   ros::Publisher loop_closure_pub_;
   ros::Subscriber loop_candidate_sub_;
