@@ -135,10 +135,7 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
 
   // get artifact id / key -----------------------------------------------
   // Check if the ID of the object already exists in the object hash
-  if (artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() &&
-      msg.label != "Cell Phone") {
-    // Take the ID for that object - no reconciliation in the pose-graph of a
-    // cell phone (for now)
+  if (artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end()) {
     cur_artifact_key = artifact_id2key_hash[artifact_id];
     ROS_INFO_STREAM(
         "\nArtifact Handler: artifact previously observed, artifact id "

@@ -84,6 +84,20 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/TEASERPP/num_inlier_threshold",
                teaser_inlier_threshold_))
     return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/rotation_cost_threshold",
+               rotation_cost_threshold_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/rotation_max_iterations",
+               rotation_max_iterations_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/noise_bound", noise_bound_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_normals_radius",
+               TEASER_FPFH_normals_radius_))
+    return false;
+  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_features_radius",
+               TEASER_FPFH_features_radius_))
+    return false;
 
   // Load Harris parameters
   if (!pu::Get(param_ns_ + "/harris3D/harris_threshold",
@@ -137,11 +151,11 @@ bool IcpLoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
 
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
-      "keyed_scans", 100, &IcpLoopComputation::KeyedScanCallback, this);
+      "keyed_scans", 100000, &IcpLoopComputation::KeyedScanCallback, this);
 
   keyed_poses_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_incremental",
-      100,
+      100000,
       &IcpLoopComputation::KeyedPoseCallback,
       this);
 
@@ -436,32 +450,33 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ComputeNormals(
-      source, sac_normals_radius_, icp_threads_, source_normals);
-  utils::ComputeNormals(
-      target, sac_normals_radius_, icp_threads_, target_normals);
+  utils::ExtractNormals(
+      source, icp_threads_, source_normals, sac_features_radius_);
+  utils::ExtractNormals(
+      target, icp_threads_, target_normals, sac_features_radius_);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
+
   utils::ComputeKeypoints(
-      source, harris_params_, icp_threads_, source_normals, source_keypoints);
+      source, source_normals, harris_params_, icp_threads_, source_keypoints);
   utils::ComputeKeypoints(
-      target, harris_params_, icp_threads_, target_normals, target_keypoints);
+      target, target_normals, harris_params_, icp_threads_, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
   utils::ComputeFeatures(source_keypoints,
                          source,
+                         source_normals,
                          sac_features_radius_,
                          icp_threads_,
-                         source_normals,
                          source_features);
   utils::ComputeFeatures(target_keypoints,
                          target,
+                         target_normals,
                          sac_features_radius_,
                          icp_threads_,
-                         target_normals,
                          target_features);
 
   // Align
@@ -493,7 +508,8 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
                                                     // been rearranged.
   Eigen::Matrix<double, 6, 6> Ap;
 
-  utils::ComputeNormals(reference_cloud, icp_threads_, reference_normals);
+  utils::ExtractNormals(
+      reference_cloud, icp_threads_, reference_normals, sac_features_radius_);
   utils::NormalizePCloud(query_cloud, query_normalized);
 
   utils::ComputeAp_ForPoint2PlaneICP(
@@ -510,26 +526,28 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   }
 
   // Here bound the covariance using eigen values
-  Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;
-  eigensolver.compute(*covariance);
-  Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
-  Eigen::MatrixXd eigen_vectors = eigensolver.eigenvectors().real();
-  double lower_bound = 1e-6; // Should be positive semidef
-  double upper_bound = 1e6;
-  if (eigen_values.size() < 6) {
-    *covariance = Eigen::MatrixXd::Identity(6, 6) * upper_bound;
-    ROS_ERROR("Failed to find eigen values when computing icp covariance");
-    return false;
+  //// First find ldlt decomposition
+  auto ldlt = covariance->ldlt();
+  Eigen::MatrixXd L = ldlt.matrixL();
+  Eigen::VectorXd vecD = ldlt.vectorD();
+
+  double lower_bound = 1e-12;
+  double upper_bound = 1e-2;
+
+  bool recompute = false;
+  for (size_t i = 0; i < vecD.size(); i++) {
+    if (vecD(i) <= 0) {
+      vecD(i) = lower_bound;
+      recompute = true;
+    }
+    if (vecD(i) > upper_bound) {
+      vecD(i) = upper_bound;
+      recompute = true;
+    }
   }
-  for (size_t i = 0; i < eigen_values.size(); i++) {
-    if (eigen_values(i) < lower_bound)
-      eigen_values(i) = lower_bound;
-    if (eigen_values(i) > upper_bound)
-      eigen_values(i) = upper_bound;
-  }
-  // Update covariance matrix after bound
-  *covariance =
-      eigen_vectors * eigen_values.asDiagonal() * eigen_vectors.inverse();
+
+  if (recompute)
+    *covariance = L * vecD.asDiagonal() * L.transpose();
 
   if (covariance->array().hasNaN()) { // Prevent NaNs in covariance
     *covariance = Eigen::MatrixXd::Zero(6, 6);
@@ -742,8 +760,8 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
 
   // Compute FPFH
   teaser::FPFHEstimation fpfh;
-  auto src_descriptors = fpfh.computeFPFHFeatures(src_cloud, 1.5, 2.5);
-  auto target_descriptors = fpfh.computeFPFHFeatures(tgt_cloud, 1.5, 2.5);
+  auto src_descriptors = fpfh.computeFPFHFeatures(src_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
+  auto target_descriptors = fpfh.computeFPFHFeatures(tgt_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
 
   // Align
   ROS_DEBUG("Finding TEASER Correspondences!");
@@ -775,15 +793,15 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
   // Run TEASER++ registration
   // Prepare solver parameters
   teaser::RobustRegistrationSolver::Params params;
-  params.noise_bound = 0.05;
+  params.noise_bound = noise_bound_;
   params.cbar2 = 1;
   params.estimate_scaling = false;
-  params.rotation_max_iterations = 100;
+  params.rotation_max_iterations = rotation_max_iterations_;
   params.rotation_gnc_factor = 1.4;
   ROS_INFO("Finding TEASER Rigid Transform...");
   params.rotation_estimation_algorithm =
       teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::GNC_TLS;
-  params.rotation_cost_threshold = 1.0; // 0.005;
+  params.rotation_cost_threshold = rotation_cost_threshold_; // 0.005;
 
   // Solve with TEASER++
   teaser::RobustRegistrationSolver solver(params);

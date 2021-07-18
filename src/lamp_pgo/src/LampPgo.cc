@@ -180,7 +180,7 @@ void LampPgo::InputCallback(
   NonlinearFactorGraph all_factors, new_factors;
   Values all_values, new_values;
 
-  ROS_WARN_STREAM("PGO received graph of size " << graph_msg->nodes.size());
+  ROS_INFO_STREAM("PGO received graph of size " << graph_msg->nodes.size());
 
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
@@ -242,10 +242,10 @@ void LampPgo::InputCallback(
   values_ = pgo_solver_->calculateEstimate();
   nfg_ = pgo_solver_->getFactorsUnsafe();
 
-  ROS_INFO_STREAM("FACTORS AFTER");
+  ROS_DEBUG_STREAM("FACTORS AFTER");
   std::vector<double> bad_errors;
   for (auto f : nfg_) {
-    f->printKeys();
+    // f->printKeys();
     double error = f->error(values_);
     ROS_DEBUG_STREAM("Error: " << error);
     if (error > 10.0){
@@ -327,17 +327,12 @@ void LampPgo::PublishValues() const {
     }
   } catch (gtsam::IndeterminantLinearSystemException e) {
     ROS_ERROR_STREAM("LampPgo System is indeterminant, not computing covariance");
-    for (size_t k = 0 ; k < key_list.size(); ++k) {
-      auto key = key_list[k];
-      auto node = pose_graph_msg.nodes[k];
-      int iter = 0;
-      for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
-          node.covariance[iter] = 1e-4;
-          iter++;
+      boost::array<float, 36> default_covariance;
+      default_covariance.assign(1e-4);
+      for (size_t k = 0 ; k < key_list.size(); ++k) {
+          auto node = pose_graph_msg.nodes[k];
+          node.covariance = default_covariance;
         }
-      }
-    }
   }
 
   for (const auto& factor : nfg_) {
@@ -345,6 +340,11 @@ void LampPgo::PublishValues() const {
       pose_graph_msgs::PoseGraphEdge edge;
       edge.key_from = factor->front();
       edge.key_to = factor->back();
+      utils::UpdateCovariance(
+          edge,
+          boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3>>(
+              factor)
+              ->noiseModel());
 
       // TODO this makes the assumption that any two nodes has at most one edge
       // which may not be true in the case of e.g. multiple loop closure

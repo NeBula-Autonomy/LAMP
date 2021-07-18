@@ -29,22 +29,32 @@ void ComputeNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
                     Normals::Ptr normals);
 
-void ComputeNormals(const PointCloud::ConstPtr& input,
+void ExtractNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
-                    Normals::Ptr normals);
+                    Normals::Ptr normals,
+                    const double& search_radius = 1.0);
 
 void NormalizePCloud(const PointCloud::ConstPtr& cloud,
                      PointCloud::Ptr pclptr_normalized);
+
+// Without precomputed normals
 void ComputeKeypoints(const PointCloud::ConstPtr& source,
                       const HarrisParams& params,
                       const int& num_threads,
-                      Normals::Ptr source_normals,
                       PointCloud::Ptr source_keypoints);
+
+// With precomputed normals
+void ComputeKeypoints(const PointCloud::ConstPtr& source,
+                      const Normals::ConstPtr& source_normals,
+                      const HarrisParams& params,
+                      const int& num_threads,
+                      PointCloud::Ptr source_keypoints);
+
 void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      const PointCloud::ConstPtr& input,
+                     const Normals::Ptr& normals,
                      const double& search_radius,
                      const int& num_threads,
-                     Normals::Ptr normals,
                      Features::Ptr features);
 
 void ComputeIcpObservability(PointCloudConstPtr scan,

@@ -23,6 +23,7 @@ class IcpLoopComputation : public LoopComputation {
   typedef pcl::PointCloud<pcl::Normal> Normals;
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
   typedef pcl::search::KdTree<Point> KdTree;
+  friend class TestLoopComputation;
 
 public:
   IcpLoopComputation();
@@ -105,7 +106,12 @@ protected:
   double sac_fitness_score_threshold_;
 
   // Teaser++ alignment parameters
-  int teaser_inlier_threshold_;
+  double teaser_inlier_threshold_;
+  double rotation_cost_threshold_;
+  double rotation_max_iterations_;
+  double noise_bound_;
+  double TEASER_FPFH_normals_radius_;
+  double TEASER_FPFH_features_radius_;
 
   utils::HarrisParams harris_params_;
 

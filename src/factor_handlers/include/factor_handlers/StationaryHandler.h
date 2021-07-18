@@ -15,6 +15,8 @@ typedef localizer_zero_velocity_detector::Stationary StationaryMessage;
 typedef std::pair<ros::Time, geometry_msgs::Vector3> StationaryData;
 
 class StationaryHandler : public LampDataHandlerBase {
+  friend class StationaryHandlerTest;
+
  public:
   StationaryHandler();
   ~StationaryHandler();

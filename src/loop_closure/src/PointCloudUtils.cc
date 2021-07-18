@@ -31,10 +31,17 @@ void ComputeNormals(const PointCloud::ConstPtr& input,
   norm_est.compute(*normals);
 }
 
-void ComputeNormals(const PointCloud::ConstPtr& input,
+void ExtractNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
-                    Normals::Ptr normals) {
+                    Normals::Ptr normals,
+                    const double& search_radius) {
   normals->resize(input->size());
+  if (input->size() == 0) return;
+  // Check that there are normals to extract
+  if (input->points[0].normal_x == 0 && input->points[0].normal_y == 0 &&
+      input->points[0].normal_z == 0) {
+    return ComputeNormals(input, search_radius, num_threads, normals);
+  }
   int enable_omp = (1 < num_threads);
 #pragma omp parallel for schedule(dynamic, 1) if (enable_omp)
   for (size_t i = 0; i < input->size(); ++i) {
@@ -71,7 +78,24 @@ void NormalizePCloud(const PointCloud::ConstPtr& cloud,
 void ComputeKeypoints(const PointCloud::ConstPtr& source,
                       const HarrisParams& params,
                       const int& num_threads,
-                      Normals::Ptr source_normals,
+                      PointCloud::Ptr source_keypoints) {
+  pcl::HarrisKeypoint3D<Point, Point> harris_detector;
+  harris_detector.setNonMaxSupression(params.harris_suppression_);
+  harris_detector.setRefine(params.harris_refine_);
+  harris_detector.setInputCloud(source);
+  harris_detector.setNumberOfThreads(num_threads);
+  harris_detector.setRadius(params.harris_radius_);
+  harris_detector.setThreshold(params.harris_threshold_);
+  harris_detector.setMethod(
+      static_cast<pcl::HarrisKeypoint3D<Point, Point>::ResponseMethod>(
+          params.harris_response_));
+  harris_detector.compute(*source_keypoints);
+}
+
+void ComputeKeypoints(const PointCloud::ConstPtr& source,
+                      const Normals::ConstPtr& source_normals,
+                      const HarrisParams& params,
+                      const int& num_threads,
                       PointCloud::Ptr source_keypoints) {
   pcl::HarrisKeypoint3D<Point, Point> harris_detector;
 
@@ -90,9 +114,9 @@ void ComputeKeypoints(const PointCloud::ConstPtr& source,
 
 void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      const PointCloud::ConstPtr& input,
+                     const Normals::Ptr& normals,
                      const double& search_radius,
                      const int& num_threads,
-                     Normals::Ptr normals,
                      Features::Ptr features) {
   pcl::search::KdTree<Point>::Ptr search_method(new pcl::search::KdTree<Point>);
   pcl::FPFHEstimationOMP<Point, pcl::Normal, pcl::FPFHSignature33> fpfh_est;
@@ -107,14 +131,15 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
 
 void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
                                  const Normals::Ptr reference_normals,
-                                 const std::vector<size_t> &correspondences,
-                                 const Eigen::Matrix4f &T,
-                                 Eigen::Matrix<double, 6, 6> &Ap) {
+                                 const std::vector<size_t>& correspondences,
+                                 const Eigen::Matrix4f& T,
+                                 Eigen::Matrix<double, 6, 6>& Ap) {
   Ap = Eigen::Matrix<double, 6, 6>::Zero();
   double tol = 1e-10;
   Eigen::Vector3d a_i, n_i;
+  bool reference_normals_null = false;
+  bool query_null = false;
   for (uint32_t i = 0; i < query_normalized->size(); i++) {
-
     if (i >= correspondences.size()) {
       continue;
     }
@@ -124,26 +149,32 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
           query_normalized->points[i].z;
     } else{
       a_i << 0,0,0;
-      ROS_ERROR("Query is null");
+      query_null = true;
     }
 
-    if ((reference_normals != NULL) && (reference_normals->points.size() > correspondences[i])) {
+    if ((reference_normals != NULL) &&
+        (reference_normals->points.size() > correspondences[i])) {
       n_i << reference_normals->points[correspondences[i]].normal_x,  //////
           reference_normals->points[correspondences[i]].normal_y,     //////
           reference_normals->points[correspondences[i]].normal_z;
     } else {
       n_i << 0,0,0;
-      ROS_ERROR("Issue with reference_normals, setting covariance 0");
+      reference_normals_null = true;
     }
 
-    if (a_i.hasNaN() || n_i.hasNaN())
-      continue;
-
+    if (a_i.hasNaN() || n_i.hasNaN()) continue;
 
     Eigen::Matrix<double, 1, 6> H = Eigen::Matrix<double, 1, 6>::Zero();
-    H.block(0, 0, 1, 3) = (a_i.cross(n_i)).transpose();
-    H.block(0, 3, 1, 3) = n_i.transpose();
+    Eigen::Matrix3d R = T.block<3, 3>(0, 0).cast<double>();
+    H.block(0, 0, 1, 3) = (a_i.cross(R * n_i)).transpose();
+    H.block(0, 3, 1, 3) = (R * n_i).transpose();
     Ap += H.transpose() * H;
+  }
+  if (query_null) {
+      ROS_ERROR("Query was null, setting query 0");
+  }
+  if (reference_normals_null) {
+      ROS_ERROR("Reference normal was null, setting normals to 0");
   }
 }
 
@@ -155,7 +186,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   Normals::Ptr normals(new Normals);           // pc with normals
   PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
                                                // rearranged.
-  utils::ComputeNormals(cloud, normals_radius, num_threads, normals);
+  utils::ExtractNormals(cloud, num_threads, normals, normals_radius);
   utils::NormalizePCloud(cloud, normalized);
 
   for (size_t i = 0; i < cloud->size(); i++) {
@@ -165,9 +196,9 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
 
   // Correspondence with itself (not really used anyways)
   std::vector<size_t> c(cloud->size());
-  std::iota(std::begin(c), std::end(c), 0); // Fill with 0, 1, ...
+  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
 
-  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Zero(); // Unused
+  Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Identity(); // Unused
 
   Eigen::Matrix<double, 6, 6> Ap;
   // Compute Ap and its eigenvalues

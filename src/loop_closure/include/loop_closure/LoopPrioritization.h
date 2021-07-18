@@ -37,6 +37,8 @@ protected:
 
   virtual void PublishBestCandidates() = 0;
 
+  virtual pose_graph_msgs::LoopCandidateArray GetBestCandidates() = 0;
+
   void InputCallback(
       const pose_graph_msgs::LoopCandidateArray::ConstPtr& input_candidates);
 

@@ -719,36 +719,11 @@ bool OdometryHandler::GetTransformBetweenTimes(
     auto pose_end = gr::FromROS(second_pose.pose.pose);
     auto pose_delta = gu::PoseDelta(pose_first, pose_end);
     *transform = ToGtsam(pose_delta);
-    // Concatenate the covariance
-    OdomPoseBuffer::const_iterator it;
-    it = odom_buffer.find(first_pose.header.stamp.toSec());
-    if (it == odom_buffer.end()) {
-      it = odom_buffer.begin();
-      if (it->first < first_pose.header.stamp.toSec()) {
-        ROS_ERROR("Have a bad timestamp for the first pose - invalid pose will "
-                  "result");
-        return false;
-      }
-      ROS_WARN("First pose is before the start of the buffer, covariance may "
-               "be inaccurate");
-    }
     // Initiate total covariance
-    gtsam::Matrix66 total_covariance =
+    gtsam::Matrix66 covariance_matrix =
         utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
-            it->second.pose);
-    it++;
-    while (it->first <= second_pose.header.stamp.toSec() &&
-           it != odom_buffer.end()) {
-      // Compose covariances
-      // Just sum since pose graph in world frame
-      gtsam::Matrix66 covariance_to_add =
-          utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
-              it->second.pose);
-      total_covariance = total_covariance + covariance_to_add;
-      // Update and increment
-      it++;
-    }
-    *covariance = gtsam::noiseModel::Gaussian::Covariance(total_covariance);
+            second_pose.pose);
+    *covariance = gtsam::noiseModel::Gaussian::Covariance(covariance_matrix);
     return true;
   } else {
     ROS_ERROR(
