@@ -27,6 +27,7 @@ class StationaryHandler : public LampDataHandlerBase {
   std::shared_ptr<FactorData> GetData() override;
 
   bool SetKeyForImuAttitude(const gtsam::Symbol& key);
+  bool CheckKeyRecency(const gtsam::Symbol& key);
   bool has_data_;
 
  protected:
@@ -46,11 +47,13 @@ class StationaryHandler : public LampDataHandlerBase {
   gtsam::Pose3AttitudeFactor CreateAttitudeFactor(
       const geometry_msgs::Vector3& gravity_vec) const;
   void ResetFactorData();
+
   gtsam::Symbol query_key_;
   double noise_sigma_;
 
   bool currently_stationary_;
   StationaryData last_detection_;
+  int key_step_threshold_;
 };
 
 #endif
