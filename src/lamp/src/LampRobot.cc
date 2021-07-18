@@ -373,10 +373,14 @@ bool LampRobot::CheckHandlers() {
     b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
 
   if (b_add_imu_factors_ && stationary_handler_.has_data_) {
-    // Force new odometry node
-    ProcessOdomData(odometry_handler_.GetData(false));
-    stationary_handler_.SetKeyForImuAttitude(pose_graph_.key - 1);
-    ProcessStationaryData(stationary_handler_.GetData());
+    // Check if we have moved since the last stationary factor
+    if (stationary_handler_.CheckKeyRecency(pose_graph_.key)) {
+      // Passes, so create a new factor
+      // Force new odometry node
+      ProcessOdomData(odometry_handler_.GetData(false));
+      stationary_handler_.SetKeyForImuAttitude(pose_graph_.key - 1);
+      ProcessStationaryData(stationary_handler_.GetData());
+    }
   }
   return true;
 }
