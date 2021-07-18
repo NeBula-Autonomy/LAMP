@@ -35,12 +35,17 @@ bool LoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
+std::vector<pose_graph_msgs::PoseGraphEdge> LoopComputation::GetCurrentOutputQueue(){
+    return output_queue_;
+}
+
 void LoopComputation::PublishLoopClosures() {
   pose_graph_msgs::PoseGraph loop_closures_msg;
   loop_closures_msg.edges = output_queue_;
   loop_closure_pub_.publish(loop_closures_msg);
   output_queue_.clear();
 }
+
 
 void LoopComputation::InputCallback(
     const pose_graph_msgs::LoopCandidateArray::ConstPtr& input_candidates) {
@@ -71,5 +76,6 @@ pose_graph_msgs::PoseGraphEdge LoopComputation::CreateLoopClosureEdge(
 
   return edge;
 }
+
 
 } // namespace lamp_loop_closure

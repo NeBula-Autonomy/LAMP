@@ -63,6 +63,12 @@ robot:
   # How long to "wait" for keyed scans 
   keyed_scans_max_delay: 0.1
 
+  #How many ICP alignments to perform simultaneously.
+  #If <1, percent of total cores on machine
+  #if >1 then use exactly n threads.
+  #if == 1, don't use thread pool
+  icp_thread_pool_thread_count: 1
+
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
     tf_epsilon: 0.0000000001
@@ -194,6 +200,12 @@ base:
 
   # How long to "wait" for keyed scans 
   keyed_scans_max_delay: 60.0
+
+  #How many ICP alignments to perform simultaneously.
+  #If <1, percent of total cores on machine
+  #if >1 then use exactly n threads.
+  #if == 1, don't use thread pool
+  icp_thread_pool_thread_count: 1
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
