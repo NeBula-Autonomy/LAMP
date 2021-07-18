@@ -60,7 +60,7 @@ void StationaryHandler::StationaryCallback(
     const StationaryMessage::ConstPtr& msg) {
   if (msg->status == 0) {
     if (!currently_stationary_) {
-      ROS_INFO("Robot stopped. Creating attitude factor...");
+      ROS_INFO("Robot stopped. Preparing attitude factor...");
       // We want to place the stationary factors when the robot stops
       last_detection_ =
           StationaryData(msg->header.stamp, msg->average_acceleration);

@@ -644,8 +644,7 @@ void LampRobot::UpdateAndPublishOdom() {
   // if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
   // Had a bad odom return - try latest time from odometry_handler
   if (!odometry_handler_.GetOdomDeltaLatestTime(stamp, delta_pose_cov)) {
-    ROS_WARN("No good velocity output yet");
-    // TODO - work out what the best thing is to do in this scenario
+    ROS_WARN_ONCE("No good odom input to LAMP yet");
     return;
   }
 
