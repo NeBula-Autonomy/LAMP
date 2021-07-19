@@ -112,7 +112,7 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
       nl.subscribe("pcld", 10, &OdometryHandler::PointCloudCallback, this);
 
   // Publishers
-  if (b_debug_pointcloud_buffer) {
+  if (b_debug_pointcloud_buffer_) {
     time_diff_pub_ =
         nl.advertise<std_msgs::Float64>("lamp_odom_time_diff", 10, false);
   }
