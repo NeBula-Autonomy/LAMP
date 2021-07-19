@@ -94,6 +94,7 @@ add_library(${PROJECT_NAME}
   src/ObservabilityLoopPrioritization.cc
   src/IcpLoopComputation.cc
   src/LoopCandidateQueue.cc
+  src/TestUtils.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
