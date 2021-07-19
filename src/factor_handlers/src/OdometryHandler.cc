@@ -111,6 +111,12 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
   point_cloud_sub_ =
       nl.subscribe("pcld", 10, &OdometryHandler::PointCloudCallback, this);
 
+  // Publishers
+  if (b_debug_pointcloud_buffer) {
+    time_diff_pub_ =
+        nl.advertise<std_msgs::Float64>("lamp_odom_time_diff", 10, false);
+  }
+
   return true;
 }
 
@@ -231,7 +237,7 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
                                    GtsamPosCov& delta_pose) {
   // Check odometry buffer size - return false otherwise
   if (!CheckOdomSize()) {
-    ROS_WARN("Buffers are empty, returning no data (GetOdomDelta)");
+    ROS_WARN_ONCE("Buffers are empty, returning no data (GetOdomDelta)");
     return false;
   }
 
@@ -284,7 +290,8 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
 bool OdometryHandler::GetOdomDeltaLatestTime(ros::Time& t_latest,
                                              GtsamPosCov& delta_pose) {
   if (!CheckOdomSize()) {
-    ROS_WARN("Buffers are empty, returning no data (GetOdomDeltaLatestTime)");
+    ROS_WARN_ONCE(
+        "Buffers are empty, returning no data (GetOdomDeltaLatestTime)");
     return false;
   }
   // Get the latest time (rbegin is the last entry in the map)
@@ -299,9 +306,16 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
   std::shared_ptr<OdomData> output_data = std::make_shared<OdomData>(factors_);
   output_data->b_has_data = false;
 
+  static bool empty_buffer = false;
   if (!CheckOdomSize()) {
-    ROS_WARN("Buffers are emptyin GetData Call, returning no data");
+    if (!empty_buffer) {
+      ROS_WARN("Buffers are empty in GetData Call, returning no data "
+               "[OdometryHandler]");
+      empty_buffer = true;
+    }
     return output_data;
+  } else {
+    empty_buffer = false;
   }
 
   GtsamPosCov fused_odom_for_factor;
@@ -391,10 +405,12 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
     *msg = itrTime->second;
     time_diff = itrTime->first - stamp.toSec();
     if (time_diff > keyed_scan_time_diff_limit_) {
-      ROS_WARN("Time diff between point cloud and node larger than 0.1. Using "
-               "earliest scan in buffer [GetKeyedScanAtTime]");
-      ROS_INFO_STREAM("time diff is: " << time_diff
-                                       << ". [GetKeyedScanAtTime]");
+      ROS_WARN(
+          "Time diff between point cloud and node larger than threshold Using "
+          "earliest scan in buffer [GetKeyedScanAtTime]");
+      ROS_INFO_STREAM("Thresh: " << keyed_scan_time_diff_limit_
+                                 << " s. Time diff is: " << time_diff
+                                 << ". [GetKeyedScanAtTime]");
     }
   } else if (itrTime == point_cloud_buffer_.end()) {
     // Check if it is past the end of the buffer - if so, take the last point
@@ -470,10 +486,16 @@ GtsamPosCov OdometryHandler::GetFusedOdomDeltaBetweenTimes(const ros::Time t1,
   output_odom.b_has_value = false;
 
   // Returns the fused GtsamPosCov delta between t1 and t2
+  static bool empty_odom = false;
   if (!CheckOdomSize()) {
-    ROS_WARN(
-        "Buffers are empty, returning no data (GetFusedOdomDeltaBetweenTimes)");
+    if (!empty_odom) {
+      ROS_WARN("Buffers are empty, returning no data "
+               "(GetFusedOdomDeltaBetweenTimes)");
+    }
+    empty_odom = true;
     return output_odom;
+  } else {
+    empty_odom = false;
   }
 
   // ROS_INFO_STREAM("Timestamps are: " << t1.toSec() << " and " << t2.toSec()
@@ -668,6 +690,11 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
     }
   }
 
+  if (b_debug_pointcloud_buffer_) {
+    std_msgs::Float64 msg;
+    msg.data = time_diff;
+    time_diff_pub_.publish(msg);
+  }
   // Check if the time difference is too large
   if (time_diff > ts_threshold_) {
     ROS_WARN("Time difference between request and latest PosCovStamped is too "

@@ -95,7 +95,7 @@ geometry_msgs::PoseStamped TwoPoseGraphMerge::GetLatestOdomPose(
 void TwoPoseGraphMerge::ProcessBaseGraph(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   // Store the graph as the slow graph
   merger_.OnSlowGraphMsg(msg);
-  ROS_INFO("Received graph from base station");
+  ROS_INFO_ONCE("Received graph from base station");
 
   // Process again straight away 
   if (b_publish_on_slow_graph_){
