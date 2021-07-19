@@ -48,5 +48,30 @@ bool WriteKeyedScansToFile(
 
 bool WriteTestDataToFile(const TestData& data, const std::string& output_dir);
 
+bool GetPoseAtTime(const std::map<ros::Time, gtsam::Pose3>& pose_stamped,
+                   const ros::Time& query_stamp,
+                   gtsam::Pose3* result_pose,
+                   const double& t_diff = 1e-2);
+
+bool ReadOdometryBagFile(const std::string& bag_file,
+                         const std::string& topic_name,
+                         std::map<ros::Time, gtsam::Pose3>* pose_stamped);
+
+bool ReadKeyedScansFromBagFile(
+    const std::string& bag_file,
+    const std::string& robot_name,
+    std::map<gtsam::Key, ros::Time>* keyed_stamps,
+    std::map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans);
+
+void FindLoopCandidateFromGt(
+    const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
+    const std::map<gtsam::Key, ros::Time>& keyed_stamps,
+    const std::map<gtsam::Key, pose_graph_msgs::KeyedScan>& keyed_scans,
+    const double& radius,
+    const size_t& key_dist,
+    pose_graph_msgs::LoopCandidateArray* candidates,
+    std::map<gtsam::Key, gtsam::Pose3>* candidate_keyed_poses,
+    std::map<gtsam::Key, pose_graph_msgs::KeyedScan>* candidate_keyed_scans);
+
 } // namespace test_utils
 #endif

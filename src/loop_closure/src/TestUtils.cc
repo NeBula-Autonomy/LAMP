@@ -4,6 +4,7 @@ Author: Yun Chang
 Some utility functions for wokring with Point Clouds
 */
 
+#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -12,7 +13,11 @@ Some utility functions for wokring with Point Clouds
 
 #include <pcl/io/pcd_io.h>
 
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
+
 #include "loop_closure/TestUtils.h"
+#include <utils/CommonFunctions.h>
 
 namespace test_utils {
 
@@ -207,6 +212,147 @@ bool WriteTestDataToFile(const TestData& data, const std::string& output_dir) {
   }
 
   return true;
+}
+
+bool GetPoseAtTime(const std::map<ros::Time, gtsam::Pose3>& pose_stamped,
+                   const ros::Time& query_stamp,
+                   gtsam::Pose3* result_pose,
+                   const double& t_diff) {
+  std::map<ros::Time, gtsam::Pose3>::const_iterator low, prev;
+  low = pose_stamped.lower_bound(query_stamp);
+  ros::Time result_stamp;
+  if (low == pose_stamped.end()) {
+    *result_pose = pose_stamped.rbegin()->second;
+    result_stamp = pose_stamped.rbegin()->first;
+  } else if (low == pose_stamped.begin()) {
+    *result_pose = low->second;
+    result_stamp = low->first;
+  } else {
+    prev = std::prev(low);
+    if ((query_stamp - prev->first) < (low->first - query_stamp)) {
+      *result_pose = prev->second;
+      result_stamp = prev->first;
+    } else {
+      *result_pose = low->second;
+      result_stamp = low->first;
+    }
+  }
+
+  if (abs((result_stamp - query_stamp).toSec()) < t_diff) {
+    std::cout << "Exceed tolerence in GetPoseAtTime \n";
+    return false;
+  }
+  return true;
+}
+
+bool ReadOdometryBagFile(const std::string& bag_file,
+                         const std::string& topic_name,
+                         std::map<ros::Time, gtsam::Pose3>* pose_stamped) {
+  rosbag::Bag bag;
+  bag.open(bag_file);
+
+  std::vector<std::string> topics;
+  topics.push_back(topic_name);
+
+  for (rosbag::MessageInstance const m :
+       rosbag::View(bag, rosbag::TopicQuery(topics))) {
+    nav_msgs::Odometry::ConstPtr i = m.instantiate<nav_msgs::Odometry>();
+    if (i != nullptr)
+      pose_stamped->insert(std::pair<ros::Time, gtsam::Pose3>{
+          i->header.stamp, utils::ToGtsam(i->pose.pose)});
+  }
+  bag.close();
+  return true;
+}
+
+bool ReadKeyedScansFromBagFile(
+    const std::string& bag_file,
+    const std::string& robot_name,
+    std::map<gtsam::Key, ros::Time>* keyed_stamps,
+    std::map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans) {
+  rosbag::Bag bag;
+  bag.open(bag_file);
+
+  std::vector<std::string> topics;
+  topics.push_back(robot_name + "/lamp/keyed_scans");
+  topics.push_back(robot_name + "/lamp/pose_graph_incremental");
+
+  for (rosbag::MessageInstance const m :
+       rosbag::View(bag, rosbag::TopicQuery(topics))) {
+    pose_graph_msgs::KeyedScan::ConstPtr i =
+        m.instantiate<pose_graph_msgs::KeyedScan>();
+    if (i != nullptr)
+      keyed_scans->insert(
+          std::pair<gtsam::Key, pose_graph_msgs::KeyedScan>{i->key, *i});
+    pose_graph_msgs::PoseGraph::ConstPtr p =
+        m.instantiate<pose_graph_msgs::PoseGraph>();
+    if (p != nullptr)
+      for (auto n : p->nodes)
+        keyed_stamps->insert(
+            std::pair<gtsam::Key, ros::Time>{n.key, n.header.stamp});
+  }
+  bag.close();
+  return true;
+}
+
+void FindLoopCandidateFromGt(
+    const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
+    const std::map<gtsam::Key, ros::Time>& keyed_stamps,
+    const std::map<gtsam::Key, pose_graph_msgs::KeyedScan>& keyed_scans,
+    const double& radius,
+    const size_t& key_dist,
+    pose_graph_msgs::LoopCandidateArray* candidates,
+    std::map<gtsam::Key, gtsam::Pose3>* candidate_keyed_poses,
+    std::map<gtsam::Key, pose_graph_msgs::KeyedScan>* candidate_keyed_scans) {
+  // First create gt keyed poses
+  std::map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
+  for (auto k : keyed_stamps) {
+    gtsam::Pose3 kp;
+    GetPoseAtTime(gt_pose_stamped, k.second, &kp);
+    gt_keyed_poses[k.first] = kp;
+  }
+
+  // Now find loop closures
+  for (auto m : gt_keyed_poses) {
+    for (auto n : gt_keyed_poses) {
+      if (m.first - n.first > key_dist) {
+        if ((m.second.translation() - n.second.translation()).norm() < radius) {
+          // Create loop closure
+          pose_graph_msgs::LoopCandidate cand;
+          cand.key_from = m.first;
+          cand.key_to = n.first;
+          candidates->candidates.push_back(cand);
+
+          // Insert to candidate keyed poses
+          if (candidate_keyed_poses->find(m.first) ==
+              candidate_keyed_poses->end()) {
+            candidate_keyed_poses->insert(m);
+          }
+          if (candidate_keyed_poses->find(n.first) ==
+              candidate_keyed_poses->end()) {
+            candidate_keyed_poses->insert(n);
+          }
+
+          // Insert to candidate keyed scans
+          if (candidate_keyed_scans->find(m.first) ==
+              candidate_keyed_scans->end()) {
+            candidate_keyed_scans->insert(
+                std::pair<gtsam::Key, pose_graph_msgs::KeyedScan>{
+                    m.first, keyed_scans.at(m.first)});
+          }
+          if (candidate_keyed_scans->find(n.first) ==
+              candidate_keyed_scans->end()) {
+            candidate_keyed_scans->insert(
+                std::pair<gtsam::Key, pose_graph_msgs::KeyedScan>{
+                    n.first, keyed_scans.at(n.first)});
+          }
+        }
+      }
+
+      if (n.first > (m.first - key_dist))
+        break;
+    }
+  }
 }
 
 } // namespace test_utils
