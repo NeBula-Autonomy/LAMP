@@ -8,6 +8,8 @@ class StationaryHandlerTest : public ::testing::Test {
     system(
         "rosparam load $(rospack find "
         "lamp)/config/precision_parameters.yaml");
+    system("rosparam load $(rospack find "
+           "factor_handlers)/config/imu_parameters.yaml");
   }
 
   StationaryHandler sh_;

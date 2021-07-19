@@ -1229,10 +1229,6 @@ TEST_F(OdometryHandlerTest, TestFillGtsamPosCovOdom) {
 }
 
 //------------------------------------------------------------------------------
-// unit tests
-// CalculatePoseDelta: Done (Nobuhiro)
-// GetDeltaBetweenPoses: (Kamak)
-// GetDeltaBetweenTimes: (Kamak)
 
 TEST_F(OdometryHandlerTest, TestCalculatePoseDelta) {
   ros::NodeHandle nh("~");
