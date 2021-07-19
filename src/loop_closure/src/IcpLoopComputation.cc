@@ -286,6 +286,7 @@ void IcpLoopComputation::ComputeTransforms() {
           }
       }
   }
+  PublishLoopClosures();
 
 }
 
