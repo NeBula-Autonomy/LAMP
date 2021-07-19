@@ -94,6 +94,8 @@ add_library(${PROJECT_NAME}
   src/ObservabilityLoopPrioritization.cc
   src/IcpLoopComputation.cc
   src/LoopCandidateQueue.cc
+  src/RoundRobinLoopCandidateQueue.cc
+  src/ObservabilityQueue.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -145,6 +147,8 @@ if (CATKIN_ENABLE_TESTING)
 find_package(rostest REQUIRED)
   # add_subdirectory(test)
   ## Add gtest based cpp test target and link libraries
+  add_rostest_gtest(test_icp_computation test/test_icp_computation.test test/test_icp_computation.cpp)
+  target_link_libraries(test_icp_computation  ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_loop_generation test/test_loop_generation.test test/test_loop_generation.cc)
   target_link_libraries(test_loop_generation ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_loop_prioritization test/test_loop_prioritization.test test/test_loop_prioritization.cc)

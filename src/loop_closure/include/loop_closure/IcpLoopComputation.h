@@ -14,6 +14,7 @@
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <utils/CommonStructs.h>
+#include "ThreadPool.h"
 
 #include "loop_closure/LoopComputation.h"
 
@@ -37,7 +38,6 @@ public:
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
-protected:
   // Compute transform and populate output queue
   void ComputeTransforms() override;
 
@@ -47,14 +47,14 @@ protected:
 
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
-  bool SetupICP();
+  bool SetupICP(pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point>& icp);
 
   bool PerformAlignment(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
                         const gtsam::Pose3& pose1,
                         const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
-                        gtsam::Matrix66* covariance);
+                        gtsam::Matrix66* covariance, bool re_initialize_icp=false);
 
   void GetSacInitialAlignment(PointCloud::ConstPtr source,
                               PointCloud::ConstPtr target,
@@ -80,6 +80,7 @@ protected:
 
   void AccumulateScans(const gtsam::Key& key, PointCloud::Ptr scan_out);
 
+protected:
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber keyed_poses_sub_;
@@ -135,6 +136,11 @@ protected:
 
   // ICP
   pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point> icp_;
+
+
+  ThreadPool icp_computation_pool_;
+
+  size_t number_of_threads_in_icp_computation_pool_;
 };
 
 } // namespace lamp_loop_closure
