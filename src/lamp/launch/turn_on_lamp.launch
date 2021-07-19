@@ -24,7 +24,7 @@
           name="lamp"
           type="lamp_node"
           output="screen">
-          <!-- launch-prefix="xterm -e gdb - -args" -->
+          <!-- launch-prefix="xterm -e gdb - -args"> -->
 
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>

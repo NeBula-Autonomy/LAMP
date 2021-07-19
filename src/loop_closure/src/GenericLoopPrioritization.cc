@@ -167,6 +167,7 @@ void GenericLoopPrioritization::PublishBestCandidates() {
 pose_graph_msgs::LoopCandidateArray
 GenericLoopPrioritization::GetBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
+  output_msg.originator = 0;
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
     output_msg.candidates.push_back(priority_queue_.front());

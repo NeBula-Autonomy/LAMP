@@ -211,6 +211,7 @@ void ObservabilityLoopPrioritization::PublishBestCandidates() {
 pose_graph_msgs::LoopCandidateArray
 ObservabilityLoopPrioritization::GetBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
+  output_msg.originator = 2;
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
     if (i == publish_n_best_)

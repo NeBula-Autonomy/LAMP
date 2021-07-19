@@ -1,0 +1,6 @@
+<launch>
+  <test test-name="test_icp_computation"
+        pkg="loop_closure"
+        type="test_icp_computation"
+        time-limit="300.0"/>
+</launch>
