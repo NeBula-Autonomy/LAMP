@@ -12,16 +12,29 @@
     <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>      
   </node>
 
-  <!-- Loop Prioritization -->
   <node pkg="loop_closure"
         name="loop_prioritization"
         type="loop_prioritization_node"
         output="screen">
     <remap from="~keyed_scans" to="lamp/keyed_scans" />
     <remap from="~loop_candidates" to="lamp/loop_generation/loop_candidates" />
-    <remap from="~prioritized_loop_candidates" to="lamp/loop_prioritization/prioritized_loop_candidates" />
-    <!-- Loop closure parameters  -->
-    <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>      
+
+    <remap from="~prioritized_loop_candidates" to="lamp/prioritization/prioritized_loop_candidates"/>
+
+    <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>
+  </node>
+
+  <node pkg="loop_closure"
+        name="loop_closure_batcher"
+        type="loop_closure_batcher_node.py"
+        output="screen">
+
+    <remap from="~pose_graph" to="lamp/pose_graph" />
+    <remap from="~loop_candidates" to="lamp/loop_generation/loop_candidates" />
+    <remap from="~loop_computation_status" to="lamp/loop_computation/loop_computation_status"/>
+    <remap from="~output_loop_closures" to="lamp/loop_candidate_queue/prioritized_loop_candidates"/>
+
+    <remap from="~prioritized_loop_candidates" to="lamp/prioritization/prioritized_loop_candidates"/>
   </node>
 
   <!-- Loop Candidate Consolidation Queue -->
@@ -29,8 +42,14 @@
         name="loop_candidate_queue"
         type="loop_candidate_queue_node"
         output="screen">
-    <remap from="~input_loop_candidates" to="lamp/loop_prioritization/prioritized_loop_candidates" />
-    <remap from="~output_loop_candidates" to="lamp/loop_candidate_queue/output_loop_candidates" />
+    <remap from="~input_loop_candidates_prioritized" to="lamp/prioritization/prioritized_loop_candidates" />
+    <remap from="~loop_computation_status" to="lamp/loop_computation/loop_computation_status"/>
+    <remap from="~keyed_scans" to="lamp/keyed_scans" />
+
+    <remap from="~output_loop_candidates" to="lamp/loop_candidate_queue/prioritized_loop_candidates"/>
+
+    <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>
+
   </node>
 
   <!-- Loop Computation -->
@@ -41,7 +60,9 @@
     <remap from="~pose_graph_incremental" to="lamp/pose_graph" />
     <remap from="~keyed_scans" to="lamp/keyed_scans" />
     <remap from="~loop_closures" to="lamp/laser_loop_closures" />
-    <remap from="~prioritized_loop_candidates" to="lamp/loop_candidate_queue/output_loop_candidates" />
+    <remap from="~prioritized_loop_candidates" to="lamp/loop_candidate_queue/prioritized_loop_candidates" />
+
+    <remap from="~loop_computation_status" to="lamp/loop_computation/loop_computation_status" />
     <!-- Loop closure parameters  -->
     <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
     <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>     

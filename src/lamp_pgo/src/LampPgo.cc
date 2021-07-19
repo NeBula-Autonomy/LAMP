@@ -271,6 +271,7 @@ void LampPgo::PublishValues() const {
   // Then store the values as nodes
   gtsam::KeyVector key_list = values_.keys();
   // Extract the marginal/covariances of the optimized values
+
   // gtsam::Marginals marginal(nfg_, values_);
   // marginal.print();
   // marginal.bayesTree_.print("Bayes Tree: ");
@@ -334,7 +335,6 @@ void LampPgo::PublishValues() const {
           node.covariance = default_covariance;
         }
   }
-
   for (const auto& factor : nfg_) {
     if (boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3>>(factor)) {
       pose_graph_msgs::PoseGraphEdge edge;

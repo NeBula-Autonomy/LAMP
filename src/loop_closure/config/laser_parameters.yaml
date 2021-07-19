@@ -13,6 +13,7 @@ robot:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
+
   proximity_threshold: 5
 
   # Don't attempt loop closures with poses in the graph that were collected within
@@ -136,6 +137,11 @@ robot:
 
     # Response type: {HARRIS = 1, NOBLE, LOWE, TOMASI, CURVATURE}
     harris_response: 1
+  queue:
+    #The max number of loop closures to send once the computation node is free
+    amount_per_round: 100
+    # Method : {ROUND_ROBIN = 1, OBSERVABILITY = 2}
+    method: 2
 
 #############################################
 # PARAMETERS FOR LASER LOOP CLOSURES (BASE)
@@ -276,3 +282,8 @@ base:
 
     # Response type: {HARRIS = 1, NOBLE, LOWE, TOMASI, CURVATURE}
     harris_response: 1
+  queue:
+    #The max number of loop closures to send once the computation node is free
+    amount_per_round: 500
+    # Method : {ROUND_ROBIN = 1, OBSERVABILITY = 2}
+    method: 1

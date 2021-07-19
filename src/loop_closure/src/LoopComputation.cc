@@ -22,16 +22,21 @@ bool LoopComputation::CreatePublishers(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_closure_pub_ =
       nl.advertise<pose_graph_msgs::PoseGraph>("loop_closures", 10, false);
+  status_pub_ = nl.advertise<pose_graph_msgs::LoopComputationStatus>("loop_computation_status", 10, false);
   return true;
+}
+
+void LoopComputation::PublishCompletedAllStatus() {
+  pose_graph_msgs::LoopComputationStatus status;
+  status.type = status.COMPLETED_ALL;
+  status_pub_.publish(status);
 }
 
 bool LoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_candidate_sub_ = nl.subscribe<pose_graph_msgs::LoopCandidateArray>(
-      "prioritized_loop_candidates",
-      100,
-      &LoopComputation::InputCallback,
-      this);
+      "prioritized_loop_candidates", 100, &LoopComputation::InputCallback, this);
+
   return true;
 }
 
@@ -44,6 +49,7 @@ void LoopComputation::PublishLoopClosures() {
   loop_closures_msg.edges = output_queue_;
   loop_closure_pub_.publish(loop_closures_msg);
   output_queue_.clear();
+  PublishCompletedAllStatus();
 }
 
 
