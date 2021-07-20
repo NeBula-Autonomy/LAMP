@@ -147,6 +147,14 @@ target_link_libraries(gen_loop_computation_test
   gtsam
 )
 
+add_executable(eval_loop_computation_test src/eval_loop_computation_test.cc)
+target_link_libraries(eval_loop_computation_test
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
 #############
 ## Testing ##
 #############
