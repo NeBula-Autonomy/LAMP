@@ -7,8 +7,7 @@
   <arg name="gt_odom_topic"  default="/$(arg robot_name)/lo_frontend/odometry" />
 
   <!-- Base station LAMP -->
-  <node launch-prefix="xterm -e gdb --args"
-        pkg="loop_closure"
+  <node pkg="loop_closure"
         name="gen_loop_computation_test"
         type="gen_loop_computation_test"
         output="screen"> 

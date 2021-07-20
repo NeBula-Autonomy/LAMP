@@ -321,8 +321,7 @@ void FindLoopCandidateFromGt(
     const double& radius,
     const size_t& key_dist,
     pose_graph_msgs::LoopCandidateArray* candidates,
-    std::map<gtsam::Key, gtsam::Pose3>* candidate_keyed_poses,
-    std::map<gtsam::Key, pose_graph_msgs::KeyedScan>* candidate_keyed_scans) {
+    std::map<gtsam::Key, gtsam::Pose3>* keyed_poses) {
   // First create gt keyed poses
   std::map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
   for (auto k : keyed_stamps) {
@@ -330,6 +329,7 @@ void FindLoopCandidateFromGt(
     GetPoseAtTime(gt_pose_stamped, k.second, &kp);
     gt_keyed_poses[k.first] = kp;
   }
+  *keyed_poses = gt_keyed_poses; // (TODO: should we use gt here or estimated?)
 
   // Now find loop closures
   for (auto m : gt_keyed_poses) {
@@ -341,30 +341,6 @@ void FindLoopCandidateFromGt(
           cand.key_from = m.first;
           cand.key_to = n.first;
           candidates->candidates.push_back(cand);
-
-          // Insert to candidate keyed poses
-          if (candidate_keyed_poses->find(m.first) ==
-              candidate_keyed_poses->end()) {
-            candidate_keyed_poses->insert(m);
-          }
-          if (candidate_keyed_poses->find(n.first) ==
-              candidate_keyed_poses->end()) {
-            candidate_keyed_poses->insert(n);
-          }
-
-          // Insert to candidate keyed scans
-          if (candidate_keyed_scans->find(m.first) ==
-              candidate_keyed_scans->end()) {
-            candidate_keyed_scans->insert(
-                std::pair<gtsam::Key, pose_graph_msgs::KeyedScan>{
-                    m.first, keyed_scans.at(m.first)});
-          }
-          if (candidate_keyed_scans->find(n.first) ==
-              candidate_keyed_scans->end()) {
-            candidate_keyed_scans->insert(
-                std::pair<gtsam::Key, pose_graph_msgs::KeyedScan>{
-                    n.first, keyed_scans.at(n.first)});
-          }
         }
       }
 

@@ -56,20 +56,18 @@ int main(int argc, char** argv) {
   }
 
   pose_graph_msgs::LoopCandidateArray new_candidates;
-  std::map<gtsam::Key, gtsam::Pose3> new_keyed_poses;
-  std::map<gtsam::Key, pose_graph_msgs::KeyedScan> new_keyed_scans;
+  std::map<gtsam::Key, gtsam::Pose3> pg_keyed_poses;
   tu::FindLoopCandidateFromGt(gt_pose_stamped,
                               pg_keyed_stamps,
                               pg_keyed_scans,
                               radius_tol,
                               10,
                               &new_candidates,
-                              &new_keyed_poses,
-                              &new_keyed_scans);
+                              &pg_keyed_poses);
 
   // Add these newly found candidates
   if (!tu::AppendNewCandidates(
-          new_candidates, new_keyed_poses, new_keyed_scans, &test_data)) {
+          new_candidates, pg_keyed_poses, pg_keyed_scans, &test_data)) {
     ROS_ERROR("Failed to append new candidates. ");
     return EXIT_FAILURE;
   }
