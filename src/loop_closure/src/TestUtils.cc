@@ -61,8 +61,10 @@ bool LoadLoopCandidateFromCsv(const std::string& candidate_file,
     int idx = 0;
     pose_graph_msgs::LoopCandidate lc;
     // Extract each integer
-    int val;
-    while (ss >> val) {
+    std::stringstream linestream(line);
+    std::string entry;
+    while (std::getline(linestream, entry, ',')) {
+      int val = std::stoi(entry);
       if (idx == 0) {
         lc.key_from = val;
       } else if (idx == 1) {
@@ -102,12 +104,13 @@ bool LoadKeydPosesAndScansFromFile(
     std::stringstream ss(line);
     // Keep track of the current column index
     int idx = 0;
-    pose_graph_msgs::LoopCandidate lc;
     // Extract each integer
-    double val;
+    std::string entry;
     std::vector<double> transrot; // x y z qx qy qz qw
     size_t key;
-    while (ss >> val) {
+    std::stringstream linestream(line);
+    while (std::getline(linestream, entry, ',')) {
+      double val = std::stod(entry);
       if (idx == 0) {
         key = static_cast<size_t>(val);
         if (key != line_num) {
@@ -115,7 +118,7 @@ bool LoadKeydPosesAndScansFromFile(
               << "Key index does not match line number. Check file format. \n";
           return false;
         }
-      } else if (idx > 1 && idx < 8) {
+      } else if (idx > 0 && idx < 8) {
         transrot.push_back(val);
       }
       idx++;
@@ -123,8 +126,8 @@ bool LoadKeydPosesAndScansFromFile(
 
     // Create pose
     keyed_poses->push_back(gtsam::Pose3(
-        gtsam::Rot3(transrot[6], transrot[3], transrot[4], transrot[5]),
-        gtsam::Point3(transrot[0], transrot[1], transrot[2])));
+        gtsam::Rot3(transrot[7], transrot[4], transrot[5], transrot[6]),
+        gtsam::Point3(transrot[1], transrot[2], transrot[3])));
 
     // Read point cloud
     std::string pcd_file = ptcld_dir_path + "/" + std::to_string(key) + ".pcd";
@@ -160,12 +163,13 @@ bool WriteKeyedPosesToFile(const std::vector<gtsam::Pose3>& keyed_poses,
                            const std::string& output_file) {
   std::ofstream csv_file(output_file);
 
-  for (auto pose : keyed_poses) {
+  for (size_t i = 0; i < keyed_poses.size(); i++) {
+    gtsam::Pose3 pose = keyed_poses.at(i);
     gtsam::Point3 t = pose.translation();
     gtsam::Quaternion q = pose.rotation().toQuaternion();
     // x y z qx qy qz qw
-    csv_file << t.x() << "," << t.y() << "," << t.z() << "," << q.x() << ","
-             << q.y() << "," << q.z() << "," << q.w() << "\n";
+    csv_file << i << "," << t.x() << "," << t.y() << "," << t.z() << ","
+             << q.x() << "," << q.y() << "," << q.z() << "," << q.w() << "\n";
   }
 
   // Close the file
@@ -238,8 +242,9 @@ bool GetPoseAtTime(const std::map<ros::Time, gtsam::Pose3>& pose_stamped,
     }
   }
 
-  if (abs((result_stamp - query_stamp).toSec()) < t_diff) {
-    std::cout << "Exceed tolerence in GetPoseAtTime \n";
+  if (abs((result_stamp - query_stamp).toSec()) > t_diff) {
+    std::cout << "Exceed tolerence in GetPoseAtTime: "
+              << abs((result_stamp - query_stamp).toSec()) << std::endl;
     return false;
   }
   return true;
@@ -262,6 +267,10 @@ bool ReadOdometryBagFile(const std::string& bag_file,
           i->header.stamp, utils::ToGtsam(i->pose.pose)});
   }
   bag.close();
+  if (pose_stamped->size() == 0) {
+    std::cout << "Read 0 odometry poses. \n";
+    return false;
+  }
   return true;
 }
 
@@ -274,8 +283,8 @@ bool ReadKeyedScansFromBagFile(
   bag.open(bag_file);
 
   std::vector<std::string> topics;
-  topics.push_back(robot_name + "/lamp/keyed_scans");
-  topics.push_back(robot_name + "/lamp/pose_graph_incremental");
+  topics.push_back("/" + robot_name + "/lamp/keyed_scans");
+  topics.push_back("/" + robot_name + "/lamp/pose_graph_incremental");
 
   for (rosbag::MessageInstance const m :
        rosbag::View(bag, rosbag::TopicQuery(topics))) {
@@ -292,6 +301,16 @@ bool ReadKeyedScansFromBagFile(
             std::pair<gtsam::Key, ros::Time>{n.key, n.header.stamp});
   }
   bag.close();
+
+  if (keyed_stamps->size() != keyed_scans->size()) {
+    std::cout << "Size of keyed stamps and keyed scans do not match. \n";
+    return false;
+  }
+
+  if (keyed_stamps->size() == 0) {
+    std::cout << "Read 0 keyed scans afrom bag file. \n";
+    return false;
+  }
   return true;
 }
 
@@ -353,6 +372,46 @@ void FindLoopCandidateFromGt(
         break;
     }
   }
+}
+
+bool AppendNewCandidates(
+    const pose_graph_msgs::LoopCandidateArray& candidates,
+    const std::map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
+    const std::map<gtsam::Key, pose_graph_msgs::KeyedScan>&
+        candidate_keyed_scans,
+    TestData* data) {
+  if (candidate_keyed_scans.size() != candidate_keyed_poses.size()) {
+    std::cout << "Number of candidate scans should match the number of "
+                 "candidate keys. \n";
+    return false;
+  }
+
+  std::map<gtsam::Key, size_t> reindexing;
+
+  for (auto k : candidate_keyed_poses) {
+    reindexing[k.first] = data->gt_keyed_poses_.size();
+    data->gt_keyed_poses_.push_back(k.second);
+  }
+
+  for (auto k : candidate_keyed_scans) {
+    pose_graph_msgs::KeyedScan new_scan = k.second;
+    new_scan.key = reindexing[k.first];
+    data->keyed_scans_.push_back(new_scan);
+  }
+
+  if (data->gt_keyed_poses_.size() != data->keyed_scans_.size()) {
+    std::cout
+        << "Number of keyed poses does not match the number of keyed scans. \n";
+    return false;
+  }
+
+  for (auto c : candidates.candidates) {
+    pose_graph_msgs::LoopCandidate new_c = c;
+    new_c.key_from = reindexing[c.key_from];
+    new_c.key_to = reindexing[c.key_to];
+    data->test_candidates_.candidates.push_back(new_c);
+  }
+  return true;
 }
 
 } // namespace test_utils
