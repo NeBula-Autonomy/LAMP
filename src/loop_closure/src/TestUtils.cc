@@ -34,7 +34,8 @@ bool LoadExistingTestData(const std::string& file_path, TestData* data) {
   if (!LoadKeydPosesAndScansFromFile(keyed_poses_csv,
                                      file_path,
                                      &(data->gt_keyed_poses_),
-                                     &(data->keyed_scans_))) {
+                                     &(data->keyed_scans_),
+                                     &(data->labels_))) {
     std::cout << "Failed to load keyed poses and scans. \n";
     return false;
   }
@@ -84,7 +85,8 @@ bool LoadKeydPosesAndScansFromFile(
     const std::string& csv_file_path,
     const std::string& ptcld_dir_path,
     std::vector<gtsam::Pose3>* keyed_poses,
-    std::vector<pose_graph_msgs::KeyedScan>* keyed_scans) {
+    std::vector<pose_graph_msgs::KeyedScan>* keyed_scans,
+    std::vector<std::string>* keyed_labels) {
   // Make sure keyed poses and scans are empty
   keyed_poses->clear();
   keyed_scans->clear();
@@ -108,8 +110,13 @@ bool LoadKeydPosesAndScansFromFile(
     std::string entry;
     std::vector<double> transrot; // x y z qx qy qz qw
     size_t key;
+    std::string label;
     std::stringstream linestream(line);
     while (std::getline(linestream, entry, ',')) {
+      if (idx == 8) {
+        label = entry;
+        continue;
+      }
       double val = std::stod(entry);
       if (idx == 0) {
         key = static_cast<size_t>(val);
@@ -128,6 +135,9 @@ bool LoadKeydPosesAndScansFromFile(
     keyed_poses->push_back(gtsam::Pose3(
         gtsam::Rot3(transrot[7], transrot[4], transrot[5], transrot[6]),
         gtsam::Point3(transrot[1], transrot[2], transrot[3])));
+
+    // Label
+    keyed_labels->push_back(label);
 
     // Read point cloud
     std::string pcd_file = ptcld_dir_path + "/" + std::to_string(key) + ".pcd";
@@ -160,8 +170,14 @@ bool WriteLoopCandidatesToFile(
 }
 
 bool WriteKeyedPosesToFile(const std::vector<gtsam::Pose3>& keyed_poses,
+                           const std::vector<std::string>& keyed_labels,
                            const std::string& output_file) {
   std::ofstream csv_file(output_file);
+
+  if (keyed_poses.size() != keyed_labels.size()) {
+    std::cout << "Number of labels should match the number of poses. \n";
+    return false;
+  }
 
   for (size_t i = 0; i < keyed_poses.size(); i++) {
     gtsam::Pose3 pose = keyed_poses.at(i);
@@ -169,7 +185,8 @@ bool WriteKeyedPosesToFile(const std::vector<gtsam::Pose3>& keyed_poses,
     gtsam::Quaternion q = pose.rotation().toQuaternion();
     // x y z qx qy qz qw
     csv_file << i << "," << t.x() << "," << t.y() << "," << t.z() << ","
-             << q.x() << "," << q.y() << "," << q.z() << "," << q.w() << "\n";
+             << q.x() << "," << q.y() << "," << q.z() << "," << q.w() << ","
+             << keyed_labels.at(i) << "\n";
   }
 
   // Close the file
@@ -205,7 +222,7 @@ bool WriteTestDataToFile(const TestData& data, const std::string& output_dir) {
   }
 
   std::string poses_file = output_dir + "/keyed_poses.csv";
-  if (!WriteKeyedPosesToFile(data.gt_keyed_poses_, poses_file)) {
+  if (!WriteKeyedPosesToFile(data.gt_keyed_poses_, data.labels_, poses_file)) {
     std::cout << "Failed to save keyed poses. \n";
     return false;
   }
@@ -303,8 +320,22 @@ bool ReadKeyedScansFromBagFile(
   bag.close();
 
   if (keyed_stamps->size() != keyed_scans->size()) {
-    std::cout << "Size of keyed stamps and keyed scans do not match. \n";
-    return false;
+    std::cout << "Size of keyed stamps and keyed scans do not match. "
+              << keyed_stamps->size() << " vs. " << keyed_scans->size() << "\n";
+    // Delete
+    if (keyed_stamps->size() > keyed_scans->size()) {
+      for (auto ks : *keyed_stamps) {
+        if (keyed_scans->find(ks.first) == keyed_scans->end()) {
+          keyed_stamps->erase(ks.first);
+        }
+      }
+    } else {
+      for (auto ks : *keyed_scans) {
+        if (keyed_stamps->find(ks.first) == keyed_stamps->end()) {
+          keyed_scans->erase(ks.first);
+        }
+      }
+    }
   }
 
   if (keyed_stamps->size() == 0) {
@@ -355,6 +386,7 @@ bool AppendNewCandidates(
     const std::map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
     const std::map<gtsam::Key, pose_graph_msgs::KeyedScan>&
         candidate_keyed_scans,
+    const std::string& label,
     TestData* data) {
   if (candidate_keyed_scans.size() != candidate_keyed_poses.size()) {
     std::cout << "Number of candidate scans should match the number of "
@@ -367,6 +399,7 @@ bool AppendNewCandidates(
   for (auto k : candidate_keyed_poses) {
     reindexing[k.first] = data->gt_keyed_poses_.size();
     data->gt_keyed_poses_.push_back(k.second);
+    data->labels_.push_back(label);
   }
 
   for (auto k : candidate_keyed_scans) {

@@ -13,7 +13,8 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "gen_loop_computation_test");
   ros::NodeHandle n("~");
 
-  std::string dataset_path, gt_odom_bag, gt_odom_topic, lamp_bag, robot_name;
+  std::string dataset_path, gt_odom_bag, gt_odom_topic, lamp_bag, robot_name,
+      label;
   n.getParam("dataset_path", dataset_path);
   n.getParam("gt_odom_bag", gt_odom_bag);
   n.getParam("gt_odom_topic", gt_odom_topic);
@@ -21,6 +22,7 @@ int main(int argc, char** argv) {
   n.getParam("robot_name",
              robot_name); // This restrict us to get only single robot loop
                           // closures to be in the dataset (TODO fix later)
+  n.getParam("label", label);
 
   double radius_tol;
   n.getParam("radius_tol", radius_tol);
@@ -67,7 +69,7 @@ int main(int argc, char** argv) {
 
   // Add these newly found candidates
   if (!tu::AppendNewCandidates(
-          new_candidates, pg_keyed_poses, pg_keyed_scans, &test_data)) {
+          new_candidates, pg_keyed_poses, pg_keyed_scans, label, &test_data)) {
     ROS_ERROR("Failed to append new candidates. ");
     return EXIT_FAILURE;
   }

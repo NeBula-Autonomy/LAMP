@@ -5,6 +5,7 @@
   <arg name="robot_name"     default="husky1" />
   <arg name="radius_tol"     default="0.3" />
   <arg name="gt_odom_topic"  default="/$(arg robot_name)/lo_frontend/odometry" />
+  <arg name="label"          default="unlabeled" />
 
   <!-- Base station LAMP -->
   <node pkg="loop_closure"
@@ -17,6 +18,7 @@
     <param name="lamp_bag"       value="$(arg lamp_bag)" />
     <param name="robot_name"     value="$(arg robot_name)" />
     <param name="radius_tol"     value="$(arg radius_tol)" />
+    <param name="label"          value="$(arg label)" />
   </node>
 
 </launch>
