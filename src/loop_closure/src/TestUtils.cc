@@ -133,8 +133,8 @@ bool LoadKeydPosesAndScansFromFile(
 
     // Create pose
     keyed_poses->push_back(gtsam::Pose3(
-        gtsam::Rot3(transrot[7], transrot[4], transrot[5], transrot[6]),
-        gtsam::Point3(transrot[1], transrot[2], transrot[3])));
+        gtsam::Rot3(transrot[6], transrot[3], transrot[4], transrot[5]),
+        gtsam::Point3(transrot[0], transrot[1], transrot[2])));
 
     // Label
     keyed_labels->push_back(label);
