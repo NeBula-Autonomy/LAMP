@@ -180,7 +180,7 @@ private:
 };
 
 /* TEST Initialize */
-TEST_F(OdometryHandlerTest, Initialization) {
+TEST_F(OdometryHandlerTest, TestInitialization) {
   ros::NodeHandle nh;
   bool result = oh.Initialize(nh);
   ASSERT_TRUE(result);
@@ -771,6 +771,7 @@ TEST_F(OdometryHandlerTest, TestGetData) {
 TEST_F(OdometryHandlerTest, TestGetDataVLPStop) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   // Create an output
   GtsamPosCov myOutput;
@@ -834,6 +835,7 @@ TEST_F(OdometryHandlerTest, TestGetDataVLPStop) {
 TEST_F(OdometryHandlerTest, TestGetDataOldOdom) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   // Create an output
   GtsamPosCov myOutput;
@@ -897,6 +899,7 @@ TEST_F(OdometryHandlerTest, TestGetDataOldOdom) {
 TEST_F(OdometryHandlerTest, TestGetRelativeData) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   // Create an output
   GtsamPosCov myOutput;
@@ -929,6 +932,7 @@ TEST_F(OdometryHandlerTest, TestGetRelativeData) {
 TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   // Create an output
   GtsamPosCov myOutput_1;
@@ -975,6 +979,7 @@ TEST_F(OdometryHandlerTest, TestGetRelativeDataOutOfRange) {
 TEST_F(OdometryHandlerTest, TestGetCovariance) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   PoseCovStampedPair pose_cov_stamped_pair;
   PoseCovStamped pose_cov_stamped_1;
@@ -1025,6 +1030,7 @@ TEST_F(OdometryHandlerTest, TestGetPosesAtTimes) {
 TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   // Create keyed scans
   PointCloud msg1;
@@ -1058,6 +1064,7 @@ TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTime) {
 TEST_F(OdometryHandlerTest, TestGetKeyedScanAtTimeError) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   // Create keyed scans
   PointCloud msg1;
@@ -1128,6 +1135,7 @@ TEST_F(OdometryHandlerTest, TestClearPreviousPointCloudScans) {
 TEST_F(OdometryHandlerTest, TestToGtsam) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   gu::Transform3 pose;
   pose.translation(0) = 1;
@@ -1152,6 +1160,7 @@ TEST_F(OdometryHandlerTest, TestToGtsam) {
 TEST_F(OdometryHandlerTest, TestEmptyBufferHandling) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   // Create an output
   GtsamPosCov myOutput;
@@ -1168,6 +1177,7 @@ TEST_F(OdometryHandlerTest, TestEmptyBufferHandling) {
 TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   // Create a buffer
   OdomPoseBuffer myBuffer;
@@ -1185,6 +1195,7 @@ TEST_F(OdometryHandlerTest, InsertMsgInBuffer) {
 TEST_F(OdometryHandlerTest, TestFillGtsamPosCovOdom) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   OdomPoseBuffer odom_buffer;
   // Odometry-1
@@ -1229,14 +1240,11 @@ TEST_F(OdometryHandlerTest, TestFillGtsamPosCovOdom) {
 }
 
 //------------------------------------------------------------------------------
-// unit tests
-// CalculatePoseDelta: Done (Nobuhiro)
-// GetDeltaBetweenPoses: (Kamak)
-// GetDeltaBetweenTimes: (Kamak)
 
 TEST_F(OdometryHandlerTest, TestCalculatePoseDelta) {
   ros::NodeHandle nh("~");
   system("rosparam set ts_threshold 0.6");
+  system("rosparam set keyed_scan_time_diff_limit 0.2");
   oh.Initialize(nh);
   OdomPoseBuffer myBuffer;
   GtsamPosCov my_fused_odom;

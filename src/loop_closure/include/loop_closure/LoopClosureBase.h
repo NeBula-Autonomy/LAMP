@@ -47,6 +47,7 @@ protected:
   void PublishLoopClosures(
       const std::vector<pose_graph_msgs::PoseGraphEdge> edges) const;
 
+
   // Parameter namespace ("robot" or "base")
   std::string param_ns_;
 

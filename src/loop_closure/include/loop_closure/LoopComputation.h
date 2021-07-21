@@ -13,6 +13,7 @@
 #include <pose_graph_msgs/LoopCandidateArray.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/PoseGraphEdge.h>
+#include <pose_graph_msgs/LoopComputationStatus.h>
 #include <ros/console.h>
 #include <ros/ros.h>
 
@@ -31,22 +32,28 @@ public:
 
   virtual bool RegisterCallbacks(const ros::NodeHandle& n);
 
-protected:
   // Compute transform and populate output queue
   virtual void ComputeTransforms() = 0;
 
   void PublishLoopClosures();
 
+
+
   void InputCallback(
       const pose_graph_msgs::LoopCandidateArray::ConstPtr& input_candidates);
+
+  void PublishCompletedAllStatus();
 
   pose_graph_msgs::PoseGraphEdge
   CreateLoopClosureEdge(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
                         const geometry_utils::Transform3& delta,
                         const gtsam::Matrix66& covariance) const;
+  std::vector<pose_graph_msgs::PoseGraphEdge> GetCurrentOutputQueue();
 
+protected:
   // Define publishers and subscribers
+  ros::Publisher status_pub_;
   ros::Publisher loop_closure_pub_;
   ros::Subscriber loop_candidate_sub_;
 
