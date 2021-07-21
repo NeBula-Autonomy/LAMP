@@ -161,7 +161,7 @@ bool WriteLoopCandidatesToFile(
     const std::string& output_file) {
   std::ofstream csv_file(output_file);
 
-  for (auto ct : candidates.candidates) {
+  for (const auto& ct : candidates.candidates) {
     csv_file << ct.key_from << "," << ct.key_to << "\n";
   }
   // Close the file
@@ -197,7 +197,7 @@ bool WriteKeyedPosesToFile(const std::vector<gtsam::Pose3>& keyed_poses,
 bool WriteKeyedScansToFile(
     const std::vector<pose_graph_msgs::KeyedScan>& keyed_scans,
     const std::string& output_folder) {
-  for (auto ks : keyed_scans) {
+  for (const auto& ks : keyed_scans) {
     pcl::PointCloud<Point>::Ptr scan(new pcl::PointCloud<Point>);
     pcl::fromROSMsg(ks.scan, *scan);
     std::string pcd_file =
@@ -313,7 +313,7 @@ bool ReadKeyedScansFromBagFile(
     pose_graph_msgs::PoseGraph::ConstPtr p =
         m.instantiate<pose_graph_msgs::PoseGraph>();
     if (p != nullptr)
-      for (auto n : p->nodes)
+      for (const auto& n : p->nodes)
         keyed_stamps->insert(
             std::pair<gtsam::Key, ros::Time>{n.key, n.header.stamp});
   }
@@ -324,13 +324,13 @@ bool ReadKeyedScansFromBagFile(
               << keyed_stamps->size() << " vs. " << keyed_scans->size() << "\n";
     // Delete
     if (keyed_stamps->size() > keyed_scans->size()) {
-      for (auto ks : *keyed_stamps) {
+      for (const auto& ks : *keyed_stamps) {
         if (keyed_scans->find(ks.first) == keyed_scans->end()) {
           keyed_stamps->erase(ks.first);
         }
       }
     } else {
-      for (auto ks : *keyed_scans) {
+      for (const auto& ks : *keyed_scans) {
         if (keyed_stamps->find(ks.first) == keyed_stamps->end()) {
           keyed_scans->erase(ks.first);
         }
@@ -355,7 +355,7 @@ void FindLoopCandidateFromGt(
     std::map<gtsam::Key, gtsam::Pose3>* keyed_poses) {
   // First create gt keyed poses
   std::map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
-  for (auto k : keyed_stamps) {
+  for (const auto& k : keyed_stamps) {
     gtsam::Pose3 kp;
     GetPoseAtTime(gt_pose_stamped, k.second, &kp);
     gt_keyed_poses[k.first] = kp;
@@ -363,8 +363,8 @@ void FindLoopCandidateFromGt(
   *keyed_poses = gt_keyed_poses; // (TODO: should we use gt here or estimated?)
 
   // Now find loop closures
-  for (auto m : gt_keyed_poses) {
-    for (auto n : gt_keyed_poses) {
+  for (const auto& m : gt_keyed_poses) {
+    for (const auto& n : gt_keyed_poses) {
       if (m.first - n.first > key_dist) {
         if ((m.second.translation() - n.second.translation()).norm() < radius) {
           // Create loop closure
@@ -396,13 +396,13 @@ bool AppendNewCandidates(
 
   std::map<gtsam::Key, size_t> reindexing;
 
-  for (auto k : candidate_keyed_poses) {
+  for (const auto& k : candidate_keyed_poses) {
     reindexing[k.first] = data->gt_keyed_poses_.size();
     data->gt_keyed_poses_.push_back(k.second);
     data->labels_.push_back(label);
   }
 
-  for (auto k : candidate_keyed_scans) {
+  for (const auto& k : candidate_keyed_scans) {
     pose_graph_msgs::KeyedScan new_scan = k.second;
     new_scan.key = reindexing[k.first];
     data->keyed_scans_.push_back(new_scan);
@@ -414,7 +414,7 @@ bool AppendNewCandidates(
     return false;
   }
 
-  for (auto c : candidates.candidates) {
+  for (const auto& c : candidates.candidates) {
     pose_graph_msgs::LoopCandidate new_c = c;
     new_c.key_from = reindexing[c.key_from];
     new_c.key_to = reindexing[c.key_to];
