@@ -1123,10 +1123,13 @@ void PoseGraphVisualizer::VisualizeArtifacts() {
     gtsam::Key key(artifact_id2key_hash_[it->first]);
     // ROS_INFO_STREAM("Artifact hash key is " <<
     // gtsam::DefaultKeyFormatter(key));
-    if (gtsam::Symbol(key).chr() != 'l' && gtsam::Symbol(key).chr() != 'm' &&
-        gtsam::Symbol(key).chr() != 'n' && gtsam::Symbol(key).chr() != 'o' &&
-        gtsam::Symbol(key).chr() != 'p' && gtsam::Symbol(key).chr() != 'q' &&
-        gtsam::Symbol(key).chr() != 'r' && gtsam::Symbol(key).chr() != 's') {
+    if (gtsam::Symbol(key).chr() != 'A' && gtsam::Symbol(key).chr() != 'B' &&
+        gtsam::Symbol(key).chr() != 'C' && gtsam::Symbol(key).chr() != 'D' &&
+        gtsam::Symbol(key).chr() != 'E' && gtsam::Symbol(key).chr() != 'F' &&
+        gtsam::Symbol(key).chr() != 'G' && gtsam::Symbol(key).chr() != 'H' &&
+        gtsam::Symbol(key).chr() != 'I' && gtsam::Symbol(key).chr() != 'J' &&
+        gtsam::Symbol(key).chr() != 'K' && gtsam::Symbol(key).chr() != 'L' &&
+        gtsam::Symbol(key).chr() != 'M' && gtsam::Symbol(key).chr() != 'X') {
       ROS_WARN("ERROR - have a non-landmark ID");
       ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
       continue;

@@ -622,7 +622,7 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   n3.pose.position.y = 0.0;
   n3.pose.position.z = 0.0;
 
-  a0.key = gtsam::Symbol('m', 0);
+  a0.key = gtsam::Symbol('A', 0);
   a0.pose.position.x = 1.0;
   a0.pose.position.y = 1.0;
   a0.pose.position.z = 0.0;
@@ -709,7 +709,7 @@ TEST_F(TestMerger, MergeWithArtifactInFastGraph) {
   float x, y, z;
   bool found = false;
   for (const GraphNode& node : current_graph.nodes) {
-    if (node.key != gtsam::Symbol('m', 0)) {
+    if (node.key != gtsam::Symbol('A', 0)) {
       found = true;
       continue;
     }

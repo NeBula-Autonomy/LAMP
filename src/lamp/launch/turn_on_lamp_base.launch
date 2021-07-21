@@ -78,11 +78,10 @@
       <remap if="$(arg sim)" from="/husky2/artifact" to="/husky2/lamp/artifact_global"/>
       <remap if="$(arg sim)" from="/husky3/artifact" to="/husky3/lamp/artifact_global"/>
       <remap if="$(arg sim)" from="/husky4/artifact" to="/husky4/lamp/artifact_global"/>
-      <remap if="$(arg sim)" from="/telemax1/artifact" to="/telemax1/lamp/artifact_global"/>
       <remap if="$(arg sim)" from="/spot1/artifact" to="/spot1/lamp/artifact_global"/>
       <remap if="$(arg sim)" from="/spot2/artifact" to="/spot2/lamp/artifact_global"/>
-      <remap if="$(arg sim)" from="/spot3/artifact" to="/spot2/lamp/artifact_global"/>
-      <remap if="$(arg sim)" from="/spot4/artifact" to="/spot2/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/spot3/artifact" to="/spot3/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/spot4/artifact" to="/spot4/lamp/artifact_global"/>
     </node>
 
     <!-- Loop Closure  -->

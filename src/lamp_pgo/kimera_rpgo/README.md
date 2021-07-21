@@ -98,7 +98,7 @@ Example, do `./RpgoReadG2o 3d /home/user/Desktop/in.g2o 1.0 1.0 /home/user/Deskt
 // set up KimeraRPGO solver
 RobustSolverParams params;
 params.setPcm3DParams(<translation_threshold>, <rotation_threshold>);
-std::vector<char> special_symbs{'l', 'u'}; // for landmarks
+std::vector<char> special_symbs{'A', 'u'}; // for landmarks
 params.specialSymbols = special_symbs;
 
 std::unique_ptr<RobustSolver> pgo = KimeraRPGO::make_unique<RobustSolver>(params); // initiate pgo solver
