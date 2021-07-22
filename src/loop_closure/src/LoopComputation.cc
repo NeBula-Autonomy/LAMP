@@ -45,11 +45,13 @@ std::vector<pose_graph_msgs::PoseGraphEdge> LoopComputation::GetCurrentOutputQue
 }
 
 void LoopComputation::PublishLoopClosures() {
-  pose_graph_msgs::PoseGraph loop_closures_msg;
-  loop_closures_msg.edges = output_queue_;
-  loop_closure_pub_.publish(loop_closures_msg);
-  output_queue_.clear();
-  PublishCompletedAllStatus();
+  if (loop_closure_pub_.getNumSubscribers() > 0) {
+    pose_graph_msgs::PoseGraph loop_closures_msg;
+    loop_closures_msg.edges = output_queue_;
+    loop_closure_pub_.publish(loop_closures_msg);
+    output_queue_.clear();
+    PublishCompletedAllStatus();
+  }
 }
 
 

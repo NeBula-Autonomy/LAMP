@@ -423,4 +423,94 @@ bool AppendNewCandidates(
   return true;
 }
 
+void OutputTestSummary(
+    const TestData& data,
+    const std::vector<pose_graph_msgs::PoseGraphEdge>& results,
+    const std::string& output_file) {
+  // First find number of candidates by label
+  std::map<std::string, size_t> expected_num_lc;
+  for (const auto& c : data.test_candidates_.candidates) {
+    std::string label = data.labels_.at(c.key_from);
+    if (expected_num_lc.find(label) == expected_num_lc.end()) {
+      expected_num_lc[label] = 0;
+    } else {
+      expected_num_lc[label]++;
+    }
+  }
+
+  // Now evaluate
+  std::map<std::string, size_t> num_lc;
+  std::map<std::string, double> total_trans_error;
+  std::map<std::string, double> total_rot_error;
+  std::map<std::string, double> min_trans_error;
+  std::map<std::string, double> max_trans_error;
+  std::map<std::string, double> min_rot_error;
+  std::map<std::string, double> max_rot_error;
+
+  for (const auto& enl : expected_num_lc) {
+    num_lc[enl.first] = 0;
+    total_trans_error[enl.first] = 0;
+    total_rot_error[enl.first] = 0;
+    min_trans_error[enl.first] = std::numeric_limits<double>::max();
+    max_trans_error[enl.first] = 0;
+    min_rot_error[enl.first] = std::numeric_limits<double>::max();
+    max_rot_error[enl.first] = 0;
+  }
+
+  for (const auto& edge : results) {
+    std::string label = data.labels_.at(edge.key_from);
+    num_lc[label]++;
+
+    gtsam::Pose3 transform = utils::ToGtsam(edge.pose);
+    gtsam::Pose3 gt_transform =
+        data.gt_keyed_poses_.at(edge.key_from)
+            .between(data.gt_keyed_poses_.at(edge.key_to));
+    gtsam::Pose3 error_pose3 = transform.between(gt_transform);
+    gtsam::Vector error_log = gtsam::Pose3::Logmap(error_pose3);
+
+    double trans_error =
+        std::sqrt(error_log.tail(3).transpose() * error_log.tail(3));
+    double rot_error =
+        std::sqrt(error_log.head(3).transpose() * error_log.head(3));
+
+    // Populate stats
+    total_trans_error[label] += trans_error;
+    total_rot_error[label] += rot_error;
+
+    if (trans_error < min_trans_error[label])
+      min_trans_error[label] = trans_error;
+    if (trans_error > max_trans_error[label])
+      max_trans_error[label] = trans_error;
+    if (rot_error < min_rot_error[label])
+      min_rot_error[label] = rot_error;
+    if (rot_error > max_rot_error[label])
+      max_rot_error[label] = rot_error;
+  }
+
+  // Write to file
+  std::ofstream outfile;
+  outfile.open(output_file);
+  if (!outfile.is_open()) {
+    std::cout << "Unable to open output result file. \n";
+    return;
+  }
+  outfile << "label,expected,detected,percent-detected,mean-trans-error(m),min-"
+             "trans-error(m),max-trans-error(m),mean-rot-error(deg),min-rot-"
+             "error(deg),max-rot-error(deg)\n";
+  for (const auto& entry : expected_num_lc) {
+    outfile << entry.first << "," << entry.second << "," << num_lc[entry.first]
+            << ","
+            << static_cast<double>(num_lc[entry.first]) /
+            static_cast<double>(entry.second)
+            << "," << total_trans_error[entry.first] / num_lc[entry.first]
+            << "," << min_trans_error[entry.first] << ","
+            << max_trans_error[entry.first] << ","
+            << (total_rot_error[entry.first] / num_lc[entry.first]) * 180 /
+            3.1416
+            << "," << (min_rot_error[entry.first]) * 180 / 3.1416 << ","
+            << (max_rot_error[entry.first]) * 180 / 3.1416 << "\n";
+  }
+  outfile.close();
+}
+
 } // namespace test_utils
