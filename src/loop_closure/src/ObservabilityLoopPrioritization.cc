@@ -109,7 +109,7 @@ bool ObservabilityLoopPrioritization::RegisterCallbacks(
 void ObservabilityLoopPrioritization::ProcessTimerCallback(
     const ros::TimerEvent& ev) {
   PrunePriorityQueue();
-  PopulatePriorityQueue();
+  //ROS_INFO_STREAM("Priority Queue Size:" << priority_queue_.size());
   if (priority_queue_.size() > 0 &&
       loop_candidate_pub_.getNumSubscribers() > 0) {
     PublishBestCandidates();
@@ -175,14 +175,17 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
         break;
       }
     }
+    priority_queue_mutex_.lock();
     observability_score_.insert(score_it, score);
     priority_queue_.insert(candidate_it, candidate);
+    priority_queue_mutex_.unlock();
   }
   return;
 }
 
 void ObservabilityLoopPrioritization::PrunePriorityQueue() {
   ROS_INFO_STREAM("Prune priority queue... size: " << priority_queue_.size());
+  priority_queue_mutex_.lock();
   std::deque<double> temp_observability_score;
   std::deque<pose_graph_msgs::LoopCandidate> temp_priority_queue;
   for (size_t i = 0; i < priority_queue_.size(); i++) {
@@ -196,6 +199,7 @@ void ObservabilityLoopPrioritization::PrunePriorityQueue() {
   priority_queue_.clear();
   observability_score_ = temp_observability_score;
   priority_queue_ = temp_priority_queue;
+  priority_queue_mutex_.unlock();
   ROS_INFO_STREAM(
       "Discarded old measurements. size: " << priority_queue_.size());
   return;
@@ -212,6 +216,7 @@ pose_graph_msgs::LoopCandidateArray
 ObservabilityLoopPrioritization::GetBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
   output_msg.originator = 2;
+  priority_queue_mutex_.lock();
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
     if (i == publish_n_best_)
@@ -219,6 +224,7 @@ ObservabilityLoopPrioritization::GetBestCandidates() {
     output_msg.candidates.push_back(priority_queue_.front());
     priority_queue_.pop_front();
   }
+  priority_queue_mutex_.unlock();
   return output_msg;
 }
 
@@ -238,5 +244,7 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
   // Add the key and scan.
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
+
+
 
 } // namespace lamp_loop_closure

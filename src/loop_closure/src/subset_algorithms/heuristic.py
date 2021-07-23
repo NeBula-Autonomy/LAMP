@@ -34,13 +34,16 @@ class MaximallySeperatedNodes(LoopClosureBatchSelector):
             for node in self.pose_graph.nodes:
                 keys_to_nodes[node.key] = node
             for idx, edge in enumerate(self.loop_candidates):
-                to_node = keys_to_nodes[edge.key_to]
-                from_node = keys_to_nodes[edge.key_from]
-                average_x = (to_node.pose.position.x + from_node.pose.position.x) / 2.0
-                average_y = (to_node.pose.position.y + from_node.pose.position.y) / 2.0
-                average_z = (to_node.pose.position.z + from_node.pose.position.z) / 2.0
-                all_points.append([average_x, average_y, average_z])
-                self.points_to_indexes[(average_x, average_y, average_z)] = idx
+                try:
+                    to_node = keys_to_nodes[edge.key_to]
+                    from_node = keys_to_nodes[edge.key_from]
+                    average_x = (to_node.pose.position.x + from_node.pose.position.x) / 2.0
+                    average_y = (to_node.pose.position.y + from_node.pose.position.y) / 2.0
+                    average_z = (to_node.pose.position.z + from_node.pose.position.z) / 2.0
+                    all_points.append([average_x, average_y, average_z])
+                    self.points_to_indexes[(average_x, average_y, average_z)] = idx
+                except KeyError:
+                    pass
             self.remaining_points = all_points
 
             if self.use_hull:
