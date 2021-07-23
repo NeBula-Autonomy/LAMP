@@ -202,7 +202,7 @@ bool WriteKeyedScansToFile(
     pcl::fromROSMsg(ks.scan, *scan);
     std::string pcd_file =
         output_folder + "/" + std::to_string(ks.key) + ".pcd";
-    pcl::io::savePCDFileASCII(pcd_file, *scan);
+    pcl::io::savePCDFileBinary(pcd_file, *scan);
   }
 
   return true;

@@ -101,6 +101,7 @@ public:
     }
 
     pcl::toROSMsg(*new_scan, new_ks->scan);
+    new_ks->key = original_ks.key;
   }
 
 protected:
