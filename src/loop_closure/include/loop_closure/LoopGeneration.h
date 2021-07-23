@@ -8,6 +8,7 @@
 #include <gtsam/geometry/Pose3.h>
 #include <map>
 #include <queue>
+#include <unordered_map>
 #include <vector>
 
 #include <pose_graph_msgs/LoopCandidate.h>

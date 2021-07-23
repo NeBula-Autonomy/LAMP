@@ -55,7 +55,7 @@ protected:
   std::deque<double> observability_score_;
 
   // Track max observability for each robot (different so need to normalize)
-  std::map<char, double> max_observability_;
+  std::unordered_map<char, double> max_observability_;
 
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
