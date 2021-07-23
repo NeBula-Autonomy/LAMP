@@ -287,13 +287,12 @@ void IcpLoopComputation::ComputeTransforms() {
       }
   }
   PublishLoopClosures();
-
 }
 
 void IcpLoopComputation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   ComputeTransforms();
 
-  if (loop_closure_pub_.getNumSubscribers() > 0 && output_queue_.size() > 0) {
+  if (loop_closure_pub_.getNumSubscribers() > 0) {
     PublishLoopClosures();
   }
 }
