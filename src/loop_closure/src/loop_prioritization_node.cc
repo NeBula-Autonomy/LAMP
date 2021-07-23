@@ -43,6 +43,11 @@ int main(int argc, char** argv) {
         ros::this_node::getName().c_str());
     return EXIT_FAILURE;
   }
+  std::vector<ros::AsyncSpinner> async_spinners =
+        loop_prioritize->SetAsyncSpinners(n);
+  for (auto spinner : async_spinners)
+    spinner.start();
+
   ros::spin();
 
   return EXIT_SUCCESS;

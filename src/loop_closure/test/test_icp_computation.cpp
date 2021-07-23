@@ -70,7 +70,7 @@ TEST_F(TestICPComputation, TestThreadedEqualsNonThreaded) {
     }
     for(gtsam::Key k=0; k < test_size; ++k){
         pose_graph_msgs::KeyedScan scan_msg;
-        scan_msg.key = k;
+        scan_msg.key = gtsam::Symbol('a', k);
 
         Eigen::Matrix4f transform_1 = Eigen::Matrix4f::Identity();
         // create point cloud object
@@ -92,7 +92,7 @@ TEST_F(TestICPComputation, TestThreadedEqualsNonThreaded) {
     pose_graph_msgs::PoseGraph graph;
     for (gtsam::Key k=0; k < test_size; ++k) {
         pose_graph_msgs::PoseGraphNode node;
-        node.key = k;
+        node.key = gtsam::Symbol('a', k);
         node.ID = "odom_node";
         node.pose.position.x = k;
         node.pose.position.y = 0;
@@ -103,8 +103,8 @@ TEST_F(TestICPComputation, TestThreadedEqualsNonThreaded) {
     //Make Candidates
     for(gtsam::Key k = 0; k < test_size-1; ++k){
             pose_graph_msgs::LoopCandidate candidate;
-            candidate.key_to = k;
-            candidate.key_from = k+1;
+            candidate.key_to = gtsam::Symbol('a', k);
+            candidate.key_from = gtsam::Symbol('a', k + 1);
             candidate.pose_from.position.x = 0;
             candidate.pose_from.position.y = 0;
             candidate.pose_from.position.z = 0;

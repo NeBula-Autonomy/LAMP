@@ -98,7 +98,6 @@ bool GenericLoopPrioritization::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void GenericLoopPrioritization::ProcessTimerCallback(
     const ros::TimerEvent& ev) {
-  PopulatePriorityQueue();
   if (priority_queue_.size() > 0 &&
       loop_candidate_pub_.getNumSubscribers() > 0) {
     PublishBestCandidates();
@@ -146,7 +145,9 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
       continue;
 
     if (!choose_best_) {
-      priority_queue_.push_back(best_candidate);
+      priority_queue_mutex_.lock();
+      priority_queue_.push_back(candidate);
+      priority_queue_mutex_.unlock();
     }
     // Track best candidate
     if (min_obs_from + min_obs_to > best_score) {
@@ -154,8 +155,12 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
       best_score = min_obs_from + min_obs_to;
     }
   }
-  if (choose_best_ && best_score > 0)
-    priority_queue_.push_back(best_candidate);
+  if (choose_best_ && best_score > 0) {
+      priority_queue_mutex_.lock();
+      priority_queue_.push_back(best_candidate);
+      priority_queue_mutex_.unlock();
+  }
+
   return;
 }
 
@@ -168,11 +173,16 @@ pose_graph_msgs::LoopCandidateArray
 GenericLoopPrioritization::GetBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
   output_msg.originator = 0;
+
+  priority_queue_mutex_.lock();
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
     output_msg.candidates.push_back(priority_queue_.front());
     priority_queue_.pop_front();
+    priority_queue_mutex_.unlock();
   }
+
+  priority_queue_mutex_.unlock();
   return output_msg;
 }
 
@@ -192,5 +202,6 @@ void GenericLoopPrioritization::KeyedScanCallback(
   // Add the key and scan.
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 }
+
 
 } // namespace lamp_loop_closure

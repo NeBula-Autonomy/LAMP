@@ -21,7 +21,7 @@ public:
     system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
     system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
-    system("rosparam set artifact_prefix 'l'");
+    system("rosparam set artifact_prefix 'A'");
 
     system("rosparam load $(rospack find "
            "point_cloud_filter)/config/parameters.yaml");
@@ -532,7 +532,7 @@ TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
   // Get the first artifact factor from ArtifactHandler
   std::shared_ptr<ArtifactData> new_data =
       ConstructArtifactData("artifact",
-                            gtsam::Symbol('l', 1),
+                            gtsam::Symbol('A', 1),
                             gtsam::Point3(9.7, 0, 0),
                             ros::Time(0.11));
 
@@ -560,14 +560,14 @@ TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
   // As this is a new artifact optimization should be false
   EXPECT_FALSE(GetOptFlag());
   // Check if l1 is added to values
-  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('A', 1)));
   // Check the position of the artifact
-  EXPECT_EQ(GetPose(gtsam::Symbol('l', 1)).translation(),
+  EXPECT_EQ(GetPose(gtsam::Symbol('A', 1)).translation(),
             gtsam::Point3(12.1, 0, 0));
 
   // Change time and send the message again
   new_data = ConstructArtifactData("artifact",
-                                   gtsam::Symbol('l', 1),
+                                   gtsam::Symbol('A', 1),
                                    gtsam::Point3(3.0, 0, 0),
                                    ros::Time(0.16));
 
@@ -577,17 +577,17 @@ TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
   // We are no longer optimizing the same artifact id from > 1 edge
   EXPECT_FALSE(GetOptFlag());
   // Check if l1 is added to values
-  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('A', 1)));
   // Check the position of the artifact
-  EXPECT_EQ(GetPose(gtsam::Symbol('l', 1)).translation(),
+  EXPECT_EQ(GetPose(gtsam::Symbol('A', 1)).translation(),
             gtsam::Point3(7.4, 0, 0));
   // Check the loop closure factor
   gtsam::NonlinearFactorGraph graph = GetNfg();
   std::vector<gtsam::Symbol> other_keys;
 
   for (auto factor : graph) {
-    if (factor->find(gtsam::Symbol('l', 1)) != factor->end()) {
-      if (factor->keys()[0] == gtsam::Symbol('l', 1)) {
+    if (factor->find(gtsam::Symbol('A', 1)) != factor->end()) {
+      if (factor->keys()[0] == gtsam::Symbol('A', 1)) {
         other_keys.push_back(factor->keys()[1]);
       } else {
         other_keys.push_back(factor->keys()[0]);
@@ -607,7 +607,7 @@ TEST_F(TestLampRobotArtifact, TestProcessArtifactData) {
 
   // Add a new failed factor as time is high
   new_data = ConstructArtifactData("survivor",
-                                   gtsam::Symbol('l', 2),
+                                   gtsam::Symbol('A', 2),
                                    gtsam::Point3(0.9, 0, 0),
                                    ros::Time(20.15));
 
@@ -655,7 +655,7 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
   // Get April tag data
   std::shared_ptr<AprilTagData> new_data =
       ConstructAprilData("april",
-                         gtsam::Symbol('l', 1),
+                         gtsam::Symbol('A', 1),
                          gtsam::Point3(9.7, 0, 0),
                          ros::Time(0.11),
                          "distal",
@@ -669,7 +669,7 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
   std::vector<gtsam::Symbol>& temp_keys = GetAprilNewKeys();
 
   // Check if l1 is added to values
-  EXPECT_FALSE(GetValues().exists(gtsam::Symbol('l', 1)));
+  EXPECT_FALSE(GetValues().exists(gtsam::Symbol('A', 1)));
 
   // Check if the artifact is in the Info Hash
   EXPECT_EQ(info_hash.size(), 1);
@@ -686,9 +686,9 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
   // April tags always lead to optimization
   EXPECT_TRUE(GetOptFlag());
   // Check if l1 is added to values
-  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('A', 1)));
   // Check the position of the April Tag
-  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('l', 1)).translation(),
+  EXPECT_EQ(GetValues().at<gtsam::Pose3>(gtsam::Symbol('A', 1)).translation(),
             gtsam::Point3(12.1, 0, 0));
   // Check the graph for prior
   gtsam::NonlinearFactorGraph graph = GetNfg();
@@ -696,7 +696,7 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
   // Number of factors for l1 (One should be prior and one between factor)
   int count = 0;
   for (auto factor : graph) {
-    if (factor->find(gtsam::Symbol('l', 1)) != factor->end()) {
+    if (factor->find(gtsam::Symbol('A', 1)) != factor->end()) {
       count = count + 1;
     }
   }
@@ -704,7 +704,7 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
 
   // Change time and send the message again
   new_data = ConstructAprilData("april",
-                                gtsam::Symbol('l', 1),
+                                gtsam::Symbol('A', 1),
                                 gtsam::Point3(7.8, 0, 0),
                                 ros::Time(0.16),
                                 "distal",
@@ -716,17 +716,17 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
   // April tags always optimize
   EXPECT_TRUE(GetOptFlag());
   // Check if l1 is added to values
-  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('l', 1)));
+  EXPECT_TRUE(GetValues().exists(gtsam::Symbol('A', 1)));
   // Check the position of the April Tag
-  EXPECT_EQ(GetPose(gtsam::Symbol('l', 1)).translation(),
+  EXPECT_EQ(GetPose(gtsam::Symbol('A', 1)).translation(),
             gtsam::Point3(12.1, 0, 0));
   // Check the loop closure factor
   graph = GetNfg();
   std::vector<gtsam::Symbol> other_keys;
 
   for (auto factor : graph) {
-    if (factor->find(gtsam::Symbol('l', 1)) != factor->end()) {
-      if (factor->keys()[0] == gtsam::Symbol('l', 1)) {
+    if (factor->find(gtsam::Symbol('A', 1)) != factor->end()) {
+      if (factor->keys()[0] == gtsam::Symbol('A', 1)) {
         other_keys.push_back(factor->keys()[1]);
       } else {
         other_keys.push_back(factor->keys()[0]);
@@ -746,7 +746,7 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
   // Number of factors for l1 (One should be prior and two between factors)
   count = 0;
   for (auto factor : graph) {
-    if (factor->find(gtsam::Symbol('l', 1)) != factor->end()) {
+    if (factor->find(gtsam::Symbol('A', 1)) != factor->end()) {
       count = count + 1;
     }
   }
@@ -754,7 +754,7 @@ TEST_F(TestLampRobotArtifact, TestProcessAprilTagData) {
 
   // Add a new failed factor as time is high
   new_data = ConstructAprilData("april",
-                                gtsam::Symbol('l', 2),
+                                gtsam::Symbol('A', 2),
                                 gtsam::Point3(0.9, 0, 0),
                                 ros::Time(20.15),
                                 "calib",
@@ -781,7 +781,7 @@ TEST_F(TestLampRobotArtifact, NonSequentialKeys) {
   // Construct the new Artifact data
   std::shared_ptr<ArtifactData> new_data =
       ConstructArtifactData("artifact",
-                            gtsam::Symbol('l', 1),
+                            gtsam::Symbol('A', 1),
                             gtsam::Point3(9.7, 0, 0),
                             ros::Time(0.11));
 
@@ -820,7 +820,7 @@ TEST_F(TestLampRobotArtifact, NonSequentialKeys) {
 
   // Construct the Artifact data
   new_data = ConstructArtifactData("artifact",
-                                   gtsam::Symbol('l', 1),
+                                   gtsam::Symbol('A', 1),
                                    gtsam::Point3(9.7, 0, 0),
                                    ros::Time(0.11));
 
@@ -1052,7 +1052,7 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 
   const gtsam::Symbol key0('a', 100);
   const gtsam::Symbol key1('a', 101);
-  const gtsam::Symbol key2('m', 0);
+  const gtsam::Symbol key2('A', 0);
 
   gtsam::Pose3 tf0(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
                    gtsam::Point3(420.0, 69.0, 0.0));
@@ -1209,7 +1209,7 @@ TEST_F(TestLampRobot, SaveLoadPoseGraph) {
 
   const gtsam::Symbol key0('a', 100);
   const gtsam::Symbol key1('a', 101);
-  const gtsam::Symbol key2('m', 0);
+  const gtsam::Symbol key2('A', 0);
 
   gtsam::Pose3 tf0(gtsam::Rot3(sqrt(0.5), 0, 0, sqrt(0.5)),
                    gtsam::Point3(420.0, 69.0, 0.0));

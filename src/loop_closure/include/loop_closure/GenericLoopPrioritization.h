@@ -33,8 +33,9 @@ public:
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
+
 protected:
-  void PopulatePriorityQueue() override;
+    void PopulatePriorityQueue() override;
 
   void PublishBestCandidates() override;
 

@@ -23,7 +23,7 @@ using namespace KimeraRPGO;
 TEST(RobustSolver, LandmarkPcm) {
   RobustSolverParams params;
   params.setPcm3DParams(5.0, 2.5, Verbosity::QUIET);
-  std::vector<char> special_symbs{'l'};  // for landmarks
+  std::vector<char> special_symbs{'A'};  // for landmarks
   params.specialSymbols = special_symbs;
 
   std::unique_ptr<RobustSolver> pgo =
@@ -117,7 +117,7 @@ TEST(RobustSolver, LandmarkPcm) {
 
   gtsam::NonlinearFactorGraph landmark_factors;
   gtsam::Values landmark_values;
-  gtsam::Key l0 = gtsam::Symbol('l', 0);
+  gtsam::Key l0 = gtsam::Symbol('A', 0);
   landmark_factors.add(gtsam::BetweenFactor<gtsam::Pose3>(
       a1, l0, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 1, 0)), lmk_noise));
   landmark_values.insert(l0,
@@ -157,7 +157,7 @@ TEST(RobustSolver, LandmarkPcm) {
 
   landmark_factors = gtsam::NonlinearFactorGraph();
   landmark_values = gtsam::Values();
-  gtsam::Key l1 = gtsam::Symbol('l', 1);
+  gtsam::Key l1 = gtsam::Symbol('A', 1);
   landmark_factors.add(gtsam::BetweenFactor<gtsam::Pose3>(
       a2, l1, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, -1, 0)), lmk_noise));
   landmark_values.insert(l1,
@@ -186,7 +186,7 @@ TEST(RobustSolver, LandmarkPcm) {
 TEST(RobustSolver, LandmarkPcmSimple) {
   RobustSolverParams params;
   params.setPcmSimple3DParams(0.3, 0.05, Verbosity::QUIET);
-  std::vector<char> special_symbs{'l'};  // for landmarks
+  std::vector<char> special_symbs{'A'};  // for landmarks
   params.specialSymbols = special_symbs;
 
   std::unique_ptr<RobustSolver> pgo =
@@ -280,7 +280,7 @@ TEST(RobustSolver, LandmarkPcmSimple) {
 
   gtsam::NonlinearFactorGraph landmark_factors;
   gtsam::Values landmark_values;
-  gtsam::Key l0 = gtsam::Symbol('l', 0);
+  gtsam::Key l0 = gtsam::Symbol('A', 0);
   landmark_factors.add(gtsam::BetweenFactor<gtsam::Pose3>(
       a1, l0, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 1, 0)), lmk_noise));
   landmark_values.insert(l0,
@@ -320,7 +320,7 @@ TEST(RobustSolver, LandmarkPcmSimple) {
 
   landmark_factors = gtsam::NonlinearFactorGraph();
   landmark_values = gtsam::Values();
-  gtsam::Key l1 = gtsam::Symbol('l', 1);
+  gtsam::Key l1 = gtsam::Symbol('A', 1);
   landmark_factors.add(gtsam::BetweenFactor<gtsam::Pose3>(
       a2, l1, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, -1, 0)), lmk_noise));
   landmark_values.insert(l1,
@@ -349,7 +349,7 @@ TEST(RobustSolver, LandmarkPcmSimple) {
 TEST(RobustSolver, LandmarkNoReject) {
   RobustSolverParams params;
   params.setNoRejection(Verbosity::QUIET);
-  std::vector<char> special_symbs{'l'};  // for landmarks
+  std::vector<char> special_symbs{'A'};  // for landmarks
   params.specialSymbols = special_symbs;
 
   std::unique_ptr<RobustSolver> pgo =
@@ -443,7 +443,7 @@ TEST(RobustSolver, LandmarkNoReject) {
 
   gtsam::NonlinearFactorGraph landmark_factors;
   gtsam::Values landmark_values;
-  gtsam::Key l0 = gtsam::Symbol('l', 0);
+  gtsam::Key l0 = gtsam::Symbol('A', 0);
   landmark_factors.add(gtsam::BetweenFactor<gtsam::Pose3>(
       a1, l0, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 1, 0)), lmk_noise));
   landmark_values.insert(l0,
@@ -490,7 +490,7 @@ TEST(RobustSolver, LandmarkNoReject) {
 
   landmark_factors = gtsam::NonlinearFactorGraph();
   landmark_values = gtsam::Values();
-  gtsam::Key l1 = gtsam::Symbol('l', 1);
+  gtsam::Key l1 = gtsam::Symbol('A', 1);
   landmark_factors.add(gtsam::BetweenFactor<gtsam::Pose3>(
       a2, l1, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, -1, 0)), lmk_noise));
   landmark_values.insert(l1,

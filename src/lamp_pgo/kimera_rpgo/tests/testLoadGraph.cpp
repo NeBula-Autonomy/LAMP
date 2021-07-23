@@ -135,7 +135,7 @@ TEST(RobustSolver, Load2) {
   // set up KimeraRPGO solver
   RobustSolverParams params;
   params.setPcm3DParams(100.0, 100.0, Verbosity::QUIET);
-  std::vector<char> special_symbs{'l', 'u'};  // for landmarks
+  std::vector<char> special_symbs{'A', 'u'};  // for landmarks
   params.specialSymbols = special_symbs;
 
   std::unique_ptr<RobustSolver> pgo =
