@@ -6,15 +6,33 @@
 
 #include <loop_closure/IcpLoopComputation.h>
 #include <loop_closure/TestUtils.h>
+#include <parameter_utils/ParameterUtils.h>
+#include <point_cloud_filter/PointCloudFilter.h>
 #include <ros/ros.h>
 #include <utils/CommonFunctions.h>
+#include <utils/CommonStructs.h>
 
 namespace tu = test_utils;
+namespace pu = parameter_utils;
 
 namespace lamp_loop_closure {
 class EvalIcpLoopCompute {
 public:
   bool LoadParameters(const ros::NodeHandle& n) {
+    // Load filtering parameters.
+    if (!pu::Get("filtering/grid_filter", filter_params_.grid_filter))
+      return false;
+    if (!pu::Get("filtering/grid_res", filter_params_.grid_res))
+      return false;
+    if (!pu::Get("filtering/random_filter", filter_params_.random_filter))
+      return false;
+    if (!pu::Get("filtering/decimate_percentage",
+                 filter_params_.decimate_percentage))
+      return false;
+    // Cap to [0.0, 1.0].
+    filter_params_.decimate_percentage =
+        std::min(1.0, std::max(0.0, filter_params_.decimate_percentage));
+
     return icp_lc_.LoadParameters(n);
   }
 
@@ -29,8 +47,8 @@ public:
   void
   AddKeyedScans(const std::vector<pose_graph_msgs::KeyedScan>& keyed_scans) {
     for (auto ks : keyed_scans) {
-      pose_graph_msgs::KeyedScan::Ptr ks_msg(
-          new pose_graph_msgs::KeyedScan(ks));
+      pose_graph_msgs::KeyedScan::Ptr ks_msg(new pose_graph_msgs::KeyedScan);
+      FilterKeyedScans(ks, ks_msg);
       icp_lc_.KeyedScanCallback(ks_msg);
     }
   }
@@ -55,8 +73,48 @@ public:
     return icp_lc_.output_queue_;
   }
 
+  void FilterKeyedScans(const pose_graph_msgs::KeyedScan& original_ks,
+                        pose_graph_msgs::KeyedScan::Ptr new_ks) {
+    PointCloud::Ptr new_scan(new PointCloud);
+    pcl::fromROSMsg(original_ks.scan, *new_scan);
+    // Filter and publish scan
+    const int n_points = static_cast<int>(
+        (1.0 - filter_params_.decimate_percentage) * new_scan->size());
+
+    // // Apply random downsampling to the keyed scan
+    if (filter_params_.random_filter) {
+      pcl::RandomSample<Point> random_filter;
+      random_filter.setSample(n_points);
+      random_filter.setInputCloud(new_scan);
+      random_filter.filter(*new_scan);
+    }
+
+    // Apply voxel grid filter to the keyed scan
+    if (filter_params_.grid_filter) {
+      // TODO - have option to turn on and off keyed scans
+      pcl::VoxelGrid<Point> grid;
+      grid.setLeafSize(filter_params_.grid_res,
+                       filter_params_.grid_res,
+                       filter_params_.grid_res);
+      grid.setInputCloud(new_scan);
+      grid.filter(*new_scan);
+    }
+
+    pcl::toROSMsg(*new_scan, new_ks->scan);
+  }
+
 protected:
   IcpLoopComputation icp_lc_;
+  struct FilterParams {
+    // Voxel grid filter.
+    bool grid_filter;
+    // Resolution of voxel grid filter.
+    double grid_res;
+    // Random downsampling filter.
+    bool random_filter;
+    // Percentage of points to discard. Must be between 0.0 and 1.0;
+    double decimate_percentage;
+  } filter_params_;
 };
 
 } // namespace lamp_loop_closure

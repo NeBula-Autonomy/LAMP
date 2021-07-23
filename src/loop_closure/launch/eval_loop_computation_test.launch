@@ -15,6 +15,8 @@
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
       <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>     
       <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/> 
+      <!-- Point cloud filter -->
+      <rosparam file="$(find point_cloud_filter)/config/lamp_parameters.yaml"/>
     </node>
 
   </group>
