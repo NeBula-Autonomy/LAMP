@@ -10,11 +10,13 @@
 #include <map>
 #include <queue>
 #include <vector>
+#include <mutex>
 
 #include <pose_graph_msgs/LoopCandidate.h>
 #include <pose_graph_msgs/LoopCandidateArray.h>
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <ros/callback_queue.h>
 
 namespace lamp_loop_closure {
 
@@ -31,6 +33,8 @@ public:
 
   virtual bool RegisterCallbacks(const ros::NodeHandle& n);
 
+  virtual std::vector<ros::AsyncSpinner> SetAsyncSpinners(const ros::NodeHandle& n);
+
 protected:
   // Use different priority metrics to populate output (priority) queue
   virtual void PopulatePriorityQueue() = 0;
@@ -41,6 +45,13 @@ protected:
 
   void InputCallback(
       const pose_graph_msgs::LoopCandidateArray::ConstPtr& input_candidates);
+
+
+
+  void ProcessPopulateCallback(const ros::TimerEvent& ev);
+
+  ros::CallbackQueue prioritize_queue_;
+  ros::Timer populate_timer_;
 
   // Define publishers and subscribers
   ros::Publisher loop_candidate_pub_;
@@ -54,6 +65,9 @@ protected:
   std::string param_ns_;
 
   double keyed_scans_max_delay_;
+
+
+  std::mutex priority_queue_mutex_;
 };
 
 } // namespace lamp_loop_closure

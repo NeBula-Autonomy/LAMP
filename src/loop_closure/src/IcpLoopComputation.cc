@@ -286,7 +286,6 @@ void IcpLoopComputation::ComputeTransforms() {
           }
       }
   }
-  PublishLoopClosures();
 }
 
 void IcpLoopComputation::ProcessTimerCallback(const ros::TimerEvent& ev) {

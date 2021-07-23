@@ -12,6 +12,7 @@
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <utils/CommonStructs.h>
+#include <mutex>
 
 #include "loop_closure/LoopPrioritization.h"
 
@@ -41,6 +42,7 @@ protected:
   void PublishBestCandidates() override;
 
   pose_graph_msgs::LoopCandidateArray GetBestCandidates() override;
+
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 
