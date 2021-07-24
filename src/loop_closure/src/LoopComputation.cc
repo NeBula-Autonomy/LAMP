@@ -52,7 +52,6 @@ void LoopComputation::PublishLoopClosures() {
   PublishCompletedAllStatus();
 }
 
-
 void LoopComputation::InputCallback(
     const pose_graph_msgs::LoopCandidateArray::ConstPtr& input_candidates) {
   for (auto candidate : input_candidates->candidates) {

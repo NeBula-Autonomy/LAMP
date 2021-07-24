@@ -25,6 +25,7 @@ class IcpLoopComputation : public LoopComputation {
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
   typedef pcl::search::KdTree<Point> KdTree;
   friend class TestLoopComputation;
+  friend class EvalIcpLoopCompute;
 
 public:
   IcpLoopComputation();
