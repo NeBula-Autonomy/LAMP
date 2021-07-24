@@ -211,7 +211,7 @@ base:
   #If <1, percent of total cores on machine
   #if >1 then use exactly n threads.
   #if == 1, don't use thread pool
-  icp_thread_pool_thread_count: 1
+  icp_thread_pool_thread_count: 0.8
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
