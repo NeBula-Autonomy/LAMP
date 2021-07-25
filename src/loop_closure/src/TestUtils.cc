@@ -294,8 +294,8 @@ bool ReadOdometryBagFile(const std::string& bag_file,
 bool ReadKeyedScansFromBagFile(
     const std::string& bag_file,
     const std::string& robot_name,
-    std::map<gtsam::Key, ros::Time>* keyed_stamps,
-    std::map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans) {
+    std::unordered_map<gtsam::Key, ros::Time>* keyed_stamps,
+    std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans) {
   rosbag::Bag bag;
   bag.open(bag_file);
 
@@ -347,14 +347,15 @@ bool ReadKeyedScansFromBagFile(
 
 void FindLoopCandidateFromGt(
     const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
-    const std::map<gtsam::Key, ros::Time>& keyed_stamps,
-    const std::map<gtsam::Key, pose_graph_msgs::KeyedScan>& keyed_scans,
+    const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
+    const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
+        keyed_scans,
     const double& radius,
     const size_t& key_dist,
     pose_graph_msgs::LoopCandidateArray* candidates,
-    std::map<gtsam::Key, gtsam::Pose3>* keyed_poses) {
+    std::unordered_map<gtsam::Key, gtsam::Pose3>* keyed_poses) {
   // First create gt keyed poses
-  std::map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
+  std::unordered_map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
   for (const auto& k : keyed_stamps) {
     gtsam::Pose3 kp;
     GetPoseAtTime(gt_pose_stamped, k.second, &kp);
@@ -383,8 +384,8 @@ void FindLoopCandidateFromGt(
 
 bool AppendNewCandidates(
     const pose_graph_msgs::LoopCandidateArray& candidates,
-    const std::map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
-    const std::map<gtsam::Key, pose_graph_msgs::KeyedScan>&
+    const std::unordered_map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
+    const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
         candidate_keyed_scans,
     const std::string& label,
     TestData* data) {
@@ -394,7 +395,7 @@ bool AppendNewCandidates(
     return false;
   }
 
-  std::map<gtsam::Key, size_t> reindexing;
+  std::unordered_map<gtsam::Key, size_t> reindexing;
 
   for (const auto& k : candidate_keyed_poses) {
     reindexing[k.first] = data->gt_keyed_poses_.size();
@@ -429,7 +430,7 @@ void OutputTestSummary(
     const std::string& output_dir,
     const std::string& test_name) {
   // First find number of candidates by label
-  std::map<std::string, size_t> expected_num_lc;
+  std::unordered_map<std::string, size_t> expected_num_lc;
   for (const auto& c : data.test_candidates_.candidates) {
     std::string label = data.labels_.at(c.key_from);
     if (expected_num_lc.find(label) == expected_num_lc.end()) {
@@ -440,13 +441,13 @@ void OutputTestSummary(
   }
 
   // Now evaluate
-  std::map<std::string, size_t> num_lc;
-  std::map<std::string, double> total_trans_error;
-  std::map<std::string, double> total_rot_error;
-  std::map<std::string, double> min_trans_error;
-  std::map<std::string, double> max_trans_error;
-  std::map<std::string, double> min_rot_error;
-  std::map<std::string, double> max_rot_error;
+  std::unordered_map<std::string, size_t> num_lc;
+  std::unordered_map<std::string, double> total_trans_error;
+  std::unordered_map<std::string, double> total_rot_error;
+  std::unordered_map<std::string, double> min_trans_error;
+  std::unordered_map<std::string, double> max_trans_error;
+  std::unordered_map<std::string, double> min_rot_error;
+  std::unordered_map<std::string, double> max_rot_error;
   std::vector<std::pair<double, double>> fit_to_trans_err;
   std::vector<std::pair<double, double>> fit_to_rot_err;
 

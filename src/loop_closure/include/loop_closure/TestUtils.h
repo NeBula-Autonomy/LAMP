@@ -8,6 +8,7 @@ Some utility functions for offline testing
 #define TEST_UTILS_H_
 
 #include <string>
+#include <unordered_map>
 
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/LoopCandidate.h>
@@ -63,22 +64,23 @@ bool ReadOdometryBagFile(const std::string& bag_file,
 bool ReadKeyedScansFromBagFile(
     const std::string& bag_file,
     const std::string& robot_name,
-    std::map<gtsam::Key, ros::Time>* keyed_stamps,
-    std::map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans);
+    std::unordered_map<gtsam::Key, ros::Time>* keyed_stamps,
+    std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans);
 
 void FindLoopCandidateFromGt(
     const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
-    const std::map<gtsam::Key, ros::Time>& keyed_stamps,
-    const std::map<gtsam::Key, pose_graph_msgs::KeyedScan>& keyed_scans,
+    const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
+    const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
+        keyed_scans,
     const double& radius,
     const size_t& key_dist,
     pose_graph_msgs::LoopCandidateArray* candidates,
-    std::map<gtsam::Key, gtsam::Pose3>* keyed_poses);
+    std::unordered_map<gtsam::Key, gtsam::Pose3>* keyed_poses);
 
 bool AppendNewCandidates(
     const pose_graph_msgs::LoopCandidateArray& candidates,
-    const std::map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
-    const std::map<gtsam::Key, pose_graph_msgs::KeyedScan>&
+    const std::unordered_map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
+    const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
         candidate_keyed_scans,
     const std::string& label,
     TestData* data);
