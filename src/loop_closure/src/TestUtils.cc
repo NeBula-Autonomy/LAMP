@@ -432,7 +432,7 @@ void OutputTestSummary(
   for (const auto& c : data.test_candidates_.candidates) {
     std::string label = data.labels_.at(c.key_from);
     if (expected_num_lc.find(label) == expected_num_lc.end()) {
-      expected_num_lc[label] = 0;
+      expected_num_lc[label] = 1;
     } else {
       expected_num_lc[label]++;
     }
