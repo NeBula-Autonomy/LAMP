@@ -1,8 +1,8 @@
 <launch>
   <arg name="robot_namespace" default="base1"/>
-  <arg name="dataset_path"    default="/home/costar/Downloads/LoopComputeBenchmark" />
-  <arg name="output_dir"      default="/home/costar/Downloads/LoopComputeEval" />
-  <arg name="test_name"       default="test" />
+  <arg name="dataset_path"    default="/data/LoopComputeBenchmark/PointCloudData" />
+  <arg name="test_name"       default="test7" />
+  <arg name="output_dir"      default="/data/LoopComputeBenchmark/Outputs" />
 
   <group ns="$(arg robot_namespace)">
 

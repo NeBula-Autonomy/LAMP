@@ -4,6 +4,7 @@
  * @author Yun Chang
  */
 #include <Eigen/LU>
+#include <cmath>
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/registration/ia_ransac.h>
@@ -20,8 +21,8 @@ namespace gu = geometry_utils;
 
 namespace lamp_loop_closure {
 
-IcpLoopComputation::IcpLoopComputation() : icp_computation_pool_(0){
-}
+IcpLoopComputation::IcpLoopComputation()
+  : icp_computation_pool_(0), b_accumulate_source_(false) {}
 IcpLoopComputation::~IcpLoopComputation() {}
 
 bool IcpLoopComputation::Initialize(const ros::NodeHandle& n) {
@@ -62,6 +63,7 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get(param_ns_ + "/max_tolerable_fitness", max_tolerable_fitness_))
     return false;
+
   // Load ICP parameters (from point_cloud localization)
   if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_))
     return false;
@@ -71,6 +73,13 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get(param_ns_ + "/icp_lc/threads", icp_threads_))
     return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/transform_thresholding",
+               icp_transform_thresholding_))
+    return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/max_translation", icp_max_translation_))
+    return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/max_rotation", icp_max_rotation_))
+    return false;
 
   // Load SAC parameters
   if (!pu::Get(param_ns_ + "/sac_ia/iterations", sac_iterations_))
@@ -78,6 +87,8 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/num_prev_scans", sac_num_prev_scans_))
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/num_next_scans", sac_num_next_scans_))
+    return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/b_accumulate_source", b_accumulate_source_))
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_))
     return false;
@@ -406,6 +417,13 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   *accumulated_target = *scan2;
   AccumulateScans(key2, accumulated_target);
 
+  PointCloud::Ptr accumulated_source(new PointCloud);
+  *accumulated_source = *scan1;
+
+  if (b_accumulate_source_) {
+    AccumulateScans(key1, accumulated_source);
+  }
+
   pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point>* icp;
   if (re_initialize_icp){
     icp = new  pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point>();
@@ -413,7 +431,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   } else {
       icp = &icp_;
   }
-  icp->setInputSource(scan1);
+  icp->setInputSource(accumulated_source);
   icp->setInputTarget(accumulated_target);
 
   ///// ICP initialization scheme
@@ -508,12 +526,31 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     return false;
   }
 
-  if (icp->getFitnessScore() > max_tolerable_fitness_) {
-    ROS_INFO_STREAM("ICP: Coverged but score is: " << icp->getFitnessScore());
+  *fitness_score = icp->getFitnessScore();
+
+  if (*fitness_score > max_tolerable_fitness_) {
+    ROS_INFO_STREAM("ICP: Converged or max iterations reached, but score: "
+                    << icp->getFitnessScore()
+                    << ", Exceeds threshold: " << max_tolerable_fitness_);
     return false;
   }
 
-  *fitness_score = icp->getFitnessScore();
+  // Check if the rotation exceeds thresholds
+  if (icp_transform_thresholding_ &&
+      (delta->translation.Norm() > icp_max_translation_ ||
+       delta->rotation.ToEulerZYX().X() > icp_max_rotation_ * M_PI / 180.0 ||
+       delta->rotation.ToEulerZYX().Y() > icp_max_rotation_ * M_PI / 180.0 ||
+       delta->rotation.ToEulerZYX().Z() > icp_max_rotation_ * M_PI / 180.0)) {
+    ROS_INFO_STREAM("ICP: Convered and passes fitness, but translation exceeds "
+                    "threshold.\n\tTranslation: "
+                    << delta->translation.Norm() << ", thresh: "
+                    << icp_max_translation_ << "\n\tRotation (RPY): ["
+                    << delta->rotation.ToEulerZYX().X() * 180.0 / M_PI << ", "
+                    << delta->rotation.ToEulerZYX().Y() * 180.0 / M_PI << ", "
+                    << delta->rotation.ToEulerZYX().Z() * 180.0 / M_PI << "]"
+                    << ", thresh: " << icp_max_rotation_);
+    return false;
+  }
 
   // Find transform from pose2 to pose1 from output of ICP_.
   *delta = gu::PoseInverse(*delta); // NOTE: gtsam need 2_Transform_1 while
@@ -592,7 +629,7 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   sac_ia.align(*aligned_output);
 
   sac_fitness_score = sac_ia.getFitnessScore();
-  ROS_INFO_STREAM("SAC fitness score" << sac_fitness_score);
+  ROS_INFO_STREAM("SAC fitness score: " << sac_fitness_score);
 
   *tf_out = sac_ia.getFinalTransformation();
 }
