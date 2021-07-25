@@ -518,19 +518,22 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   }
 
   // Check if the rotation exceeds thresholds
+  // Get difference between odom and icp estimation
+  gtsam::Pose3 diff = (pose2.between(pose1)).between(utils::ToGtsam(*delta));
+  gtsam::Vector diff_log = gtsam::Pose3::Logmap(diff);
+  double trans_diff =
+      std::sqrt(diff_log.tail(3).transpose() * diff_log.tail(3));
+  double rot_diff = std::sqrt(diff_log.head(3).transpose() * diff_log.head(3));
+  // Thresholding
   if (icp_transform_thresholding_ &&
-      (delta->translation.Norm() > icp_max_translation_ ||
-       delta->rotation.ToEulerZYX().X() > icp_max_rotation_ * M_PI / 180.0 ||
-       delta->rotation.ToEulerZYX().Y() > icp_max_rotation_ * M_PI / 180.0 ||
-       delta->rotation.ToEulerZYX().Z() > icp_max_rotation_ * M_PI / 180.0)) {
-    ROS_INFO_STREAM("ICP: Convered and passes fitness, but translation exceeds "
-                    "threshold.\n\tTranslation: "
-                    << delta->translation.Norm() << ", thresh: "
-                    << icp_max_translation_ << "\n\tRotation (RPY): ["
-                    << delta->rotation.ToEulerZYX().X() * 180.0 / M_PI << ", "
-                    << delta->rotation.ToEulerZYX().Y() * 180.0 / M_PI << ", "
-                    << delta->rotation.ToEulerZYX().Z() * 180.0 / M_PI << "]"
-                    << ", thresh: " << icp_max_rotation_);
+      (trans_diff > icp_max_translation_ ||
+       rot_diff > icp_max_rotation_ * M_PI / 180.0)) {
+    ROS_INFO_STREAM(
+        "ICP: Convered and passes fitness, but translation or rotation exceeds "
+        "threshold.\n\tTranslation: "
+        << trans_diff << ", thresh: " << icp_max_translation_
+        << "\n\tRotation (deg): " << rot_diff * 180.0 / M_PI << ", "
+        << ", thresh: " << icp_max_rotation_);
     return false;
   }
 
