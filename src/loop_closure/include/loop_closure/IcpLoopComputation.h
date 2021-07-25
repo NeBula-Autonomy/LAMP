@@ -55,7 +55,9 @@ public:
                         const gtsam::Pose3& pose1,
                         const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
-                        gtsam::Matrix66* covariance, bool re_initialize_icp=false);
+                        gtsam::Matrix66* covariance,
+                        double* fitness_score,
+                        bool re_initialize_icp = false);
 
   void GetSacInitialAlignment(PointCloud::ConstPtr source,
                               PointCloud::ConstPtr target,

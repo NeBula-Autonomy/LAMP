@@ -37,8 +37,8 @@ int main(int argc, char** argv) {
 
   // Then read the bags
   std::map<ros::Time, gtsam::Pose3> gt_pose_stamped;
-  std::map<gtsam::Key, ros::Time> pg_keyed_stamps;
-  std::map<gtsam::Key, pose_graph_msgs::KeyedScan> pg_keyed_scans;
+  std::unordered_map<gtsam::Key, ros::Time> pg_keyed_stamps;
+  std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan> pg_keyed_scans;
 
   ROS_INFO("Reading ground truth trajectory from %s with topic %s",
            gt_odom_bag.c_str(),
@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
   }
 
   pose_graph_msgs::LoopCandidateArray new_candidates;
-  std::map<gtsam::Key, gtsam::Pose3> pg_keyed_poses;
+  std::unordered_map<gtsam::Key, gtsam::Pose3> pg_keyed_poses;
   tu::FindLoopCandidateFromGt(gt_pose_stamped,
                               pg_keyed_stamps,
                               pg_keyed_scans,

@@ -238,13 +238,21 @@ void IcpLoopComputation::ComputeTransforms() {
 
           gu::Transform3 transform;
           gtsam::Matrix66 covariance;
-          if (!PerformAlignment(
-                  key_from, key_to, pose_from, pose_to, &transform, &covariance, false))
-              continue;
+          double icp_fitness;
+          if (!PerformAlignment(key_from,
+                                key_to,
+                                pose_from,
+                                pose_to,
+                                &transform,
+                                &covariance,
+                                &icp_fitness,
+                                false))
+            continue;
 
           // If aligned create PoseGraphEdge msg
           pose_graph_msgs::PoseGraphEdge loop_closure =
                   CreateLoopClosureEdge(key_from, key_to, transform, covariance);
+          loop_closure.range_error = icp_fitness;
           output_queue_.push_back(loop_closure);
       }
   } else {
@@ -278,12 +286,20 @@ void IcpLoopComputation::ComputeTransforms() {
 
               gu::Transform3 transform;
               gtsam::Matrix66 covariance;
-              if (!PerformAlignment(
-                      key_from, key_to, pose_from, pose_to, &transform, &covariance,true))
-                  return std::make_pair(false, pose_graph_msgs::PoseGraphEdge());
+              double icp_fitness;
+              if (!PerformAlignment(key_from,
+                                    key_to,
+                                    pose_from,
+                                    pose_to,
+                                    &transform,
+                                    &covariance,
+                                    &icp_fitness,
+                                    true))
+                return std::make_pair(false, pose_graph_msgs::PoseGraphEdge());
               // If aligned create PoseGraphEdge msg
               pose_graph_msgs::PoseGraphEdge loop_closure =
                       CreateLoopClosureEdge(key_from, key_to, transform, covariance);
+              loop_closure.range_error = icp_fitness;
               return std::make_pair(true, loop_closure);
           }));
 
@@ -355,7 +371,9 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
                                           const gtsam::Pose3& pose1,
                                           const gtsam::Pose3& pose2,
                                           gu::Transform3* delta,
-                                          gtsam::Matrix66* covariance, bool re_initialize_icp) {
+                                          gtsam::Matrix66* covariance,
+                                          double* fitness_score,
+                                          bool re_initialize_icp) {
   ROS_DEBUG_STREAM("Performing alignment between "
                    << gtsam::DefaultKeyFormatter(key1) << " and "
                    << gtsam::DefaultKeyFormatter(key2));
@@ -508,9 +526,9 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     return false;
   }
 
-  double fitness_score = icp->getFitnessScore();
+  *fitness_score = icp->getFitnessScore();
 
-  if (fitness_score > max_tolerable_fitness_) {
+  if (*fitness_score > max_tolerable_fitness_) {
     ROS_INFO_STREAM("ICP: Converged or max iterations reached, but score: "
                     << icp->getFitnessScore()
                     << ", Exceeds threshold: " << max_tolerable_fitness_);
@@ -549,7 +567,8 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   } else {
     switch (icp_covariance_method_) {
     case (IcpCovarianceMethod::POINT2POINT):
-      ComputeICPCovariancePointPoint(icp_result, T, fitness_score, *covariance);
+      ComputeICPCovariancePointPoint(
+          icp_result, T, *fitness_score, *covariance);
       break;
     case (IcpCovarianceMethod::POINT2PLANE):
       ComputeICPCovariancePointPlane(
