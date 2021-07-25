@@ -55,7 +55,9 @@ public:
                         const gtsam::Pose3& pose1,
                         const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
-                        gtsam::Matrix66* covariance, bool re_initialize_icp=false);
+                        gtsam::Matrix66* covariance,
+                        double* fitness_score,
+                        bool re_initialize_icp = false);
 
   void GetSacInitialAlignment(PointCloud::ConstPtr source,
                               PointCloud::ConstPtr target,
@@ -98,6 +100,9 @@ protected:
   double icp_corr_dist_;
   unsigned int icp_iterations_;
   unsigned int icp_threads_;
+  bool icp_transform_thresholding_;
+  double icp_max_translation_;
+  double icp_max_rotation_;
 
   // SAC feature alignment parameters
   unsigned int sac_iterations_;
@@ -120,6 +125,8 @@ protected:
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
   bool b_use_fixed_covariances_;
+
+  bool b_accumulate_source_;
 
   enum class IcpInitMethod {
     IDENTITY,
