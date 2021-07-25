@@ -426,7 +426,8 @@ bool AppendNewCandidates(
 void OutputTestSummary(
     const TestData& data,
     const std::vector<pose_graph_msgs::PoseGraphEdge>& results,
-    const std::string& output_file) {
+    const std::string& output_dir,
+    const std::string& test_name) {
   // First find number of candidates by label
   std::map<std::string, size_t> expected_num_lc;
   for (const auto& c : data.test_candidates_.candidates) {
@@ -446,6 +447,8 @@ void OutputTestSummary(
   std::map<std::string, double> max_trans_error;
   std::map<std::string, double> min_rot_error;
   std::map<std::string, double> max_rot_error;
+  std::vector<std::pair<double, double>> fit_to_trans_err;
+  std::vector<std::pair<double, double>> fit_to_rot_err;
 
   for (const auto& enl : expected_num_lc) {
     num_lc[enl.first] = 0;
@@ -474,6 +477,10 @@ void OutputTestSummary(
         std::sqrt(error_log.head(3).transpose() * error_log.head(3));
 
     // Populate stats
+    fit_to_trans_err.push_back(
+        std::pair<double, double>{edge.range_error, trans_error});
+    fit_to_rot_err.push_back(
+        std::pair<double, double>{edge.range_error, rot_error});
     total_trans_error[label] += trans_error;
     total_rot_error[label] += rot_error;
 
@@ -489,9 +496,10 @@ void OutputTestSummary(
 
   // Write to file
   std::ofstream outfile;
-  outfile.open(output_file);
+  std::string summary_file = output_dir + "/" + test_name + "_summary.csv";
+  outfile.open(summary_file);
   if (!outfile.is_open()) {
-    std::cout << "Unable to open output result file. \n";
+    std::cout << "Unable to open output result summary file. \n";
     return;
   }
   outfile << "label,expected,detected,percent-detected,mean-trans-error(m),min-"
@@ -511,6 +519,21 @@ void OutputTestSummary(
             << (max_rot_error[entry.first]) * 180 / 3.1416 << "\n";
   }
   outfile.close();
+
+  // Write fitness score and error to file
+  std::ofstream statfile;
+  std::string stat_file = output_dir + "/" + test_name + "_fitness.csv";
+  statfile.open(stat_file);
+  if (!statfile.is_open()) {
+    std::cout << "Unable to open output fitness error file. \n";
+    return;
+  }
+  statfile << "fitness,trans-error(m),rot-error(deg)\n";
+  for (size_t i = 0; i < fit_to_trans_err.size(); i++) {
+    statfile << fit_to_trans_err[i].first << "," << fit_to_trans_err[i].second
+             << "," << fit_to_rot_err[i].second * 180 / 3.1416 << "\n";
+  }
+  statfile.close();
 }
 
 } // namespace test_utils

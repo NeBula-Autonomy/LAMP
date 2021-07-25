@@ -124,9 +124,10 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "eval_loop_computation_test");
   ros::NodeHandle n("~");
 
-  std::string dataset_path, output_csv;
+  std::string dataset_path, output_dir, test_name;
   n.getParam("dataset_path", dataset_path);
-  n.getParam("output_csv", output_csv);
+  n.getParam("output_dir", output_dir);
+  n.getParam("test_name", test_name);
   // Load dataset
   tu::TestData test_data;
   ROS_INFO("Loading dataset from %s ...", dataset_path.c_str());
@@ -160,7 +161,7 @@ int main(int argc, char** argv) {
 
   ROS_INFO("Detected %d loop closures.", results.size());
 
-  tu::OutputTestSummary(test_data, results, output_csv);
+  tu::OutputTestSummary(test_data, results, output_dir, test_name);
 
   return EXIT_SUCCESS;
 }

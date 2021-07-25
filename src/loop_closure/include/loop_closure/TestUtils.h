@@ -86,7 +86,8 @@ bool AppendNewCandidates(
 void OutputTestSummary(
     const TestData& data,
     const std::vector<pose_graph_msgs::PoseGraphEdge>& results,
-    const std::string& output_file);
+    const std::string& output_dir,
+    const std::string& test_name);
 
 } // namespace test_utils
 #endif
