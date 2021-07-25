@@ -1,7 +1,7 @@
 <launch>
   <arg name="robot_namespace" default="base1"/>
-  <arg name="dataset_path"    default="/home/costar/Downloads/LoopComputeBenchmark" />
-  <arg name="output_csv"      default="/home/costar/Downloads/loop_eval.csv" />
+  <arg name="dataset_path"    default="/data/LoopComputeBenchmark/PointCloudData" />
+  <arg name="output_csv"      default="/data/LoopComputeBenchmark/Outputs/loop_eval_07.csv" />
 
   <group ns="$(arg robot_namespace)">
 
