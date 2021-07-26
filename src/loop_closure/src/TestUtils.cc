@@ -29,13 +29,26 @@ bool LoadExistingTestData(const std::string& file_path, TestData* data) {
     return false;
   }
 
+  std::string fake_lc_candidate_file = file_path + "/false_candidates.csv";
+  if (!LoadLoopCandidateFromCsv(fake_lc_candidate_file,
+                                &(data->fake_candidates_))) {
+    std::cout << "Failed to load fake loop candidates csv file. \n";
+    return false;
+  }
+
   // Then read the keyed poses and scans
   std::string keyed_poses_csv = file_path + "/keyed_poses.csv";
   if (!LoadKeydPosesAndScansFromFile(keyed_poses_csv,
                                      file_path,
-                                     &(data->gt_keyed_poses_),
+                                     &(data->odom_keyed_poses_),
                                      &(data->keyed_scans_),
                                      &(data->labels_))) {
+    std::cout << "Failed to load keyed poses and scans. \n";
+    return false;
+  }
+
+  std::string gt_keyed_poses_csv = file_path + "/gt_keyed_poses.csv";
+  if (!LoadKeydPosesFromFile(gt_keyed_poses_csv, &(data->gt_keyed_poses_))) {
     std::cout << "Failed to load keyed poses and scans. \n";
     return false;
   }
@@ -150,6 +163,61 @@ bool LoadKeydPosesAndScansFromFile(
     pcl::toROSMsg(*cloud, keyed_scan.scan);
     keyed_scan.key = key;
     keyed_scans->push_back(keyed_scan);
+
+    line_num++;
+  }
+  return true;
+}
+
+bool LoadKeydPosesFromFile(const std::string& csv_file_path,
+                           std::vector<gtsam::Pose3>* keyed_poses) {
+  // Make sure keyed poses and scans are empty
+  keyed_poses->clear();
+  // Create an input filestream
+  std::ifstream csv_file(csv_file_path);
+
+  // Make sure the file is open
+  if (!csv_file.is_open()) {
+    std::cout << "Unable to open keyed poses csv file \n";
+    return false;
+  }
+
+  // Read keyed poses line by line
+  std::string line;
+  int line_num = 0;
+  while (std::getline(csv_file, line)) {
+    std::stringstream ss(line);
+    // Keep track of the current column index
+    int idx = 0;
+    // Extract each integer
+    std::string entry;
+    std::vector<double> transrot; // x y z qx qy qz qw
+    size_t key;
+    std::string label;
+    std::stringstream linestream(line);
+    while (std::getline(linestream, entry, ',')) {
+      if (idx == 8) {
+        label = entry;
+        continue;
+      }
+      double val = std::stod(entry);
+      if (idx == 0) {
+        key = static_cast<size_t>(val);
+        if (key != line_num) {
+          std::cout
+              << "Key index does not match line number. Check file format. \n";
+          return false;
+        }
+      } else if (idx > 0 && idx < 8) {
+        transrot.push_back(val);
+      }
+      idx++;
+    }
+
+    // Create pose
+    keyed_poses->push_back(gtsam::Pose3(
+        gtsam::Rot3(transrot[6], transrot[3], transrot[4], transrot[5]),
+        gtsam::Point3(transrot[0], transrot[1], transrot[2])));
 
     line_num++;
   }
@@ -475,6 +543,7 @@ bool AppendNewCandidates(
 void OutputTestSummary(
     const TestData& data,
     const std::vector<pose_graph_msgs::PoseGraphEdge>& results,
+    const std::vector<pose_graph_msgs::PoseGraphEdge>& false_results,
     const std::string& output_dir,
     const std::string& test_name) {
   // First find number of candidates by label
@@ -488,8 +557,19 @@ void OutputTestSummary(
     }
   }
 
+  std::unordered_map<std::string, size_t> false_num_lc;
+  for (const auto& c : data.fake_candidates_.candidates) {
+    std::string label = data.labels_.at(c.key_from);
+    if (false_num_lc.find(label) == false_num_lc.end()) {
+      false_num_lc[label] = 1;
+    } else {
+      false_num_lc[label]++;
+    }
+  }
+
   // Now evaluate
   std::unordered_map<std::string, size_t> num_lc;
+  std::unordered_map<std::string, size_t> num_false_lc;
   std::unordered_map<std::string, double> total_trans_error;
   std::unordered_map<std::string, double> total_rot_error;
   std::unordered_map<std::string, double> min_trans_error;
@@ -543,6 +623,11 @@ void OutputTestSummary(
       max_rot_error[label] = rot_error;
   }
 
+  for (const auto& edge : false_results) {
+    std::string label = data.labels_.at(edge.key_from);
+    num_false_lc[label]++;
+  }
+
   // Write to file
   std::ofstream outfile;
   std::string summary_file = output_dir + "/" + test_name + "_summary.csv";
@@ -551,7 +636,8 @@ void OutputTestSummary(
     std::cout << "Unable to open output result summary file. \n";
     return;
   }
-  outfile << "label,expected,detected,percent-detected,mean-trans-error(m),min-"
+  outfile << "label,expected,detected,recall,false-positive-rate,mean-trans-"
+             "error(m),min-"
              "trans-error(m),max-trans-error(m),mean-rot-error(deg),min-rot-"
              "error(deg),max-rot-error(deg)\n";
   for (const auto& entry : expected_num_lc) {
@@ -559,6 +645,9 @@ void OutputTestSummary(
             << ","
             << static_cast<double>(num_lc[entry.first]) /
             static_cast<double>(entry.second)
+            << ","
+            << static_cast<double>(num_false_lc[entry.first]) /
+            static_cast<double>(false_num_lc[entry.first])
             << "," << total_trans_error[entry.first] / num_lc[entry.first]
             << "," << min_trans_error[entry.first] << ","
             << max_trans_error[entry.first] << ","

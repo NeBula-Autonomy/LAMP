@@ -40,6 +40,9 @@ bool LoadKeydPosesAndScansFromFile(
     std::vector<pose_graph_msgs::KeyedScan>* keyed_scans,
     std::vector<std::string>* keyed_labels);
 
+bool LoadKeydPosesFromFile(const std::string& csv_file_path,
+                           std::vector<gtsam::Pose3>* keyed_poses);
+
 bool WriteLoopCandidatesToFile(
     const pose_graph_msgs::LoopCandidateArray& candidates,
     const std::string& output_file);
@@ -96,6 +99,7 @@ bool AppendNewCandidates(
 void OutputTestSummary(
     const TestData& data,
     const std::vector<pose_graph_msgs::PoseGraphEdge>& results,
+    const std::vector<pose_graph_msgs::PoseGraphEdge>& false_results,
     const std::string& output_dir,
     const std::string& test_name);
 
