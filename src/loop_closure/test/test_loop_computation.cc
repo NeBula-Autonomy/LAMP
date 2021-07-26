@@ -39,12 +39,11 @@ class TestLoopComputation : public ::testing::Test {
 
   bool performAlignment(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
-                        const gtsam::Pose3& pose1,
-                        const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance) {
+    double fitness_score;
     return icp_compute_.PerformAlignment(
-        key1, key2, pose1, pose2, delta, covariance);
+        key1, key2, delta, covariance, &fitness_score);
   }
 
   void getSacInitialAlignment(PointCloud::ConstPtr source,
@@ -156,8 +155,6 @@ TEST_F(TestLoopComputation, PerformAlignment) {
   gtsam::Matrix66 covar;
   performAlignment(gtsam::Symbol('a', 1),
                    gtsam::Symbol('a', 0),
-                   gtsam::Pose3(),
-                   gtsam::Pose3(gtsam::Point3(0, 0, 0.99)),
                    &tf,
                    &covar);
 
