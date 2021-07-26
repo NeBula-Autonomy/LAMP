@@ -128,6 +128,8 @@ int main(int argc, char** argv) {
   n.getParam("dataset_path", dataset_path);
   n.getParam("output_dir", output_dir);
   n.getParam("test_name", test_name);
+  bool use_gt_odom;
+  n.getParam("use_gt_odom", use_gt_odom);
   // Load dataset
   tu::TestData test_data;
   ROS_INFO("Loading dataset from %s ...", dataset_path.c_str());
@@ -136,7 +138,7 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
   ROS_INFO("Loaded dataset with %d candidates.",
-           test_data.test_candidates_.candidates.size());
+           test_data.real_candidates_.candidates.size());
 
   lamp_loop_closure::EvalIcpLoopCompute evaluate;
   if (!evaluate.LoadParameters(n)) {
@@ -146,10 +148,14 @@ int main(int argc, char** argv) {
 
   // Add the keyed scans and keyed poses
   evaluate.AddKeyedScans(test_data.keyed_scans_);
-  evaluate.AddKeyedPoses(test_data.gt_keyed_poses_);
+  if (use_gt_odom) {
+    evaluate.AddKeyedPoses(test_data.gt_keyed_poses_);
+  } else {
+    evaluate.AddKeyedPoses(test_data.odom_keyed_poses_);
+  }
 
   // Now add the candidates
-  evaluate.AddLoopCandidates(test_data.test_candidates_);
+  evaluate.AddLoopCandidates(test_data.real_candidates_);
 
   ROS_INFO("Computing loop closures... ");
   // Compute

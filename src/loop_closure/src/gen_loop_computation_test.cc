@@ -33,10 +33,11 @@ int main(int argc, char** argv) {
   if (LoadExistingTestData(dataset_path, &test_data))
     ROS_INFO("Loaded dataset with %d candidates. Adding new data on top of "
              "existing...",
-             test_data.test_candidates_.candidates.size());
+             test_data.real_candidates_.candidates.size());
 
   // Then read the bags
   std::map<ros::Time, gtsam::Pose3> gt_pose_stamped;
+  std::map<gtsam::Key, gtsam::Pose3> pg_keyed_poses;
   std::unordered_map<gtsam::Key, ros::Time> pg_keyed_stamps;
   std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan> pg_keyed_scans;
 
@@ -51,31 +52,41 @@ int main(int argc, char** argv) {
 
   ROS_INFO("Reading keyed scans and poses from %s", lamp_bag.c_str());
 
-  if (!tu::ReadKeyedScansFromBagFile(
-          lamp_bag, robot_name, &pg_keyed_stamps, &pg_keyed_scans)) {
+  if (!tu::ReadKeyedScansAndPosesFromBagFile(lamp_bag,
+                                             robot_name,
+                                             &pg_keyed_stamps,
+                                             &pg_keyed_poses,
+                                             &pg_keyed_scans)) {
     ROS_ERROR("Failed to read keyed scans and pose graph. ");
     return EXIT_FAILURE;
   }
 
-  pose_graph_msgs::LoopCandidateArray new_candidates;
-  std::map<gtsam::Key, gtsam::Pose3> pg_keyed_poses;
+  pose_graph_msgs::LoopCandidateArray new_candidates, new_false_candidates;
+  std::map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
   tu::FindLoopCandidateFromGt(gt_pose_stamped,
                               pg_keyed_stamps,
-                              pg_keyed_scans,
                               radius_tol,
                               10,
                               &new_candidates,
-                              &pg_keyed_poses);
+                              &gt_keyed_poses);
+
+  tu::GenerateFalseLoopCandidateFromGt(
+      gt_pose_stamped, pg_keyed_stamps, &new_false_candidates);
 
   // Add these newly found candidates
-  if (!tu::AppendNewCandidates(
-          new_candidates, pg_keyed_poses, pg_keyed_scans, label, &test_data)) {
+  if (!tu::AppendNewCandidates(new_candidates,
+                               new_false_candidates,
+                               pg_keyed_poses,
+                               gt_keyed_poses,
+                               pg_keyed_scans,
+                               label,
+                               &test_data)) {
     ROS_ERROR("Failed to append new candidates. ");
     return EXIT_FAILURE;
   }
 
   ROS_INFO("Writing %d candidates to dataset. ",
-           test_data.test_candidates_.candidates.size());
+           test_data.real_candidates_.candidates.size());
   // Write to file
   if (!tu::WriteTestDataToFile(test_data, dataset_path)) {
     ROS_ERROR("Failed to write data to file. ");

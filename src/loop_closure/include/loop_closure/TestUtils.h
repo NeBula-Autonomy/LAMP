@@ -20,8 +20,10 @@ Some utility functions for offline testing
 namespace test_utils {
 
 struct TestData {
-  pose_graph_msgs::LoopCandidateArray test_candidates_;
+  pose_graph_msgs::LoopCandidateArray real_candidates_;
+  pose_graph_msgs::LoopCandidateArray fake_candidates_;
   std::vector<gtsam::Pose3> gt_keyed_poses_;
+  std::vector<gtsam::Pose3> odom_keyed_poses_;
   std::vector<pose_graph_msgs::KeyedScan> keyed_scans_;
   std::vector<std::string> labels_;
 };
@@ -61,25 +63,31 @@ bool ReadOdometryBagFile(const std::string& bag_file,
                          const std::string& topic_name,
                          std::map<ros::Time, gtsam::Pose3>* pose_stamped);
 
-bool ReadKeyedScansFromBagFile(
+bool ReadKeyedScansAndPosesFromBagFile(
     const std::string& bag_file,
     const std::string& robot_name,
     std::unordered_map<gtsam::Key, ros::Time>* keyed_stamps,
+    std::map<gtsam::Key, gtsam::Pose3>* keyed_poses,
     std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans);
 
 void FindLoopCandidateFromGt(
     const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
     const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
-    const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
-        keyed_scans,
     const double& radius,
     const size_t& key_dist,
     pose_graph_msgs::LoopCandidateArray* candidates,
-    std::map<gtsam::Key, gtsam::Pose3>* keyed_poses);
+    std::map<gtsam::Key, gtsam::Pose3>* gt_keyed_poses);
+
+void GenerateFalseLoopCandidateFromGt(
+    const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
+    const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
+    pose_graph_msgs::LoopCandidateArray* false_candidates);
 
 bool AppendNewCandidates(
     const pose_graph_msgs::LoopCandidateArray& candidates,
+    const pose_graph_msgs::LoopCandidateArray& other_candidates,
     const std::map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
+    const std::map<gtsam::Key, gtsam::Pose3>& gt_keyed_poses,
     const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
         candidate_keyed_scans,
     const std::string& label,
