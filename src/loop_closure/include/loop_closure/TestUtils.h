@@ -75,11 +75,11 @@ void FindLoopCandidateFromGt(
     const double& radius,
     const size_t& key_dist,
     pose_graph_msgs::LoopCandidateArray* candidates,
-    std::unordered_map<gtsam::Key, gtsam::Pose3>* keyed_poses);
+    std::map<gtsam::Key, gtsam::Pose3>* keyed_poses);
 
 bool AppendNewCandidates(
     const pose_graph_msgs::LoopCandidateArray& candidates,
-    const std::unordered_map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
+    const std::map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
     const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
         candidate_keyed_scans,
     const std::string& label,

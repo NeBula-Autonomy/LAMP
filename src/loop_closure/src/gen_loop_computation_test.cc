@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
   }
 
   pose_graph_msgs::LoopCandidateArray new_candidates;
-  std::unordered_map<gtsam::Key, gtsam::Pose3> pg_keyed_poses;
+  std::map<gtsam::Key, gtsam::Pose3> pg_keyed_poses;
   tu::FindLoopCandidateFromGt(gt_pose_stamped,
                               pg_keyed_stamps,
                               pg_keyed_scans,

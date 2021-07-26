@@ -353,9 +353,9 @@ void FindLoopCandidateFromGt(
     const double& radius,
     const size_t& key_dist,
     pose_graph_msgs::LoopCandidateArray* candidates,
-    std::unordered_map<gtsam::Key, gtsam::Pose3>* keyed_poses) {
+    std::map<gtsam::Key, gtsam::Pose3>* keyed_poses) {
   // First create gt keyed poses
-  std::unordered_map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
+  std::map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
   for (const auto& k : keyed_stamps) {
     gtsam::Pose3 kp;
     GetPoseAtTime(gt_pose_stamped, k.second, &kp);
@@ -384,7 +384,7 @@ void FindLoopCandidateFromGt(
 
 bool AppendNewCandidates(
     const pose_graph_msgs::LoopCandidateArray& candidates,
-    const std::unordered_map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
+    const std::map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
     const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
         candidate_keyed_scans,
     const std::string& label,
