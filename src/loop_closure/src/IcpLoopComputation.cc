@@ -429,7 +429,10 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   // initializing with odom measurement
   // or initialize with 0 translation byt rotation from odom
   Eigen::Matrix4f initial_guess;
-
+  gtsam::Pose3 pose_21 = keyed_poses_[key2].between(keyed_poses_[key1]);
+  initial_guess = Eigen::Matrix4f::Identity(4, 4);
+  initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
+  initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
   switch (icp_init_method_) {
   case IcpInitMethod::IDENTITY: // initialize with idientity
   {
@@ -438,16 +441,11 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
 
   case IcpInitMethod::ODOMETRY: // initialize with odometry
   {
-    gtsam::Pose3 pose_21 = keyed_poses_[key2].between(keyed_poses_[key1]);
-    initial_guess = Eigen::Matrix4f::Identity(4, 4);
-    initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
-    initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
   } break;
 
   case IcpInitMethod::ODOM_ROTATION: // initialize with zero translation but
                                      // rot from odom
   {
-    gtsam::Pose3 pose_21 = keyed_poses_[key2].between(keyed_poses_[key1]);
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
   } break;
@@ -620,7 +618,7 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   sac_ia.setInputTarget(target_keypoints);
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
-  sac_ia.align(*aligned_output);
+  sac_ia.align(*aligned_output, *tf_out);
 
   sac_fitness_score = sac_ia.getFitnessScore();
   ROS_INFO_STREAM("SAC fitness score: " << sac_fitness_score);
