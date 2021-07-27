@@ -108,25 +108,25 @@ bool ObservabilityLoopPrioritization::RegisterCallbacks(
 
 void ObservabilityLoopPrioritization::ProcessTimerCallback(
     const ros::TimerEvent& ev) {
-  PrunePriorityQueue();
   //ROS_INFO_STREAM("Priority Queue Size:" << priority_queue_.size());
   if (priority_queue_.size() > 0 &&
       loop_candidate_pub_.getNumSubscribers() > 0) {
+    PrunePriorityQueue();
     PublishBestCandidates();
   }
 }
 
 void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
+  if (keyed_observability_.size() == 0)
+    return;
   size_t n = candidate_queue_.size();
   for (size_t i = 0; i < n; i++) {
     auto candidate = candidate_queue_.front();
     candidate_queue_.pop();
 
     // Check if keyed scans exist
-    if (keyed_observability_.find(candidate.key_from) ==
-            keyed_observability_.end() ||
-        keyed_observability_.find(candidate.key_to) ==
-            keyed_observability_.end()) {
+    if (keyed_observability_.count(candidate.key_from) == 0 ||
+        keyed_observability_.count(candidate.key_to) == 0) {
       ROS_WARN("Keyed scans do not exist and observability score not yet "
                "calculated. ");
       if ((ros::Time::now() - candidate.header.stamp).toSec() <
@@ -213,7 +213,7 @@ ObservabilityLoopPrioritization::GetBestCandidates() {
 void ObservabilityLoopPrioritization::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
-  if (keyed_observability_.find(key) != keyed_observability_.end()) {
+  if (keyed_observability_.count(key) == 0) {
     ROS_DEBUG_STREAM("KeyedScanCallback: Key "
                      << gtsam::DefaultKeyFormatter(key)
                      << " already processed. Not adding.");
@@ -227,7 +227,7 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
   Eigen::Matrix<double, 3, 1> obs_eigenv;
   utils::ComputeIcpObservability(
       scan, normals_radius_, num_threads_, &obs_eigenv);
-  if (max_observability_.find(prefix) == max_observability_.end() ||
+  if (max_observability_.count(prefix) == 0 ||
       max_observability_[prefix] < obs_eigenv.minCoeff())
     max_observability_[prefix] = obs_eigenv.minCoeff();
   double observability = obs_eigenv.minCoeff() / max_observability_[prefix];
