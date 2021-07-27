@@ -213,18 +213,15 @@ ObservabilityLoopPrioritization::GetBestCandidates() {
 void ObservabilityLoopPrioritization::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
-  if (keyed_scans_.find(key) != keyed_scans_.end()) {
+  if (keyed_observability_.find(key) != keyed_observability_.end()) {
     ROS_DEBUG_STREAM("KeyedScanCallback: Key "
                      << gtsam::DefaultKeyFormatter(key)
-                     << " already has a scan. Not adding.");
+                     << " already processed. Not adding.");
     return;
   }
 
   pcl::PointCloud<Point>::Ptr scan(new pcl::PointCloud<Point>);
   pcl::fromROSMsg(scan_msg->scan, *scan);
-
-  // Add the key and scan.
-  keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
 
   char prefix = gtsam::Symbol(key).chr();
   Eigen::Matrix<double, 3, 1> obs_eigenv;
