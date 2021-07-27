@@ -123,53 +123,23 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     candidate_queue_.pop();
 
     // Check if keyed scans exist
-    if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
-        keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
-      ROS_WARN("Keyed scans do not exist. ");
+    if (keyed_observability_.find(candidate.key_from) ==
+            keyed_observability_.end() ||
+        keyed_observability_.find(candidate.key_to) ==
+            keyed_observability_.end()) {
+      ROS_WARN("Keyed scans do not exist and observability score not yet "
+               "calculated. ");
       if ((ros::Time::now() - candidate.header.stamp).toSec() <
           keyed_scans_max_delay_)
         candidate_queue_.push(candidate);
       continue;
     }
 
-    // Get prefix
-    char prefix_from = gtsam::Symbol(candidate.key_from).chr();
-    double min_obs_from, min_obs_to;
-    if (keyed_observability_.find(candidate.key_from) ==
-        keyed_observability_.end()) {
-      Eigen::Matrix<double, 3, 1> obs_eigenv_from;
-      utils::ComputeIcpObservability(keyed_scans_[candidate.key_from],
-                                     normals_radius_,
-                                     num_threads_,
-                                     &obs_eigenv_from);
-      if (max_observability_.find(prefix_from) == max_observability_.end() ||
-          max_observability_[prefix_from] < obs_eigenv_from.minCoeff())
-        max_observability_[prefix_from] = obs_eigenv_from.minCoeff();
-      min_obs_from =
-          obs_eigenv_from.minCoeff() / max_observability_[prefix_from];
-      keyed_observability_[candidate.key_from] = min_obs_from;
-    } else {
-      min_obs_from = keyed_observability_[candidate.key_from];
-    }
+    double min_obs_from = keyed_observability_[candidate.key_from];
     if (min_obs_from < min_observability_)
       continue;
 
-    char prefix_to = gtsam::Symbol(candidate.key_to).chr();
-    if (keyed_observability_.find(candidate.key_to) ==
-        keyed_observability_.end()) {
-      Eigen::Matrix<double, 3, 1> obs_eigenv_to;
-      utils::ComputeIcpObservability(keyed_scans_[candidate.key_to],
-                                     normals_radius_,
-                                     num_threads_,
-                                     &obs_eigenv_to);
-      if (max_observability_.find(prefix_to) == max_observability_.end() ||
-          max_observability_[prefix_to] < obs_eigenv_to.minCoeff())
-        max_observability_[prefix_to] = obs_eigenv_to.minCoeff();
-      min_obs_to = obs_eigenv_to.minCoeff() / max_observability_[prefix_to];
-      keyed_observability_[candidate.key_to] = min_obs_to;
-    } else {
-      min_obs_to = keyed_observability_[candidate.key_to];
-    }
+    double min_obs_to = keyed_observability_[candidate.key_to];
     if (min_obs_to < min_observability_)
       continue;
 
@@ -255,8 +225,18 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
 
   // Add the key and scan.
   keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
+
+  char prefix = gtsam::Symbol(key).chr();
+  Eigen::Matrix<double, 3, 1> obs_eigenv;
+  utils::ComputeIcpObservability(
+      scan, normals_radius_, num_threads_, &obs_eigenv);
+  if (max_observability_.find(prefix) == max_observability_.end() ||
+      max_observability_[prefix] < obs_eigenv.minCoeff())
+    max_observability_[prefix] = obs_eigenv.minCoeff();
+  double observability = obs_eigenv.minCoeff() / max_observability_[prefix];
+
+  keyed_observability_.insert(
+      std::pair<gtsam::Key, double>(key, observability));
 }
-
-
 
 } // namespace lamp_loop_closure
