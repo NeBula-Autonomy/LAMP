@@ -233,16 +233,12 @@ void IcpLoopComputation::ComputeTransforms() {
 
           gtsam::Key key_from = candidate.key_from;
           gtsam::Key key_to = candidate.key_to;
-          gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
-          gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
 
           gu::Transform3 transform;
           gtsam::Matrix66 covariance;
           double icp_fitness;
           if (!PerformAlignment(key_from,
                                 key_to,
-                                pose_from,
-                                pose_to,
                                 &transform,
                                 &covariance,
                                 &icp_fitness,
@@ -281,16 +277,12 @@ void IcpLoopComputation::ComputeTransforms() {
           futures.emplace_back(icp_computation_pool_.enqueue([&, candidate]() {
               gtsam::Key key_from = candidate.key_from;
               gtsam::Key key_to = candidate.key_to;
-              gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
-              gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
 
               gu::Transform3 transform;
               gtsam::Matrix66 covariance;
               double icp_fitness;
               if (!PerformAlignment(key_from,
                                     key_to,
-                                    pose_from,
-                                    pose_to,
                                     &transform,
                                     &covariance,
                                     &icp_fitness,
@@ -368,8 +360,6 @@ void IcpLoopComputation::KeyedPoseCallback(
 
 bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
                                           const gtsam::Symbol& key2,
-                                          const gtsam::Pose3& pose1,
-                                          const gtsam::Pose3& pose2,
                                           gu::Transform3* delta,
                                           gtsam::Matrix66* covariance,
                                           double* fitness_score,
@@ -439,7 +429,10 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   // initializing with odom measurement
   // or initialize with 0 translation byt rotation from odom
   Eigen::Matrix4f initial_guess;
-
+  gtsam::Pose3 pose_21 = keyed_poses_[key2].between(keyed_poses_[key1]);
+  initial_guess = Eigen::Matrix4f::Identity(4, 4);
+  initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
+  initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
   switch (icp_init_method_) {
   case IcpInitMethod::IDENTITY: // initialize with idientity
   {
@@ -448,16 +441,11 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
 
   case IcpInitMethod::ODOMETRY: // initialize with odometry
   {
-    gtsam::Pose3 pose_21 = pose2.between(pose1);
-    initial_guess = Eigen::Matrix4f::Identity(4, 4);
-    initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
-    initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
   } break;
 
   case IcpInitMethod::ODOM_ROTATION: // initialize with zero translation but
                                      // rot from odom
   {
-    gtsam::Pose3 pose_21 = pose2.between(pose1);
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
   } break;
@@ -537,7 +525,8 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
 
   // Check if the rotation exceeds thresholds
   // Get difference between odom and icp estimation
-  gtsam::Pose3 diff = (pose2.between(pose1)).between(utils::ToGtsam(*delta));
+  gtsam::Pose3 diff = (keyed_poses_[key2].between(keyed_poses_[key1]))
+                          .between(utils::ToGtsam(*delta));
   gtsam::Vector diff_log = gtsam::Pose3::Logmap(diff);
   double trans_diff =
       std::sqrt(diff_log.tail(3).transpose() * diff_log.tail(3));
@@ -629,7 +618,7 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   sac_ia.setInputTarget(target_keypoints);
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
-  sac_ia.align(*aligned_output);
+  sac_ia.align(*aligned_output, *tf_out);
 
   sac_fitness_score = sac_ia.getFitnessScore();
   ROS_INFO_STREAM("SAC fitness score: " << sac_fitness_score);

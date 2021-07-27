@@ -24,8 +24,15 @@ namespace test_utils {
 bool LoadExistingTestData(const std::string& file_path, TestData* data) {
   // First read loop candidate
   std::string lc_candidate_file = file_path + "/candidates.csv";
-  if (!LoadLoopCandidateFromCsv(lc_candidate_file, &(data->test_candidates_))) {
+  if (!LoadLoopCandidateFromCsv(lc_candidate_file, &(data->real_candidates_))) {
     std::cout << "Failed to load loop candidates csv file. \n";
+    return false;
+  }
+
+  std::string fake_lc_candidate_file = file_path + "/false_candidates.csv";
+  if (!LoadLoopCandidateFromCsv(fake_lc_candidate_file,
+                                &(data->fake_candidates_))) {
+    std::cout << "Failed to load fake loop candidates csv file. \n";
     return false;
   }
 
@@ -33,9 +40,15 @@ bool LoadExistingTestData(const std::string& file_path, TestData* data) {
   std::string keyed_poses_csv = file_path + "/keyed_poses.csv";
   if (!LoadKeydPosesAndScansFromFile(keyed_poses_csv,
                                      file_path,
-                                     &(data->gt_keyed_poses_),
+                                     &(data->odom_keyed_poses_),
                                      &(data->keyed_scans_),
                                      &(data->labels_))) {
+    std::cout << "Failed to load keyed poses and scans. \n";
+    return false;
+  }
+
+  std::string gt_keyed_poses_csv = file_path + "/gt_keyed_poses.csv";
+  if (!LoadKeydPosesFromFile(gt_keyed_poses_csv, &(data->gt_keyed_poses_))) {
     std::cout << "Failed to load keyed poses and scans. \n";
     return false;
   }
@@ -156,6 +169,61 @@ bool LoadKeydPosesAndScansFromFile(
   return true;
 }
 
+bool LoadKeydPosesFromFile(const std::string& csv_file_path,
+                           std::vector<gtsam::Pose3>* keyed_poses) {
+  // Make sure keyed poses and scans are empty
+  keyed_poses->clear();
+  // Create an input filestream
+  std::ifstream csv_file(csv_file_path);
+
+  // Make sure the file is open
+  if (!csv_file.is_open()) {
+    std::cout << "Unable to open keyed poses csv file \n";
+    return false;
+  }
+
+  // Read keyed poses line by line
+  std::string line;
+  int line_num = 0;
+  while (std::getline(csv_file, line)) {
+    std::stringstream ss(line);
+    // Keep track of the current column index
+    int idx = 0;
+    // Extract each integer
+    std::string entry;
+    std::vector<double> transrot; // x y z qx qy qz qw
+    size_t key;
+    std::string label;
+    std::stringstream linestream(line);
+    while (std::getline(linestream, entry, ',')) {
+      if (idx == 8) {
+        label = entry;
+        continue;
+      }
+      double val = std::stod(entry);
+      if (idx == 0) {
+        key = static_cast<size_t>(val);
+        if (key != line_num) {
+          std::cout
+              << "Key index does not match line number. Check file format. \n";
+          return false;
+        }
+      } else if (idx > 0 && idx < 8) {
+        transrot.push_back(val);
+      }
+      idx++;
+    }
+
+    // Create pose
+    keyed_poses->push_back(gtsam::Pose3(
+        gtsam::Rot3(transrot[6], transrot[3], transrot[4], transrot[5]),
+        gtsam::Point3(transrot[0], transrot[1], transrot[2])));
+
+    line_num++;
+  }
+  return true;
+}
+
 bool WriteLoopCandidatesToFile(
     const pose_graph_msgs::LoopCandidateArray& candidates,
     const std::string& output_file) {
@@ -210,8 +278,14 @@ bool WriteKeyedScansToFile(
 
 bool WriteTestDataToFile(const TestData& data, const std::string& output_dir) {
   std::string candidate_file = output_dir + "/candidates.csv";
-  if (!WriteLoopCandidatesToFile(data.test_candidates_, candidate_file)) {
+  if (!WriteLoopCandidatesToFile(data.real_candidates_, candidate_file)) {
     std::cout << "Failed to write loop candidates to csv. \n";
+    return false;
+  }
+
+  std::string false_candidate_file = output_dir + "/false_candidates.csv";
+  if (!WriteLoopCandidatesToFile(data.fake_candidates_, false_candidate_file)) {
+    std::cout << "Failed to write false loop candidates to csv. \n";
     return false;
   }
 
@@ -221,8 +295,16 @@ bool WriteTestDataToFile(const TestData& data, const std::string& output_dir) {
     return false;
   }
 
+  std::string gt_poses_file = output_dir + "/gt_keyed_poses.csv";
+  if (!WriteKeyedPosesToFile(
+          data.gt_keyed_poses_, data.labels_, gt_poses_file)) {
+    std::cout << "Failed to save gt keyed poses. \n";
+    return false;
+  }
+
   std::string poses_file = output_dir + "/keyed_poses.csv";
-  if (!WriteKeyedPosesToFile(data.gt_keyed_poses_, data.labels_, poses_file)) {
+  if (!WriteKeyedPosesToFile(
+          data.odom_keyed_poses_, data.labels_, poses_file)) {
     std::cout << "Failed to save keyed poses. \n";
     return false;
   }
@@ -291,10 +373,11 @@ bool ReadOdometryBagFile(const std::string& bag_file,
   return true;
 }
 
-bool ReadKeyedScansFromBagFile(
+bool ReadKeyedScansAndPosesFromBagFile(
     const std::string& bag_file,
     const std::string& robot_name,
     std::unordered_map<gtsam::Key, ros::Time>* keyed_stamps,
+    std::map<gtsam::Key, gtsam::Pose3>* keyed_poses,
     std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans) {
   rosbag::Bag bag;
   bag.open(bag_file);
@@ -313,9 +396,12 @@ bool ReadKeyedScansFromBagFile(
     pose_graph_msgs::PoseGraph::ConstPtr p =
         m.instantiate<pose_graph_msgs::PoseGraph>();
     if (p != nullptr)
-      for (const auto& n : p->nodes)
+      for (const auto& n : p->nodes) {
+        keyed_poses->insert(
+            std::pair<gtsam::Key, gtsam::Pose3>{n.key, utils::ToGtsam(n.pose)});
         keyed_stamps->insert(
             std::pair<gtsam::Key, ros::Time>{n.key, n.header.stamp});
+      }
   }
   bag.close();
 
@@ -348,24 +434,20 @@ bool ReadKeyedScansFromBagFile(
 void FindLoopCandidateFromGt(
     const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
     const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
-    const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
-        keyed_scans,
     const double& radius,
     const size_t& key_dist,
     pose_graph_msgs::LoopCandidateArray* candidates,
-    std::unordered_map<gtsam::Key, gtsam::Pose3>* keyed_poses) {
+    std::map<gtsam::Key, gtsam::Pose3>* gt_keyed_poses) {
   // First create gt keyed poses
-  std::unordered_map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
   for (const auto& k : keyed_stamps) {
     gtsam::Pose3 kp;
     GetPoseAtTime(gt_pose_stamped, k.second, &kp);
-    gt_keyed_poses[k.first] = kp;
+    gt_keyed_poses->insert(std::pair<gtsam::Key, gtsam::Pose3>{k.first, kp});
   }
-  *keyed_poses = gt_keyed_poses; // (TODO: should we use gt here or estimated?)
 
   // Now find loop closures
-  for (const auto& m : gt_keyed_poses) {
-    for (const auto& n : gt_keyed_poses) {
+  for (const auto& m : *gt_keyed_poses) {
+    for (const auto& n : *gt_keyed_poses) {
       if (m.first - n.first > key_dist) {
         if ((m.second.translation() - n.second.translation()).norm() < radius) {
           // Create loop closure
@@ -382,9 +464,35 @@ void FindLoopCandidateFromGt(
   }
 }
 
+void GenerateFalseLoopCandidateFromGt(
+    const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
+    const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
+    pose_graph_msgs::LoopCandidateArray* false_candidates) {
+  size_t n = 100;
+  while (false_candidates->candidates.size() < n) {
+    auto it = keyed_stamps.begin();
+    std::advance(it, rand() % keyed_stamps.size());
+    gtsam::Key key_1 = it->first;
+    it = keyed_stamps.begin();
+    std::advance(it, rand() % keyed_stamps.size());
+    gtsam::Key key_2 = it->first;
+    gtsam::Pose3 p1, p2;
+    GetPoseAtTime(gt_pose_stamped, keyed_stamps.at(key_1), &p1);
+    GetPoseAtTime(gt_pose_stamped, keyed_stamps.at(key_2), &p2);
+    if ((p1.translation() - p2.translation()).norm() > 10) {
+      pose_graph_msgs::LoopCandidate cand;
+      cand.key_from = key_1;
+      cand.key_to = key_2;
+      false_candidates->candidates.push_back(cand);
+    }
+  }
+}
+
 bool AppendNewCandidates(
     const pose_graph_msgs::LoopCandidateArray& candidates,
-    const std::unordered_map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
+    const pose_graph_msgs::LoopCandidateArray& other_candidates,
+    const std::map<gtsam::Key, gtsam::Pose3>& candidate_keyed_poses,
+    const std::map<gtsam::Key, gtsam::Pose3>& gt_keyed_poses,
     const std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>&
         candidate_keyed_scans,
     const std::string& label,
@@ -399,7 +507,8 @@ bool AppendNewCandidates(
 
   for (const auto& k : candidate_keyed_poses) {
     reindexing[k.first] = data->gt_keyed_poses_.size();
-    data->gt_keyed_poses_.push_back(k.second);
+    data->odom_keyed_poses_.push_back(k.second);
+    data->gt_keyed_poses_.push_back(gt_keyed_poses.at(k.first));
     data->labels_.push_back(label);
   }
 
@@ -419,7 +528,14 @@ bool AppendNewCandidates(
     pose_graph_msgs::LoopCandidate new_c = c;
     new_c.key_from = reindexing[c.key_from];
     new_c.key_to = reindexing[c.key_to];
-    data->test_candidates_.candidates.push_back(new_c);
+    data->real_candidates_.candidates.push_back(new_c);
+  }
+
+  for (const auto& c : other_candidates.candidates) {
+    pose_graph_msgs::LoopCandidate new_c = c;
+    new_c.key_from = reindexing[c.key_from];
+    new_c.key_to = reindexing[c.key_to];
+    data->fake_candidates_.candidates.push_back(new_c);
   }
   return true;
 }
@@ -427,11 +543,12 @@ bool AppendNewCandidates(
 void OutputTestSummary(
     const TestData& data,
     const std::vector<pose_graph_msgs::PoseGraphEdge>& results,
+    const std::vector<pose_graph_msgs::PoseGraphEdge>& false_results,
     const std::string& output_dir,
     const std::string& test_name) {
   // First find number of candidates by label
   std::unordered_map<std::string, size_t> expected_num_lc;
-  for (const auto& c : data.test_candidates_.candidates) {
+  for (const auto& c : data.real_candidates_.candidates) {
     std::string label = data.labels_.at(c.key_from);
     if (expected_num_lc.find(label) == expected_num_lc.end()) {
       expected_num_lc[label] = 1;
@@ -440,8 +557,19 @@ void OutputTestSummary(
     }
   }
 
+  std::unordered_map<std::string, size_t> false_num_lc;
+  for (const auto& c : data.fake_candidates_.candidates) {
+    std::string label = data.labels_.at(c.key_from);
+    if (false_num_lc.find(label) == false_num_lc.end()) {
+      false_num_lc[label] = 1;
+    } else {
+      false_num_lc[label]++;
+    }
+  }
+
   // Now evaluate
   std::unordered_map<std::string, size_t> num_lc;
+  std::unordered_map<std::string, size_t> num_false_lc;
   std::unordered_map<std::string, double> total_trans_error;
   std::unordered_map<std::string, double> total_rot_error;
   std::unordered_map<std::string, double> min_trans_error;
@@ -495,6 +623,11 @@ void OutputTestSummary(
       max_rot_error[label] = rot_error;
   }
 
+  for (const auto& edge : false_results) {
+    std::string label = data.labels_.at(edge.key_from);
+    num_false_lc[label]++;
+  }
+
   // Write to file
   std::ofstream outfile;
   std::string summary_file = output_dir + "/" + test_name + "_summary.csv";
@@ -503,7 +636,8 @@ void OutputTestSummary(
     std::cout << "Unable to open output result summary file. \n";
     return;
   }
-  outfile << "label,expected,detected,percent-detected,mean-trans-error(m),min-"
+  outfile << "label,expected,detected,recall,false-positive-rate,mean-trans-"
+             "error(m),min-"
              "trans-error(m),max-trans-error(m),mean-rot-error(deg),min-rot-"
              "error(deg),max-rot-error(deg)\n";
   for (const auto& entry : expected_num_lc) {
@@ -511,6 +645,9 @@ void OutputTestSummary(
             << ","
             << static_cast<double>(num_lc[entry.first]) /
             static_cast<double>(entry.second)
+            << ","
+            << static_cast<double>(num_false_lc[entry.first]) /
+            static_cast<double>(false_num_lc[entry.first])
             << "," << total_trans_error[entry.first] / num_lc[entry.first]
             << "," << min_trans_error[entry.first] << ","
             << max_trans_error[entry.first] << ","
