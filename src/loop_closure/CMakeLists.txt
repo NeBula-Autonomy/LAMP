@@ -99,6 +99,8 @@ add_library(${PROJECT_NAME}
   src/ObservabilityQueue.cc
 )
 
+find_package(Eigen3 REQUIRED)
+
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}

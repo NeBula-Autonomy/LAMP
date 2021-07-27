@@ -883,67 +883,91 @@ void IcpLoopComputation::AccumulateScans(const gtsam::Key& key,
 void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
                                                    PointCloudConstPtr target,
                                                    Eigen::Matrix4f* tf_out,
-                                                   int& n_inliers) {
-  // Convert to teaser point cloud
-  teaser::PointCloud src_cloud;
-  for (pcl::PointCloud<Point>::const_iterator it = source->points.begin();
-       it != source->points.end();
-       it++) {
-    src_cloud.push_back({it->x, it->y, it->z});
-  }
+                                                   int& n_inliers) {                                                  
+// Get Normals
+  Normals::Ptr source_normals(new Normals);
+  Normals::Ptr target_normals(new Normals);
+  utils::ExtractNormals(
+      source, icp_threads_, source_normals, sac_features_radius_);
+  utils::ExtractNormals(
+      target, icp_threads_, target_normals, sac_features_radius_);
 
-  teaser::PointCloud tgt_cloud;
-  for (pcl::PointCloud<Point>::const_iterator it = target->points.begin();
-       it != target->points.end();
-       it++) {
-    tgt_cloud.push_back({it->x, it->y, it->z});
-  }
+  // Get Harris keypoints for source and target
+  PointCloud::Ptr source_keypoints(new PointCloud);
+  PointCloud::Ptr target_keypoints(new PointCloud);
 
-  // Compute FPFH
-  teaser::FPFHEstimation fpfh;
-  auto src_descriptors = fpfh.computeFPFHFeatures(src_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
-  auto target_descriptors = fpfh.computeFPFHFeatures(tgt_cloud, TEASER_FPFH_normals_radius_, TEASER_FPFH_features_radius_);
+  utils::ComputeKeypoints(
+      source, source_normals, harris_params_, icp_threads_, source_keypoints);
+  utils::ComputeKeypoints(
+      target, target_normals, harris_params_, icp_threads_, target_keypoints);
 
+  Features::Ptr source_features(new Features);
+  Features::Ptr target_features(new Features);
+  utils::ComputeFeatures(source_keypoints,
+                         source,
+                         source_normals,
+                         sac_features_radius_,
+                         icp_threads_,
+                         source_features);
+  utils::ComputeFeatures(target_keypoints,
+                         target,
+                         target_normals,
+                         sac_features_radius_,
+                         icp_threads_,
+                         target_features);
+
+  std::cout << "loop - src cloud size: " << source_keypoints->size() << std::endl;
+  std::cout << "loop - target cloud size: " << target_keypoints->size() << std::endl;
+  std::cout << "loop - src features size: " << source_features->size() << std::endl;
+  std::cout << "loop - target features size: " << target_features->size() << std::endl;
+// estimate correspondences using pcl's correspondencce estimation
+  // pcl::registration::CorrespondenceEstimation<pcl::FPFHSignature33, pcl::FPFHSignature33> est;
+  // pcl::CorrespondencesPtr pre_rejection_correspondences(new pcl::Correspondences());
+  // est.setInputSource(source_features);
+  // est.setInputTarget(target_features);
+  // est.determineCorrespondences(*pre_rejection_correspondences);
+  // // Duplication rejection Duplicate
+  // pcl::CorrespondencesPtr correspondences(new pcl::Correspondences());
+  // pcl::registration::CorrespondenceRejectorOneToOne corr_rej_one_to_one;
+  // corr_rej_one_to_one.setInputCorrespondences(pre_rejection_correspondences);
+  // corr_rej_one_to_one.getCorrespondences(*correspondences);
+  
   // Align
   ROS_DEBUG("Finding TEASER Correspondences!");
   teaser::Matcher matcher;
-  auto correspondences = matcher.calculateCorrespondences(src_cloud,
-                                                          tgt_cloud,
-                                                          *src_descriptors,
-                                                          *target_descriptors,
-                                                          false,
-                                                          true,
-                                                          false,
-                                                          0.95);
+  auto correspondences = matcher.calculateKCorrespondences(source_keypoints,
+                                                          target_keypoints,
+                                                          source_features,
+                                                          target_features,
+                                                          10);
   int corres_size = correspondences.size();
   ROS_DEBUG("Found %d correspondences.", corres_size);
-
+  std::cout << "Found correspondences: " << corres_size << std::endl;
   // Retrive the corresponding points from src and tgt point clouds into two
   // 3-by-N Eigen matrices
   Eigen::Matrix<double, 3, Eigen::Dynamic> src_corres_points(3, corres_size);
   Eigen::Matrix<double, 3, Eigen::Dynamic> tgt_corres_points(3, corres_size);
   for (size_t i = 0; i < corres_size; ++i) {
-    src_corres_points.col(i) << src_cloud[correspondences[i].first].x,
-        src_cloud[correspondences[i].first].y,
-        src_cloud[correspondences[i].first].z;
-    tgt_corres_points.col(i) << tgt_cloud[correspondences[i].second].x,
-        tgt_cloud[correspondences[i].second].y,
-        tgt_cloud[correspondences[i].second].z;
+    src_corres_points.col(i) << (*source_keypoints)[correspondences[i].first].x,
+        (*source_keypoints)[correspondences[i].first].y,
+        (*source_keypoints)[correspondences[i].first].z;
+    tgt_corres_points.col(i) << (*target_keypoints)[correspondences[i].second].x,
+        (*target_keypoints)[correspondences[i].second].y,
+        (*target_keypoints)[correspondences[i].second].z;
   }
   ROS_DEBUG("Completed TEASER Correspondences!");
   // Run TEASER++ registration
   // Prepare solver parameters
   teaser::RobustRegistrationSolver::Params params;
-  params.noise_bound = noise_bound_;
+  params.noise_bound = 0.1;
   params.cbar2 = 1;
   params.estimate_scaling = false;
-  params.rotation_max_iterations = rotation_max_iterations_;
+  params.rotation_max_iterations = 100;
   params.rotation_gnc_factor = 1.4;
   ROS_INFO("Finding TEASER Rigid Transform...");
   params.rotation_estimation_algorithm =
       teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::GNC_TLS;
-  params.rotation_cost_threshold = rotation_cost_threshold_; // 0.005;
-
+  params.rotation_cost_threshold = 0.005;
   // Solve with TEASER++
   teaser::RobustRegistrationSolver solver(params);
   solver.solve(src_corres_points, tgt_corres_points);
@@ -952,8 +976,9 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
   Eigen::Matrix4d T;
   T.topLeftCorner(3, 3) = solution.rotation;
   T.topRightCorner(3, 1) = solution.translation;
+  T(3, 3) = 1.0;
+  std::cout << "Estimated T is: " << T << std::endl;
   *tf_out = T.cast<float>();
-
   auto final_inliers = solver.getInlierMaxClique();
   n_inliers = static_cast<int>(final_inliers.size());
   ROS_INFO("Solved TEASER Rigid Transform with %d inliers", n_inliers);
