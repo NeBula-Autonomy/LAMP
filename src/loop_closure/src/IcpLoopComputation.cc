@@ -451,7 +451,10 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   } break;
   case IcpInitMethod::FEATURES: {
     double sac_fitness_score = sac_fitness_score_threshold_;
-    GetSacInitialAlignment(scan1, scan2, &initial_guess, sac_fitness_score);
+    GetSacInitialAlignment(accumulated_source,
+                           accumulated_target,
+                           &initial_guess,
+                           sac_fitness_score);
     if (sac_fitness_score >= sac_fitness_score_threshold_) {
       ROS_INFO("SAC fitness score is too high");
       return false;
@@ -460,7 +463,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   case IcpInitMethod::TEASERPP: {
     int n_inliers = teaser_inlier_threshold_;
     GetTeaserInitialAlignment(
-        scan1, accumulated_target, &initial_guess, n_inliers);
+        accumulated_source, accumulated_target, &initial_guess, n_inliers);
     if (n_inliers <= teaser_inlier_threshold_) {
       ROS_INFO("Number of TEASER inliers is too low: %d <= %d",
                n_inliers,
