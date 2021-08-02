@@ -171,10 +171,10 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
     Ap += H.transpose() * H;
   }
   if (query_null) {
-      ROS_ERROR("Query was null, setting query 0");
+    ROS_WARN("Query was null, setting query 0");
   }
   if (reference_normals_null) {
-      ROS_ERROR("Reference normal was null, setting normals to 0");
+    ROS_WARN("Reference normal was null, setting normals to 0");
   }
 }
 
