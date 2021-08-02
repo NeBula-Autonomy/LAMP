@@ -52,6 +52,8 @@ public:
 
   bool PerformAlignment(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
+                        const gtsam::Pose3& pose1,
+                        const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance,
                         double* fitness_score,
@@ -131,7 +133,8 @@ protected:
     ODOMETRY,
     ODOM_ROTATION,
     FEATURES,
-    TEASERPP
+    TEASERPP,
+    CANDIDATE
   };
 
   enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };

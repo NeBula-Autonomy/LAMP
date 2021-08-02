@@ -40,11 +40,13 @@ class TestLoopComputation : public ::testing::Test {
 
   bool performAlignment(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
+                        const gtsam::Pose3& pose1,
+                        const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance) {
     double fitness_score;
     return icp_compute_.PerformAlignment(
-        key1, key2, delta, covariance, &fitness_score);
+        key1, key2, pose1, pose2, delta, covariance, &fitness_score);
   }
 
   void getSacInitialAlignment(PointCloud::ConstPtr source,
@@ -150,12 +152,15 @@ TEST_F(TestLoopComputation, PerformAlignment) {
   kp->nodes.push_back(kp0);
   kp->nodes.push_back(kp1);
 
+  gtsam::Pose3 p0 = utils::ToGtsam(kp0.pose);
+  gtsam::Pose3 p1 = utils::ToGtsam(kp1.pose);
+
   keyedPoseCallback(kp);
 
   geometry_utils::Transform3 tf, tf_exp;
   gtsam::Matrix66 covar;
   EXPECT_TRUE(performAlignment(
-      gtsam::Symbol('a', 1), gtsam::Symbol('a', 0), &tf, &covar));
+      gtsam::Symbol('a', 1), gtsam::Symbol('a', 0), p1, p0, &tf, &covar));
 
   tf_exp.translation = geometry_utils::Vec3(T(0, 3), T(1, 3), T(2, 3));
   tf_exp.rotation = geometry_utils::Rot3(T(0, 0),
