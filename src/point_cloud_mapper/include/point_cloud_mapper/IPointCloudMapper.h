@@ -48,6 +48,11 @@ public:
 
   virtual void Refresh(const geometry_utils::Transform3& current_pose) = 0;
 
+  void UpdateCurrentPose(const geometry_utils::Transform3& current_pose) {
+    current_pose_estimate_ = current_pose;
+  }
+
 protected:
   PointCloud::Ptr map_data_;
+  geometry_utils::Transform3 current_pose_estimate_;
 };

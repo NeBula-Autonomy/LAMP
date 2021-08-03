@@ -18,6 +18,9 @@
 
 #include <utils/CommonStructs.h>
 
+#include <std_msgs/Float64.h>
+#include <std_msgs/UInt64.h>
+
 class PointCloudMultiThreadedMapper : public IPointCloudMapper {
 public:
   typedef pcl::octree::OctreePointCloudSearch<Point> Octree;
@@ -110,6 +113,13 @@ private:
   ros::Publisher map_frozen_pub_;
   ros::Publisher incremental_map_pub_;
   ros::Publisher map_info_pub_;
+
+  ros::Publisher search_in_map_pub_;
+  ros::Publisher delete_from_map_pub_;
+  ros::Publisher adding_to_map_pub_;
+  ros::Publisher no_insert_points_pub_;
+  ros::Publisher no_nearest_points_pub_;
+
   std::thread publish_thread_;
   std::thread publish_frozen_thread_;
   std::thread refresh_thread_;
