@@ -145,12 +145,11 @@ bool PointCloudMultiThreadedMapper::InsertPoints(
 
       double min_x, min_y, min_z, max_x, max_y, max_z;
       bool isInBox;
-
+      map_octree_->getBoundingBox(min_x, min_y, min_z, max_x, max_y, max_z);
       // Iterate over points in the input point cloud, inserting them into the
       // map if there is not already a point in the same voxel.
       for (size_t ii = 0; ii < points->points.size(); ++ii) {
         const Point p = points->points[ii];
-        map_octree_->getBoundingBox(min_x, min_y, min_z, max_x, max_y, max_z);
         isInBox = (p.x >= min_x && p.x <= max_x) &&
             (p.y >= min_y && p.y <= max_y) && (p.z >= min_z && p.z <= max_z);
         if (!isInBox || !map_octree_->isVoxelOccupiedAtPoint(p)) {
@@ -192,12 +191,12 @@ bool PointCloudMultiThreadedMapper::InsertPoints(
 
       double min_x, min_y, min_z, max_x, max_y, max_z;
       bool isInBox;
-
+      map_octree_b_->getBoundingBox(min_x, min_y, min_z, max_x, max_y, max_z);
       // Iterate over points in the input point cloud, inserting them into the
       // map if there is not already a point in the same voxel.
       for (size_t ii = 0; ii < points->points.size(); ++ii) {
         const Point p = points->points[ii];
-        map_octree_b_->getBoundingBox(min_x, min_y, min_z, max_x, max_y, max_z);
+
         isInBox = (p.x >= min_x && p.x <= max_x) &&
             (p.y >= min_y && p.y <= max_y) && (p.z >= min_z && p.z <= max_z);
         if (!isInBox || !map_octree_b_->isVoxelOccupiedAtPoint(p)) {
@@ -441,6 +440,8 @@ void PointCloudMultiThreadedMapper::Refresh(
 }
 
 void PointCloudMultiThreadedMapper::RefreshThread() {
+  auto t_start = std::chrono::high_resolution_clock::now();
+
   if (refresh_id_ == "a") {
     // INPUT: a, OUTPUT: b
     b_keep_history_ = true;
@@ -466,6 +467,7 @@ void PointCloudMultiThreadedMapper::RefreshThread() {
     map_octree_.reset(new Octree(octree_resolution_));
     map_octree_->setInputCloud(map_data_);
     map_octree_->addPointsFromInputCloud();
+
     auto refresh_end_time = std::chrono::system_clock::now();
     std::chrono::duration<double> refresh_duration =
         refresh_end_time - refresh_start_time;
@@ -474,4 +476,11 @@ void PointCloudMultiThreadedMapper::RefreshThread() {
     refresh_id_ = "a";
     b_add_history_to_a_ = true;
   }
+  auto t_end = std::chrono::high_resolution_clock::now();
+
+  double elapsed_time_ms =
+      std::chrono::duration<double, std::milli>(t_end - t_start).count();
+  std_msgs::Float64 elapsed_time_ms_ros;
+  elapsed_time_ms_ros.data = elapsed_time_ms;
+  delete_from_map_pub_.publish(elapsed_time_ms_ros);
 }
