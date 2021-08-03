@@ -70,7 +70,7 @@ bool ProximityLoopGeneration::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   keyed_poses_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
       "pose_graph_incremental",
-      100,
+      100000,
       &ProximityLoopGeneration::KeyedPoseCallback,
       this);
   return true;

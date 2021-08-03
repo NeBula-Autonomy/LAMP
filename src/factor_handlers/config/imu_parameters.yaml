@@ -6,3 +6,7 @@ imu:
   ts_threshold: 0.1
   b_convert_imu_frame: false
   b_verbosity: false
+
+
+# For the stationary handlers
+stationary_key_step_threshold: 3

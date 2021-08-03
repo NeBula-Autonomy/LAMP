@@ -72,6 +72,9 @@ bool ObservabilityLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/obs_prioritization/horizon", horizon_))
     return false;
 
+  if (!pu::Get(param_ns_ + "/obs_prioritization/threads", num_threads_))
+    return false;
+
   return true;
 }
 
@@ -91,7 +94,7 @@ bool ObservabilityLoopPrioritization::RegisterCallbacks(
   ros::NodeHandle nl(n);
   keyed_scans_sub_ = nl.subscribe<pose_graph_msgs::KeyedScan>(
       "keyed_scans",
-      100,
+      100000,
       &ObservabilityLoopPrioritization::KeyedScanCallback,
       this);
 
@@ -105,56 +108,38 @@ bool ObservabilityLoopPrioritization::RegisterCallbacks(
 
 void ObservabilityLoopPrioritization::ProcessTimerCallback(
     const ros::TimerEvent& ev) {
-  PrunePriorityQueue();
-  PopulatePriorityQueue();
+  //ROS_INFO_STREAM("Priority Queue Size:" << priority_queue_.size());
   if (priority_queue_.size() > 0 &&
       loop_candidate_pub_.getNumSubscribers() > 0) {
+    PrunePriorityQueue();
     PublishBestCandidates();
   }
 }
 
 void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
+  if (keyed_observability_.size() == 0)
+    return;
   size_t n = candidate_queue_.size();
   for (size_t i = 0; i < n; i++) {
     auto candidate = candidate_queue_.front();
     candidate_queue_.pop();
 
     // Check if keyed scans exist
-    if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
-        keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
-      ROS_WARN("Keyed scans do not exist. ");
+    if (keyed_observability_.count(candidate.key_from) == 0 ||
+        keyed_observability_.count(candidate.key_to) == 0) {
+      ROS_WARN("Keyed scans do not exist and observability score not yet "
+               "calculated. ");
       if ((ros::Time::now() - candidate.header.stamp).toSec() <
           keyed_scans_max_delay_)
         candidate_queue_.push(candidate);
       continue;
     }
 
-    // Get prefix
-    char prefix_from = gtsam::Symbol(candidate.key_from).chr();
-    Eigen::Matrix<double, 3, 1> obs_eigenv_from;
-    utils::ComputeIcpObservability(keyed_scans_[candidate.key_from],
-                                   normals_radius_,
-                                   num_threads_,
-                                   &obs_eigenv_from);
-    if (max_observability_.find(prefix_from) == max_observability_.end() ||
-        max_observability_[prefix_from] < obs_eigenv_from.minCoeff())
-      max_observability_[prefix_from] = obs_eigenv_from.minCoeff();
-    double min_obs_from =
-        obs_eigenv_from.minCoeff() / max_observability_[prefix_from];
+    double min_obs_from = keyed_observability_[candidate.key_from];
     if (min_obs_from < min_observability_)
       continue;
 
-    char prefix_to = gtsam::Symbol(candidate.key_to).chr();
-    Eigen::Matrix<double, 3, 1> obs_eigenv_to;
-    utils::ComputeIcpObservability(keyed_scans_[candidate.key_to],
-                                   normals_radius_,
-                                   num_threads_,
-                                   &obs_eigenv_to);
-    if (max_observability_.find(prefix_to) == max_observability_.end() ||
-        max_observability_[prefix_to] < obs_eigenv_to.minCoeff())
-      max_observability_[prefix_to] = obs_eigenv_to.minCoeff();
-    double min_obs_to =
-        obs_eigenv_to.minCoeff() / max_observability_[prefix_to];
+    double min_obs_to = keyed_observability_[candidate.key_to];
     if (min_obs_to < min_observability_)
       continue;
 
@@ -172,14 +157,17 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
         break;
       }
     }
+    priority_queue_mutex_.lock();
     observability_score_.insert(score_it, score);
     priority_queue_.insert(candidate_it, candidate);
+    priority_queue_mutex_.unlock();
   }
   return;
 }
 
 void ObservabilityLoopPrioritization::PrunePriorityQueue() {
   ROS_INFO_STREAM("Prune priority queue... size: " << priority_queue_.size());
+  priority_queue_mutex_.lock();
   std::deque<double> temp_observability_score;
   std::deque<pose_graph_msgs::LoopCandidate> temp_priority_queue;
   for (size_t i = 0; i < priority_queue_.size(); i++) {
@@ -193,13 +181,24 @@ void ObservabilityLoopPrioritization::PrunePriorityQueue() {
   priority_queue_.clear();
   observability_score_ = temp_observability_score;
   priority_queue_ = temp_priority_queue;
+  priority_queue_mutex_.unlock();
   ROS_INFO_STREAM(
       "Discarded old measurements. size: " << priority_queue_.size());
   return;
 }
 
 void ObservabilityLoopPrioritization::PublishBestCandidates() {
+  pose_graph_msgs::LoopCandidateArray output_msg = GetBestCandidates();
+  ROS_INFO("Published %d prioritized candidates. ",
+           output_msg.candidates.size());
+  loop_candidate_pub_.publish(output_msg);
+}
+
+pose_graph_msgs::LoopCandidateArray
+ObservabilityLoopPrioritization::GetBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg;
+  output_msg.originator = 2;
+  priority_queue_mutex_.lock();
   size_t n = priority_queue_.size();
   for (size_t i = 0; i < n; i++) {
     if (i == publish_n_best_)
@@ -207,26 +206,34 @@ void ObservabilityLoopPrioritization::PublishBestCandidates() {
     output_msg.candidates.push_back(priority_queue_.front());
     priority_queue_.pop_front();
   }
-  ROS_INFO("Published %d prioritized candidates. ",
-           output_msg.candidates.size());
-  loop_candidate_pub_.publish(output_msg);
+  priority_queue_mutex_.unlock();
+  return output_msg;
 }
 
 void ObservabilityLoopPrioritization::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
-  if (keyed_scans_.find(key) != keyed_scans_.end()) {
+  if (keyed_observability_.count(key) == 0) {
     ROS_DEBUG_STREAM("KeyedScanCallback: Key "
                      << gtsam::DefaultKeyFormatter(key)
-                     << " already has a scan. Not adding.");
+                     << " already processed. Not adding.");
     return;
   }
 
   pcl::PointCloud<Point>::Ptr scan(new pcl::PointCloud<Point>);
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
-  // Add the key and scan.
-  keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
+  char prefix = gtsam::Symbol(key).chr();
+  Eigen::Matrix<double, 3, 1> obs_eigenv;
+  utils::ComputeIcpObservability(
+      scan, normals_radius_, num_threads_, &obs_eigenv);
+  if (max_observability_.count(prefix) == 0 ||
+      max_observability_[prefix] < obs_eigenv.minCoeff())
+    max_observability_[prefix] = obs_eigenv.minCoeff();
+  double observability = obs_eigenv.minCoeff() / max_observability_[prefix];
+
+  keyed_observability_.insert(
+      std::pair<gtsam::Key, double>(key, observability));
 }
 
 } // namespace lamp_loop_closure

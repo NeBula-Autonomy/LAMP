@@ -19,6 +19,7 @@ namespace lamp_loop_closure {
 
 class GenericLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::Normal> Normals;
+  friend class TestLoopPrioritization;
 
 public:
   GenericLoopPrioritization();
@@ -32,10 +33,13 @@ public:
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
+
 protected:
-  void PopulatePriorityQueue() override;
+    void PopulatePriorityQueue() override;
 
   void PublishBestCandidates() override;
+
+  pose_graph_msgs::LoopCandidateArray GetBestCandidates() override;
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 

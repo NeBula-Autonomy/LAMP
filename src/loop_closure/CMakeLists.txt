@@ -94,6 +94,9 @@ add_library(${PROJECT_NAME}
   src/ObservabilityLoopPrioritization.cc
   src/IcpLoopComputation.cc
   src/LoopCandidateQueue.cc
+  src/TestUtils.cc
+  src/RoundRobinLoopCandidateQueue.cc
+  src/ObservabilityQueue.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -138,6 +141,22 @@ target_link_libraries(loop_computation_node
   gtsam
 )
 
+add_executable(gen_loop_computation_test src/gen_loop_computation_test.cc)
+target_link_libraries(gen_loop_computation_test
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+add_executable(eval_loop_computation_test src/eval_loop_computation_test.cc)
+target_link_libraries(eval_loop_computation_test
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
 #############
 ## Testing ##
 #############
@@ -145,4 +164,14 @@ if (CATKIN_ENABLE_TESTING)
 find_package(rostest REQUIRED)
   # add_subdirectory(test)
   ## Add gtest based cpp test target and link libraries
+  add_rostest_gtest(test_icp_computation test/test_icp_computation.test test/test_icp_computation.cpp)
+  target_link_libraries(test_icp_computation  ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_loop_generation test/test_loop_generation.test test/test_loop_generation.cc)
+  target_link_libraries(test_loop_generation ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_loop_prioritization test/test_loop_prioritization.test test/test_loop_prioritization.cc)
+  target_link_libraries(test_loop_prioritization ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_loop_computation test/test_loop_computation.test test/test_loop_computation.cc)
+  target_link_libraries(test_loop_computation ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_point_cloud_utils test/test_point_cloud_utils.test test/test_point_cloud_utils.cc)
+  target_link_libraries(test_point_cloud_utils ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()

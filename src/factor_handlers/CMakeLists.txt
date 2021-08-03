@@ -36,6 +36,7 @@ find_package(catkin REQUIRED COMPONENTS
   mesh_msgs
   geometry_msgs
   nav_msgs
+  std_msgs
   tf_conversions
   eigen_conversions
   artifact_msgs
@@ -59,6 +60,7 @@ catkin_package(
     mesh_msgs
     geometry_msgs
     nav_msgs
+    std_msgs
     artifact_msgs
     localizer_zero_velocity_detector
   DEPENDS
@@ -111,4 +113,6 @@ if (CATKIN_ENABLE_TESTING)
   target_link_libraries(test_april_tag_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_imu_handler test/test_imu_handler.test test/test_imu_handler.cc)
   target_link_libraries(test_imu_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_stationary_handler test/test_stationary_handler.test test/test_stationary_handler.cc)
+  target_link_libraries(test_stationary_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()

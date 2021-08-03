@@ -1,0 +1,46 @@
+# Options are simulated_annealing, cem, random, heuristic_maximally_separated_nodes,heuristic_maximum_covariance
+algorithm: simulated_annealing
+#If this is >1 always find a fixed number of loop closures, if it is <1 return that fraction of the queued loop closures
+#Using <1 can cause performance issues (but may result in more found loop closures) since many algorithms are O(output size)
+number_of_loop_closures: 500
+#Minimum number of queued loop closures to trigger processing
+min_queue_size: 550
+#Minimum amount of seconds between sucessive outputs of the batcher
+min_processing_time_seconds: 0
+# Verbosity goes from 0, (Nothing), 1 (Only errors), 2 errors and info,  3 (debug info) (Default 2)
+verbose: 3
+cem:
+  #Number of samples to sample from the posterior distribution per iteration
+  samples: 100
+  #Low pass filter alpha
+  alpha: .7
+  #Build next posterior by taking the samples which perform below the ptile percentile
+  ptile: 30
+simulated_annealing:
+  #How many iterations to use after the convex hull solver
+  initial_solution_finder_iterations: 30
+  #How many iterations to use after not using the convex hull solver
+  fallback_solution_finder_iterations: 300
+  #Minimum Simluated simulated_annealing temperature
+  min_temp: 0.0001
+  #Maximum simulated annealing temperate
+  max_temp: 3
+  #Exponential cooling rate
+  cooling: 0.005
+  #If the queue is bigger than max_number_of_loop_closures_to_use_initial_solution don't use the convex hull solver
+  max_number_of_loop_closures_to_use_initial_solution: 200
+pso:
+  number_of_particles: 20
+  max_velocity: 10
+  scaling_factor: 0.75
+  inertia: 0.5
+  cognitive: 0.5
+  social: 0.5
+  topology: "ring"
+
+tabu:
+  initial_solution_finder_iterations: 30
+  fallback_solution_finder_iterations: 300
+  max_number_of_loop_closures_to_use_initial_solution: 200
+  num_neighbors: 7
+  max_tabu_length: 100
