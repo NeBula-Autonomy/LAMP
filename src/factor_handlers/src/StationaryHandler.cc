@@ -39,6 +39,8 @@ bool StationaryHandler::Initialize(const ros::NodeHandle& n) {
 bool StationaryHandler::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("StationaryHandler - LoadParameters");
   if (!pu::Get("stationary_noise_sigma", noise_sigma_)) return false;
+  if (!pu::Get("stationary_key_step_threshold", key_step_threshold_))
+    return false;
   return true;
 }
 
@@ -58,7 +60,7 @@ void StationaryHandler::StationaryCallback(
     const StationaryMessage::ConstPtr& msg) {
   if (msg->status == 0) {
     if (!currently_stationary_) {
-      ROS_INFO("Robot stopped. Creating attitude factor...");
+      ROS_INFO("Robot stopped. Preparing attitude factor...");
       // We want to place the stationary factors when the robot stops
       last_detection_ =
           StationaryData(msg->header.stamp, msg->average_acceleration);
@@ -108,4 +110,26 @@ bool StationaryHandler::SetKeyForImuAttitude(const gtsam::Symbol& key) {
     ROS_WARN("Could not store received symbol into protected class member");
     return false;
   }
+}
+
+bool StationaryHandler::CheckKeyRecency(const gtsam::Symbol& key) {
+  // Check that the key has progressed far enough (don't just want adjacent
+  // nodes)
+  if (query_key_ == key) {
+    // Stop printing comments if there are no changes
+    return false;
+  }
+
+  if (key.index() == 1 ||
+      key.index() - query_key_.index() > key_step_threshold_) {
+    query_key_ = key;
+    return true;
+  }
+  // Else don't want to add a stationary factor
+  ROS_WARN_STREAM("Not creating a stationary factor as we are too close to "
+                  "previous. Likely from noise IMU. \nAt pose node "
+                  << key.chr() << key.index()
+                  << "\nPrevious: " << query_key_.chr() << query_key_.index());
+  query_key_ = key;
+  return false;
 }

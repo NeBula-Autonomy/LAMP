@@ -36,6 +36,7 @@ find_package(catkin REQUIRED COMPONENTS
   mesh_msgs
   geometry_msgs
   nav_msgs
+  std_msgs
   tf_conversions
   eigen_conversions
   artifact_msgs
@@ -59,6 +60,7 @@ catkin_package(
     mesh_msgs
     geometry_msgs
     nav_msgs
+    std_msgs
     artifact_msgs
     localizer_zero_velocity_detector
   DEPENDS

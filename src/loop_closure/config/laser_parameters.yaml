@@ -96,6 +96,7 @@ robot:
     # 0 means no accumulation
     num_prev_scans: 2
     num_next_scans: 2
+    b_accumulate_source: true
     
     # Radii of area to consider when computing normals and features
     normals_radius: 1.0
@@ -194,7 +195,7 @@ base:
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 3
+  icp_initialization_method: 2
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
   icp_covariance_calculation: 1
@@ -211,7 +212,7 @@ base:
   #If <1, percent of total cores on machine
   #if >1 then use exactly n threads.
   #if == 1, don't use thread pool
-  icp_thread_pool_thread_count: 1
+  icp_thread_pool_thread_count: 0.8
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
@@ -223,11 +224,16 @@ base:
 
     # Iterate ICP this many times.
     # Check this
-    iterations: 10 #was 5 # Default from original branch is 20: 
+    iterations: 200 #was 5 # Default from original branch is 20: 
                   # For ground truth generation set it to a high number (100)
     
     # Number of threads for multithreaded GICP
     threads: 8
+
+    # Transform thresholding - to limit for transforms too large
+    transform_thresholding: true 
+    max_translation: 100 # max allowable translation in m 
+    max_rotation: 50 # max allowable rotation in deg
 
   #--------------------------------------------------------------------------------
   # SAC-IA Settings for feature-based initialization
@@ -235,12 +241,13 @@ base:
 
   sac_ia:
     # Iterate SAC-IA this many times.
-    iterations: 10
+    iterations: 500
 
     # Number of previous scans to accumulate for target pointcloud
     # 0 means no accumulation
     num_prev_scans: 2
     num_next_scans: 2
+    b_accumulate_source: true
     
     # Radii of area to consider when computing normals and features
     normals_radius: 1.0

@@ -66,7 +66,7 @@ class LoopClosureBatcher:
         self.edge_subset_algorithm.set_verbose(self.verbose)
         self.edge_subset_algorithm.set_params(params)
 
-        self.loop_candidates = []
+        self.keys_to_loop_candidates = dict()
         self.thread_pool = ThreadPoolExecutor(max_workers=2)
         self.current_edge_future = None
         self.previous_batch = None
@@ -102,29 +102,40 @@ class LoopClosureBatcher:
         rospy.Subscriber(rospy.resolve_name("~loop_computation_status"), LoopComputationStatus, self.handle_status)
         rospy.Subscriber(rospy.resolve_name("~output_loop_closures"), LoopCandidateArray, self.remove_loop_closures_from_queue)
 
+    def make_key(self, loop_candidate):
+        return (loop_candidate.key_to, loop_candidate.key_from, loop_candidate.type)
+
     def remove_loop_closures_from_queue(self, loop_candidate_array):
         with self.queue_update_lock:
-            size_before = len(self.loop_candidates)
-            self.loop_candidates = [candidate for candidate in self.loop_candidates if candidate not in loop_candidate_array.candidates]
-            size_after = len(self.loop_candidates)
+            size_before = len(self.keys_to_loop_candidates)
+            for loop_candidate in loop_candidate_array.candidates:
+                key= self.make_key(loop_candidate)
+                try:
+                    del self.keys_to_loop_candidates[key]
+                except KeyError:
+                    pass
+
+            size_after = len(self.keys_to_loop_candidates)
             if size_before - size_after != 0:
                 self.log_debug("Batcher Removed " + str(size_before - size_after) + " elements.")
 
     def add_loop_closure_to_queue(self, loop_candidate_array):
         with self.queue_update_lock:
-            self.loop_candidates.extend(loop_candidate_array.candidates)
+            for loop_candidate in loop_candidate_array.candidates:
+                key = self.make_key(loop_candidate)
+                self.keys_to_loop_candidates[key] = loop_candidate
             self.log_info("Batcher received :" + str(len(loop_candidate_array.candidates)) + " Queue Size: " + str(
-                len(self.loop_candidates)))
+                len(self.keys_to_loop_candidates)))
 
         if self.solution_lock.acquire():
-            have_enough_candidates = len(self.loop_candidates) > self.min_queue_size
+            have_enough_candidates = len(self.keys_to_loop_candidates) > self.min_queue_size
             # If we have enough loop closures then start processing
             if self.current_edge_future is None and have_enough_candidates:
                     self.start_finding_new_batch()
                     self.current_edge_future = self.thread_pool.submit(self.edge_subset_algorithm.run)
 
             # If there were previously not enough edges to do selection but now there are, restart processing
-            elif not self.edge_subset_algorithm.is_processing and len(self.loop_candidates) > self.min_queue_size:
+            elif not self.edge_subset_algorithm.is_processing and len(self.keys_to_loop_candidates) > self.min_queue_size:
                 self.start_finding_new_batch()
             elif have_enough_candidates and self.edge_subset_algorithm.stale_solution:
                 self.start_finding_new_batch()
@@ -140,7 +151,7 @@ class LoopClosureBatcher:
             self.current_pose_graph = pose_graph
 
     def start_finding_new_batch(self):
-        working_loop_candidates = deepcopy(self.loop_candidates)
+        working_loop_candidates = deepcopy(self.keys_to_loop_candidates.values())
         if (self.loop_closures_to_choose < 1):
             number_of_loop_closures_to_choose = max(1, int(
                 float(len(working_loop_candidates)) * self.loop_closures_to_choose))
@@ -183,15 +194,19 @@ class LoopClosureBatcher:
                             out_bundle.candidates = out_edges
 
                             for edge in out_edges:
-                                self.loop_candidates = [cur_edge for cur_edge in self.loop_candidates if
-                                                        cur_edge.key_from != edge.key_from or cur_edge.key_to != edge.key_to or cur_edge.type != edge.type]
+                                key = self.make_key(edge)
+                                try:
+                                    del self.keys_to_loop_candidates[key]
+                                except KeyError:
+                                    pass
 
-                            self.log_info("Out " + str(len(out_edges)) + ", Queue Size: " + str(len(self.loop_candidates)))
+
+                            self.log_info("Out " + str(len(out_edges)) + ", Queue Size: " + str(len(self.keys_to_loop_candidates)))
                             self.start_finding_new_batch()
 
                             self.loop_publisher.publish(out_bundle)
 
                         except Exception as e:
-                            self.log_error("Failed to make batch {traceback.format_exc()}")
+                            self.log_error("Failed to make batch {}".format(traceback.format_exc()))
         else:
-            self.log_error("Unkown status {status}")
+            self.log_error("Unkown status {}".format(status))
