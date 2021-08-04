@@ -120,4 +120,5 @@ private:
   std::vector<BoxPointType> box_filters_;
   float box_filter_size_{25.0f};
   KD_TREE ikdtree;
+  double filter_size_map_min{0.001};
 };
