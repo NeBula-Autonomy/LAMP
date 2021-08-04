@@ -195,7 +195,7 @@ base:
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 2
+  icp_initialization_method: 3
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
   icp_covariance_calculation: 1
@@ -206,7 +206,7 @@ base:
   max_tolerable_fitness: 0.8 #0.04
 
   # How long to "wait" for keyed scans 
-  keyed_scans_max_delay: 60.0
+  keyed_scans_max_delay: 600.0
 
   #How many ICP alignments to perform simultaneously.
   #If <1, percent of total cores on machine
