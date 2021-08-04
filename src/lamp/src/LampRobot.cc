@@ -783,7 +783,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     // Is a relative tranform, so need to handle linking to the pose-graph
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
-    ROS_INFO("HandleRelativePoseMeasurement");
+    ROS_DEBUG("HandleRelativePoseMeasurement");
 
     if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
       ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
@@ -818,7 +818,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
 
       // Publish the new artifact, with the global pose
-      ROS_INFO("Calling Publish Artifacts");
+      ROS_DEBUG("Calling Publish Artifacts");
       artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
 
       // Add and track the edges that have been added
@@ -863,7 +863,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
 
       // Publish the new artifact, with the global pose. FYI: We may removed
       // this (check with Kyon)
-      ROS_INFO("Calling Publish Artifacts");
+      // ROS_INFO("Calling Publish Artifacts");
       artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
 
       // Add and track the edges that have been added
