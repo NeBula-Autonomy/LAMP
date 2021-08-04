@@ -180,7 +180,7 @@ void LampPgo::InputCallback(
   NonlinearFactorGraph all_factors, new_factors;
   Values all_values, new_values;
 
-  ROS_INFO_STREAM("PGO received graph of size " << graph_msg->nodes.size());
+  ROS_DEBUG_STREAM("PGO received graph of size " << graph_msg->nodes.size());
 
   // Convert to gtsam type
   utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
@@ -223,11 +223,11 @@ void LampPgo::InputCallback(
     }
   }
 
-  ROS_INFO_STREAM("PGO adding new values " << new_values.size());
+  ROS_DEBUG_STREAM("PGO adding new values " << new_values.size());
   for (auto k : new_values) {
     ROS_DEBUG_STREAM("\t" << gtsam::DefaultKeyFormatter(k.key));
   }
-  ROS_INFO_STREAM("PGO adding new factors " << new_factors.size());
+  ROS_DEBUG_STREAM("PGO adding new factors " << new_factors.size());
 
   // new_factors.print("new factors");
 
@@ -253,14 +253,16 @@ void LampPgo::InputCallback(
     }
   }
 
-  ROS_INFO_STREAM("PGO stored values of size " << values_.size());
-  ROS_INFO_STREAM("PGO stored nfg of size " << nfg_.size());
+  ROS_DEBUG_STREAM("PGO stored values of size " << values_.size());
+  ROS_DEBUG_STREAM("PGO stored nfg of size " << nfg_.size());
 
   // publish posegraph
   PublishValues();
 
   if (!bad_errors.empty()) {
-    ROS_WARN_STREAM("Pose Graph solve may have been bad, " << bad_errors.size() << " factors had high error.");
+    ROS_WARN_STREAM("After optimization, "
+                    << bad_errors.size()
+                    << " factors have high error. Likely GNC outliers.");
   }
 }
 
@@ -364,8 +366,8 @@ void LampPgo::PublishValues() const {
     }
   }
 
-  ROS_INFO_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size()
-                                               << " values");
+  ROS_DEBUG_STREAM("PGO publishing graph with " << pose_graph_msg.nodes.size()
+                                                << " values");
   optimized_pub_.publish(pose_graph_msg);
 }
 
