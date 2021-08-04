@@ -87,6 +87,9 @@ bool PointCloudMapper::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("map/volume_voxel_size", volume_voxel_size))
     return false;
 
+  if (!pu::Get("num_threads", number_threads_))
+    return false;
+
   // Initialize the map octree.
   map_octree_.reset(new Octree(octree_resolution_));
   map_octree_->setInputCloud(map_data_);
@@ -159,9 +162,6 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
     map_octree_->getBoundingBox(min_x, min_y, min_z, max_x, max_y, max_z);
     // Iterate over points in the input point cloud, inserting them into the map
     // if there is not already a point in the same voxel.
-    //    int enable_omp = (1 < 4);
-    //    omp_set_num_threads(4);
-    //#pragma omp parallel for schedule(dynamic, 1)
     for (size_t ii = 0; ii < points->points.size(); ++ii) {
       const Point p = points->points[ii];
 
@@ -169,11 +169,8 @@ bool PointCloudMapper::InsertPoints(const PointCloud::ConstPtr& points,
           (p.y >= min_y && p.y <= max_y) && (p.z >= min_z && p.z <= max_z);
 
       if (!isInBox || !map_octree_->isVoxelOccupiedAtPoint(p)) {
-        //#pragma omp critical
-        //        {
         map_octree_->addPointToCloud(p, map_data_);
         incremental_points->push_back(p);
-        //        }
       }
     }
 
@@ -225,9 +222,7 @@ bool PointCloudMapper::ApproxNearestNeighbors(const PointCloud& points,
   // Iterate over points in the input point cloud, finding the nearest neighbor
   // for every point and storing it in the output array.
 
-  int enable_omp = (1 < 4);
-
-  omp_set_num_threads(4);
+  omp_set_num_threads(number_threads_);
 #pragma omp parallel for schedule(dynamic, 1)
   for (size_t ii = 0; ii < points.points.size(); ++ii) {
     float unused = 0.f;
@@ -236,9 +231,7 @@ bool PointCloudMapper::ApproxNearestNeighbors(const PointCloud& points,
     map_octree_->approxNearestSearch(points.points[ii], result_index, unused);
     neighbors->points[ii] = map_data_->points[result_index];
   }
-  //    if (result_index >= 0)
-  //      neighbors->push_back(map_data_->points[result_index]);
-  //  }
+
   auto t_end = std::chrono::high_resolution_clock::now();
   double elapsed_time_ms =
       std::chrono::duration<double, std::milli>(t_end - t_start).count();
