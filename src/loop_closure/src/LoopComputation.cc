@@ -46,6 +46,7 @@ std::vector<pose_graph_msgs::PoseGraphEdge> LoopComputation::GetCurrentOutputQue
 
 void LoopComputation::PublishLoopClosures() {
   if (output_queue_.size() == 0) {
+    PublishCompletedAllStatus();
     return;
   }
   pose_graph_msgs::PoseGraph loop_closures_msg;
