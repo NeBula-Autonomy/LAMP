@@ -4,6 +4,7 @@
  * @author Yun Chang
  */
 #include <Eigen/LU>
+#include <cmath>
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/registration/ia_ransac.h>
@@ -20,8 +21,8 @@ namespace gu = geometry_utils;
 
 namespace lamp_loop_closure {
 
-IcpLoopComputation::IcpLoopComputation() : icp_computation_pool_(0){
-}
+IcpLoopComputation::IcpLoopComputation()
+  : icp_computation_pool_(0), b_accumulate_source_(false) {}
 IcpLoopComputation::~IcpLoopComputation() {}
 
 bool IcpLoopComputation::Initialize(const ros::NodeHandle& n) {
@@ -62,6 +63,7 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
 
   if (!pu::Get(param_ns_ + "/max_tolerable_fitness", max_tolerable_fitness_))
     return false;
+
   // Load ICP parameters (from point_cloud localization)
   if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_))
     return false;
@@ -71,6 +73,13 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get(param_ns_ + "/icp_lc/threads", icp_threads_))
     return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/transform_thresholding",
+               icp_transform_thresholding_))
+    return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/max_translation", icp_max_translation_))
+    return false;
+  if (!pu::Get(param_ns_ + "/icp_lc/max_rotation", icp_max_rotation_))
+    return false;
 
   // Load SAC parameters
   if (!pu::Get(param_ns_ + "/sac_ia/iterations", sac_iterations_))
@@ -78,6 +87,8 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/sac_ia/num_prev_scans", sac_num_prev_scans_))
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/num_next_scans", sac_num_next_scans_))
+    return false;
+  if (!pu::Get(param_ns_ + "/sac_ia/b_accumulate_source", b_accumulate_source_))
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_))
     return false;
@@ -222,18 +233,22 @@ void IcpLoopComputation::ComputeTransforms() {
 
           gtsam::Key key_from = candidate.key_from;
           gtsam::Key key_to = candidate.key_to;
-          gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
-          gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
 
           gu::Transform3 transform;
           gtsam::Matrix66 covariance;
-          if (!PerformAlignment(
-                  key_from, key_to, pose_from, pose_to, &transform, &covariance, false))
-              continue;
+          double icp_fitness;
+          if (!PerformAlignment(key_from,
+                                key_to,
+                                &transform,
+                                &covariance,
+                                &icp_fitness,
+                                false))
+            continue;
 
           // If aligned create PoseGraphEdge msg
           pose_graph_msgs::PoseGraphEdge loop_closure =
                   CreateLoopClosureEdge(key_from, key_to, transform, covariance);
+          loop_closure.range_error = icp_fitness;
           output_queue_.push_back(loop_closure);
       }
   } else {
@@ -262,17 +277,21 @@ void IcpLoopComputation::ComputeTransforms() {
           futures.emplace_back(icp_computation_pool_.enqueue([&, candidate]() {
               gtsam::Key key_from = candidate.key_from;
               gtsam::Key key_to = candidate.key_to;
-              gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
-              gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
 
               gu::Transform3 transform;
               gtsam::Matrix66 covariance;
-              if (!PerformAlignment(
-                      key_from, key_to, pose_from, pose_to, &transform, &covariance,true))
-                  return std::make_pair(false, pose_graph_msgs::PoseGraphEdge());
+              double icp_fitness;
+              if (!PerformAlignment(key_from,
+                                    key_to,
+                                    &transform,
+                                    &covariance,
+                                    &icp_fitness,
+                                    true))
+                return std::make_pair(false, pose_graph_msgs::PoseGraphEdge());
               // If aligned create PoseGraphEdge msg
               pose_graph_msgs::PoseGraphEdge loop_closure =
                       CreateLoopClosureEdge(key_from, key_to, transform, covariance);
+              loop_closure.range_error = icp_fitness;
               return std::make_pair(true, loop_closure);
           }));
 
@@ -341,10 +360,10 @@ void IcpLoopComputation::KeyedPoseCallback(
 
 bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
                                           const gtsam::Symbol& key2,
-                                          const gtsam::Pose3& pose1,
-                                          const gtsam::Pose3& pose2,
                                           gu::Transform3* delta,
-                                          gtsam::Matrix66* covariance, bool re_initialize_icp) {
+                                          gtsam::Matrix66* covariance,
+                                          double* fitness_score,
+                                          bool re_initialize_icp) {
   ROS_DEBUG_STREAM("Performing alignment between "
                    << gtsam::DefaultKeyFormatter(key1) << " and "
                    << gtsam::DefaultKeyFormatter(key2));
@@ -388,6 +407,13 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   *accumulated_target = *scan2;
   AccumulateScans(key2, accumulated_target);
 
+  PointCloud::Ptr accumulated_source(new PointCloud);
+  *accumulated_source = *scan1;
+
+  if (b_accumulate_source_) {
+    AccumulateScans(key1, accumulated_source);
+  }
+
   pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point>* icp;
   if (re_initialize_icp){
     icp = new  pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point>();
@@ -395,7 +421,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   } else {
       icp = &icp_;
   }
-  icp->setInputSource(scan1);
+  icp->setInputSource(accumulated_source);
   icp->setInputTarget(accumulated_target);
 
   ///// ICP initialization scheme
@@ -403,7 +429,10 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   // initializing with odom measurement
   // or initialize with 0 translation byt rotation from odom
   Eigen::Matrix4f initial_guess;
-
+  gtsam::Pose3 pose_21 = keyed_poses_[key2].between(keyed_poses_[key1]);
+  initial_guess = Eigen::Matrix4f::Identity(4, 4);
+  initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
+  initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
   switch (icp_init_method_) {
   case IcpInitMethod::IDENTITY: // initialize with idientity
   {
@@ -412,16 +441,11 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
 
   case IcpInitMethod::ODOMETRY: // initialize with odometry
   {
-    gtsam::Pose3 pose_21 = pose2.between(pose1);
-    initial_guess = Eigen::Matrix4f::Identity(4, 4);
-    initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
-    initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
   } break;
 
   case IcpInitMethod::ODOM_ROTATION: // initialize with zero translation but
                                      // rot from odom
   {
-    gtsam::Pose3 pose_21 = pose2.between(pose1);
     initial_guess = Eigen::Matrix4f::Identity(4, 4);
     initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
   } break;
@@ -490,12 +514,35 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     return false;
   }
 
-  if (icp->getFitnessScore() > max_tolerable_fitness_) {
-    ROS_INFO_STREAM("ICP: Coverged but score is: " << icp->getFitnessScore());
+  *fitness_score = icp->getFitnessScore();
+
+  if (*fitness_score > max_tolerable_fitness_) {
+    ROS_INFO_STREAM("ICP: Converged or max iterations reached, but score: "
+                    << icp->getFitnessScore()
+                    << ", Exceeds threshold: " << max_tolerable_fitness_);
     return false;
   }
 
-  double fitness_score = icp->getFitnessScore();
+  // Check if the rotation exceeds thresholds
+  // Get difference between odom and icp estimation
+  gtsam::Pose3 diff = (keyed_poses_[key2].between(keyed_poses_[key1]))
+                          .between(utils::ToGtsam(*delta));
+  gtsam::Vector diff_log = gtsam::Pose3::Logmap(diff);
+  double trans_diff =
+      std::sqrt(diff_log.tail(3).transpose() * diff_log.tail(3));
+  double rot_diff = std::sqrt(diff_log.head(3).transpose() * diff_log.head(3));
+  // Thresholding
+  if (icp_transform_thresholding_ &&
+      (trans_diff > icp_max_translation_ ||
+       rot_diff > icp_max_rotation_ * M_PI / 180.0)) {
+    ROS_INFO_STREAM(
+        "ICP: Convered and passes fitness, but translation or rotation exceeds "
+        "threshold.\n\tTranslation: "
+        << trans_diff << ", thresh: " << icp_max_translation_
+        << "\n\tRotation (deg): " << rot_diff * 180.0 / M_PI << ", "
+        << ", thresh: " << icp_max_rotation_);
+    return false;
+  }
 
   // Find transform from pose2 to pose1 from output of ICP_.
   *delta = gu::PoseInverse(*delta); // NOTE: gtsam need 2_Transform_1 while
@@ -509,7 +556,8 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   } else {
     switch (icp_covariance_method_) {
     case (IcpCovarianceMethod::POINT2POINT):
-      ComputeICPCovariancePointPoint(icp_result, T, fitness_score, *covariance);
+      ComputeICPCovariancePointPoint(
+          icp_result, T, *fitness_score, *covariance);
       break;
     case (IcpCovarianceMethod::POINT2PLANE):
       ComputeICPCovariancePointPlane(
@@ -570,10 +618,10 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   sac_ia.setInputTarget(target_keypoints);
   sac_ia.setTargetFeatures(target_features);
   PointCloud::Ptr aligned_output(new PointCloud);
-  sac_ia.align(*aligned_output);
+  sac_ia.align(*aligned_output, *tf_out);
 
   sac_fitness_score = sac_ia.getFitnessScore();
-  ROS_INFO_STREAM("SAC fitness score" << sac_fitness_score);
+  ROS_INFO_STREAM("SAC fitness score: " << sac_fitness_score);
 
   *tf_out = sac_ia.getFinalTransformation();
 }

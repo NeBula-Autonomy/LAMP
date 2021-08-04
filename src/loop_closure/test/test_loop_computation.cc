@@ -8,6 +8,7 @@
 
 #include "loop_closure/IcpLoopComputation.h"
 #include "loop_closure/LoopComputation.h"
+#include "utils/CommonFunctions.h"
 
 #include "test_artifacts.h"
 
@@ -39,12 +40,11 @@ class TestLoopComputation : public ::testing::Test {
 
   bool performAlignment(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
-                        const gtsam::Pose3& pose1,
-                        const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance) {
+    double fitness_score;
     return icp_compute_.PerformAlignment(
-        key1, key2, pose1, pose2, delta, covariance);
+        key1, key2, delta, covariance, &fitness_score);
   }
 
   void getSacInitialAlignment(PointCloud::ConstPtr source,
@@ -146,7 +146,7 @@ TEST_F(TestLoopComputation, PerformAlignment) {
   pose_graph_msgs::PoseGraphNode kp0, kp1;
   kp0.key = gtsam::Symbol('a', 0);
   kp1.key = gtsam::Symbol('a', 1);
-  kp1.pose.position.x = 0.99;
+  kp0.pose.position.z = 0.99;
   kp->nodes.push_back(kp0);
   kp->nodes.push_back(kp1);
 
@@ -154,12 +154,8 @@ TEST_F(TestLoopComputation, PerformAlignment) {
 
   geometry_utils::Transform3 tf, tf_exp;
   gtsam::Matrix66 covar;
-  performAlignment(gtsam::Symbol('a', 1),
-                   gtsam::Symbol('a', 0),
-                   gtsam::Pose3(),
-                   gtsam::Pose3(gtsam::Point3(0, 0, 0.99)),
-                   &tf,
-                   &covar);
+  EXPECT_TRUE(performAlignment(
+      gtsam::Symbol('a', 1), gtsam::Symbol('a', 0), &tf, &covar));
 
   tf_exp.translation = geometry_utils::Vec3(T(0, 3), T(1, 3), T(2, 3));
   tf_exp.rotation = geometry_utils::Rot3(T(0, 0),
@@ -172,7 +168,8 @@ TEST_F(TestLoopComputation, PerformAlignment) {
                                          T(2, 1),
                                          T(2, 2));
 
-  EXPECT_EQ(tf_exp, tf);
+  EXPECT_TRUE(
+      gtsam::assert_equal(utils::ToGtsam(tf_exp), utils::ToGtsam(tf), 1e-3));
 }
 
 }  // namespace lamp_loop_closure

@@ -94,6 +94,7 @@ add_library(${PROJECT_NAME}
   src/ObservabilityLoopPrioritization.cc
   src/IcpLoopComputation.cc
   src/LoopCandidateQueue.cc
+  src/TestUtils.cc
   src/RoundRobinLoopCandidateQueue.cc
   src/ObservabilityQueue.cc
 )
@@ -134,6 +135,22 @@ target_link_libraries(loop_candidate_queue_node
 
 add_executable(loop_computation_node src/loop_computation_node.cc)
 target_link_libraries(loop_computation_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+add_executable(gen_loop_computation_test src/gen_loop_computation_test.cc)
+target_link_libraries(gen_loop_computation_test
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+add_executable(eval_loop_computation_test src/eval_loop_computation_test.cc)
+target_link_libraries(eval_loop_computation_test
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
