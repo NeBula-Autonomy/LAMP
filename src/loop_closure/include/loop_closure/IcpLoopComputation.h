@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "ThreadPool.h"
 #include "loop_closure/PointCloudUtils.h"
 #include <geometry_utils/GeometryUtils.h>
 #include <gtsam/geometry/Pose3.h>
@@ -13,8 +14,8 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
+#include <unordered_map>
 #include <utils/CommonStructs.h>
-#include "ThreadPool.h"
 
 #include "loop_closure/LoopComputation.h"
 
@@ -92,8 +93,8 @@ protected:
   ros::Timer update_timer_;
 
   // Store keyed scans
-  std::map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
-  std::map<gtsam::Key, gtsam::Pose3> keyed_poses_;
+  std::unordered_map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
+  std::unordered_map<gtsam::Key, gtsam::Pose3> keyed_poses_;
 
   double max_tolerable_fitness_;
   double icp_tf_epsilon_;

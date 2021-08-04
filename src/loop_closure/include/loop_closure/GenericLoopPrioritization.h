@@ -11,6 +11,7 @@
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
+#include <unordered_map>
 #include <utils/CommonStructs.h>
 
 #include "loop_closure/LoopPrioritization.h"
@@ -46,7 +47,7 @@ protected:
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
   // Store keyed scans
-  std::map<gtsam::Key, double> keyed_observability_;
+  std::unordered_map<gtsam::Key, double> keyed_observability_;
 
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
