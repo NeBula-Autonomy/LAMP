@@ -28,7 +28,7 @@ public:
     system("rosparam load $(rospack find lamp)/config/GT_artifacts.yaml");
     system("rosparam load $(rospack find lamp)/config/robot_names.yaml");
 
-    system("rosparam set artifact_prefix 'l'");
+    system("rosparam set artifact_prefix 'A'");
 
     system("rosparam load $(rospack find "
            "factor_handlers)/config/manual_lc_parameters.yaml");

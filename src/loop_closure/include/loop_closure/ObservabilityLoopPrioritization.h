@@ -12,6 +12,7 @@
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <utils/CommonStructs.h>
+#include <mutex>
 
 #include "loop_closure/LoopPrioritization.h"
 
@@ -19,6 +20,7 @@ namespace lamp_loop_closure {
 
 class ObservabilityLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::Normal> Normals;
+  friend class TestLoopPrioritization;
 
 public:
   ObservabilityLoopPrioritization();
@@ -35,17 +37,25 @@ public:
 protected:
   void PopulatePriorityQueue() override;
 
+  void PrunePriorityQueue();
+
   void PublishBestCandidates() override;
+
+  pose_graph_msgs::LoopCandidateArray GetBestCandidates() override;
+
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
   // Store keyed scans
-  std::map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
+  std::unordered_map<gtsam::Key, double> keyed_observability_;
 
   // Store observability in deque along with candidate
   std::deque<double> observability_score_;
+
+  // Track max observability for each robot (different so need to normalize)
+  std::unordered_map<char, double> max_observability_;
 
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
@@ -58,6 +68,9 @@ protected:
   double min_observability_; // Discard any candidate with observability
                              // below threshold
   double normals_radius_;    // radius used for cloud normal computation
+  double horizon_;           // time until a candidate is discarded
+
+  int num_threads_; // number of threads for normal computation
 };
 
 } // namespace lamp_loop_closure

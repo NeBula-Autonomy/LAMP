@@ -249,9 +249,9 @@ void LaserLoopClosure::GetInitialAlignment(PointCloud::ConstPtr source,
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
   utils::ComputeKeypoints(
-      source, harris_params_, icp_threads_, source_normals, source_keypoints);
+      source, source_features, harris_params_, icp_threads_, source_keypoints);
   utils::ComputeKeypoints(
-      target, harris_params_, icp_threads_, target_normals, target_keypoints);
+      target, target_normals, harris_params_, icp_threads_, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);

@@ -30,7 +30,25 @@ bool LoopPrioritization::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   loop_candidate_sub_ = nl.subscribe<pose_graph_msgs::LoopCandidateArray>(
       "loop_candidates", 100, &LoopPrioritization::InputCallback, this);
+
+
+
   return true;
+}
+
+std::vector<ros::AsyncSpinner> LoopPrioritization::SetAsyncSpinners(const ros::NodeHandle &n) {
+  ros::NodeHandle nl(n);
+  std::vector<ros::AsyncSpinner> spinners;
+  ros::AsyncSpinner spinner_populate_queue_(1,&this->prioritize_queue_);
+  spinners.emplace_back(spinner_populate_queue_);
+  ros::TimerOptions options(ros::Duration(1), [this] (const ros::TimerEvent& ev) -> void {this->ProcessPopulateCallback(ev);}, &this->prioritize_queue_);
+  populate_timer_ = nl.createTimer(options);
+  return spinners;
+}
+
+void LoopPrioritization::ProcessPopulateCallback(const ros::TimerEvent& ev) {
+    ROS_INFO_STREAM("Populating..");
+    PopulatePriorityQueue();
 }
 
 void LoopPrioritization::InputCallback(

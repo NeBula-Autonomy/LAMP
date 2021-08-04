@@ -19,6 +19,7 @@ namespace lamp_loop_closure {
 
 class GenericLoopPrioritization : public LoopPrioritization {
   typedef pcl::PointCloud<pcl::Normal> Normals;
+  friend class TestLoopPrioritization;
 
 public:
   GenericLoopPrioritization();
@@ -32,17 +33,20 @@ public:
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
+
 protected:
-  void PopulatePriorityQueue() override;
+    void PopulatePriorityQueue() override;
 
   void PublishBestCandidates() override;
+
+  pose_graph_msgs::LoopCandidateArray GetBestCandidates() override;
 
   void KeyedScanCallback(const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg);
 
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
   // Store keyed scans
-  std::map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
+  std::map<gtsam::Key, double> keyed_observability_;
 
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
@@ -54,6 +58,8 @@ protected:
   double min_observability_; // Discard any candidate with observability
                              // below threshold
   double normals_radius_;    // radius used for cloud normal computation
+
+  int num_threads_; // number of threads for normal computation
 
   bool choose_best_; // Send only best candidate
 };

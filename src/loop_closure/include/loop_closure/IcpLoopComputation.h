@@ -14,6 +14,7 @@
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <utils/CommonStructs.h>
+#include "ThreadPool.h"
 
 #include "loop_closure/LoopComputation.h"
 
@@ -23,6 +24,8 @@ class IcpLoopComputation : public LoopComputation {
   typedef pcl::PointCloud<pcl::Normal> Normals;
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
   typedef pcl::search::KdTree<Point> KdTree;
+  friend class TestLoopComputation;
+  friend class EvalIcpLoopCompute;
 
 public:
   IcpLoopComputation();
@@ -36,7 +39,6 @@ public:
 
   bool RegisterCallbacks(const ros::NodeHandle& n) override;
 
-protected:
   // Compute transform and populate output queue
   void ComputeTransforms() override;
 
@@ -46,14 +48,16 @@ protected:
 
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
-  bool SetupICP();
+  bool SetupICP(pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point>& icp);
 
   bool PerformAlignment(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
                         const gtsam::Pose3& pose1,
                         const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
-                        gtsam::Matrix66* covariance);
+                        gtsam::Matrix66* covariance,
+                        double* fitness_score,
+                        bool re_initialize_icp = false);
 
   void GetSacInitialAlignment(PointCloud::ConstPtr source,
                               PointCloud::ConstPtr target,
@@ -79,6 +83,7 @@ protected:
 
   void AccumulateScans(const gtsam::Key& key, PointCloud::Ptr scan_out);
 
+protected:
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
   ros::Subscriber keyed_poses_sub_;
@@ -95,6 +100,9 @@ protected:
   double icp_corr_dist_;
   unsigned int icp_iterations_;
   unsigned int icp_threads_;
+  bool icp_transform_thresholding_;
+  double icp_max_translation_;
+  double icp_max_rotation_;
 
   // SAC feature alignment parameters
   unsigned int sac_iterations_;
@@ -105,7 +113,12 @@ protected:
   double sac_fitness_score_threshold_;
 
   // Teaser++ alignment parameters
-  int teaser_inlier_threshold_;
+  double teaser_inlier_threshold_;
+  double rotation_cost_threshold_;
+  double rotation_max_iterations_;
+  double noise_bound_;
+  double TEASER_FPFH_normals_radius_;
+  double TEASER_FPFH_features_radius_;
 
   utils::HarrisParams harris_params_;
 
@@ -113,12 +126,15 @@ protected:
   double laser_lc_trans_sigma_;
   bool b_use_fixed_covariances_;
 
+  bool b_accumulate_source_;
+
   enum class IcpInitMethod {
     IDENTITY,
     ODOMETRY,
     ODOM_ROTATION,
     FEATURES,
-    TEASERPP
+    TEASERPP,
+    CANDIDATE
   };
 
   enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };
@@ -129,6 +145,11 @@ protected:
 
   // ICP
   pcl::MultithreadedGeneralizedIterativeClosestPoint<Point, Point> icp_;
+
+
+  ThreadPool icp_computation_pool_;
+
+  size_t number_of_threads_in_icp_computation_pool_;
 };
 
 } // namespace lamp_loop_closure

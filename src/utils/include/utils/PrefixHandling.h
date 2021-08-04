@@ -25,29 +25,38 @@ namespace utils {
 
   // Define prefixes for ALL VALID ROBOTS in this file
   const std::map<std::string, char> ROBOT_PREFIXES = {
-      {"husky1",  'a'},
-      {"husky2",  'b'},
-      {"husky3",  'c'},
-      {"husky4",  'f'},
-      {"telemax1",'d'},
-      {"robot",   'e'},
-      {"spot1",   'g'},
-      {"spot2",   'h'},
-      {"handheld1",   'i'},
-      {"xmaxx1",   'j'}
+      {"husky1", 'a'},
+      {"husky2", 'b'},
+      {"husky3", 'c'},
+      {"husky4", 'd'},
+      {"spot1", 'e'},
+      {"spot2", 'f'},
+      {"spot3", 'g'},
+      {"spot4", 'h'},
+      {"aquila1", 'i'},
+      {"aquila2", 'j'},
+      {"kasit1", 'k'},
+      {"zoe1", 'l'},
+      {"zoe2", 'm'},
+      {"xmaxx1", 'x'},
+      {"base", 'z'},
   };
 
   const std::map<std::string, char> ARTIFACT_PREFIXES = {
-      {"husky1",  'l'},
-      {"husky2",  'm'},
-      {"husky3",  'n'},
-      {"husky4",  'q'},
-      {"telemax1",'o'},
-      {"robot",   'p'},
-      {"spot1",   'r'},
-      {"spot2",   's'},
-      {"handheld1",   't'},
-      {"xmaxx1",   'u'}
+      {"husky1", 'A'},
+      {"husky2", 'B'},
+      {"husky3", 'C'},
+      {"husky4", 'D'},
+      {"spot1", 'E'},
+      {"spot2", 'F'},
+      {"spot3", 'G'},
+      {"spot4", 'H'},
+      {"aquila1", 'I'},
+      {"aquila2", 'J'},
+      {"kasit1", 'K'},
+      {"zoe1", 'L'},
+      {"zoe2", 'M'},
+      {"xmaxx1", 'X'},
   };
 
   // ---------------------------------------------------------

@@ -373,10 +373,14 @@ bool LampRobot::CheckHandlers() {
     b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
 
   if (b_add_imu_factors_ && stationary_handler_.has_data_) {
-    // Force new odometry node
-    ProcessOdomData(odometry_handler_.GetData(false));
-    stationary_handler_.SetKeyForImuAttitude(pose_graph_.key - 1);
-    ProcessStationaryData(stationary_handler_.GetData());
+    // Check if we have moved since the last stationary factor
+    if (stationary_handler_.CheckKeyRecency(pose_graph_.key)) {
+      // Passes, so create a new factor
+      // Force new odometry node
+      ProcessOdomData(odometry_handler_.GetData(false));
+      stationary_handler_.SetKeyForImuAttitude(pose_graph_.key - 1);
+      ProcessStationaryData(stationary_handler_.GetData());
+    }
   }
   return true;
 }
@@ -640,8 +644,7 @@ void LampRobot::UpdateAndPublishOdom() {
   // if (!odometry_handler_.GetOdomDelta(stamp, delta_pose_cov)) {
   // Had a bad odom return - try latest time from odometry_handler
   if (!odometry_handler_.GetOdomDeltaLatestTime(stamp, delta_pose_cov)) {
-    ROS_WARN("No good velocity output yet");
-    // TODO - work out what the best thing is to do in this scenario
+    ROS_WARN_ONCE("No good odom input to LAMP yet");
     return;
   }
 
@@ -780,7 +783,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     // Is a relative tranform, so need to handle linking to the pose-graph
     HandleRelativePoseMeasurement(
         timestamp, temp_transform, transform, global_pose, pose_key);
-    ROS_INFO("HandleRelativePoseMeasurement");
+    ROS_DEBUG("HandleRelativePoseMeasurement");
 
     if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
       ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
@@ -815,7 +818,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
 
       // Publish the new artifact, with the global pose
-      ROS_INFO("Calling Publish Artifacts");
+      ROS_DEBUG("Calling Publish Artifacts");
       artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
 
       // Add and track the edges that have been added
@@ -860,7 +863,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
 
       // Publish the new artifact, with the global pose. FYI: We may removed
       // this (check with Kyon)
-      ROS_INFO("Calling Publish Artifacts");
+      // ROS_INFO("Calling Publish Artifacts");
       artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
 
       // Add and track the edges that have been added

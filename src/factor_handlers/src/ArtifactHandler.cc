@@ -135,10 +135,7 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
 
   // get artifact id / key -----------------------------------------------
   // Check if the ID of the object already exists in the object hash
-  if (artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end() &&
-      msg.label != "Cell Phone") {
-    // Take the ID for that object - no reconciliation in the pose-graph of a
-    // cell phone (for now)
+  if (artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end()) {
     cur_artifact_key = artifact_id2key_hash[artifact_id];
     ROS_INFO_STREAM(
         "\nArtifact Handler: artifact previously observed, artifact id "
@@ -269,10 +266,13 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
   Eigen::Vector3d artifact_position = global_pose.translation();
   std::string artifact_label;
 
-  if (!(artifact_key.chr() == 'l' || artifact_key.chr() == 'm' ||
-        artifact_key.chr() == 'n' || artifact_key.chr() == 'o' ||
-        artifact_key.chr() == 'p' || artifact_key.chr() == 'q' ||
-        artifact_key.chr() == 'r' || artifact_key.chr() == 's')) {
+  if (!(artifact_key.chr() == 'A' || artifact_key.chr() == 'B' ||
+        artifact_key.chr() == 'C' || artifact_key.chr() == 'D' ||
+        artifact_key.chr() == 'E' || artifact_key.chr() == 'F' ||
+        artifact_key.chr() == 'G' || artifact_key.chr() == 'H' ||
+        artifact_key.chr() == 'I' || artifact_key.chr() == 'J' ||
+        artifact_key.chr() == 'K' || artifact_key.chr() == 'L' ||
+        artifact_key.chr() == 'M' || artifact_key.chr() == 'X')) {
     ROS_WARN("ERROR - have a non-landmark ID");
     ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
     return;

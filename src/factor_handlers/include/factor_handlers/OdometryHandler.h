@@ -12,6 +12,7 @@
 
 // Includes
 #include <factor_handlers/LampDataHandlerBase.h>
+#include <std_msgs/Float64.h>
 #include <utils/CommonStructs.h>
 
 // Typedefs
@@ -74,6 +75,8 @@ protected:
 
   // Pointcloud Subscribers
   ros::Subscriber point_cloud_sub_;
+
+  ros::Publisher time_diff_pub_;
 
   // Subscriptions
   bool b_register_lidar_sub_;

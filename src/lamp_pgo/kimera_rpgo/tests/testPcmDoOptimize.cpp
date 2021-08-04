@@ -130,7 +130,7 @@ TEST(PcmDoOptimize, landmarks) {
   // test optimize condition for landmarks
   // first observation: do_optimize = false
   // repeated observatio: do_optimize = true
-  std::vector<char> special_symbs{'l', 'u'};  // for landmarks
+  std::vector<char> special_symbs{'A', 'u'};  // for landmarks
   OutlierRemoval* pcm = new Pcm3D(10.0, 10.0, true, special_symbs);
   pcm->setQuiet();
 
@@ -149,7 +149,7 @@ TEST(PcmDoOptimize, landmarks) {
   gtsam::Values vals;
   gtsam::NonlinearFactorGraph factors;
   gtsam::Pose3 meas1 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(1, 1, 0));
-  gtsam::Key landmark_key = gtsam::Symbol('l', 0);
+  gtsam::Key landmark_key = gtsam::Symbol('A', 0);
   vals.insert(landmark_key, meas1);
   factors.add(
       gtsam::BetweenFactor<gtsam::Pose3>(0, landmark_key, meas1, noise));
@@ -189,7 +189,7 @@ TEST(PcmDoOptimize, Beacon) {
   // test optimize condition for Beacon
   // first observation: do_optimize = false
   // repeated observatio: do_optimize = true
-  std::vector<char> special_symbs{'l', 'u'};  // for landmarks
+  std::vector<char> special_symbs{'A', 'u'};  // for landmarks
   OutlierRemoval* pcm = new Pcm3D(1.0, 1.0, true, special_symbs);
   pcm->setQuiet();
 

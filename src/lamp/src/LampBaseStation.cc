@@ -229,9 +229,9 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
   gtsam::Values new_values;
 
   for (auto g : pose_graph_data->graphs) {
-    ROS_INFO_STREAM("LampBase new graph with "
-                    << g->nodes.size() << " nodes and " << g->edges.size()
-                    << " edges");
+    ROS_DEBUG_STREAM("LampBase new graph with "
+                     << g->nodes.size() << " nodes and " << g->edges.size()
+                     << " edges");
 
     // Register new data - this will cause pose graph to publish
     b_has_new_factor_ = true;
@@ -243,7 +243,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     // Update the internal pose graph using the merger output
     pose_graph_msgs::PoseGraphConstPtr fused_graph(
         new pose_graph_msgs::PoseGraph(merger_.GetCurrentGraph()));
-    ROS_INFO_STREAM("Fused Graph: UpdateFromMsg");
+    // ROS_INFO_STREAM("Fused Graph: UpdateFromMsg");
     pose_graph_.UpdateFromMsg(fused_graph);
 
     // Check for new loop closure edges
@@ -284,7 +284,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     ROS_INFO_STREAM("Added new pose graph");
   }
 
-  ROS_INFO_STREAM("Keyed stamps: " << pose_graph_.keyed_stamps.size());
+  ROS_DEBUG_STREAM("Keyed stamps: " << pose_graph_.keyed_stamps.size());
 
   // Update from stored keyed scans
   for (auto s : pose_graph_data->scans) {

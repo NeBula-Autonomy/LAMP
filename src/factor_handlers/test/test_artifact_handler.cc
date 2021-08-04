@@ -112,7 +112,7 @@ TEST_F(TestArtifactHandler, ClearArtifactData) {
   sig << 0.3,0.3,0.3,0.3,0.3,0.3;
   gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
   // Add the data
-  AddArtifact(gtsam::Symbol('l',0), ros_time, global_position, noise);
+  AddArtifact(gtsam::Symbol('A', 0), ros_time, global_position, noise);
   // Get the data  
   ArtifactData& artifact_data = GetArtifactData();
   // Check size of new artifact values
@@ -152,7 +152,7 @@ TEST_F(TestArtifactHandler, GetData)
 }
 
 TEST_F(TestArtifactHandler, GetArtifactID) {
-  gtsam::Symbol key ('l',0);
+  gtsam::Symbol key('A', 0);
   EXPECT_EQ(getID(key), "");
   AddArtifactKey(key);
   EXPECT_EQ(getID(key), "distal");
@@ -169,13 +169,13 @@ TEST_F(TestArtifactHandler, AddArtifactData) {
   sig << 0.3,0.3,0.3,0.3,0.3,0.3;
   gtsam::SharedNoiseModel noise = gtsam::noiseModel::Diagonal::Sigmas(sig);
   // Add the data
-  AddArtifact(gtsam::Symbol('l',0), ros_time, global_position, noise);
+  AddArtifact(gtsam::Symbol('A', 0), ros_time, global_position, noise);
   // Get the data  
   ArtifactData& factor = GetArtifactData();
   ArtifactFactor artifact_factor = factor.factors[0];
   // Check if data is new
   EXPECT_TRUE(factor.b_has_data);
-  EXPECT_EQ(artifact_factor.key, gtsam::Symbol('l',0));
+  EXPECT_EQ(artifact_factor.key, gtsam::Symbol('A', 0));
   EXPECT_EQ(artifact_factor.stamp, ros::Time(0.1));
   EXPECT_EQ(artifact_factor.position, Eigen::Vector3d(1.0, 1.0, 1.0));
 }
