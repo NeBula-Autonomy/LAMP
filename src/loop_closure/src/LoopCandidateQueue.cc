@@ -80,7 +80,9 @@ void LoopCandidateQueue::PublishAllLoopClosures(){
       candidate_array.candidates.push_back(loop_candidate);
     }
   }
-  PublishLoopCandidate(candidate_array);
+  if (candidate_array.candidates.size() > 0) {
+    PublishLoopCandidate(candidate_array);
+  }
 }
 
 void LoopCandidateQueue::OnNewLoopClosure(){

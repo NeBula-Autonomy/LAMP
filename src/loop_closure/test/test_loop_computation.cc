@@ -8,6 +8,7 @@
 
 #include "loop_closure/IcpLoopComputation.h"
 #include "loop_closure/LoopComputation.h"
+#include "utils/CommonFunctions.h"
 
 #include "test_artifacts.h"
 
@@ -43,8 +44,9 @@ class TestLoopComputation : public ::testing::Test {
                         const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance) {
+    double fitness_score;
     return icp_compute_.PerformAlignment(
-        key1, key2, pose1, pose2, delta, covariance);
+        key1, key2, pose1, pose2, delta, covariance, &fitness_score);
   }
 
   void getSacInitialAlignment(PointCloud::ConstPtr source,
@@ -125,7 +127,6 @@ TEST_F(TestLoopComputation, PerformAlignment) {
 
   // Add some keyed scans
   PointCloud::Ptr corner(new PointCloud);
-  PointCloud::Ptr box(new PointCloud);
   corner = GenerateCorner();
   // Perturb a bit
   PointCloud::Ptr corner_moved(new PointCloud);
@@ -136,30 +137,33 @@ TEST_F(TestLoopComputation, PerformAlignment) {
 
   pose_graph_msgs::KeyedScan::Ptr ks0(new pose_graph_msgs::KeyedScan);
   *ks0 = PointCloudToKeyedScan(corner, gtsam::Symbol('a', 0));
-  pose_graph_msgs::KeyedScan::Ptr ks1(new pose_graph_msgs::KeyedScan);
-  *ks1 = PointCloudToKeyedScan(corner_moved, gtsam::Symbol('a', 1));
+  pose_graph_msgs::KeyedScan::Ptr ks100(new pose_graph_msgs::KeyedScan);
+  *ks100 = PointCloudToKeyedScan(corner_moved, gtsam::Symbol('a', 100));
+  // Note we cannot use consecutive scans to test since we are accumulating
+  // scans
 
   keyedScanCallback(ks0);
-  keyedScanCallback(ks1);
+  keyedScanCallback(ks100);
 
   pose_graph_msgs::PoseGraph::Ptr kp(new pose_graph_msgs::PoseGraph);
-  pose_graph_msgs::PoseGraphNode kp0, kp1;
+  pose_graph_msgs::PoseGraphNode kp0, kp100;
   kp0.key = gtsam::Symbol('a', 0);
-  kp1.key = gtsam::Symbol('a', 1);
-  kp1.pose.position.x = 0.99;
+  kp100.key = gtsam::Symbol('a', 100);
+  kp0.pose.position.z = 0.1; // some perturbation
+  kp100.pose.position.x = -0.9;
+  kp100.pose.position.y = 0.1;
   kp->nodes.push_back(kp0);
-  kp->nodes.push_back(kp1);
+  kp->nodes.push_back(kp100);
+
+  gtsam::Pose3 p0 = utils::ToGtsam(kp0.pose);
+  gtsam::Pose3 p100 = utils::ToGtsam(kp100.pose);
 
   keyedPoseCallback(kp);
 
   geometry_utils::Transform3 tf, tf_exp;
   gtsam::Matrix66 covar;
-  performAlignment(gtsam::Symbol('a', 1),
-                   gtsam::Symbol('a', 0),
-                   gtsam::Pose3(),
-                   gtsam::Pose3(gtsam::Point3(0, 0, 0.99)),
-                   &tf,
-                   &covar);
+  EXPECT_TRUE(performAlignment(
+      gtsam::Symbol('a', 100), gtsam::Symbol('a', 0), p100, p0, &tf, &covar));
 
   tf_exp.translation = geometry_utils::Vec3(T(0, 3), T(1, 3), T(2, 3));
   tf_exp.rotation = geometry_utils::Rot3(T(0, 0),
@@ -172,7 +176,8 @@ TEST_F(TestLoopComputation, PerformAlignment) {
                                          T(2, 1),
                                          T(2, 2));
 
-  EXPECT_EQ(tf_exp, tf);
+  EXPECT_TRUE(
+      gtsam::assert_equal(utils::ToGtsam(tf_exp), utils::ToGtsam(tf), 1e-3));
 }
 
 }  // namespace lamp_loop_closure

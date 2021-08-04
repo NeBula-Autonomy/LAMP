@@ -47,7 +47,7 @@ protected:
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
   // Store keyed scans
-  std::unordered_map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
+  std::unordered_map<gtsam::Key, double> keyed_observability_;
 
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
