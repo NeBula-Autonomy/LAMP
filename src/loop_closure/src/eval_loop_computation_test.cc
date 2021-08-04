@@ -33,7 +33,8 @@ public:
     filter_params_.decimate_percentage =
         std::min(1.0, std::max(0.0, filter_params_.decimate_percentage));
 
-    if (!icp_lc_.LoadParameters(n)) return false;
+    if (!icp_lc_.LoadParameters(n))
+      return false;
 
     if (icp_lc_.number_of_threads_in_icp_computation_pool_ > 1) {
       ROS_INFO_STREAM("Thread Pool Initialized with "
