@@ -46,6 +46,10 @@ public:
     return map_data_;
   }
 
+  void SetupNumberThreads(int no_threads) {
+    number_threads_ = no_threads;
+  }
+
   virtual void Refresh(const geometry_utils::Transform3& current_pose) = 0;
 
   void UpdateCurrentPose(const geometry_utils::Transform3& current_pose) {
@@ -55,4 +59,5 @@ public:
 protected:
   PointCloud::Ptr map_data_;
   geometry_utils::Transform3 current_pose_estimate_;
+  int number_threads_{1};
 };
