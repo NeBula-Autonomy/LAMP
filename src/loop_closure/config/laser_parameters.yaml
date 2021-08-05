@@ -184,7 +184,7 @@ base:
   # Observability prioritization loop closure
   #--------------------------------------------------------------------------------
   obs_prioritization:
-    publish_n_best: 30
+    publish_n_best: 300
     min_observability: 0.2 # normalized from 0 to 1
     horizon: 300
     normals_search_radius: 1.0
