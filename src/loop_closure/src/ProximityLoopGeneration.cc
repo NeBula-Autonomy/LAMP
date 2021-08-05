@@ -55,6 +55,15 @@ bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
                distance_to_skip_recent_poses))
     return false;
 
+  if (!pu::Get(param_ns_ + "/n_closest", n_closest_))
+    return false;
+
+  bool b_take_n_closest;
+  if (!pu::Get(param_ns_ + "/b_take_n_closest", b_take_n_closest))
+    return false;
+  if (!b_take_n_closest)
+    n_closest_ = std::numeric_limits<int>::max();
+
   skip_recent_poses_ =
       (int)(distance_to_skip_recent_poses / translation_threshold_nodes);
   return true;
@@ -92,6 +101,7 @@ void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
     return;
 
   const gtsam::Symbol key = gtsam::Symbol(new_key);
+  std::vector<pose_graph_msgs::LoopCandidate> potential_candidates;
   for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
     const gtsam::Symbol other_key = it->first;
 
@@ -120,7 +130,22 @@ void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
     candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
     candidate.value = distance;
 
-    candidates_.push_back(candidate);
+    potential_candidates.push_back(candidate);
+  }
+  if (potential_candidates.size() < n_closest_) {
+    candidates_.insert(candidates_.end(),
+                       potential_candidates.begin(),
+                       potential_candidates.end());
+  } else {
+    sort(potential_candidates.begin(),
+         potential_candidates.end(),
+         [](const pose_graph_msgs::LoopCandidate& lhs,
+            const pose_graph_msgs::LoopCandidate& rhs) {
+           return lhs.value < rhs.value;
+         });
+    candidates_.insert(candidates_.end(),
+                       potential_candidates.begin(),
+                       potential_candidates.begin() + n_closest_);
   }
   return;
 }

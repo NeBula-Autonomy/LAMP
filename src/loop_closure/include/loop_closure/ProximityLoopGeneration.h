@@ -37,6 +37,7 @@ protected:
 
   double proximity_threshold_;
   size_t skip_recent_poses_;
+  int n_closest_;
 };
 
 } // namespace lamp_loop_closure
