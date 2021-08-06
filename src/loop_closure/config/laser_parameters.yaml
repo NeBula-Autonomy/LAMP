@@ -257,14 +257,14 @@ base:
     # 0 means no accumulation
     num_prev_scans: 2
     num_next_scans: 2
-    b_accumulate_source: true
+    b_accumulate_source: false
     
     # Radii of area to consider when computing normals and features
     normals_radius: 1.0
     features_radius: 2.0
 
     # If SAC fitness score is more than the following value, it will be rejected
-    fitness_score_threshold: 8.0
+    fitness_score_threshold: 16.0
 
   #--------------------------------------------------------------------------------
   # TEASER Settings for feature-based initialization
