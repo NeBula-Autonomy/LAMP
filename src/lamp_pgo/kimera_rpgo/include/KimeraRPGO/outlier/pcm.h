@@ -197,8 +197,11 @@ class Pcm : public OutlierRemoval {
           Measurements newMeasurement;
           newMeasurement.factors.add(new_factors[i]);
           newMeasurement.consistent_factors.add(new_factors[i]);
-          gtsam::Symbol symb(new_values.keys()[0]);
-          landmarks_[symb] = newMeasurement;
+          gtsam::Symbol symbfrnt(new_factors[i]->front());
+          gtsam::Key landmark_key =
+              (isSpecialSymbol(symbfrnt.chr()) ? new_factors[i]->front()
+                                               : new_factors[i]->back());
+          landmarks_[landmark_key] = newMeasurement;
           total_lc_++;
         } break;
         case FactorType::LOOP_CLOSURE: {
