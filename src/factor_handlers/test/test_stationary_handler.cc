@@ -74,9 +74,10 @@ TEST_F(StationaryHandlerTest, CreateAttitudeFactor) {
   EXPECT_NEAR(0.99995, factor.bRef().unitVector()[2], tolerance_);
 
   // Check error
-  gtsam::Pose3 test_pose_1 = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3());
-  gtsam::Pose3 test_pose_2 =
-      gtsam::Pose3(gtsam::Rot3(0.9999872, 0.0050503, 0, 0), gtsam::Point3());
+  gtsam::Pose3 test_pose_1 =
+      gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 0));
+  gtsam::Pose3 test_pose_2 = gtsam::Pose3(
+      gtsam::Rot3(0.9999872, 0.0050503, 0, 0), gtsam::Point3(0, 0, 0));
 
   gtsam::Vector nRef_2 =
       gtsam::Rot3(0.9999872, 0.0050503, 0, 0) * factor.bRef().unitVector();
