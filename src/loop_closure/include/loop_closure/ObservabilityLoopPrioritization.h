@@ -49,13 +49,13 @@ protected:
   void ProcessTimerCallback(const ros::TimerEvent& ev);
 
   // Store keyed scans
-  std::map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
+  std::unordered_map<gtsam::Key, double> keyed_observability_;
 
   // Store observability in deque along with candidate
   std::deque<double> observability_score_;
 
   // Track max observability for each robot (different so need to normalize)
-  std::map<char, double> max_observability_;
+  std::unordered_map<char, double> max_observability_;
 
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;

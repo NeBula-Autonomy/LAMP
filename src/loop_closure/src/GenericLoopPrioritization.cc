@@ -115,33 +115,21 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
     candidate_queue_.pop();
 
     // Check if keyed scans exist
-    if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
-        keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
-      ROS_WARN("Keyed scans do not exist. ");
+    if (keyed_observability_.find(candidate.key_from) ==
+            keyed_observability_.end() ||
+        keyed_observability_.find(candidate.key_to) ==
+            keyed_observability_.end()) {
+      ROS_WARN("Keyed scans not yet received. ");
       if ((ros::Time::now() - candidate.header.stamp).toSec() <
           keyed_scans_max_delay_)
         candidate_queue_.push(candidate);
       continue;
     }
 
-    Eigen::Matrix<double, 3, 1> obs_eigenv_from;
-    utils::ComputeIcpObservability(keyed_scans_[candidate.key_from],
-                                   normals_radius_,
-                                   num_threads_,
-                                   &obs_eigenv_from);
-    double min_obs_from = obs_eigenv_from.minCoeff();
-    ROS_INFO_STREAM("Min observability scan 1: " << min_obs_from);
-    if (min_obs_from < min_observability_)
+    if (keyed_observability_[candidate.key_from] < min_observability_)
       continue;
 
-    Eigen::Matrix<double, 3, 1> obs_eigenv_to;
-    utils::ComputeIcpObservability(keyed_scans_[candidate.key_to],
-                                   normals_radius_,
-                                   num_threads_,
-                                   &obs_eigenv_to);
-    double min_obs_to = obs_eigenv_to.minCoeff();
-    ROS_INFO_STREAM("Min observability scan 2: " << min_obs_to);
-    if (min_obs_to < min_observability_)
+    if (keyed_observability_[candidate.key_to] < min_observability_)
       continue;
 
     if (!choose_best_) {
@@ -150,9 +138,11 @@ void GenericLoopPrioritization::PopulatePriorityQueue() {
       priority_queue_mutex_.unlock();
     }
     // Track best candidate
-    if (min_obs_from + min_obs_to > best_score) {
+    double score = keyed_observability_[candidate.key_from] +
+        keyed_observability_[candidate.key_to];
+    if (score > best_score) {
       best_candidate = candidate;
-      best_score = min_obs_from + min_obs_to;
+      best_score = score;
     }
   }
   if (choose_best_ && best_score > 0) {
@@ -189,7 +179,7 @@ GenericLoopPrioritization::GetBestCandidates() {
 void GenericLoopPrioritization::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
-  if (keyed_scans_.find(key) != keyed_scans_.end()) {
+  if (keyed_observability_.find(key) != keyed_observability_.end()) {
     ROS_DEBUG_STREAM("KeyedScanCallback: Key "
                      << gtsam::DefaultKeyFormatter(key)
                      << " already has a scan. Not adding.");
@@ -199,9 +189,12 @@ void GenericLoopPrioritization::KeyedScanCallback(
   pcl::PointCloud<Point>::Ptr scan(new pcl::PointCloud<Point>);
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
-  // Add the key and scan.
-  keyed_scans_.insert(std::pair<gtsam::Key, PointCloud::ConstPtr>(key, scan));
+  Eigen::Matrix<double, 3, 1> obs_eigenv;
+  utils::ComputeIcpObservability(
+      scan, normals_radius_, num_threads_, &obs_eigenv);
+  double min_obs = obs_eigenv.minCoeff();
+  // Add the key and observability
+  keyed_observability_.insert(std::pair<gtsam::Key, double>(key, min_obs));
 }
-
 
 } // namespace lamp_loop_closure
