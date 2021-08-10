@@ -264,7 +264,7 @@ base:
     features_radius: 2.0
 
     # If SAC fitness score is more than the following value, it will be rejected
-    fitness_score_threshold: 16.0
+    fitness_score_threshold: 32.0
 
   #--------------------------------------------------------------------------------
   # TEASER Settings for feature-based initialization
