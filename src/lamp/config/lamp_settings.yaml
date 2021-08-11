@@ -44,4 +44,4 @@ base:
 
   # if true, optimize every time a new artifact edge is received
   # if false, currently won't optimize for artifact loop closures
-  b_optimize_on_artifacts: true
+  b_optimize_on_artifacts: false
