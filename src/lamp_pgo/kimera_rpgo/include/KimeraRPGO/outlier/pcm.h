@@ -197,8 +197,11 @@ class Pcm : public OutlierRemoval {
           Measurements newMeasurement;
           newMeasurement.factors.add(new_factors[i]);
           newMeasurement.consistent_factors.add(new_factors[i]);
-          gtsam::Symbol symb(new_values.keys()[0]);
-          landmarks_[symb] = newMeasurement;
+          gtsam::Symbol symbfrnt(new_factors[i]->front());
+          gtsam::Key landmark_key =
+              (isSpecialSymbol(symbfrnt.chr()) ? new_factors[i]->front()
+                                               : new_factors[i]->back());
+          landmarks_[landmark_key] = newMeasurement;
           total_lc_++;
         } break;
         case FactorType::LOOP_CLOSURE: {
@@ -246,7 +249,7 @@ class Pcm : public OutlierRemoval {
     auto stop = std::chrono::high_resolution_clock::now();
     auto spin_duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    if (debug_ || do_optimize)
+    if (debug_ && do_optimize)
       log<INFO>(
           "PCM spin took %1% milliseconds. Detected %2% total loop closures "
           "with %3% inliers. ") %

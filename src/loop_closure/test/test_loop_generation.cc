@@ -65,8 +65,9 @@ TEST_F(TestLoopGeneration, TestBetweenDistance) {
   EXPECT_EQ(3, dist);
 }
 
-TEST_F(TestLoopGeneration, TestGenerateLoops) {
+TEST_F(TestLoopGeneration, TestGenerateLoopsTakeAll) {
   ros::NodeHandle nh;
+  ros::param::set("base/b_take_n_closest", false);
   bool init = proximity_lc_.Initialize(nh);
   pose_graph_msgs::PoseGraph::Ptr graph_msg(new pose_graph_msgs::PoseGraph);
   pose_graph_msgs::PoseGraphNode node1, node2, node3, node4, node5;
@@ -95,6 +96,40 @@ TEST_F(TestLoopGeneration, TestGenerateLoops) {
   auto candidate2 = candidates[2];
   EXPECT_EQ(gtsam::Symbol('a', 100), candidate2.key_from);
   EXPECT_EQ(gtsam::Symbol('a', 0), candidate2.key_to);
+}
+
+TEST_F(TestLoopGeneration, TestGenerateLoopsTakeClosest) {
+  ros::NodeHandle nh;
+  ros::param::set("base/n_closest", 1);
+  ros::param::set("base/b_take_n_closest", true);
+  bool init = proximity_lc_.Initialize(nh);
+  pose_graph_msgs::PoseGraph::Ptr graph_msg(new pose_graph_msgs::PoseGraph);
+  pose_graph_msgs::PoseGraphNode node1, node2, node3, node4, node5;
+  node1.key = gtsam::Symbol('a', 0);
+  node2.key = gtsam::Symbol('b', 0);
+  node3.key = gtsam::Symbol('c', 0);
+  node4.key = gtsam::Symbol('a', 1);
+  node5.key = gtsam::Symbol('a', 100);
+  node2.pose.position.x = 3;
+  node3.pose.position.x = 1000;
+  node4.pose.position.x = 2;
+  node5.pose.position.x = 2;
+  graph_msg->nodes.push_back(node1);
+  graph_msg->nodes.push_back(node2);
+  graph_msg->nodes.push_back(node3);
+  graph_msg->nodes.push_back(node4);
+  graph_msg->nodes.push_back(node5);
+
+  keyedPoseCallback(graph_msg);
+
+  std::vector<pose_graph_msgs::LoopCandidate> candidates = getCandidates();
+  EXPECT_EQ(3, candidates.size());
+  auto candidate0 = candidates[0];
+  EXPECT_EQ(gtsam::Symbol('b', 0), candidate0.key_from);
+  EXPECT_EQ(gtsam::Symbol('a', 0), candidate0.key_to);
+  auto candidate2 = candidates[2];
+  EXPECT_EQ(gtsam::Symbol('a', 100), candidate2.key_from);
+  EXPECT_EQ(gtsam::Symbol('a', 1), candidate2.key_to);
 }
 
 }  // namespace lamp_loop_closure
