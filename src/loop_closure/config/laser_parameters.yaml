@@ -16,6 +16,11 @@ robot:
 
   proximity_threshold: 5
 
+  # When generating loop closures, only generate with n closest old poses instead 
+  # of everything within the proximity threshold.
+  n_closest: 3
+  b_take_n_closest: true
+
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
   distance_to_skip_recent_poses: 15 #10 # 200
@@ -158,11 +163,16 @@ base:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within this distance of the current pose.
-  proximity_threshold: 20
+  proximity_threshold: 50
+
+  # When generating loop closures, only generate with n closest old poses instead 
+  # of everything within the proximity threshold.
+  n_closest: 10
+  b_take_n_closest: true
 
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
-  distance_to_skip_recent_poses: 10 #10 # 200
+  distance_to_skip_recent_poses: 80 #10 # 200
 
   #--------------------------------------------------------------------------------
   #### Loop closure prioritization
@@ -247,14 +257,14 @@ base:
     # 0 means no accumulation
     num_prev_scans: 2
     num_next_scans: 2
-    b_accumulate_source: true
+    b_accumulate_source: false
     
     # Radii of area to consider when computing normals and features
     normals_radius: 1.0
     features_radius: 2.0
 
     # If SAC fitness score is more than the following value, it will be rejected
-    fitness_score_threshold: 8.0
+    fitness_score_threshold: 32.0
 
   #--------------------------------------------------------------------------------
   # TEASER Settings for feature-based initialization
