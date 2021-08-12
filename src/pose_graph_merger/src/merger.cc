@@ -31,7 +31,7 @@ void Merger::InsertNewEdges(const pose_graph_msgs::PoseGraphConstPtr& msg) {
       // Add to stored set of edges
       unique_edges_.insert(id);
     } else if (edge.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
-      ROS_DEBUG_STREAM("\nMerger: Repeated artifact with keyto "
+      ROS_DEBUG_STREAM("\nMerger: Repeated artifact edge with key to "
                        << gtsam::DefaultKeyFormatter(edge.key_to));
       updated_artifact_edges[id] = edge;
     }
@@ -68,10 +68,17 @@ void Merger::InsertNode(const pose_graph_msgs::PoseGraphNode& node) {
   if (merged_graph_KeyToIndex_.find(node.key) !=
       merged_graph_KeyToIndex_.end()) {
     merged_graph_.nodes[merged_graph_KeyToIndex_[node.key]] = node;
+    ROS_DEBUG_STREAM(
+        "\n[Insert Node] key to index mapping already exists, with key: "
+        << gtsam::DefaultKeyFormatter(node.key) << " and index "
+        << merged_graph_KeyToIndex_[node.key]);
     return;
   }
 
   // Track the index at which the node was inserted
+  ROS_DEBUG_STREAM("\nAdding new key to index mapping, with key: "
+                   << gtsam::DefaultKeyFormatter(node.key) << " and index "
+                   << merged_graph_.nodes.size());
   merged_graph_KeyToIndex_[node.key] = merged_graph_.nodes.size();
 
   // Add the node to the graph
@@ -138,7 +145,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   // If no slow graph (or an empty slow graph only) has been received, merged
   // graph is the fast graph only
   if (merged_graph_.nodes.size() == 0 || new_robots.size() > 0) {
-
+    ROS_DEBUG_STREAM("Fast graph callback without any slow graphs");
 
     for (const GraphNode& node : msg->nodes) {
       InsertNode(node);
@@ -162,7 +169,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
   }
 
   // use map to order the new fast nodes by the order they were created in
-  std::map<unsigned int, const GraphNode*> newFastNodes;
+  // std::map<unsigned int, const GraphNode*> newFastNodes;
   std::map<long unsigned int, const GraphNode*> fastKeyToNode;
 
   for (const GraphNode& node : msg->nodes) {
@@ -179,7 +186,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
           ROS_DEBUG_STREAM(
               "\nDebug Merger: Adding the reobserved artifact to newfastnode "
               << gtsam::DefaultKeyFormatter(node.key));
-          newFastNodes[node.header.seq] = &node;
+          // newFastNodes[node.header.seq] = &node;
           fastKeyToNode[node.key] = &node;
         }
       }
@@ -187,7 +194,7 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
       continue; // Then skip
     }
 
-    newFastNodes[node.header.seq] = &node;
+    // newFastNodes[node.header.seq] = &node;
     fastKeyToNode[node.key] = &node;
     // ROS_INFO_STREAM("Added new fast node, key " << node.key);
   }
@@ -209,6 +216,23 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     // find the node in the merged_graph_ corresponding to previous node in fast
     // graph
     long unsigned int prevFastKey = edgeToFastNode->key_from;
+    // Check if the prior node exists
+    if (merged_graph_KeyToIndex_.count(prevFastKey) == 0) {
+      // Prior node doesn't exist - don't adjust
+      ROS_DEBUG_STREAM("[FastGraph] Have missing node with an edge-from. Key: "
+                       << gtsam::DefaultKeyFormatter(prevFastKey)
+                       << ", edge to: "
+                       << gtsam::DefaultKeyFormatter(fastNode->key)
+                       << ". Using current robot-graph value.");
+      // Just use the existing pose value
+      ROS_DEBUG_STREAM("\n[Fast Graph Add] Adding new node with key "
+                       << gtsam::DefaultKeyFormatter(new_merged_graph_node.key)
+                       << ", with edge from "
+                       << gtsam::DefaultKeyFormatter(prevFastKey));
+      InsertNode(new_merged_graph_node);
+      continue;
+    }
+
     const GraphNode* merged_graph_PrevNode =
         &merged_graph_.nodes[merged_graph_KeyToIndex_[prevFastKey]];
 
@@ -230,6 +254,10 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     NormalizeNodeOrientation(new_merged_graph_node);
 
     // Add nodes to the graph
+    ROS_DEBUG_STREAM("\n[Fast Graph Add] Adding new node with key "
+                     << gtsam::DefaultKeyFormatter(new_merged_graph_node.key)
+                     << ", with edge from "
+                     << gtsam::DefaultKeyFormatter(prevFastKey));
     InsertNode(new_merged_graph_node);
   }
 
