@@ -20,8 +20,7 @@
 
 
     <!-- SLAM -->
-    <node launch-prefix="xterm -e"
-          pkg="lamp"
+    <node pkg="lamp"
           name="lamp"
           type="lamp_node"
           output="screen">
