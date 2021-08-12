@@ -2,12 +2,14 @@
 // Created by cdennist on 7/1/21.
 //
 
-#include <gtest/gtest.h>
-#include <utils/PointCloudTypes.h>
 #include "loop_closure/IcpLoopComputation.h"
-#include <limits>
+#include "test_artifacts.h"
+#include "utils/CommonFunctions.h"
 #include <chrono>
+#include <gtest/gtest.h>
+#include <limits>
 #include <thread>
+#include <utils/PointCloudTypes.h>
 
 class TestICPComputation : public ::testing::Test {
 public:
@@ -55,63 +57,50 @@ TEST_F(TestICPComputation, TestThreadedEqualsNonThreaded) {
     std::vector<pose_graph_msgs::KeyedScan> scans;
     std::minstd_rand rng(0);
     std::uniform_real_distribution<float> distribution(0.1,0.05);
-    pcl::PointCloud<pcl::PointXYZ> base_cloud;
+    PointCloud::Ptr base_cloud = GenerateCorner();
 
-    for (int x = 0; x < 10; x ++) {
-        for (int y = 0; y < 10; y ++) {
-            for (int z = 0; z < 10; z ++) {
-                pcl::PointXYZ newPoint;
-                newPoint.x = x * 0.001;
-                newPoint.y = y * 0.001;
-                newPoint.z = z * 0.001;
-                base_cloud.points.push_back(newPoint);
-            }
-        }
-    }
-    for(gtsam::Key k=0; k < test_size; ++k){
-        pose_graph_msgs::KeyedScan scan_msg;
-        scan_msg.key = gtsam::Symbol('a', k);
+    for (gtsam::Key k = 0; k < test_size * 2; ++k) {
+      pose_graph_msgs::KeyedScan scan_msg;
+      scan_msg.key = gtsam::Symbol('a', k);
 
-        Eigen::Matrix4f transform_1 = Eigen::Matrix4f::Identity();
-        // create point cloud object
-        pcl::PointCloud<pcl::PointXYZ> myCloud = base_cloud;
+      Eigen::Matrix4f transform_1 = Eigen::Matrix4f::Identity();
 
-        transform_1(0,3) = (k % 2) == 1? -1.0 : 1.0;//distribution(rng);
-        // Executing the transformation
-        pcl::PointCloud<pcl::PointXYZ>transformed_cloud;
-        // You can either apply transform_1 or transform_2; they are the same
-        pcl::transformPointCloud (base_cloud, transformed_cloud, transform_1);
+      transform_1(0, 3) = (k % 2) == 1 ? -1.0 : 1.0; // distribution(rng);
+      // Executing the transformation
+      PointCloud transformed_cloud;
+      // You can either apply transform_1 or transform_2; they are the same
+      pcl::transformPointCloud(*base_cloud, transformed_cloud, transform_1);
 
-        sensor_msgs::PointCloud2 cloud;
-        pcl::toROSMsg(transformed_cloud, cloud);
-        scan_msg.scan = cloud;
+      sensor_msgs::PointCloud2 cloud;
+      pcl::toROSMsg(transformed_cloud, cloud);
+      scan_msg.scan = cloud;
 
-        scans.push_back(scan_msg);
+      scans.push_back(scan_msg);
     }
     //Make Graph
     pose_graph_msgs::PoseGraph graph;
-    for (gtsam::Key k=0; k < test_size; ++k) {
-        pose_graph_msgs::PoseGraphNode node;
-        node.key = gtsam::Symbol('a', k);
-        node.ID = "odom_node";
-        node.pose.position.x = k;
-        node.pose.position.y = 0;
-        node.pose.position.z = 0;
-        graph.nodes.push_back(node);
+    for (gtsam::Key k = 0; k < test_size * 2; ++k) {
+      pose_graph_msgs::PoseGraphNode node;
+      node.key = gtsam::Symbol('a', k);
+      node.ID = "odom_node";
+      node.pose.position.x = (k % 2) == 1 ? 1.0 : -1.0;
+      node.pose.position.y = 0;
+      node.pose.position.z = 0;
+      graph.nodes.push_back(node);
     }
     pose_graph_msgs::LoopCandidateArray candidates;
     //Make Candidates
-    for(gtsam::Key k = 0; k < test_size-1; ++k){
-            pose_graph_msgs::LoopCandidate candidate;
-            candidate.key_to = gtsam::Symbol('a', k);
-            candidate.key_from = gtsam::Symbol('a', k + 1);
-            candidate.pose_from.position.x = 0;
-            candidate.pose_from.position.y = 0;
-            candidate.pose_from.position.z = 0;
-            candidate.pose_to.position.x = 0;
-            candidate.pose_to.position.y = 0;
-            candidate.pose_to.position.z = 0;
-            candidates.candidates.emplace_back(candidate);
+    for (gtsam::Key k = 0; k < test_size; ++k) {
+      pose_graph_msgs::LoopCandidate candidate;
+      candidate.key_to = gtsam::Symbol('a', k);
+      candidate.key_from = gtsam::Symbol('a', k + test_size);
+      candidate.pose_from.position.x = 0;
+      candidate.pose_from.position.y = 0;
+      candidate.pose_from.position.z = 0;
+      candidate.pose_to.position.x = 0;
+      candidate.pose_to.position.y = 0;
+      candidate.pose_to.position.z = 0;
+      candidates.candidates.emplace_back(candidate);
     }
 
     icp.KeyedPoseCallback(boost::make_shared<pose_graph_msgs::PoseGraph>(graph));
@@ -147,9 +136,8 @@ TEST_F(TestICPComputation, TestThreadedEqualsNonThreaded) {
     ROS_INFO_STREAM("Non-ThreadPool took " << threadless_time << ", Threaded took " << threadful_time << " Fractional Ratio: " << improvement);
     std::vector<pose_graph_msgs::PoseGraphEdge> threadful_output = icp.GetCurrentOutputQueue();
 
-
-    EXPECT_EQ(threadful_output.size(),test_size-1);
-    EXPECT_EQ(threadless_output.size(),test_size-1);
+    EXPECT_EQ(threadful_output.size(), test_size);
+    EXPECT_EQ(threadless_output.size(), test_size);
 
     for (auto threadless_closure : threadless_output){
         int matches = 0;

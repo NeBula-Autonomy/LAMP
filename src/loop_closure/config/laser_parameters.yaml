@@ -184,7 +184,7 @@ base:
   # Observability prioritization loop closure
   #--------------------------------------------------------------------------------
   obs_prioritization:
-    publish_n_best: 30
+    publish_n_best: 300
     min_observability: 0.2 # normalized from 0 to 1
     horizon: 300
     normals_search_radius: 1.0
@@ -195,7 +195,7 @@ base:
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 2
+  icp_initialization_method: 3
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
   icp_covariance_calculation: 1
@@ -206,7 +206,7 @@ base:
   max_tolerable_fitness: 0.8 #0.04
 
   # How long to "wait" for keyed scans 
-  keyed_scans_max_delay: 60.0
+  keyed_scans_max_delay: 600.0
 
   #How many ICP alignments to perform simultaneously.
   #If <1, percent of total cores on machine

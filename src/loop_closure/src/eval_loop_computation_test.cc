@@ -33,7 +33,17 @@ public:
     filter_params_.decimate_percentage =
         std::min(1.0, std::max(0.0, filter_params_.decimate_percentage));
 
-    return icp_lc_.LoadParameters(n);
+    if (!icp_lc_.LoadParameters(n))
+      return false;
+
+    if (icp_lc_.number_of_threads_in_icp_computation_pool_ > 1) {
+      ROS_INFO_STREAM("Thread Pool Initialized with "
+                      << icp_lc_.number_of_threads_in_icp_computation_pool_
+                      << " threads");
+      icp_lc_.icp_computation_pool_.resize(
+          icp_lc_.number_of_threads_in_icp_computation_pool_);
+    }
+    return true;
   }
 
   void
@@ -126,6 +136,7 @@ protected:
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "eval_loop_computation_test");
+  ros::start();
   ros::NodeHandle n("~");
 
   std::string dataset_path, output_dir, test_name;

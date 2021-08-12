@@ -7,6 +7,8 @@ Interface for ROS and KimeraRPGO
 #ifndef LAMP_PGO_H_
 #define LAMP_PGO_H_
 
+#include <unordered_map>
+
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -81,7 +83,7 @@ class LampPgo {
   std::string param_ns_;
 
   // Keep track of node IDs for output message (not stored by GTSAM types)
-  std::map<gtsam::Key, std::string> key_to_id_map_;
+  std::unordered_map<gtsam::Key, std::string> key_to_id_map_;
 
   std::map<std::pair<gtsam::Key, gtsam::Key>, int32_t> edge_to_type_;
 

@@ -233,12 +233,16 @@ void IcpLoopComputation::ComputeTransforms() {
 
           gtsam::Key key_from = candidate.key_from;
           gtsam::Key key_to = candidate.key_to;
+          gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
+          gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
 
           gu::Transform3 transform;
           gtsam::Matrix66 covariance;
           double icp_fitness;
           if (!PerformAlignment(key_from,
                                 key_to,
+                                pose_from,
+                                pose_to,
                                 &transform,
                                 &covariance,
                                 &icp_fitness,
@@ -277,12 +281,16 @@ void IcpLoopComputation::ComputeTransforms() {
           futures.emplace_back(icp_computation_pool_.enqueue([&, candidate]() {
               gtsam::Key key_from = candidate.key_from;
               gtsam::Key key_to = candidate.key_to;
+              gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
+              gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
 
               gu::Transform3 transform;
               gtsam::Matrix66 covariance;
               double icp_fitness;
               if (!PerformAlignment(key_from,
                                     key_to,
+                                    pose_from,
+                                    pose_to,
                                     &transform,
                                     &covariance,
                                     &icp_fitness,
@@ -360,6 +368,8 @@ void IcpLoopComputation::KeyedPoseCallback(
 
 bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
                                           const gtsam::Symbol& key2,
+                                          const gtsam::Pose3& pose1,
+                                          const gtsam::Pose3& pose2,
                                           gu::Transform3* delta,
                                           gtsam::Matrix66* covariance,
                                           double* fitness_score,
@@ -451,7 +461,10 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   } break;
   case IcpInitMethod::FEATURES: {
     double sac_fitness_score = sac_fitness_score_threshold_;
-    GetSacInitialAlignment(scan1, scan2, &initial_guess, sac_fitness_score);
+    GetSacInitialAlignment(accumulated_source,
+                           accumulated_target,
+                           &initial_guess,
+                           sac_fitness_score);
     if (sac_fitness_score >= sac_fitness_score_threshold_) {
       ROS_INFO("SAC fitness score is too high");
       return false;
@@ -460,13 +473,20 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   case IcpInitMethod::TEASERPP: {
     int n_inliers = teaser_inlier_threshold_;
     GetTeaserInitialAlignment(
-        scan1, accumulated_target, &initial_guess, n_inliers);
+        accumulated_source, accumulated_target, &initial_guess, n_inliers);
     if (n_inliers <= teaser_inlier_threshold_) {
       ROS_INFO("Number of TEASER inliers is too low: %d <= %d",
                n_inliers,
                teaser_inlier_threshold_);
       return false;
     }
+  } break;
+  case IcpInitMethod::CANDIDATE: {
+    gtsam::Pose3 candidate_pose21 = pose2.between(pose1);
+    initial_guess.block(0, 0, 3, 3) =
+        candidate_pose21.rotation().matrix().cast<float>();
+    initial_guess.block(0, 3, 3, 1) =
+        candidate_pose21.translation().cast<float>();
   } break;
   default: // identity as default (default in ICP anyways)
   {
