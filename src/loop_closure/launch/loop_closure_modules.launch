@@ -64,6 +64,8 @@
 
     <remap from="~loop_computation_status" to="lamp/loop_computation/loop_computation_status" />
     <!-- Loop closure parameters  -->
+    <!-- Use fixed covariances, rather than computed -->
+    <param name="b_use_fixed_covariances" value="false" />
     <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
     <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>     
     <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/> 
