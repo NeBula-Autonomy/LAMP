@@ -24,6 +24,8 @@ class TestLoopComputation : public ::testing::Test {
     system(
         "rosparam load $(rospack find "
         "loop_closure)/config/laser_parameters.yaml");
+
+    system("rosparam set b_use_fixed_covariances false");
   }
   ~TestLoopComputation() {}
 
