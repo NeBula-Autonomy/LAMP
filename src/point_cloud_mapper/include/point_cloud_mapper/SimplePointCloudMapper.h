@@ -1,7 +1,8 @@
 #pragma once
 
 #include "IPointCloudMapper.h"
-#include <utils/CommonStructs.h>
+//#include <utils/CommonStructs.h>
+#include <utils/PointCloudTypes.h>
 class SimplePointCloudMapper : public IPointCloudMapper {
 public:
   SimplePointCloudMapper();

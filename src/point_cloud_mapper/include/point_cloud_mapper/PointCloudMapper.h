@@ -56,8 +56,8 @@
 
 #include "IPointCloudMapper.h"
 
-#include <utils/CommonStructs.h>
-
+//#include <utils/CommonStructs.h>
+#include <utils/PointCloudTypes.h>
 class PointCloudMapper : public IPointCloudMapper {
 public:
   typedef pcl::octree::OctreePointCloudSearch<Point> Octree;

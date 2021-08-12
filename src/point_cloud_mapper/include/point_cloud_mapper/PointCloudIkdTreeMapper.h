@@ -19,10 +19,10 @@
 #include "IPointCloudMapper.h"
 #include "ikd_tree/ikd_Tree.h"
 
-#include <utils/CommonStructs.h>
-
+//#include <utils/CommonStructs.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/UInt64.h>
+#include <utils/PointCloudTypes.h>
 class PointCloudIkdTreeMapper : public IPointCloudMapper {
 public:
   // typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;

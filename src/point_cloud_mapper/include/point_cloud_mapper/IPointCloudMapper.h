@@ -11,7 +11,8 @@
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 
-#include <utils/CommonStructs.h>
+//#include <utils/CommonStructs.h>
+#include <utils/PointCloudTypes.h>
 class IPointCloudMapper {
 public:
   using Ptr = std::shared_ptr<IPointCloudMapper>;
