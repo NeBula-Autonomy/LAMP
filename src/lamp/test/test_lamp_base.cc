@@ -28,6 +28,8 @@ public:
     system("rosparam load $(rospack find lamp)/config/GT_artifacts.yaml");
     system("rosparam load $(rospack find lamp)/config/robot_names.yaml");
 
+    system("rosparam set b_use_fixed_covariances false");
+
     system("rosparam set artifact_prefix 'A'");
 
     system("rosparam load $(rospack find "

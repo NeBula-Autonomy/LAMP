@@ -29,6 +29,10 @@
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
 
+      <!-- Use fixed covariances, rather than computed -->
+      <param if="$(eval b_use_hovermap)" name="b_use_fixed_covariances" value="true" />
+      <param unless="$(eval b_use_hovermap)" name="b_use_fixed_covariances" value="false" />
+
       <!-- Topics -->
       <remap from="~pcld" to="locus_input" unless="$(arg b_use_hovermap)"/>
       <remap from="~pcld" to="hvm/lidar/sweep" if="$(arg b_use_hovermap)"/>
