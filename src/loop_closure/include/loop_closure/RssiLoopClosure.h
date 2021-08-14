@@ -23,6 +23,12 @@ struct RssiRawInfo {
   pose_graph_msgs::PoseGraphNode graph_node;
 };
 
+struct LoopCandidateToPrepare {
+  ros::Time time_stamp_;
+  std::string robot_name_;
+  pose_graph_msgs::PoseGraphNode pose_;
+};
+
 class RssiLoopClosure : public LoopGeneration {
 public:
   RssiLoopClosure();
@@ -75,6 +81,11 @@ private:
   void ShowRobotList() const;
   void ShowDroppedRssiList() const;
   void VisualizeRssi();
+  void VisualizeRobotNodesWithPotentialLoopClosure(
+      const pose_graph_msgs::PoseGraphNode& node_pose,
+      float red = 1.0,
+      float green = 1.0,
+      float blue = 1.0);
 
   // params
   float acceptable_shortest_rssi_distance_;
@@ -85,11 +96,17 @@ private:
   std::map<std::string, int> rssi_id2key_;
   //  std::map<std::string, RssiInfo> rssi_list_;
   std::map<std::string, RssiRawInfo> rssi_node_dropped_list_;
+  std::map<std::string, ros::Time> rssi_node_dropped_time_stamp_;
+
   //  std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
   //  rssi_robot_list_;
   std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
       rssi_scom_robot_list_;
-  std::map<std::string, ros::Time> rssi_node_dropped_time_stamp_;
+  std::map<std::string, ros::Time> rssi_scom_robot_list_updated_time_stamp_;
+
+  std::vector<LoopCandidateToPrepare> loop_candidates_to_prepare_;
+  int idx2 = 0;
+  std::vector<pose_graph_msgs::LoopCandidate> potential_candidates_;
 
   PoseGraph pose_graph_;
 

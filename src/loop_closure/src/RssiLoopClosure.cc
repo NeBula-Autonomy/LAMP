@@ -132,6 +132,53 @@ void RssiLoopClosure::GenerateLoops(const gtsam::Key& new_key) {
   if (!b_check_for_loop_closures_)
     return;
 
+  //  const gtsam::Symbol key = gtsam::Symbol(new_key);
+  //  std::vector<pose_graph_msgs::LoopCandidate> potential_candidates;
+  //  for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
+  //    const gtsam::Symbol other_key = it->first;
+
+  //    // Don't self-check.
+  //    if (key == other_key)
+  //      continue;
+
+  //    // Don't compare against poses that were recently collected.
+  //    if (utils::IsKeyFromSameRobot(key, other_key) &&
+  //        std::llabs(key.index() - other_key.index()) < skip_recent_poses_)
+  //      continue;
+
+  //    double distance = DistanceBetweenKeys(key, other_key);
+
+  //    if (distance > proximity_threshold_) {
+  //      continue;
+  //    }
+
+  //    // If all the checks pass create candidate and add to queue
+  //    pose_graph_msgs::LoopCandidate candidate;
+  //    candidate.header.stamp = ros::Time::now();
+  //    candidate.key_from = new_key;
+  //    candidate.key_to = other_key;
+  //    candidate.pose_from = utils::GtsamToRosMsg(keyed_poses_[new_key]);
+  //    candidate.pose_to = utils::GtsamToRosMsg(keyed_poses_[other_key]);
+  //    candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
+  //    candidate.value = distance;
+
+  //    potential_candidates.push_back(candidate);
+  //  }
+  //  if (potential_candidates.size() < n_closest_) {
+  //    candidates_.insert(candidates_.end(),
+  //                       potential_candidates.begin(),
+  //                       potential_candidates.end());
+  //  } else {
+  //    sort(potential_candidates.begin(),
+  //         potential_candidates.end(),
+  //         [](const pose_graph_msgs::LoopCandidate& lhs,
+  //            const pose_graph_msgs::LoopCandidate& rhs) {
+  //           return lhs.value < rhs.value;
+  //         });
+  //    candidates_.insert(candidates_.end(),
+  //                       potential_candidates.begin(),
+  //                       potential_candidates.begin() + n_closest_);
+  //  }
   return;
 }
 
@@ -145,7 +192,7 @@ bool is_robot_radio(const std::string& hostname) {
 pose_graph_msgs::PoseGraphNode GetClosestPoseAtTime(
     const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
     const ros::Time& stamp,
-    double time_threshold = 1.0,
+    double time_threshold = 2.0,
     bool check_threshold = false) {
   // If there are no keys, throw an error
   if (robot_trajectory.empty()) {
@@ -267,15 +314,19 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
 
 void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
   raw_mutex_.lock();
-  for (const auto& node_label : rssi_scom_robot_list_) {
-    for (const auto& neighbour : node_label.second.neighbors) {
+  for (const auto& robot_radio : rssi_scom_robot_list_) {
+    // iterate over radios that are connected to the robot radio
+    for (const auto& neighbour : robot_radio.second.neighbors) {
+      // if radio conntected to the robot radio was dropped (so it must exist in
+      // the rssi_node_dropped_list) -> true since haven't reached end
       if (rssi_node_dropped_list_.find(neighbour.neighbor_node_label) !=
           rssi_node_dropped_list_.end()) {
+        // calculate path loss in db and compare with the value from config
         if (CalculatePathLossForNeighbor(neighbour) <
             acceptable_shortest_rssi_distance_) {
           ROS_INFO_STREAM(
               "Robot : "
-              << node_label.first << " ~ " << neighbour.neighbor_node_label
+              << robot_radio.first << " ~ " << neighbour.neighbor_node_label
               << " distance " << CalculatePathLossForNeighbor(neighbour)
               << " pose: "
               << rssi_node_dropped_list_[neighbour.neighbor_node_label]
@@ -286,22 +337,70 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
               << " "
               << rssi_node_dropped_list_[neighbour.neighbor_node_label]
                      .graph_node.pose.position.z);
+
+          LoopCandidateToPrepare loop_candidate_to_prepare_;
+
+          loop_candidate_to_prepare_.time_stamp_ =
+              rssi_scom_robot_list_updated_time_stamp_[robot_radio.first];
+          loop_candidate_to_prepare_.robot_name_ =
+              robot_radio.second.robot_name;
+          loop_candidates_to_prepare_.emplace_back(loop_candidate_to_prepare_);
         }
       }
     }
   }
 
   raw_mutex_.unlock();
+
+  std::vector<LoopCandidateToPrepare> loop_closures_for_further_processing;
+  for (auto& loop_candidate_to_prepare : loop_candidates_to_prepare_) {
+    ROS_INFO_STREAM(
+        "loop_candidate_to_prepare.robot_name_: "
+        << loop_candidate_to_prepare.robot_name_ << " trajectory size: "
+        << robots_trajectory_[utils::GetRobotPrefix(
+                                  loop_candidate_to_prepare.robot_name_)]
+               .size());
+    auto pose_associated_for_given_robot =
+        GetClosestPoseAtTime(robots_trajectory_[utils::GetRobotPrefix(
+                                 loop_candidate_to_prepare.robot_name_)],
+                             loop_candidate_to_prepare.time_stamp_);
+    if (pose_associated_for_given_robot.key != 0) {
+      VisualizeRobotNodesWithPotentialLoopClosure(
+          pose_associated_for_given_robot);
+      //      pose_graph_msgs::LoopCandidate candidate;
+      //      candidate.header.stamp = ros::Time::now();
+      //      candidate.key_from = new_key;
+      //      candidate.key_to = other_key;
+      //      candidate.pose_from =
+      //  utils::GtsamToRosMsg(keyed_poses_[new_key]);
+      //      candidate.pose_to =
+      // utils::GtsamToRosMsg(keyed_poses_[other_key]);
+      //      candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
+      //      candidate.value = distance;
+    } else {
+      loop_closures_for_further_processing.push_back(loop_candidate_to_prepare);
+    }
+  }
+  std::swap(loop_candidates_to_prepare_, loop_closures_for_further_processing);
 }
 
 void RssiLoopClosure::CommNodeRawCallback(
     const silvus_msgs::SilvusStreamscape::ConstPtr& msg) {
   auto nodes_in_range = msg->nodes;
   raw_mutex_.lock();
+  // for every radio node that was sent to the base and is a kind of range
   for (const auto& node : nodes_in_range) {
+    // if it's a robot radio (so it's scom-huskyx, scom-spotx, etc)
     if (!node.robot_name.empty()) {
+      // if the loop closure from this robot we are interested in -> update (in
+      // config you can specify)
       if (rssi_scom_robot_list_.count(node.node_label)) {
+        // update scom-robot information regarding neighbours, etc...
         rssi_scom_robot_list_[node.node_label] = node;
+        // keep timestamp when it happened because then you need to get
+        // association from the pose_graph
+        rssi_scom_robot_list_updated_time_stamp_[node.node_label] =
+            msg->header.stamp;
       }
     }
   }
@@ -317,22 +416,6 @@ float RssiLoopClosure::CalculatePathLossForNeighbor(
       static_cast<float>(neighbor.received_signal_power_dBm[1]);
   float path_loss_db =
       signal_power_sum / static_cast<float>(ANTENAS_NUMBER_IN_ROBOT);
-
-  //  ROS_INFO_STREAM("signal_power_sum" << signal_power_sum);
-  //  ROS_INFO_STREAM("neighbor.my_txpw_actual_dBm" <<
-  //  neighbor.my_txpw_actual_dBm);
-  //  ROS_INFO_STREAM("neighbor.received_signal_power_dBm[0]"
-  //                  <<
-  //                  static_cast<float>(neighbor.received_signal_power_dBm[0]));
-  //  ROS_INFO_STREAM(" neighbor.my_txpw_actual_dBm"
-  //                  << neighbor.my_txpw_actual_dBm);
-  //  ROS_INFO_STREAM("neighbor.received_signal_power_dBm[1]) "
-  //                  <<
-  //                  static_cast<float>(neighbor.received_signal_power_dBm[1]));
-  //  ROS_INFO_STREAM("static_cast<float>(ANTENAS_NUMBER_IN_ROBOT);: "
-  //                      << static_cast<float>(ANTENAS_NUMBER_IN_ROBOT););
-  //  ROS_INFO_STREAM("signal_power_sum: " << signal_power_sum);
-  //  ROS_INFO_STREAM("Path loss: " << path_loss_db);
   return path_loss_db;
 }
 
@@ -389,4 +472,25 @@ void RssiLoopClosure::VisualizeRssi() {
   }
 }
 
+void RssiLoopClosure::VisualizeRobotNodesWithPotentialLoopClosure(
+    const pose_graph_msgs::PoseGraphNode& node_pose,
+    float red,
+    float green,
+    float blue) {
+  visualization_msgs::Marker m;
+  m.header.frame_id = "world";
+  // m.ns = pose_graph_.fixed_frame_id + "node" + std::to_string(key);
+  m.action = visualization_msgs::Marker::ADD;
+  m.type = visualization_msgs::Marker::SPHERE;
+  m.color.r = 0.0;
+  m.color.g = 1.0;
+  m.color.b = 0.0;
+  m.color.a = 1.0;
+  m.scale.x = 1.0;
+  m.scale.y = 1.0;
+  m.scale.z = 1.0;
+  m.id = idx2++;
+  m.pose.position = node_pose.pose.position;
+  visualize_rssi_placement.publish(m);
+}
 } // namespace lamp_loop_closure
