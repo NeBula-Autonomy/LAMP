@@ -120,6 +120,9 @@ protected:
   double TEASER_FPFH_normals_radius_;
   double TEASER_FPFH_features_radius_;
 
+  int teaser_count_ = 0;
+  int odom_count_ = 0;
+
   utils::HarrisParams harris_params_;
 
   double laser_lc_rot_sigma_;

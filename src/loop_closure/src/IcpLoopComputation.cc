@@ -923,7 +923,7 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
                          sac_features_radius_,
                          icp_threads_,
                          target_features);
-  
+
   // std::cout << "loop - src cloud size: " << source_keypoints->size() << std::endl;
   // std::cout << "loop - target cloud size: " << target_keypoints->size() << std::endl;
   // std::cout << "loop - src features size: " << source_features->size() << std::endl;
@@ -945,7 +945,6 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
   int corres_size = correspondences.size();
 
   // ROS_DEBUG("Found %d correspondences.", corres_size);
-
   if (corres_size > 10 ) {
     // Retrive the corresponding points from src and tgt point clouds into two
     // 3-by-N Eigen matrices
@@ -1006,10 +1005,16 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
     if (error_teaser <= error_odom) {
       std::cout << "Estimated T is: " << T << std::endl;
       *tf_out = T.cast<float>();
+      teaser_count_++;
       // auto final_inliers = solver.getInlierMaxClique();
       // n_inliers = static_cast<int>(final_inliers.size());
       // ROS_INFO("Solved TEASER Rigid Transform with %d inliers", n_inliers);
-    } 
+    } else {
+      odom_count_++;
+    }
+  // std::cout << "teaser_count: " << teaser_count_ << std::endl;
+  // std::cout << "odom_count: " << odom_count_ << std::endl;
+    
   } else {
     ROS_INFO("Number of corresponding points too low %d: ", corres_size);    
   }
