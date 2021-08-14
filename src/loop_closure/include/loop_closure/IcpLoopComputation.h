@@ -67,8 +67,7 @@ public:
 
   void GetTeaserInitialAlignment(PointCloud::ConstPtr source,
                                  PointCloud::ConstPtr target,
-                                 Eigen::Matrix4f* tf_out,
-                                 int& n_inliers);
+                                 Eigen::Matrix4f* tf_out);
 
   bool
   ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& query_cloud,

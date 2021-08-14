@@ -10,6 +10,7 @@
 #include <pcl/registration/ia_ransac.h>
 #include <teaser/matcher.h>
 #include <teaser/registration.h>
+#include <teaser/evaluation.h>
 #include <utils/CommonFunctions.h>
 
 #include "loop_closure/PointCloudUtils.h"
@@ -443,6 +444,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   initial_guess = Eigen::Matrix4f::Identity(4, 4);
   initial_guess.block(0, 0, 3, 3) = pose_21.rotation().matrix().cast<float>();
   initial_guess.block(0, 3, 3, 1) = pose_21.translation().cast<float>();
+
   switch (icp_init_method_) {
   case IcpInitMethod::IDENTITY: // initialize with idientity
   {
@@ -471,15 +473,8 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     }
   } break;
   case IcpInitMethod::TEASERPP: {
-    int n_inliers = teaser_inlier_threshold_;
     GetTeaserInitialAlignment(
-        accumulated_source, accumulated_target, &initial_guess, n_inliers);
-    if (n_inliers <= teaser_inlier_threshold_) {
-      ROS_INFO("Number of TEASER inliers is too low: %d <= %d",
-               n_inliers,
-               teaser_inlier_threshold_);
-      return false;
-    }
+        accumulated_source, accumulated_target, &initial_guess);
   } break;
   case IcpInitMethod::CANDIDATE: {
     gtsam::Pose3 candidate_pose21 = pose2.between(pose1);
@@ -629,10 +624,10 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
                          icp_threads_,
                          target_features);
 
-  std::cout << "loop - SAC  src cloud size: " << source_keypoints->size() << std::endl;
-  std::cout << "loop - SAC target cloud size: " << target_keypoints->size() << std::endl;
-  std::cout << "loop - SAC src features size: " << source_features->size() << std::endl;
-  std::cout << "loop - SAC target features size: " << target_features->size() << std::endl;
+  // std::cout << "loop - SAC  src cloud size: " << source_keypoints->size() << std::endl;
+  // std::cout << "loop - SAC target cloud size: " << target_keypoints->size() << std::endl;
+  // std::cout << "loop - SAC src features size: " << source_features->size() << std::endl;
+  // std::cout << "loop - SAC target features size: " << target_features->size() << std::endl;
   // Align
   pcl::SampleConsensusInitialAlignment<Point, Point, pcl::FPFHSignature33>
       sac_ia;
@@ -896,8 +891,7 @@ void IcpLoopComputation::AccumulateScans(const gtsam::Key& key,
 
 void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
                                                    PointCloudConstPtr target,
-                                                   Eigen::Matrix4f* tf_out,
-                                                   int& n_inliers) {                                                  
+                                                   Eigen::Matrix4f* tf_out) {                                                  
 // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
@@ -930,28 +924,15 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
                          icp_threads_,
                          target_features);
   
-  std::cout << "loop - src cloud size: " << source_keypoints->size() << std::endl;
-  std::cout << "loop - target cloud size: " << target_keypoints->size() << std::endl;
-  std::cout << "loop - src features size: " << source_features->size() << std::endl;
-  std::cout << "loop - target features size: " << target_features->size() << std::endl;
-  std::cout << "Number of inlier threshold is: " << teaser_inlier_threshold_ << std::endl;
+  // std::cout << "loop - src cloud size: " << source_keypoints->size() << std::endl;
+  // std::cout << "loop - target cloud size: " << target_keypoints->size() << std::endl;
+  // std::cout << "loop - src features size: " << source_features->size() << std::endl;
+  // std::cout << "loop - target features size: " << target_features->size() << std::endl;
+  // std::cout << "Number of inlier threshold is: " << teaser_inlier_threshold_ << std::endl;
 
   if (source_keypoints->size() == 0 || target_keypoints->size() == 0) {
-    n_inliers = 0;
     return;
   }
-
-// estimate correspondences using pcl's correspondencce estimation
-  // pcl::registration::CorrespondenceEstimation<pcl::FPFHSignature33, pcl::FPFHSignature33> est;
-  // pcl::CorrespondencesPtr pre_rejection_correspondences(new pcl::Correspondences());
-  // est.setInputSource(source_features);
-  // est.setInputTarget(target_features);
-  // est.determineCorrespondences(*pre_rejection_correspondences);
-  // // Duplication rejection Duplicate
-  // pcl::CorrespondencesPtr correspondences(new pcl::Correspondences());
-  // pcl::registration::CorrespondenceRejectorOneToOne corr_rej_one_to_one;
-  // corr_rej_one_to_one.setInputCorrespondences(pre_rejection_correspondences);
-  // corr_rej_one_to_one.getCorrespondences(*correspondences);
   
   // Align
   ROS_DEBUG("Finding TEASER Correspondences!");
@@ -963,8 +944,7 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
                                                           5);
   int corres_size = correspondences.size();
 
-
-  ROS_DEBUG("Found %d correspondences.", corres_size);
+  // ROS_DEBUG("Found %d correspondences.", corres_size);
 
   if (corres_size > 10 ) {
     // Retrive the corresponding points from src and tgt point clouds into two
@@ -979,11 +959,12 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
           (*target_keypoints)[correspondences[i].second].y,
           (*target_keypoints)[correspondences[i].second].z;
     }
+
     ROS_DEBUG("Completed TEASER Correspondences!");
     // Run TEASER++ registration
     // Prepare solver parameters
     teaser::RobustRegistrationSolver::Params params;
-    params.noise_bound = 0.10;
+    params.noise_bound = 0.5;
     params.cbar2 = 1;
     params.estimate_scaling = false;
     params.rotation_max_iterations = 100;
@@ -991,7 +972,7 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
     ROS_INFO("Finding TEASER Rigid Transform...");
     params.rotation_estimation_algorithm =
         teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::GNC_TLS;
-    params.rotation_cost_threshold = 0.005;
+    params.rotation_cost_threshold = 1e-6;
     params.inlier_selection_mode = teaser::RobustRegistrationSolver::INLIER_SELECTION_MODE::PMC_HEU;
     // Solve with TEASER++
     teaser::RobustRegistrationSolver solver(params);
@@ -1002,13 +983,35 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
     T.topLeftCorner(3, 3) = solution.rotation;
     T.topRightCorner(3, 1) = solution.translation;
     T(3, 3) = 1.0;
-    std::cout << "Estimated T is: " << T << std::endl;
-    *tf_out = T.cast<float>();
-    auto final_inliers = solver.getInlierMaxClique();
-    n_inliers = static_cast<int>(final_inliers.size());
-    ROS_INFO("Solved TEASER Rigid Transform with %d inliers", n_inliers);
+    
+    Eigen::Matrix<double, 3, 3> odom_rotation;
+    odom_rotation =   tf_out->block(0, 0, 3, 3).cast<double>();
+    Eigen::Matrix<double, 3, 1> odom_translation;
+    odom_translation = tf_out->block(0, 3, 3, 1).cast<double>();
+    double corr_dist_threshold = 100;
+    teaser::SolutionEvaluator evaluator(src_corres_points, tgt_corres_points, corr_dist_threshold);
+    
+    auto error_teaser = evaluator.computeErrorMetric(solution.rotation, solution.translation);
+    auto error_odom = evaluator.computeErrorMetric(odom_rotation, odom_translation);
+    // std::cout << "Odom Rotation: " << odom_rotation << std::endl;
+    // std::cout << "Odom Translation: " << odom_translation << std::endl;
+    // std::cout << "error_teaser: " << error_teaser << std::endl;
+    // std::cout << "error_odom: " << error_odom << std::endl;
+    // std::cout << "Estimated T is: " << T << std::endl;
+    // *tf_out = T.cast<float>();
+    // auto final_inliers = solver.getInlierMaxClique();
+    // n_inliers = static_cast<int>(final_inliers.size());
+    // ROS_INFO("Solved TEASER Rigid Transform with %d inliers", n_inliers);
+
+    if (error_teaser <= error_odom) {
+      std::cout << "Estimated T is: " << T << std::endl;
+      *tf_out = T.cast<float>();
+      // auto final_inliers = solver.getInlierMaxClique();
+      // n_inliers = static_cast<int>(final_inliers.size());
+      // ROS_INFO("Solved TEASER Rigid Transform with %d inliers", n_inliers);
+    } 
   } else {
-    ROS_INFO("Number of corresponding points too low: ", corres_size);    
+    ROS_INFO("Number of corresponding points too low %d: ", corres_size);    
   }
 }
 
