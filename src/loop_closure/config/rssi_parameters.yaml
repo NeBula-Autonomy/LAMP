@@ -1,0 +1,11 @@
+# Rate of timer callback [Hz]
+update_rate: 1.0
+# Shortest range threshold
+acceptable_shortest_rssi_distance: 55.0
+#is module on
+check_for_loop_closures: true
+# what robots look for loop closure
+robots_loop_closure: ["husky4"]
+
+
+

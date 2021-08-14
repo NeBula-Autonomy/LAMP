@@ -97,6 +97,7 @@ add_library(${PROJECT_NAME}
   src/TestUtils.cc
   src/RoundRobinLoopCandidateQueue.cc
   src/ObservabilityQueue.cc
+  src/RssiLoopClosure.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -135,6 +136,14 @@ target_link_libraries(loop_candidate_queue_node
 
 add_executable(loop_computation_node src/loop_computation_node.cc)
 target_link_libraries(loop_computation_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+add_executable(rssi_loop_closure_node src/rssi_loop_closure_node.cc)
+target_link_libraries(rssi_loop_closure_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
