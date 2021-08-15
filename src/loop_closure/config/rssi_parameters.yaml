@@ -7,5 +7,11 @@ check_for_loop_closures: true
 # what robots look for loop closure
 robots_loop_closure: ["husky4"]
 
+#method for radio_loop_closure
+## radio_to_nodes
+radio_loop_closure_method: "radio_to_nodes"
+close_keys_threshold: 20
+
+
 
 

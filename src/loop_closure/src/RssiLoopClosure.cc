@@ -64,6 +64,14 @@ bool RssiLoopClosure::LoadRssiParameters(const ros::NodeHandle& n) {
     return false;
   ROS_INFO_STREAM("b_check_for_loop_closures_: " << b_check_for_loop_closures_);
 
+  if (!pu::Get("close_keys_threshold", close_keys_threshold_))
+    return false;
+  ROS_INFO_STREAM("close_keys_threshold: " << close_keys_threshold_);
+
+  if (!pu::Get("radio_loop_closure_method", radio_loop_closure_method_))
+    return false;
+  ROS_INFO_STREAM("radio_loop_closure_method: " << radio_loop_closure_method_);
+
   return true;
 }
 
@@ -240,8 +248,19 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
           if (pose_associated_for_given_robot.key != 0 and
               pose_associated_for_given_robot.key !=
                   rssi_node_dropped_list_[neighbour.neighbor_node_label]
-                      .graph_node.key) {
+                      .graph_node.key and
+              rssi_node_dropped_list_[neighbour.neighbor_node_label]
+                      .nodes_around_comm.count(
+                          pose_associated_for_given_robot.key) == 0) {
             ROS_INFO_STREAM("ACCEPTED");
+            rssi_node_dropped_list_[neighbour.neighbor_node_label]
+                .nodes_around_comm.insert({pose_associated_for_given_robot.key,
+                                           pose_associated_for_given_robot});
+            ROS_INFO_STREAM(
+                "Nodes around "
+                << neighbour.neighbor_node_label << " "
+                << rssi_node_dropped_list_[neighbour.neighbor_node_label]
+                       .nodes_around_comm.size());
 
             //            VisualizeRobotNodesWithPotentialLoopClosure(
             //                pose_associated_for_given_robot, 0, 1, 0);
@@ -263,6 +282,8 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
             //                rssi_node_dropped_list_[neighbour.neighbor_node_label]
             //                    .graph_node,
             //                pose_associated_for_given_robot);
+
+            GenerateLoops();
             //            candidate.type =
             //            pose_graph_msgs::LoopCandidate::PROXIMITY;
             //            candidate.value =
@@ -380,42 +401,18 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
   return pose_out;
 }
 
-void RssiLoopClosure::GenerateLoops(const gtsam::Key& new_key) {
+void RssiLoopClosure::GenerateLoops() {
   // Loop closure off. No candidates generated
   if (!b_check_for_loop_closures_)
     return;
 
-  //  const gtsam::Symbol key = gtsam::Symbol(new_key);
-  //  std::vector<pose_graph_msgs::LoopCandidate> potential_candidates;
-  //  for (auto it = keyed_poses_.begin(); it != keyed_poses_.end(); ++it) {
-  //    const gtsam::Symbol other_key = it->first;
-
-  //    // Don't self-check.
-  //    if (key == other_key)
-  //      continue;
-
-  //    // Don't compare against poses that were recently collected.
-  //    if (utils::IsKeyFromSameRobot(key, other_key) &&
-  //        std::llabs(key.index() - other_key.index()) < skip_recent_poses_)
-  //      continue;
-
-  //    double distance = DistanceBetweenKeys(key, other_key);
-
-  //    if (distance > proximity_threshold_) {
-  //      continue;
-  //    }
-
-  //    // If all the checks pass create candidate and add to queue
-  //    pose_graph_msgs::LoopCandidate candidate;
-  //    candidate.header.stamp = ros::Time::now();
-  //    candidate.key_from = new_key;
-  //    candidate.key_to = other_key;
-  //    candidate.pose_from = utils::GtsamToRosMsg(keyed_poses_[new_key]);
-  //    candidate.pose_to = utils::GtsamToRosMsg(keyed_poses_[other_key]);
-  //    candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
-  //    candidate.value = distance;
-
-  //    potential_candidates.push_back(candidate);
+  if (radio_loop_closure_method_ == "radio_to_nodes") {
+    RadioToNodesLoopClosure();
+  } else {
+    ROS_ERROR_STREAM("Something is wrong in RSSI LOOP CLOSURE SINCE THE METHOD "
+                     "DOESN't EXIST!!!!");
+    EXIT_FAILURE;
+  }
   //  }
   //  if (potential_candidates.size() < n_closest_) {
   //    candidates_.insert(candidates_.end(),
@@ -432,7 +429,63 @@ void RssiLoopClosure::GenerateLoops(const gtsam::Key& new_key) {
   //                       potential_candidates.begin(),
   //                       potential_candidates.begin() + n_closest_);
   //  }
+  if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {
+    PublishLoops();
+    ClearLoops();
+  }
   return;
+}
+
+void RssiLoopClosure::RadioToNodesLoopClosure() {
+  ROS_INFO_STREAM(
+      "<<<<<<<<<<<<---------------------------------------->>>>>>>>>>");
+  std::vector<pose_graph_msgs::LoopCandidate> potential_candidates;
+
+  for (auto& rssi_node_dropped : rssi_node_dropped_list_) {
+    for (const auto& node_around_comm :
+         rssi_node_dropped.second.nodes_around_comm) {
+      auto a = gtsam::Symbol(rssi_node_dropped.second.graph_node.key).index();
+      auto b = gtsam::Symbol(node_around_comm.second.key).index();
+      std::uint64_t diff_index;
+      if (a > b) {
+        diff_index = a - b;
+      } else {
+        diff_index = b - a;
+      }
+
+      ROS_INFO_STREAM("a: " << a << " b: " << b << " = " << diff_index);
+      ROS_INFO_STREAM("At the beginning"
+                      << rssi_node_dropped.second.nodes_around_comm.size());
+      ROS_INFO_STREAM("node around: "
+                      << gtsam::Symbol(node_around_comm.second.key).index());
+      ROS_INFO_STREAM(
+          "rssi node dropped around: "
+          << gtsam::Symbol(rssi_node_dropped.second.graph_node.key).index());
+
+      ROS_INFO_STREAM("diff: " << gtsam::Symbol(diff_index).index());
+      if (diff_index > close_keys_threshold_) {
+        pose_graph_msgs::LoopCandidate candidate;
+        candidate.header.stamp = ros::Time::now();
+        candidate.key_from = rssi_node_dropped.second.graph_node.key;
+        candidate.key_to = node_around_comm.second.key;
+        candidate.pose_from = rssi_node_dropped.second.graph_node.pose;
+        candidate.pose_to = node_around_comm.second.pose;
+        candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
+        candidate.value = 0.0;
+        potential_candidates.push_back(candidate);
+        VisualizeEdgesForPotentialLoopClosure(
+            rssi_node_dropped.second.graph_node, node_around_comm.second);
+
+        rssi_node_dropped.second.nodes_around_comm.erase(
+            rssi_node_dropped.second.graph_node.key);
+      } else {
+        rssi_node_dropped.second.nodes_around_comm.erase(
+            rssi_node_dropped.second.graph_node.key);
+      }
+      ROS_INFO_STREAM("At the end"
+                      << rssi_node_dropped.second.nodes_around_comm.size());
+    }
+  }
 }
 //*************MATH CALCULATION*******************/
 // Calculating pass loss for the given node
@@ -519,7 +572,6 @@ void RssiLoopClosure::VisualizeRobotNodesWithPotentialLoopClosure(
   m.scale.y = 0.5;
   m.scale.z = 0.5;
   m.id = idx2++;
-  ROS_INFO_STREAM("COLOR INDEX 2: " << idx2);
   m.pose.position = node_pose.pose.position;
   visualize_rssi_placement.publish(m);
 }

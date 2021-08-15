@@ -21,6 +21,7 @@ struct RssiRawInfo {
   ros::Time time_stamp;
   core_msgs::CommNodeInfo node_info;
   pose_graph_msgs::PoseGraphNode graph_node;
+  std::map<gtsam::Key, pose_graph_msgs::PoseGraphNode> nodes_around_comm;
 };
 
 struct LoopCandidateToPrepare {
@@ -47,16 +48,37 @@ protected:
   void KeyedPoseCallback(
       const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) override;
 
-  void GenerateLoops(const gtsam::Key& new_key);
-  pose_graph_msgs::PoseGraphNode GetClosestPoseAtTime(
-      const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
-      const ros::Time& stamp,
-      double time_threshold = 2.0,
-      bool check_threshold = false);
-
 private:
+  //*************Parameters Loading*******************/
   bool LoadRssiParameters(const ros::NodeHandle& n);
   bool LoadRobotsList(const ros::NodeHandle& n);
+
+  // params
+  float acceptable_shortest_rssi_distance_{55.0f};
+  int close_keys_threshold_{20};
+  std::string radio_loop_closure_method_{"radio_to_nodes"};
+
+  // variable of params
+  std::string node_name_;
+
+  // variables needed
+  std::map<std::string, RssiRawInfo> rssi_node_dropped_list_;
+  std::map<std::string, ros::Time> rssi_node_dropped_time_stamp_;
+  std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
+      rssi_scom_robot_list_;
+  std::map<std::string, ros::Time> rssi_scom_robot_list_updated_time_stamp_;
+  std::map<unsigned char, std::map<double, pose_graph_msgs::PoseGraphNode>>
+      robots_trajectory_;
+  int idx2{0}; // todo it's not needed at some point
+
+  // const
+  const int ANTENAS_NUMBER_IN_ROBOT{2};
+
+  // others
+  mutable std::mutex raw_mutex_;
+
+  // bool flags
+  bool b_check_for_loop_closures_;
 
   // ROS subscribers
   ros::Subscriber comm_node_raw_;
@@ -68,21 +90,30 @@ private:
   ros::Publisher visualize_rssi_placement;
   ros::Publisher highlight_pub_;
 
-  // callbacks
+  //*************Callbacks*******************/
   void CommNodeAggregatedStatusCallback(
       const core_msgs::CommNodeStatus::ConstPtr& msg);
   void CommNodeRawCallback(const silvus_msgs::SilvusStreamscape::ConstPtr& msg);
 
-  //  // ROS timer
+  //*************Timer*******************/
   ros::Timer uwb_update_timer_;
   double update_rate_;
   void RssiTimerCallback(const ros::TimerEvent& event);
 
-  // math calculation
+  //*************HELPER FUNCTIONS*******************/
+  void GenerateLoops();
+  void RadioToNodesLoopClosure();
+  pose_graph_msgs::PoseGraphNode GetClosestPoseAtTime(
+      const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
+      const ros::Time& stamp,
+      double time_threshold = 2.0,
+      bool check_threshold = false);
+
+  //*************Math*******************/
   float CalculatePathLossForNeighbor(
       const silvus_msgs::SilvusStreamscapeNeighbor& neighbor);
 
-  // visualization and printing
+  //*************Visualization and Printing*******************/
   void ShowRssiList() const;
   void ShowRobotList() const;
   void ShowDroppedRssiList() const;
@@ -95,37 +126,5 @@ private:
   bool VisualizeEdgesForPotentialLoopClosure(
       const pose_graph_msgs::PoseGraphNode& node1,
       const pose_graph_msgs::PoseGraphNode& node2);
-  // params
-  float acceptable_shortest_rssi_distance_;
-
-  // bool flags
-  bool b_check_for_loop_closures_;
-
-  std::map<std::string, int> rssi_id2key_;
-  //  std::map<std::string, RssiInfo> rssi_list_;
-  std::map<std::string, RssiRawInfo> rssi_node_dropped_list_;
-  std::map<std::string, ros::Time> rssi_node_dropped_time_stamp_;
-
-  //  std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
-  //  rssi_robot_list_;
-  std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
-      rssi_scom_robot_list_;
-  std::map<std::string, ros::Time> rssi_scom_robot_list_updated_time_stamp_;
-
-  std::vector<LoopCandidateToPrepare> loop_candidates_to_prepare_;
-  int idx2 = 0;
-  std::vector<pose_graph_msgs::LoopCandidate> potential_candidates_;
-
-  PoseGraph pose_graph_;
-
-  const int ANTENAS_NUMBER_IN_ROBOT{2};
-
-  mutable std::mutex raw_mutex_;
-
-  // string parameters
-  std::string node_name_;
-
-  std::map<unsigned char, std::map<double, pose_graph_msgs::PoseGraphNode>>
-      robots_trajectory_;
 };
 } // namespace lamp_loop_closure
