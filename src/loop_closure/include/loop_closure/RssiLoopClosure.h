@@ -18,7 +18,7 @@ namespace pu = parameter_utils;
 
 struct RssiRawInfo {
   bool b_dropped{false};
-  ros::Time time_stamp_;
+  ros::Time time_stamp;
   core_msgs::CommNodeInfo node_info;
   pose_graph_msgs::PoseGraphNode graph_node;
 };
@@ -48,6 +48,11 @@ protected:
       const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) override;
 
   void GenerateLoops(const gtsam::Key& new_key);
+  pose_graph_msgs::PoseGraphNode GetClosestPoseAtTime(
+      const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
+      const ros::Time& stamp,
+      double time_threshold = 2.0,
+      bool check_threshold = false);
 
 private:
   bool LoadRssiParameters(const ros::NodeHandle& n);
@@ -61,6 +66,7 @@ private:
   // ROS publishers for timing
   ros::Publisher db_tracking;
   ros::Publisher visualize_rssi_placement;
+  ros::Publisher highlight_pub_;
 
   // callbacks
   void CommNodeAggregatedStatusCallback(
@@ -86,7 +92,9 @@ private:
       float red = 1.0,
       float green = 1.0,
       float blue = 1.0);
-
+  bool VisualizeEdgesForPotentialLoopClosure(
+      const pose_graph_msgs::PoseGraphNode& node1,
+      const pose_graph_msgs::PoseGraphNode& node2);
   // params
   float acceptable_shortest_rssi_distance_;
 
