@@ -24,8 +24,9 @@ bool RssiLoopClosure::Initialize(const ros::NodeHandle& n) {
   return true;
 }
 bool RssiLoopClosure::LoadParameters(const ros::NodeHandle& n) {
-  //  if (!LoopGeneration::LoadParameters(n))
-  //    return false;
+  if (!LoopGeneration::LoadParameters(n))
+    return false;
+  ROS_INFO_STREAM("b_check_for_loop_closures_: " << b_check_for_loop_closures_);
   if (!LoadRssiParameters(n)) {
     ROS_ERROR("Failed to load RSSI parameters from the configuration file ");
     return false;
@@ -61,9 +62,8 @@ bool RssiLoopClosure::LoadRssiParameters(const ros::NodeHandle& n) {
   ROS_INFO_STREAM(
       "acceptable_shortest_rssi_distance: " << measured_path_loss_dB_);
 
-  if (!pu::Get("check_for_loop_closures", b_check_for_loop_closures_))
-    return false;
-  ROS_INFO_STREAM("b_check_for_loop_closures_: " << b_check_for_loop_closures_);
+  //  if (!pu::Get("check_for_loop_closures", b_check_for_loop_closures_))
+  //    return false;
 
   if (!pu::Get("close_keys_threshold", close_keys_threshold_))
     return false;
@@ -143,6 +143,7 @@ bool is_robot_radio(const std::string& hostname) {
 // of dropping topic: comm_node_manager/status_agg
 void RssiLoopClosure::CommNodeAggregatedStatusCallback(
     const core_msgs::CommNodeStatus::ConstPtr& msg) {
+  ROS_INFO_STREAM("MSG RECEIVED");
   auto rssi_list_dropped = msg->dropped;
   auto time_stamp = msg->header.stamp;
   raw_mutex_.lock();

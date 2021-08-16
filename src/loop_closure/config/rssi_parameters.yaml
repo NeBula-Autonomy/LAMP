@@ -1,16 +1,17 @@
 # Rate of timer callback [Hz]
 update_rate: 1.0
 # Shortest range threshold
-acceptable_shortest_rssi_distance: 55.0
-#is module on
-check_for_loop_closures: true
+acceptable_shortest_rssi_distance: 60 #55.0
 # what robots look for loop closure
-robots_loop_closure: ["husky4"]
+robots_loop_closure: ["husky4", "husky1", "spot1", "spot2"]
 
 #method for radio_loop_closure
 ## radio_to_nodes
 radio_loop_closure_method: "radio_to_nodes"
 close_keys_threshold: 20
+
+
+
 
 
 

@@ -9,7 +9,7 @@
 namespace lc = lamp_loop_closure;
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "rssi_loop_closure");
+  ros::init(argc, argv, "rssi_loop_generation");
   ros::NodeHandle n("~");
 
   lc::RssiLoopClosure rssi_loop_closure;

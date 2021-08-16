@@ -12,6 +12,25 @@
     <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>      
   </node>
 
+
+  <node pkg="loop_closure"
+      type="rssi_loop_generation_node"
+      name="rssi_loop_closure"
+      output="screen">
+
+      <remap from="~pose_graph" to="lamp/pose_graph"/>
+
+      <remap from="~rssi_aggregated_drop_status" to="comm_node_manager/status_agg"/>
+      <remap from="~silvus_raw" to="comm/silvus/raw"/>
+      <remap from="~pose_graph" to="lamp/pose_graph"/>
+      <remap from="~loop_candidates" to="lamp/loop_generation/loop_candidates" />
+      <rosparam file="$(find loop_closure)/config/rssi_parameters.yaml" subst_value="true"/>
+      <!-- Loop closure parameters  -->
+      <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
+      <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>
+  </node>
+
+
   <node pkg="loop_closure"
         name="loop_prioritization"
         type="loop_prioritization_node"
@@ -63,7 +82,7 @@
     <remap from="~prioritized_loop_candidates" to="lamp/loop_candidate_queue/prioritized_loop_candidates" />
 
     <remap from="~loop_computation_status" to="lamp/loop_computation/loop_computation_status" />
-    <!-- Loop closure parameters  -->
+    <!-- Loop closure parameters-->
     <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
     <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>     
     <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/> 
