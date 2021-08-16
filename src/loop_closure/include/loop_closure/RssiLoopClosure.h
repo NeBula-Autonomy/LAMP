@@ -16,12 +16,15 @@ namespace lamp_loop_closure {
 
 namespace pu = parameter_utils;
 
+using PoseGraphNodeLoopClosureStatus =
+    std::pair<bool, pose_graph_msgs::PoseGraphNode>;
+
 struct RssiRawInfo {
   bool b_dropped{false};
   ros::Time time_stamp;
-  core_msgs::CommNodeInfo node_info;
-  pose_graph_msgs::PoseGraphNode graph_node;
-  std::map<gtsam::Key, pose_graph_msgs::PoseGraphNode> nodes_around_comm;
+  core_msgs::CommNodeInfo comm_node_info;
+  pose_graph_msgs::PoseGraphNode pose_graph_node;
+  std::map<gtsam::Key, PoseGraphNodeLoopClosureStatus> nodes_around_comm;
 };
 
 struct LoopCandidateToPrepare {
@@ -54,19 +57,22 @@ private:
   bool LoadRobotsList(const ros::NodeHandle& n);
 
   // params
-  float acceptable_shortest_rssi_distance_{55.0f};
-  int close_keys_threshold_{20};
+  float measured_path_loss_dB_{55.0f};
+  uint close_keys_threshold_{20};
   std::string radio_loop_closure_method_{"radio_to_nodes"};
 
   // variable of params
   std::string node_name_;
 
   // variables needed
-  std::map<std::string, RssiRawInfo> rssi_node_dropped_list_;
-  std::map<std::string, ros::Time> rssi_node_dropped_time_stamp_;
+  std::map<std::string, RssiRawInfo>
+      rssi_scom_dropped_list_; //<scom2, scom3,...>
+  std::map<std::string, ros::Time> rssi_scom_dropped_time_stamp_;
   std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
-      rssi_scom_robot_list_;
-  std::map<std::string, ros::Time> rssi_scom_robot_list_updated_time_stamp_;
+      rssi_scom_robot_list_; // robot names <scom-husky4 , scom-spot2,...>
+  std::map<std::string, ros::Time>
+      rssi_scom_robot_list_updated_time_stamp_; // robot names <scom-husky4 ,
+                                                // scom-spot2,...>
   std::map<unsigned char, std::map<double, pose_graph_msgs::PoseGraphNode>>
       robots_trajectory_;
   int idx2{0}; // todo it's not needed at some point
@@ -122,7 +128,8 @@ private:
       const pose_graph_msgs::PoseGraphNode& node_pose,
       float red = 1.0,
       float green = 1.0,
-      float blue = 1.0);
+      float blue = 1.0,
+      float scale = 0.5);
   bool VisualizeEdgesForPotentialLoopClosure(
       const pose_graph_msgs::PoseGraphNode& node1,
       const pose_graph_msgs::PoseGraphNode& node2);
