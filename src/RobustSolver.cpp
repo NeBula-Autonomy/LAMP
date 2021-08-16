@@ -119,9 +119,15 @@ void RobustSolver::optimize() {
                 std::end(known_inlier_factor_indices),
                 0);
       gncParams.setKnownInliers(known_inlier_factor_indices);
+      // Set initial weights to bias odom
+      gtsam::Vector init_weights = Eigen::VectorXd::Zero(nfg_.size());
+      for (const auto& ind : known_inlier_factor_indices) {
+        init_weights(ind) = 1;
+      }
       // Create GNC optimizer
       gtsam::GncOptimizer<gtsam::GncParams<gtsam::LevenbergMarquardtParams> >
           gnc_optimizer(nfg_, values_, gncParams);
+      gnc_optimizer.setWeights(init_weights);
       switch (params_.gnc_threshold_mode_) {
         case (params_.GncThresholdMode::COST):
           gnc_optimizer.setInlierCostThresholds(params_.gnc_inlier_threshold_);
@@ -178,9 +184,15 @@ void RobustSolver::optimize() {
                 std::end(known_inlier_factor_indices),
                 0);
       gncParams.setKnownInliers(known_inlier_factor_indices);
+      // Set initial weights to bias odom
+      gtsam::Vector init_weights = Eigen::VectorXd::Zero(nfg_.size());
+      for (const auto& ind : known_inlier_factor_indices) {
+        init_weights(ind) = 1;
+      }
       // Create GNC optimizer
       gtsam::GncOptimizer<gtsam::GncParams<gtsam::GaussNewtonParams> >
           gnc_optimizer(nfg_, values_, gncParams);
+      gnc_optimizer.setWeights(init_weights);
       switch (params_.gnc_threshold_mode_) {
         case (params_.GncThresholdMode::COST):
           gnc_optimizer.setInlierCostThresholds(params_.gnc_inlier_threshold_);
