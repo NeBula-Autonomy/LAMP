@@ -26,6 +26,6 @@ base:
   gnc_alpha: 0.9999999999
 
   # outlier rejection thresholds (distances)
-  translation_check_threshold: 0.5 # 50 centimeters
-  rotation_check_threshold: 0.1 # ~6 degrees
+  translation_check_threshold: 1 # 1 m
+  rotation_check_threshold: 1 # 1 rad
   # TODO make these dynamic with the translation threshold for nodes
