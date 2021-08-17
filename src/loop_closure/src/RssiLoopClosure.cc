@@ -6,7 +6,7 @@ RssiLoopClosure::RssiLoopClosure() {}
 RssiLoopClosure::~RssiLoopClosure() {}
 
 bool RssiLoopClosure::Initialize(const ros::NodeHandle& n) {
-  node_name_ = ros::names::append(n.getNamespace(), "OdometryHandler");
+  node_name_ = ros::names::append(n.getNamespace(), "RssiLoopClosure");
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", node_name_.c_str());
     return false;
@@ -119,12 +119,10 @@ void RssiLoopClosure::KeyedPoseCallback(
   for (auto& robot_trajectory : robots_trajectory_) {
     robot_trajectory.second.clear();
   }
-
   for (const auto& node_msg : graph_msg->nodes) {
     gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract
     if (!utils::IsRobotPrefix(new_key.chr()))
       continue;
-
     robots_trajectory_[new_key.chr()].insert(
         {node_msg.header.stamp.toSec(), node_msg});
   }
@@ -132,7 +130,7 @@ void RssiLoopClosure::KeyedPoseCallback(
   return;
 }
 
-bool is_robot_radio(const std::string& hostname) {
+bool RssiLoopClosure::is_robot_radio(const std::string& hostname) const {
   if (hostname.find("scom-") != std::string::npos) {
     return true;
   }
@@ -143,7 +141,6 @@ bool is_robot_radio(const std::string& hostname) {
 // of dropping topic: comm_node_manager/status_agg
 void RssiLoopClosure::CommNodeAggregatedStatusCallback(
     const core_msgs::CommNodeStatus::ConstPtr& msg) {
-  ROS_INFO_STREAM("MSG RECEIVED");
   auto rssi_list_dropped = msg->dropped;
   auto time_stamp = msg->header.stamp;
   raw_mutex_.lock();
@@ -192,20 +189,7 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
       rssi_scom_dropped_list_[rssi_comm_dropped.hostname].time_stamp =
           rssi_scom_dropped_time_stamp_[rssi_comm_dropped.hostname];
 
-      ROS_INFO_STREAM("RSSI ID:"
-                      << rssi_comm_dropped.uwb_id << " was dropped by "
-                      << rssi_comm_dropped.robot_name << " label "
-                      << rssi_comm_dropped.hostname << " key name: "
-                      << utils::GetRobotPrefix(rssi_comm_dropped.robot_name)
-                      << " pose: "
-                      << rssi_scom_dropped_list_[rssi_comm_dropped.hostname]
-                             .pose_graph_node.pose
-                      << " I D : "
-                      << rssi_scom_dropped_list_[rssi_comm_dropped.hostname]
-                             .pose_graph_node.ID
-                      << " KEY: "
-                      << rssi_scom_dropped_list_[rssi_comm_dropped.hostname]
-                             .pose_graph_node.key);
+      PrintDropStatus(rssi_comm_dropped);
     }
   }
 
@@ -318,8 +302,7 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
 void RssiLoopClosure::CommNodeRawCallback(
     const silvus_msgs::SilvusStreamscape::ConstPtr& msg) {
   raw_mutex_.lock();
-  //  ROS_INFO_STREAM("CommNodeRawCallback");
-  // for every radio node that was sent to the base and is a kind of range
+  // for every radio node that was sent to the base and it's in kind of range
   for (const auto& node : msg->nodes) {
     // if it's a robot radio (so it's scom-huskyx, scom-spotx, etc)
     if (!node.robot_name.empty()) {
@@ -347,6 +330,7 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
     double time_threshold,
     bool check_threshold) {
   // If there are no keys, throw an error
+
   if (robot_trajectory.empty()) {
     ROS_ERROR("Cannot get closest key - no keys are stored");
     return pose_graph_msgs::PoseGraphNode();
@@ -361,7 +345,6 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
   double t1 = iterBefore->first;
   double t2 = iterAfter->first;
   double t_closest;
-
   bool b_is_end_case = false;
 
   // If time is before the start or after the end, return first/last key
@@ -376,7 +359,6 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
     t_closest = t1;
     b_is_end_case = true;
   }
-
   if (!b_is_end_case) {
     // Otherwise return the closer key
     if (stamp.toSec() - t1 < t2 - stamp.toSec()) {
@@ -387,7 +369,6 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
       t_closest = t2;
     }
   }
-
   // Check threshold
   if (check_threshold && std::abs(t_closest - stamp.toSec()) > time_threshold) {
     ROS_ERROR("Delta between queried time and closest time in graph too large");
@@ -405,7 +386,6 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
         << std::abs(stamp.toSec() - t_closest)
         << ", allowable max is: " << time_threshold);
   }
-
   return pose_out;
 }
 
@@ -515,6 +495,19 @@ float RssiLoopClosure::CalculatePathLossForNeighbor(
 }
 
 //*************Visualization and Printing*******************/
+void RssiLoopClosure::PrintDropStatus(
+    const core_msgs::CommNodeInfo& node_info) const {
+  ROS_INFO_STREAM(
+      "RSSI ID:"
+      << node_info.uwb_id << " was dropped by " << node_info.robot_name
+      << " label " << node_info.hostname << " key name: "
+      << utils::GetRobotPrefix(node_info.robot_name) << " pose: "
+      << rssi_scom_dropped_list_.at(node_info.hostname).pose_graph_node.pose
+      << " I D : "
+      << rssi_scom_dropped_list_.at(node_info.hostname).pose_graph_node.ID
+      << " KEY: "
+      << rssi_scom_dropped_list_.at(node_info.hostname).pose_graph_node.key);
+}
 
 void RssiLoopClosure::ShowRssiList() const {
   for (const auto& [rssi_id, info] : rssi_scom_dropped_list_) {

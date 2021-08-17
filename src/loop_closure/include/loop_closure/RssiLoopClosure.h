@@ -34,6 +34,8 @@ struct LoopCandidateToPrepare {
 };
 
 class RssiLoopClosure : public LoopGeneration {
+  friend class TestRSSILoopGeneration;
+
 public:
   RssiLoopClosure();
 
@@ -114,12 +116,14 @@ private:
       const ros::Time& stamp,
       double time_threshold = 2.0,
       bool check_threshold = false);
+  bool is_robot_radio(const std::string& hostname) const;
 
   //*************Math*******************/
   float CalculatePathLossForNeighbor(
       const silvus_msgs::SilvusStreamscapeNeighbor& neighbor);
 
   //*************Visualization and Printing*******************/
+  void PrintDropStatus(const core_msgs::CommNodeInfo& msg) const;
   void ShowRssiList() const;
   void ShowRobotList() const;
   void ShowDroppedRssiList() const;
