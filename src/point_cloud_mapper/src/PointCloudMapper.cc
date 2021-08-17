@@ -87,9 +87,6 @@ bool PointCloudMapper::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("map/volume_voxel_size", volume_voxel_size))
     return false;
 
-  if (!pu::Get("num_threads", number_threads_))
-    return false;
-
   // Initialize the map octree.
   map_octree_.reset(new Octree(octree_resolution_));
   map_octree_->setInputCloud(map_data_);
