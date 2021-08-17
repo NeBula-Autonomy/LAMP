@@ -208,22 +208,11 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
           rssi_scom_dropped_list_.end()) {
         // calculate path loss in db and compare with the threshikd value from
         // config
+
         if (CalculatePathLossForNeighbor(neighbour) < measured_path_loss_dB_) {
-          ROS_INFO_STREAM(
-              "Calculate path loss for : "
-              << scom_robot.first << " ~ " << neighbour.neighbor_node_label
-              << " distance " << CalculatePathLossForNeighbor(neighbour)
-              << " pose: "
-              << rssi_scom_dropped_list_[neighbour.neighbor_node_label]
-                     .pose_graph_node.pose.position.x
-              << " "
-              << rssi_scom_dropped_list_[neighbour.neighbor_node_label]
-                     .pose_graph_node.pose.position.y
-              << " "
-              << rssi_scom_dropped_list_[neighbour.neighbor_node_label]
-                     .pose_graph_node.pose.position.z);
           // get the pose from robot trajectory that was the closest at time
           // stamp
+
           auto scom_pose_associated_for_scom_robot = GetClosestPoseAtTime(
               robots_trajectory_[utils::GetRobotPrefix(
                   scom_robot.second.robot_name)],
@@ -235,27 +224,26 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
           // included before - > if 3x yes then accept the pose for the signal
           bool has_scom_node_associated_been_found_in_robot_trajectory =
               scom_pose_associated_for_scom_robot.key != 0;
-          if (has_scom_node_associated_been_found_in_robot_trajectory)
+          if (!has_scom_node_associated_been_found_in_robot_trajectory)
             ROS_INFO_STREAM("Key 0!");
           bool is_scom_node_associated_the_same_as_dropped_nodee =
               scom_pose_associated_for_scom_robot.key !=
               rssi_scom_dropped_list_[neighbour.neighbor_node_label]
                   .pose_graph_node.key;
-          if (has_scom_node_associated_been_found_in_robot_trajectory)
+          if (!is_scom_node_associated_the_same_as_dropped_nodee)
             ROS_INFO_STREAM("Pose has the same node as comm");
           bool is_this_new_graph_node =
               rssi_scom_dropped_list_[neighbour.neighbor_node_label]
                   .nodes_around_comm.count(
                       scom_pose_associated_for_scom_robot.key) == 0;
-          if (is_this_new_graph_node)
+          if (!is_this_new_graph_node)
             ROS_INFO_STREAM("This node was associated to the comm");
 
           if (has_scom_node_associated_been_found_in_robot_trajectory and
               is_scom_node_associated_the_same_as_dropped_nodee and
               is_this_new_graph_node) {
-            ROS_INFO_STREAM("ACCEPTED");
             ROS_INFO_STREAM(
-                "New node associated with the comm "
+                "Accepted: New node associated with the comm "
                 << rssi_scom_robot_list_updated_time_stamp_[scom_robot.first]
                 << " is " << scom_pose_associated_for_scom_robot.pose.position.x
                 << " " << scom_pose_associated_for_scom_robot.pose.position.x
@@ -454,6 +442,7 @@ void RssiLoopClosure::RadioToNodesLoopClosure() {
       } else {
         diff_index = node_b - node_a;
       }
+
       ROS_INFO_STREAM("diff: " << gtsam::Symbol(diff_index).index());
       bool logic = diff_index > close_keys_threshold_;
       ROS_INFO_STREAM("LOGIC indexes: " << logic);
