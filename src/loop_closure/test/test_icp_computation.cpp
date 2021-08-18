@@ -11,6 +11,13 @@
 #include <thread>
 #include <utils/PointCloudTypes.h>
 
+#include <geometry_utils/GeometryUtilsROS.h>
+#include <parameter_utils/ParameterUtils.h>
+#include <pcl/registration/ia_ransac.h>
+#include <teaser/evaluation.h>
+#include <teaser/matcher.h>
+#include <teaser/registration.h>
+
 class TestICPComputation : public ::testing::Test {
 public:
     TestICPComputation()  {

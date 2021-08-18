@@ -39,6 +39,7 @@ find_package(catkin REQUIRED COMPONENTS
   core_msgs
   pose_graph_msgs
   geometry_msgs
+  silvus_msgs
   multithreaded_gicp
 )
 
@@ -65,6 +66,7 @@ catkin_package(
     core_msgs
     pose_graph_msgs
     geometry_msgs
+    silvus_msgs
   DEPENDS
     Boost
 )

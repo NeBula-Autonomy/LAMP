@@ -259,7 +259,7 @@ TEST_F(TestRSSILoopGeneration, CommNodeRawCallback) {
 
   auto rssi_scom_robot = getRssiScomRobotList();
   commNodeRawCallback(msg);
-  EXPECT_EQ(rssi_scom_robot.size(), 3);
+  EXPECT_EQ(rssi_scom_robot.size(), 8);
   rssi_scom_robot = getRssiScomRobotList();
   EXPECT_EQ(rssi_scom_robot["scom-spot2"].node_id, 5);
   EXPECT_NEAR(rssi_scom_robot["scom-spot2"].txpw_requested_dBm, 15.0, 0.1);
@@ -322,7 +322,7 @@ TEST_F(TestRSSILoopGeneration, CommNodeRawCallback) {
   msg2->nodes.push_back(node52);
 
   commNodeRawCallback(msg2);
-  EXPECT_EQ(rssi_scom_robot.size(), 3);
+  EXPECT_EQ(rssi_scom_robot.size(), 8);
   rssi_scom_robot = getRssiScomRobotList();
   EXPECT_EQ(rssi_scom_robot["scom-spot2"].node_id, 5);
   EXPECT_NEAR(rssi_scom_robot["scom-spot2"].txpw_requested_dBm, 152.0, 0.1);

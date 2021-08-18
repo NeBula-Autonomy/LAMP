@@ -59,9 +59,8 @@ class TestLoopComputation : public ::testing::Test {
 
   void getTeaserInitialAlignment(PointCloud::ConstPtr source,
                                  PointCloud::ConstPtr target,
-                                 Eigen::Matrix4f* tf_out,
-                                 int& n_inliers) {
-    icp_compute_.GetTeaserInitialAlignment(source, target, tf_out, n_inliers);
+                                 Eigen::Matrix4f* tf_out) {
+    icp_compute_.GetTeaserInitialAlignment(source, target, tf_out);
   }
 
   IcpLoopComputation icp_compute_;
