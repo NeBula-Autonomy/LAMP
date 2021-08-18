@@ -113,14 +113,18 @@ TEST(UtilsTest, EigenMatrixRemoveRowColumn) {
 
 TEST(UtilsTest, CalculatePointClusterDiameter) {
   {
-    Eigen::Matrix<float, 3, Eigen::Dynamic> test_mat(3, 3);
-    test_mat << -1, 0, 1, -1, 0, 1, -1, 0, 1;
+    Eigen::Matrix<float, 3, Eigen::Dynamic> test_mat(3,3);
+    test_mat << -1, 0, 1,
+        -1, 0, 1,
+        -1, 0, 1;
     float d = teaser::utils::calculateDiameter<float, 3>(test_mat);
     EXPECT_NEAR(d, 3.4641, 0.0001);
   }
   {
-    Eigen::Matrix<float, 3, Eigen::Dynamic> test_mat(3, 4);
-    test_mat << 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4;
+    Eigen::Matrix<float, 3, Eigen::Dynamic> test_mat(3,4);
+    test_mat << 1, 2, 3, 4,
+                1, 2, 3, 4,
+                1, 2, 3, 4;
     float d = teaser::utils::calculateDiameter<float, 3>(test_mat);
     EXPECT_NEAR(d, 5.1962, 0.0001);
   }

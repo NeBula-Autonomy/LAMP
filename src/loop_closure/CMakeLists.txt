@@ -100,6 +100,9 @@ add_library(${PROJECT_NAME}
   src/RssiLoopClosure.cc
 )
 
+find_package(Eigen3 REQUIRED)
+find_package( PCL 1.8 REQUIRED )
+
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}

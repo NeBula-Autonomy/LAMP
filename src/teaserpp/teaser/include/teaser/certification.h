@@ -52,6 +52,7 @@ public:
  */
 class DRSCertifier : public AbstractRotationCertifier {
 public:
+
   /**
    * Solver for eigendecomposition solver / spectral decomposition.
    *
@@ -59,7 +60,7 @@ public:
    * For extremely large matrices, it may make sense to use Spectra instead.
    */
   enum class EIG_SOLVER_TYPE {
-    EIGEN = 0,   ///< Use solvers in the Eigen library
+    EIGEN = 0, ///< Use solvers in the Eigen library
     SPECTRA = 1, ///< Use solvers in the Spectra library
   };
 
@@ -106,7 +107,7 @@ public:
    * Constructor for DRSCertifier that takes in a parameter struct
    * @param params [in] struct holding all parameters
    */
-  DRSCertifier(const Params& params) : params_(params){};
+  DRSCertifier(const Params& params) : params_(params) {};
 
   /**
    * Constructor for DRSCertifier

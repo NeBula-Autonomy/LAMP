@@ -67,8 +67,7 @@ public:
 
   void GetTeaserInitialAlignment(PointCloud::ConstPtr source,
                                  PointCloud::ConstPtr target,
-                                 Eigen::Matrix4f* tf_out,
-                                 int& n_inliers);
+                                 Eigen::Matrix4f* tf_out);
 
   bool
   ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& query_cloud,
@@ -120,6 +119,9 @@ protected:
   double noise_bound_;
   double TEASER_FPFH_normals_radius_;
   double TEASER_FPFH_features_radius_;
+
+  int teaser_count_ = 0;
+  int odom_count_ = 0;
 
   utils::HarrisParams harris_params_;
 
