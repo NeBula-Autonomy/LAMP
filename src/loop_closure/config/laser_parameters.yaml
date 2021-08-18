@@ -73,7 +73,7 @@ robot:
   #If <1, percent of total cores on machine
   #if >1 then use exactly n threads.
   #if == 1, don't use thread pool
-  icp_thread_pool_thread_count: 1  #default 0.8, change to 1 only for loop closure analysis.
+  icp_thread_pool_thread_count: 1
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
@@ -130,7 +130,7 @@ robot:
   
   harris3D:
     # Set the threshold value to filter out weak corners. This is only evaluated if non maxima suppression is turned on.
-    harris_threshold: 0.05
+    harris_threshold: 0.000000005 # was 0.05
 
     # Whether non maxima suppression should be applied or the response for each point should be returned
     harris_suppression: true
@@ -205,7 +205,7 @@ base:
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
   # Initialization method { IDENTITY, ODOMETRY, ODOM_ROTATION, FEATURES, TEASER }
-  icp_initialization_method: 4
+  icp_initialization_method: 3
 
   # ICP covariance calculation method { POINT2POINT, POINT2PLANE }
   icp_covariance_calculation: 1
@@ -213,7 +213,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 5.0 #0.04
+  max_tolerable_fitness: 0.8 #0.04 - TEASER had 5.0
 
   # How long to "wait" for keyed scans 
   keyed_scans_max_delay: 600.0
@@ -222,7 +222,7 @@ base:
   #If <1, percent of total cores on machine
   #if >1 then use exactly n threads.
   #if == 1, don't use thread pool
-  icp_thread_pool_thread_count: 1.0
+  icp_thread_pool_thread_count: 0.8
 
   icp_lc:
     # Stop ICP if the transformation from the last iteration was this small.
@@ -286,13 +286,13 @@ base:
   
   harris3D:
     # Set the threshold value to filter out weak corners. This is only evaluated if non maxima suppression is turned on.
-    harris_threshold: 0.00000005
+    harris_threshold: 0.000000005
 
     # Whether non maxima suppression should be applied or the response for each point should be returned
     harris_suppression: true
 
     # the radius for normal estimation as well as for non maxima suppression
-    harris_radius: 0.5
+    harris_radius: 0.1 # TEASER had 0.5
 
     # Whether the detected key points should be refined or not
     harris_refine: false
