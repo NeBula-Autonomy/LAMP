@@ -3,7 +3,7 @@ update_rate: 1.0
 # Shortest range threshold
 acceptable_shortest_rssi_distance: 60 #55.0
 # what robots look for loop closure
-robots_loop_closure: ["husky4", "husky1", "spot1", "spot2"]
+robots_loop_closure: ["husky4", "husky1", "husky2", "husky3", "spot1", "spot2", "spot3", "spot4"]
 
 #method for radio_loop_closure
 ## radio_to_nodes
