@@ -639,7 +639,7 @@ TEST_F(TestRSSILoopGeneration, RadioToNodesLoopClosure) {
   commNodeRawCallback(msg);
   rssiTimerCallback();
 
-  EXPECT_EQ(getScomDroppedList()["scom2"].nodes_around_comm.size(), 1);
+  EXPECT_EQ(getScomDroppedList()["scom1"].nodes_around_comm.size(), 1);
   // TODO: work it out
   //  std::vector<pose_graph_msgs::LoopCandidate> candidates = getCandidates();
   //  EXPECT_EQ(1, candidates.size());
