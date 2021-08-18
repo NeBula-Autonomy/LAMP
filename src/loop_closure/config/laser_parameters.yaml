@@ -292,7 +292,7 @@ base:
     harris_suppression: true
 
     # the radius for normal estimation as well as for non maxima suppression
-    harris_radius: 0.1 # TEASER had 0.5
+    harris_radius: 0.1
 
     # Whether the detected key points should be refined or not
     harris_refine: false
