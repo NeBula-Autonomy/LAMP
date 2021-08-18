@@ -53,8 +53,8 @@ TEST_F(TestICPComputation, TestThreadedEqualsNonThreaded) {
     ros::param::set("base/icp_thread_pool_thread_count", 1);
     ros::param::set("base/sac_ia/fitness_score_threshold",std::numeric_limits<double>::max());
     //Set the iterations really high so that we can get repeatable solutions
-    ros::param::set("base/sac_ia/iterations",10000);
-    ros::param::set("base/icp_lc/iterations",10000);
+    ros::param::set("base/sac_ia/iterations", 100);
+    ros::param::set("base/icp_lc/iterations", 100);
     bool result = icp.Initialize(nh);
     ASSERT_TRUE(result);
 
