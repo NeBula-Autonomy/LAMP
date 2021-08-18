@@ -110,7 +110,7 @@ public:
     void UpdateNodeInTheLevel(const gu::Transform3& node);
     double MinDistanceFromNodes(const gu::Transform3& node) const;
   };
-  typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
+  typedef pcl::PointCloud<pcl::PointXYZI> PointCloudXYZI;
   typedef pcl::PointCloud<pcl::PointXYZRGB> ColorPointCloud;
   typedef std::vector<Level> Levels;
 

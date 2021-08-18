@@ -178,8 +178,7 @@ void PointCloudVisualizer::KeyedScanCallback(
     return;
   }
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr scan(
-      new pcl::PointCloud<pcl::PointXYZI>);
+  PointCloud::Ptr scan(new PointCloud);
   pcl::fromROSMsg(msg->scan, *scan);
 
   // The first key should be treated differently; we need to use the laser
@@ -539,10 +538,12 @@ PointCloudVisualizer::SelectLevelForNode2(const gtsam::Symbol current_key) {
     selected_level = levels_.size();
     CreateNewLevel();
   } else {
-    auto min_pair = *std::min_element(
-        potential_levels.cbegin(),
-        potential_levels.cend(),
-        [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+    auto min_pair = *std::min_element(potential_levels.cbegin(),
+                                      potential_levels.cend(),
+                                      [](const std::pair<double, size_t>& lhs,
+                                         const std::pair<double, size_t>& rhs) {
+                                        return lhs.first < rhs.first;
+                                      });
     ROS_INFO_STREAM("POTENTIAL LEVELS "
                     << potential_levels.size() << " LEVEL TO CHOOSE: "
                     << min_pair.first << " " << min_pair.second);

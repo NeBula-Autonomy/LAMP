@@ -15,7 +15,7 @@ const std::map<unsigned char, pcl::RGB> ROBOT_COLOR = {
     {'h', pcl::GlasbeyLUT::at(9)},   //      {"spot4",   'h'},
     {'i', pcl::GlasbeyLUT::at(10)},  //      {"aquila1",   'i'},
     {'j', pcl::GlasbeyLUT::at(10)},  //      {"aquila2", 'j' },
-    {'k', pcl::GlasbeyLUT::at(11)},  //      {"kaist1", 'j' },
-    {'l', pcl::GlasbeyLUT::at(12)},  //      {"zoe1", 'j' },
-    {'m', pcl::GlasbeyLUT::at(12)},  //      {"zoe2", 'j' },
-    {'x', pcl::GlasbeyLUT::at(13)}}; //      {"xmaxx1", 'j' }
+    {'k', pcl::GlasbeyLUT::at(11)},  //      {"kaist1", 'k' },
+    {'l', pcl::GlasbeyLUT::at(12)},  //      {"zoe1", 'l' },
+    {'m', pcl::GlasbeyLUT::at(12)},  //      {"zoe2", 'm' },
+    {'x', pcl::GlasbeyLUT::at(13)}}; //      {"xmaxx1", 'x' }
