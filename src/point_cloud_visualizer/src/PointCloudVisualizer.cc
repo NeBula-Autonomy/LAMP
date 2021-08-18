@@ -67,6 +67,7 @@ bool PointCloudVisualizer::Initialize(const ros::NodeHandle& n) {
   }
 
   for (std::string robot : robot_names_) {
+    ROS_INFO_STREAM("Creating point cloud for " << robot);
     robots_point_clouds_.insert(std::pair<unsigned char, PointCloud::Ptr>(
         utils::ROBOT_PREFIXES.at(robot), new PointCloud));
   }
@@ -128,6 +129,7 @@ bool PointCloudVisualizer::RegisterCallbacks(const ros::NodeHandle& n) {
                     this);
 
   for (std::string robot : robot_names_) {
+    ROS_INFO_STREAM("Creating publisher for " << robot);
     publishers_robots_point_clouds_.insert(
         std::pair<unsigned char, ros::Publisher>(
             utils::ROBOT_PREFIXES.at(robot),

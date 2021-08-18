@@ -34,7 +34,7 @@ namespace utils {
                                                       {"spot4", 'h'},
                                                       {"aquila1", 'i'},
                                                       {"aquila2", 'j'},
-                                                      {"kasit1", 'k'},
+                                                      {"kaist1", 'k'},
                                                       {"zoe1", 'l'},
                                                       {"zoe2", 'm'},
                                                       {"xmaxx1", 'x'},
@@ -50,7 +50,7 @@ namespace utils {
                                                          {"spot4", 'H'},
                                                          {"aquila1", 'I'},
                                                          {"aquila2", 'J'},
-                                                         {"kasit1", 'K'},
+                                                         {"kaist1", 'K'},
                                                          {"zoe1", 'L'},
                                                          {"zoe2", 'M'},
                                                          {"xmaxx1", 'X'}};
