@@ -85,12 +85,12 @@
     </node>
 
     <!-- Pose graph visualizer -->
-    <!-- <node pkg="point_cloud_visualizer"
+    <node pkg="point_cloud_visualizer"
           name="point_cloud_visualizer"
           type="point_cloud_visualizer_node"
           output="screen">
           <rosparam file="$(find point_cloud_visualizer)/config/parameters.yaml" subst_value="true"/>
-    </node> -->
+    </node>
 
     <!-- Loop Closure  -->
     <include file="$(find loop_closure)/launch/loop_closure_modules.launch"/>
