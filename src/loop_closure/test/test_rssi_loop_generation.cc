@@ -562,13 +562,13 @@ TEST_F(TestRSSILoopGeneration, RadioToNodesLoopClosure) {
   pose_graph_msgs::PoseGraphNode node1, node2, node3, node4, node5, node6,
       node12, node22, node32, node42, node52, node62;
   node1.key = gtsam::Symbol('f', 0);
-  node1.header.stamp = ros::Time::now() + ros::Duration(1 * 60 * 60);
+  node1.header.stamp = ros::Time(0) + ros::Duration(1 * 60 * 60);
   node2.key = gtsam::Symbol('f', 1);
-  node2.header.stamp = ros::Time::now() + ros::Duration(2 * 60 * 60);
+  node2.header.stamp = ros::Time(0) + ros::Duration(2 * 60 * 60);
   node12.key = gtsam::Symbol('d', 0);
-  node12.header.stamp = ros::Time::now() + ros::Duration(1 * 60 * 60);
+  node12.header.stamp = ros::Time(0) + ros::Duration(1 * 60 * 60);
   node22.key = gtsam::Symbol('d', 1);
-  node22.header.stamp = ros::Time::now() + ros::Duration(2 * 60 * 60);
+  node22.header.stamp = ros::Time(0) + ros::Duration(2 * 60 * 60);
   graph_msg->nodes.push_back(node1);
   graph_msg->nodes.push_back(node2);
   graph_msg->nodes.push_back(node12);
@@ -591,11 +591,9 @@ TEST_F(TestRSSILoopGeneration, RadioToNodesLoopClosure) {
   remain2.pose_graph_key = 151241241242;
   remain2.relative_pose = geometry_msgs::Pose();
 
-  auto time_stamp1 = node_status->header.stamp =
-      ros::Time(0) + ros::Duration(1 * 60 * 60);
+  node_status->header.stamp = ros::Time(0) + ros::Duration(1 * 60 * 60);
   node_status->dropped.push_back(remain);
-  auto time_stamp2 = node_status->header.stamp =
-      ros::Time(0) + ros::Duration(2 * 60 * 60);
+
   node_status->dropped.push_back(remain2);
   commNodeAggregatedStatusCallback(node_status);
 
@@ -636,10 +634,11 @@ TEST_F(TestRSSILoopGeneration, RadioToNodesLoopClosure) {
   comm_node1.neighbors.push_back(neighbour4);
   comm_node1.neighbors.push_back(neighbour5);
   msg->nodes.push_back(comm_node1);
+  msg->header.stamp = ros::Time(0) + ros::Duration(2 * 60 * 60);
   commNodeRawCallback(msg);
   rssiTimerCallback();
 
-  EXPECT_EQ(getScomDroppedList()["scom1"].nodes_around_comm.size(), 1);
+  EXPECT_EQ(getScomDroppedList()["scom2"].nodes_around_comm.size(), 1);
   // TODO: work it out
   //  std::vector<pose_graph_msgs::LoopCandidate> candidates = getCandidates();
   //  EXPECT_EQ(1, candidates.size());
