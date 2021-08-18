@@ -97,6 +97,7 @@ add_library(${PROJECT_NAME}
   src/TestUtils.cc
   src/RoundRobinLoopCandidateQueue.cc
   src/ObservabilityQueue.cc
+  src/RssiLoopClosure.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -141,6 +142,14 @@ target_link_libraries(loop_computation_node
   gtsam
 )
 
+add_executable(rssi_loop_generation_node src/rssi_loop_generation_node.cc)
+target_link_libraries(rssi_loop_generation_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
 add_executable(gen_loop_computation_test src/gen_loop_computation_test.cc)
 target_link_libraries(gen_loop_computation_test
   ${PROJECT_NAME}
@@ -168,6 +177,8 @@ find_package(rostest REQUIRED)
   target_link_libraries(test_icp_computation  ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_loop_generation test/test_loop_generation.test test/test_loop_generation.cc)
   target_link_libraries(test_loop_generation ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_rssi_loop_generation test/test_rssi_loop_generation.test test/test_rssi_loop_generation.cc)
+  target_link_libraries(test_rssi_loop_generation ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_loop_prioritization test/test_loop_prioritization.test test/test_loop_prioritization.cc)
   target_link_libraries(test_loop_prioritization ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_loop_computation test/test_loop_computation.test test/test_loop_computation.cc)
