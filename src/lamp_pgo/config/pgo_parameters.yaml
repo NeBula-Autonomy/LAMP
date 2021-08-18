@@ -23,9 +23,9 @@ base:
   b_use_outlier_rejection: true
 
   # GNC confidence threshold 
-  gnc_alpha: 0.9999999999
+  gnc_alpha: 0.99
 
   # outlier rejection thresholds (distances)
-  translation_check_threshold: 1 # 1 m
-  rotation_check_threshold: 1 # 1 rad
+  translation_check_threshold: 10 # 1 m
+  rotation_check_threshold: 10 # 1 rad
   # TODO make these dynamic with the translation threshold for nodes
