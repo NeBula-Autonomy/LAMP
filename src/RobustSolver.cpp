@@ -127,7 +127,7 @@ void RobustSolver::optimize() {
       // Create GNC optimizer
       gtsam::GncOptimizer<gtsam::GncParams<gtsam::LevenbergMarquardtParams> >
           gnc_optimizer(nfg_, values_, gncParams);
-      gnc_optimizer.setWeights(init_weights);
+      if (params_.gnc_bias_odom_) gnc_optimizer.setWeights(init_weights);
       switch (params_.gnc_threshold_mode_) {
         case (params_.GncThresholdMode::COST):
           gnc_optimizer.setInlierCostThresholds(params_.gnc_inlier_threshold_);
@@ -192,7 +192,7 @@ void RobustSolver::optimize() {
       // Create GNC optimizer
       gtsam::GncOptimizer<gtsam::GncParams<gtsam::GaussNewtonParams> >
           gnc_optimizer(nfg_, values_, gncParams);
-      gnc_optimizer.setWeights(init_weights);
+      if (params_.gnc_bias_odom_) gnc_optimizer.setWeights(init_weights);
       switch (params_.gnc_threshold_mode_) {
         case (params_.GncThresholdMode::COST):
           gnc_optimizer.setInlierCostThresholds(params_.gnc_inlier_threshold_);
