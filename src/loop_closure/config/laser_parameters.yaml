@@ -213,7 +213,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.8 #0.04
+  max_tolerable_fitness: 0.4 #0.04
 
   # How long to "wait" for keyed scans 
   keyed_scans_max_delay: 600.0
