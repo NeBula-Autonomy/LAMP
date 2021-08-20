@@ -37,7 +37,8 @@ struct RobustSolverParams {
         pcmDist_rotThreshold(0.005),   // <0.5degrees
         incremental(false),
         log_output(false),
-        use_gnc_(false) {}
+        use_gnc_(false),
+        gnc_bias_odom_(false) {}
   /*! \brief For RobustSolver to not do outlier rejection at all
    */
   void setNoRejection(Verbosity verbos = Verbosity::UPDATE) {
@@ -130,6 +131,11 @@ struct RobustSolverParams {
     log_folder = output_folder;
   }
 
+  /*! \brief bias odometry in GNC by initializing weights with 1 for odometry
+   * factors and 0 for loop closure factors
+   */
+  void biasOdometryGnc() { gnc_bias_odom_ = true; }
+
   // General
   Solver solver;
   OutlierRemovalMethod outlierRemovalMethod;
@@ -154,6 +160,7 @@ struct RobustSolverParams {
   bool use_gnc_;
   GncThresholdMode gnc_threshold_mode_;
   double gnc_inlier_threshold_;
+  bool gnc_bias_odom_;
 };
 
 }  // namespace KimeraRPGO

@@ -69,10 +69,15 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
     if (!pu::Get(param_ns_ + "/rotation_check_threshold", rot_threshold))
       return false;
     if (!pu::Get(param_ns_ + "/gnc_alpha", gnc_alpha)) return false;
+    bool b_gnc_bias_odom;
+    if (!pu::Get(param_ns_ + "/b_gnc_bias_odom", b_gnc_bias_odom))
+      return false;
     rpgo_params_.setPcmSimple3DParams(
         trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
     if (gnc_alpha > 0 && gnc_alpha < 1) {
       rpgo_params_.setGncInlierCostThresholdsAtProbability(gnc_alpha);
+      if (b_gnc_bias_odom)
+        rpgo_params_.biasOdometryGnc();
     }
   } else {
     rpgo_params_.setNoRejection(

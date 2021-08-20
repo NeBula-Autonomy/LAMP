@@ -275,7 +275,7 @@ base:
     num_inlier_threshold: 5
     rotation_cost_threshold: 1.0 # Default value in TEASER++: 0.005
     rotation_max_iterations: 100
-    noise_bound: 1.0
+    noise_bound: 0.05
     # For finding FPFH correspondences
     TEASER_FPFH_normals_radius: 1.5
     TEASER_FPFH_features_radius: 2.0
