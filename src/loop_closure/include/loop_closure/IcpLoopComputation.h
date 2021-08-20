@@ -6,7 +6,7 @@
 #pragma once
 
 #include "ThreadPool.h"
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 #include <geometry_utils/GeometryUtils.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>

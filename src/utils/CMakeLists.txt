@@ -41,7 +41,8 @@ add_library(${PROJECT_NAME}
   src/PoseGraphFileIO.cc
   src/PoseGraphMessageConversion.cc
   src/PoseGraphBookkeeping.cc
-  src/PoseGraphLookupUtils.cc)
+  src/PoseGraphLookupUtils.cc
+  src/PointCloudUtils.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   gtsam
@@ -68,6 +69,8 @@ if (CATKIN_ENABLE_TESTING)
   add_rostest_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.test test/test_${PROJECT_NAME}.cc)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_pose_graph test/test_pose_graph.test test/test_pose_graph.cc)
-  target_link_libraries(test_pose_graph ${PROJECT_NAME} ${catkin_LIBRARIES})  
+  target_link_libraries(test_pose_graph ${PROJECT_NAME} ${catkin_LIBRARIES})
+  add_rostest_gtest(test_point_cloud_utils test/test_point_cloud_utils.test test/test_point_cloud_utils.cc)
+  target_link_libraries(test_point_cloud_utils ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()
 

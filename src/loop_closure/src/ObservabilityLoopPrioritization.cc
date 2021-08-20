@@ -5,7 +5,7 @@
  * @author Yun Chang
  */
 
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 #include <Eigen/Eigenvalues>
 #include <algorithm>
 #include <numeric>

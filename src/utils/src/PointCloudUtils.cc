@@ -3,7 +3,7 @@ PointCloudUtils.cc
 Author: Yun Chang
 Some utility functions for wokring with Point Clouds
 */
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 
 #include <geometry_utils/Transform3.h>
 #include <pcl/features/fpfh_omp.h>
@@ -36,7 +36,8 @@ void ExtractNormals(const PointCloud::ConstPtr& input,
                     Normals::Ptr normals,
                     const double& search_radius) {
   normals->resize(input->size());
-  if (input->size() == 0) return;
+  if (input->size() == 0)
+    return;
   // Check that there are normals to extract
   if (input->points[0].normal_x == 0 && input->points[0].normal_y == 0 &&
       input->points[0].normal_z == 0) {
@@ -144,25 +145,26 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
       continue;
     }
     if (query_normalized != NULL) {
-      a_i << query_normalized->points[i].x,  //////
-          query_normalized->points[i].y,     //////
+      a_i << query_normalized->points[i].x, //////
+          query_normalized->points[i].y,    //////
           query_normalized->points[i].z;
-    } else{
-      a_i << 0,0,0;
+    } else {
+      a_i << 0, 0, 0;
       query_null = true;
     }
 
     if ((reference_normals != NULL) &&
         (reference_normals->points.size() > correspondences[i])) {
-      n_i << reference_normals->points[correspondences[i]].normal_x,  //////
-          reference_normals->points[correspondences[i]].normal_y,     //////
+      n_i << reference_normals->points[correspondences[i]].normal_x, //////
+          reference_normals->points[correspondences[i]].normal_y,    //////
           reference_normals->points[correspondences[i]].normal_z;
     } else {
-      n_i << 0,0,0;
+      n_i << 0, 0, 0;
       reference_normals_null = true;
     }
 
-    if (a_i.hasNaN() || n_i.hasNaN()) continue;
+    if (a_i.hasNaN() || n_i.hasNaN())
+      continue;
 
     Eigen::Matrix<double, 1, 6> H = Eigen::Matrix<double, 1, 6>::Zero();
     Eigen::Matrix3d R = T.block<3, 3>(0, 0).cast<double>();
@@ -183,9 +185,9 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
                              const size_t& num_threads,
                              Eigen::Matrix<double, 3, 1>* eigenvalues) {
   // Get normals
-  Normals::Ptr normals(new Normals);           // pc with normals
-  PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
-                                               // rearranged.
+  Normals::Ptr normals(new Normals);          // pc with normals
+  PointCloud::Ptr normalized(new PointCloud); // pc whose points have been
+                                              // rearranged.
   utils::ExtractNormals(cloud, num_threads, normals, normals_radius);
   utils::NormalizePCloud(cloud, normalized);
 
@@ -196,7 +198,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
 
   // Correspondence with itself (not really used anyways)
   std::vector<size_t> c(cloud->size());
-  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
+  std::iota(std::begin(c), std::end(c), 0); // Fill with 0, 1, ...
 
   Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Identity(); // Unused
 
@@ -212,4 +214,4 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   }
 }
 
-}  // namespace utils
+} // namespace utils

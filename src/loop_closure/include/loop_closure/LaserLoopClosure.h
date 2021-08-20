@@ -8,7 +8,7 @@ Lidar pointcloud based loop closure
 #define LASER_LOOP_CLOSURE_H_
 
 #include "loop_closure/LoopClosureBase.h"
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 
 #include <unordered_map>
 

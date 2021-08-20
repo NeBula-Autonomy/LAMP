@@ -10,20 +10,20 @@
 #include <pcl/io/pcd_io.h>
 #include <ros/ros.h>
 
-#include <loop_closure/PointCloudUtils.h>
+#include <utils/PointCloudUtils.h>
 
 #include "test_artifacts.h"
 
 namespace utils {
 
 class TestPointCloudUtils : public ::testing::Test {
- public:
+public:
   TestPointCloudUtils() {
     // Set params
   }
   ~TestPointCloudUtils() {}
 
- protected:
+protected:
   double tolerance_ = 1e-5;
 
   HarrisParams GenerateHarrisParams() {
@@ -73,7 +73,7 @@ TEST_F(TestPointCloudUtils, normalizePCloud) {
 
   double sum_x = 0;
   double sum_y = 0;
-  double sum_z = 0;  // centroid
+  double sum_z = 0; // centroid
   double sum_of_dist = 0;
   for (size_t i = 0; i < 100; i++) {
     sum_x += plane_normalized->points[i].x;
@@ -175,12 +175,12 @@ TEST_F(TestPointCloudUtils, ComputeAp_ForPoint2PlaneICP) {
   Eigen::MatrixXf Ap_ref = Eigen::MatrixXf::Zero(6, 6);
   Eigen::Vector3d a_i, n_i;
   for (size_t i = 0; i < plane->size(); i++) {
-    a_i << plane_normalized->points[i].x,  //////
-        plane_normalized->points[i].y,     //////
+    a_i << plane_normalized->points[i].x, //////
+        plane_normalized->points[i].y,    //////
         plane_normalized->points[i].z;
 
-    n_i << plane_normals->points[correspondences[i]].normal_x,  //////
-        plane_normals->points[correspondences[i]].normal_y,     //////
+    n_i << plane_normals->points[correspondences[i]].normal_x, //////
+        plane_normals->points[correspondences[i]].normal_y,    //////
         plane_normals->points[correspondences[i]].normal_z;
     double a, b, c;
     a = (a_i.cross(n_i))(0);
@@ -211,7 +211,7 @@ TEST_F(TestPointCloudUtils, ComputeAp_ForPoint2PlaneICP) {
   EXPECT_NEAR(Ap(5, 5), 100, tolerance_);
 }
 
-}  // namespace utils
+} // namespace utils
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

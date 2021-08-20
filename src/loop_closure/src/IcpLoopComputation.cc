@@ -13,7 +13,7 @@
 #include <teaser/registration.h>
 #include <utils/CommonFunctions.h>
 
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 
 #include "loop_closure/IcpLoopComputation.h"
 

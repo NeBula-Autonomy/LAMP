@@ -87,7 +87,6 @@ endif()
 include_directories(include ${catkin_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS})
 add_library(${PROJECT_NAME} 
-  src/PointCloudUtils.cc
   src/LoopGeneration.cc
   src/LoopPrioritization.cc
   src/LoopComputation.cc
@@ -188,6 +187,4 @@ find_package(rostest REQUIRED)
   target_link_libraries(test_loop_prioritization ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_loop_computation test/test_loop_computation.test test/test_loop_computation.cc)
   target_link_libraries(test_loop_computation ${PROJECT_NAME} ${catkin_LIBRARIES})
-  add_rostest_gtest(test_point_cloud_utils test/test_point_cloud_utils.test test/test_point_cloud_utils.cc)
-  target_link_libraries(test_point_cloud_utils ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()

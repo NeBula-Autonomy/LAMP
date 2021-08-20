@@ -5,7 +5,7 @@
  */
 #pragma once
 
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 #include <gtsam/inference/Symbol.h>
 #include <map>
 #include <pose_graph_msgs/KeyedScan.h>

@@ -1,7 +1,7 @@
 /*
 PointCloudUtils.h
 Author: Yun Chang
-Some utility functions for wokring with Point Clouds
+Some utility functions for workng with Point Clouds
 */
 
 #ifndef POINT_CLOUD_UTILS_H_
@@ -79,5 +79,5 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
                                  const Eigen::Matrix4f& T,
                                  Eigen::Matrix<double, 6, 6>& Ap);
 
-}  // namespace utils
+} // namespace utils
 #endif
