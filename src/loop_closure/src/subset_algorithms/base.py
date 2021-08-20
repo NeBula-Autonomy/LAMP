@@ -140,6 +140,8 @@ class GNNBasedLoopClosureBatchSelector(LoopClosureBatchSelector):
                      edge_attrs.append(edge_attr)
             except KeyError:
                 self.log_error("Error when handling loop closure bundle, {}, {} not found in pose graph".format(edge.key_from,edge.key_to))
+            except IndexError as e:
+                self.log_warn("Edge type not understood by batcher " + str(e))
         self.current_pose_graph_nodes = np.array(nodes)
         self.current_pose_graph_edges = np.array(edges)
         self.current_pose_graph_edge_atrrs = np.array(edge_attrs)
@@ -156,6 +158,8 @@ class GNNBasedLoopClosureBatchSelector(LoopClosureBatchSelector):
                 self.possible_edge_attrs.append(edge_attr)
             except KeyError as e:
                 self.log_error("Error when handling loop closure bundle, can't find key " + str(e))
+            except IndexError as e:
+                self.log_warn("Edge type not understood by batcher " + str(e))
 
         self.initialize_method()
         self.stale_solution = False
