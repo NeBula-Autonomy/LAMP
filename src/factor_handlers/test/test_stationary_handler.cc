@@ -75,7 +75,7 @@ TEST_F(StationaryHandlerTest, CreateAttitudeFactor) {
 
   // Check error
   gtsam::Pose3 test_pose_1 =
-      gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(0, 0, 0));
+      gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(0, 0, 0));
   gtsam::Pose3 test_pose_2 = gtsam::Pose3(
       gtsam::Rot3(0.9999872, 0.0050503, 0, 0), gtsam::Point3(0, 0, 0));
 
