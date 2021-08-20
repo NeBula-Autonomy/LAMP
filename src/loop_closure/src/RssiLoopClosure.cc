@@ -219,17 +219,14 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
                   scom_robot.second.robot_name)],
               rssi_scom_robot_list_updated_time_stamp_[scom_robot.first]);
 
-          ROS_INFO_STREAM("APPENDING!");
-
           bool appended = rssi_scom_dropped_list_[neighbour.neighbor_node_label]
                               .append_node(scom_pose_associated_for_scom_robot);
 
-          ROS_INFO_STREAM("WAITIN' FOR ANSWER");
           if (appended) {
             auto color = getColorByIndex(
                 rssi_scom_dropped_list_[neighbour.neighbor_node_label]
                     .flyby_number);
-            ROS_INFO_STREAM("YES");
+
             VisualizeRobotNodesWithPotentialLoopClosure(
                 scom_pose_associated_for_scom_robot,
                 color.r,
@@ -363,31 +360,9 @@ void RssiLoopClosure::GenerateLoops() {
                      "DOESN't EXIST!!!!");
     EXIT_FAILURE;
   }
-  //  }
-  //  if (potential_candidates.size() < n_closest_) {
-  //    candidates_.insert(candidates_.end(),
-  //                       potential_candidates.begin(),
-  //                       potential_candidates.end());
-  //  } else {
-  //    sort(potential_candidates.begin(),
-  //         potential_candidates.end(),
-  //         [](const pose_graph_msgs::LoopCandidate& lhs,
-  //            const pose_graph_msgs::LoopCandidate& rhs) {
-  //           return lhs.value < rhs.value;
-  //         });
-  //    candidates_.insert(candidates_.end(),
-  //                       potential_candidates.begin(),
-  //                       potential_candidates.begin() + n_closest_);
-  //  }
-  ROS_INFO_STREAM("CANDIDATES FOR LOOP CLOSURE!!!!");
+
   ROS_INFO_STREAM("Sending loop closures: " << candidates_.size());
 
-  //  for (const auto& candidate : candidates_) {
-  //    ROS_INFO_STREAM("key from: " << candidate.key_from << " to "
-  //                                 << candidate.key_to << " pose from "
-  //                                 << candidate.pose_from << " to "
-  //                                 << candidate.pose_to);
-  //  }
   if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {
     PublishLoops();
     ClearLoops();
@@ -396,9 +371,6 @@ void RssiLoopClosure::GenerateLoops() {
 }
 
 void RssiLoopClosure::RadioToNodesLoopClosure() {
-  ROS_INFO_STREAM("<<<<<<<<<<<<-------------RadioToNodesLoopClosure------------"
-                  "->>>>>>>>>>");
-
   for (auto& rssi_node_dropped : rssi_scom_dropped_list_) {
     for (size_t i = 0;
          i < rssi_node_dropped.second.all_nodes_around_comm.size();
@@ -429,10 +401,6 @@ void RssiLoopClosure::RadioToNodesLoopClosure() {
   }
 }
 void RssiLoopClosure::NodesToNodesLoopClosures() {
-  ROS_INFO_STREAM(
-      "<<<<<<<<<<<<-------------NodesToNodesLoopClosures------------"
-      "->>>>>>>>>>");
-
   for (auto& rssi_node_dropped : rssi_scom_dropped_list_) {
     for (size_t flyby_i = 0;
          flyby_i < rssi_node_dropped.second.all_nodes_around_comm.size();
@@ -444,6 +412,23 @@ void RssiLoopClosure::NodesToNodesLoopClosures() {
         if (flyby_node.was_sent == true) {
           continue;
         }
+        pose_graph_msgs::LoopCandidate candidate_to_comm;
+        candidate_to_comm.header.stamp = ros::Time::now();
+        candidate_to_comm.key_from =
+            rssi_node_dropped.second.pose_graph_node.key;
+        candidate_to_comm.key_to = flyby_node.candidate_pose.key;
+        candidate_to_comm.pose_from =
+            rssi_node_dropped.second.pose_graph_node.pose;
+        candidate_to_comm.pose_to = flyby_node.candidate_pose.pose;
+        candidate_to_comm.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
+        candidate_to_comm.value = 0.0;
+        candidates_.push_back(candidate_to_comm);
+        flyby_node.was_sent = true;
+
+        VisualizeEdgesForPotentialLoopClosure(
+            rssi_node_dropped.second.pose_graph_node,
+            flyby_node.candidate_pose);
+
         for (size_t flyby_j = 0; flyby_j < flyby_i; flyby_j++) {
           for (const auto& flyby_j_node :
                rssi_node_dropped.second.all_nodes_around_comm[flyby_j]) {
@@ -456,7 +441,7 @@ void RssiLoopClosure::NodesToNodesLoopClosures() {
             candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
             candidate.value = 0.0;
             candidates_.push_back(candidate);
-            flyby_node.was_sent = true;
+            //            flyby_node.was_sent = true;
 
             VisualizeEdgesForPotentialLoopClosure(flyby_j_node.candidate_pose,
                                                   flyby_node.candidate_pose);
