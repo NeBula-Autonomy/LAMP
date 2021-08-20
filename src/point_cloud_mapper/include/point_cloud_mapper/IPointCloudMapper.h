@@ -49,6 +49,8 @@ public:
 
   void SetupNumberThreads(int no_threads) {
     number_threads_ = no_threads;
+    ROS_INFO_STREAM(
+        "Setting up number threads for local mapping: " << number_threads_);
   }
 
   virtual void Refresh(const geometry_utils::Transform3& current_pose) = 0;

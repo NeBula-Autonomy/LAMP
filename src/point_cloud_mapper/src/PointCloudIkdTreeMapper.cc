@@ -46,11 +46,6 @@ bool PointCloudIkdTreeMapper::LoadParameters(const ros::NodeHandle& n) {
                b_publish_only_with_subscribers_))
     return false;
 
-  if (!pu::Get("num_threads", number_threads_))
-    return false;
-
-  ROS_INFO_STREAM("THREADS IN MAPPER!" << number_threads_);
-
   ikdtree.set_downsample_param(octree_resolution_);
 
   initialized_ = true;
@@ -183,7 +178,7 @@ bool PointCloudIkdTreeMapper::InsertPoints(const PointCloud::ConstPtr& points,
       auto t_end = std::chrono::high_resolution_clock::now();
       double elapsed_time_ms =
           std::chrono::duration<double, std::milli>(t_end - t_start).count();
-      ROS_INFO_STREAM("Building time with downsampling: " << elapsed_time_ms);
+      ROS_INFO_STREAM("Building init ikdtree: " << elapsed_time_ms);
     } else {
       PointVector pc_append(*points);
       auto t_start = std::chrono::high_resolution_clock::now();
@@ -314,10 +309,9 @@ void PointCloudIkdTreeMapper::PublishMapInfo() {
 // Map Sliding Window 2 -----------------------------------------------
 
 void PointCloudIkdTreeMapper::SetBoxFilterSize(const int box_filter_size) {
-  //  box_filter_size_ = box_filter_size;
-  ROS_INFO_STREAM("BOX SIZ2E: " << box_filter_size_);
-  ROS_INFO_STREAM("THIS: " << box_filter_size);
   box_filter_size_ = static_cast<float>(box_filter_size);
+  ROS_INFO_STREAM(
+      "Setting up box filter with half length: " << box_filter_size);
 
   box_filters_.push_back(BoxPointType(
       {Eigen::Vector3f{-box_filter_size_, -box_filter_size_, -box_filter_size_},
@@ -381,7 +375,7 @@ void PointCloudIkdTreeMapper::Refresh(
   //                 "b_enable_msw should be false.");
   // ROS_WARN_STREAM(
   //     "##################################################################");
-  ROS_INFO_STREAM("IKDTREE REFRESHING!" << current_pose_estimate_);
+
   UpdateBoxesLocationWithRespectToTheRobot(current_pose_estimate_);
   if (map_mutex_.try_lock()) {
     auto t_start = std::chrono::high_resolution_clock::now();

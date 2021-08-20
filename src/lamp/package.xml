@@ -53,6 +53,7 @@
   <run_depend>geometry_msgs</run_depend>
   <run_depend>pose_graph_merger</run_depend>
   <run_depend>pose_graph_visualizer</run_depend>
+  <run_depend>point_cloud_visualizer</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>tf2_ros</run_depend>
   <run_depend>lamp_pgo</run_depend>
