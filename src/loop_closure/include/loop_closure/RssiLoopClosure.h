@@ -1,17 +1,19 @@
 #pragma once
 #include "loop_closure/LoopGeneration.h"
+#include "loop_closure/colors.h"
 #include <core_msgs/CommNodeInfo.h>
 #include <core_msgs/CommNodeStatus.h>
 #include <gtsam/inference/Symbol.h>
 #include <parameter_utils/ParameterUtils.h>
+#include <rviz_visual_tools/rviz_visual_tools.h>
 #include <silvus_msgs/SilvusStreamscape.h>
 #include <std_msgs/Float64.h>
+#include <string>
 #include <utils/CommonFunctions.h>
 #include <utils/PoseGraph.h>
 #include <utils/PrefixHandling.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-
 namespace lamp_loop_closure {
 
 namespace pu = parameter_utils;
@@ -19,12 +21,104 @@ namespace pu = parameter_utils;
 using PoseGraphNodeLoopClosureStatus =
     std::pair<bool, pose_graph_msgs::PoseGraphNode>;
 
+struct PoseGraphNodeForLoopClosureStatus {
+  bool was_sent{false};
+  pose_graph_msgs::PoseGraphNode candidate_pose;
+};
+
+using NodesAroundCommOneFlyby = std::vector<PoseGraphNodeForLoopClosureStatus>;
+using AllNodesAroundComm = std::vector<NodesAroundCommOneFlyby>;
+
 struct RssiRawInfo {
   bool b_dropped{false};
   ros::Time time_stamp;
   core_msgs::CommNodeInfo comm_node_info;
   pose_graph_msgs::PoseGraphNode pose_graph_node;
-  std::map<gtsam::Key, PoseGraphNodeLoopClosureStatus> nodes_around_comm;
+  //  std::map<gtsam::Key, PoseGraphNodeLoopClosureStatus> nodes_around_comm;
+  AllNodesAroundComm all_nodes_around_comm;
+  int flyby_number{0};
+  const uint close_keys_threshold_{20};
+  bool append_node(const pose_graph_msgs::PoseGraphNode& node) {
+    // if there are no nodes nearby, just append
+    ROS_INFO_STREAM("Appending node to " << all_nodes_around_comm.size());
+    if (is_node_exist(node) or is_node_same_as_comm(node) or
+        not has_node_pose(node)) {
+      if (is_node_exist(node))
+        ROS_INFO_STREAM("Node exist around comm");
+      if (is_node_same_as_comm(node))
+        ROS_INFO_STREAM("node is the same as comm");
+      if (not has_node_pose(node))
+        ROS_INFO_STREAM("Doesn't have node associated with");
+      return false;
+    }
+    if (all_nodes_around_comm.size() == 0) {
+      NodesAroundCommOneFlyby one_flyby;
+      one_flyby.emplace_back(PoseGraphNodeForLoopClosureStatus{false, node});
+      all_nodes_around_comm.emplace_back(one_flyby);
+      return true;
+    }
+
+    /* if there are nodes nearby,  check whether we are still in the same flyby(
+     * basically compare with 0th node of flyby and check if diff index number
+     * crossed threshold_ (20 by default)) */
+    auto node_a =
+        gtsam::Symbol(all_nodes_around_comm[flyby_number][0].candidate_pose.key)
+            .index();
+    auto node_b = gtsam::Symbol(node.key).index();
+    std::uint64_t diff_index;
+    if (node_a > node_b) {
+      diff_index = node_a - node_b;
+    } else {
+      diff_index = node_b - node_a;
+    }
+    bool the_same_flyby = diff_index < close_keys_threshold_;
+    bool the_same_robot = gtsam::Symbol(node.key).chr() ==
+        gtsam::Symbol(all_nodes_around_comm[flyby_number][0].candidate_pose.key)
+            .chr();
+
+    if (not the_same_flyby or not the_same_robot) {
+      ROS_INFO_STREAM("NOT THE SAME FLYBY");
+      NodesAroundCommOneFlyby new_flyby;
+      new_flyby.emplace_back(PoseGraphNodeForLoopClosureStatus{false, node});
+      all_nodes_around_comm.emplace_back(new_flyby);
+      flyby_number++;
+      return true;
+    }
+    all_nodes_around_comm[flyby_number].emplace_back(
+        PoseGraphNodeForLoopClosureStatus{false, node});
+    ROS_INFO_STREAM("NODES AROUND "
+                    << flyby_number << " "
+                    << all_nodes_around_comm[flyby_number].size());
+    return true;
+  }
+  // if pose has key 0 it means that node haven't been found; if keys
+  // are the same means that the robot doesn't move and is in the same
+  // place what the comm node has a pose, and check if the same pose was
+  // included before - > if 3x yes then accept the pose for the signal
+  bool is_node_exist(const pose_graph_msgs::PoseGraphNode& node) {
+    for (const auto& one_flyby_nodes : all_nodes_around_comm)
+      for (const auto& flyby_node : one_flyby_nodes) {
+        {
+          if (flyby_node.candidate_pose.key == node.key) {
+            return true;
+          }
+        }
+      }
+    return false;
+  }
+  bool is_node_same_as_comm(const pose_graph_msgs::PoseGraphNode& node) {
+    ROS_INFO_STREAM("key: " << node.key << " vs " << pose_graph_node.key);
+    if (node.key == pose_graph_node.key) {
+      return true;
+    }
+    return false;
+  }
+  bool has_node_pose(const pose_graph_msgs::PoseGraphNode& node) {
+    if (node.key != 0) {
+      return true;
+    }
+    return false;
+  }
 };
 
 struct LoopCandidateToPrepare {
@@ -111,6 +205,7 @@ private:
   //*************HELPER FUNCTIONS*******************/
   void GenerateLoops();
   void RadioToNodesLoopClosure();
+  void NodesToNodesLoopClosures();
   pose_graph_msgs::PoseGraphNode GetClosestPoseAtTime(
       const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
       const ros::Time& stamp,
@@ -133,9 +228,12 @@ private:
       float red = 1.0,
       float green = 1.0,
       float blue = 1.0,
-      float scale = 0.5);
+      float scale = 0.5,
+      std::string name = "");
   bool VisualizeEdgesForPotentialLoopClosure(
       const pose_graph_msgs::PoseGraphNode& node1,
       const pose_graph_msgs::PoseGraphNode& node2);
+  void VisualizeText(const pose_graph_msgs::PoseGraphNode& node_pose,
+                     std::string name);
 };
 } // namespace lamp_loop_closure

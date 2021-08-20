@@ -4,8 +4,8 @@
     <group ns="$(arg base_namespace)">
 
         <node pkg="loop_closure"
-            type="rssi_loop_closure_node"
-            name="rssi_loop_closure"
+            type="rssi_loop_generation_node"
+            name="rssi_loop_generation_node"
             output="screen">
 <!--            launch-prefix="gdb -ex run args">-->
 
