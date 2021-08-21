@@ -102,14 +102,14 @@ TEST_F(TestPointCloudUtils, ComputeKeypoints1) {
   ComputeKeypoints(corner, params, 4, corner_keypts);
 
   EXPECT_EQ(3, corner_keypts->size());
-  EXPECT_NEAR(0, corner_keypts->points[0].x, tolerance_);
+  EXPECT_NEAR(0.3, corner_keypts->points[0].x, tolerance_);
   EXPECT_NEAR(0.3, corner_keypts->points[0].y, tolerance_);
-  EXPECT_NEAR(0.3, corner_keypts->points[0].z, tolerance_);
+  EXPECT_NEAR(0, corner_keypts->points[0].z, tolerance_);
   EXPECT_NEAR(0.3, corner_keypts->points[1].x, tolerance_);
-  EXPECT_NEAR(0.3, corner_keypts->points[1].y, tolerance_);
-  EXPECT_NEAR(0, corner_keypts->points[1].z, tolerance_);
-  EXPECT_NEAR(0.3, corner_keypts->points[2].x, tolerance_);
-  EXPECT_NEAR(0, corner_keypts->points[2].y, tolerance_);
+  EXPECT_NEAR(0, corner_keypts->points[1].y, tolerance_);
+  EXPECT_NEAR(0.3, corner_keypts->points[1].z, tolerance_);
+  EXPECT_NEAR(0, corner_keypts->points[2].x, tolerance_);
+  EXPECT_NEAR(0.3, corner_keypts->points[2].y, tolerance_);
   EXPECT_NEAR(0.3, corner_keypts->points[2].z, tolerance_);
 }
 
