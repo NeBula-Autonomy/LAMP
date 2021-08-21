@@ -6,6 +6,7 @@
 
 // Includes
 #include <factor_handlers/PoseGraphHandler.h>
+#include <utils/PointCloudUtils.h>
 
 PoseGraphHandler::PoseGraphHandler() { }
 
@@ -174,7 +175,16 @@ void PoseGraphHandler::KeyedScanCallback(const pose_graph_msgs::KeyedScan::Const
   data_.scans.push_back(msg);
 
   // Republish from base station
-  keyed_scan_pub_.publish(msg);
+  // Compute keyed scan normals
+  pose_graph_msgs::KeyedScan::Ptr new_pub_ks(
+      new pose_graph_msgs::KeyedScan(*msg));
+  PointXyziCloud::Ptr msg_cloud(new PointXyziCloud);
+  PointCloud::Ptr pub_cloud(new PointCloud);
+  pcl::fromROSMsg(msg->scan, *msg_cloud);
+  utils::AddNormals(msg_cloud, pub_cloud);
+  pcl::toROSMsg(*pub_cloud, new_pub_ks->scan);
+  keyed_scan_pub_.publish(new_pub_ks);
+  // Add scan
   if (keyed_scans_keys_.count(msg->key) > 0){
       ROS_INFO_STREAM("PoseGraphHandler: Repeated keyed Scan for key " << msg->key);
   } else {

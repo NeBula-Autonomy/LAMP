@@ -29,6 +29,11 @@ void ComputeNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
                     Normals::Ptr normals);
 
+void ComputeNormals(const PointXyziCloud::ConstPtr& input,
+                    const double& search_radius,
+                    const int& num_threads,
+                    Normals::Ptr normals);
+
 void ExtractNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
                     Normals::Ptr normals,
@@ -81,6 +86,9 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
 
 void ConvertPointCloud(const PointCloud::ConstPtr& point_normal_cloud,
                        PointXyziCloud::Ptr point_cloud);
+
+void AddNormals(const PointXyziCloud::ConstPtr& point_normal_cloud,
+                PointCloud::Ptr point_cloud);
 
 } // namespace utils
 #endif

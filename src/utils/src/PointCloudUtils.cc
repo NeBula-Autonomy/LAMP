@@ -31,6 +31,21 @@ void ComputeNormals(const PointCloud::ConstPtr& input,
   norm_est.compute(*normals);
 }
 
+// TODO: Make this templated
+void ComputeNormals(const PointXyziCloud::ConstPtr& input,
+                    const double& search_radius,
+                    const int& num_threads,
+                    Normals::Ptr normals) {
+  pcl::search::KdTree<pcl::PointXYZI>::Ptr search_method(
+      new pcl::search::KdTree<pcl::PointXYZI>);
+  pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> norm_est;
+  norm_est.setInputCloud(input);
+  norm_est.setSearchMethod(search_method);
+  norm_est.setRadiusSearch(search_radius);
+  norm_est.setNumberOfThreads(num_threads);
+  norm_est.compute(*normals);
+}
+
 void ExtractNormals(const PointCloud::ConstPtr& input,
                     const int& num_threads,
                     Normals::Ptr normals,
@@ -227,6 +242,34 @@ void ConvertPointCloud(const PointCloud::ConstPtr& point_normal_cloud,
     pt.z = point.z;
     pt.intensity = point.intensity;
     point_cloud->push_back(pt);
+  }
+  return;
+}
+
+void AddNormals(const PointXyziCloud::ConstPtr& point_cloud,
+                PointCloud::Ptr point_normal_cloud) {
+  assert(NULL != point_normal_cloud);
+  assert(NULL != point_cloud);
+  point_normal_cloud->clear();
+
+  // TODO: remove hard coded search radius and num threads
+  // Or use k neighbors instead of radius?
+  Normals::Ptr computed_normals(new Normals);
+  ComputeNormals(point_cloud, 1.0, 4, computed_normals);
+
+  for (size_t i = 0; i < point_cloud->size(); i++) {
+    Point new_pt;
+    const PointXyzi pt_xyzi = point_cloud->points[i];
+    const pcl::Normal normal = computed_normals->points[i];
+    new_pt.x = pt_xyzi.x;
+    new_pt.y = pt_xyzi.y;
+    new_pt.z = pt_xyzi.z;
+    new_pt.intensity = pt_xyzi.intensity;
+
+    new_pt.normal_x = normal.normal_x;
+    new_pt.normal_y = normal.normal_y;
+    new_pt.normal_z = normal.normal_z;
+    point_normal_cloud->push_back(new_pt);
   }
   return;
 }
