@@ -79,5 +79,8 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
                                  const Eigen::Matrix4f& T,
                                  Eigen::Matrix<double, 6, 6>& Ap);
 
+void ConvertPointCloud(const PointCloud::ConstPtr& point_normal_cloud,
+                       PointXyziCloud::Ptr point_cloud);
+
 } // namespace utils
 #endif

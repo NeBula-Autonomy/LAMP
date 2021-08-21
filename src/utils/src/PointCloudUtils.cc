@@ -214,4 +214,21 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   }
 }
 
+void ConvertPointCloud(const PointCloud::ConstPtr& point_normal_cloud,
+                       PointXyziCloud::Ptr point_cloud) {
+  assert(NULL != point_normal_cloud);
+  assert(NULL != point_cloud);
+  point_cloud->clear();
+
+  for (const auto& point : point_normal_cloud->points) {
+    PointXyzi pt;
+    pt.x = point.x;
+    pt.y = point.y;
+    pt.z = point.z;
+    pt.intensity = point.intensity;
+    point_cloud->push_back(pt);
+  }
+  return;
+}
+
 } // namespace utils
