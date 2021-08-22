@@ -67,7 +67,6 @@ protected:
   int publish_n_best_;       // Publish only the top n candidates
   double min_observability_; // Discard any candidate with observability
                              // below threshold
-  double normals_radius_;    // radius used for cloud normal computation
   double horizon_;           // time until a candidate is discarded
 
   int num_threads_; // number of threads for normal computation

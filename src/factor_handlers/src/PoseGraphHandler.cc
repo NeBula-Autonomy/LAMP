@@ -40,6 +40,17 @@ bool PoseGraphHandler::Initialize(const ros::NodeHandle& n, std::vector<std::str
 bool PoseGraphHandler::LoadParameters(const ros::NodeHandle& n) {
   ROS_INFO("LoadParameters method called in PoseGraphHandler");
 
+  if (!pu::Get("normals_computation/method",
+               normals_compute_params_.search_method))
+    return false;
+  if (!pu::Get("normals_computation/k", normals_compute_params_.k))
+    return false;
+  if (!pu::Get("normals_computation/radius", normals_compute_params_.radius))
+    return false;
+  if (!pu::Get("normals_computation/num_threads",
+               normals_compute_params_.num_threads))
+    return false;
+
   return true;
 }
 

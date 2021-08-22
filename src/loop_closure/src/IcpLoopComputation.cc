@@ -91,8 +91,6 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/b_accumulate_source", b_accumulate_source_))
     return false;
-  if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_))
-    return false;
   if (!pu::Get(param_ns_ + "/sac_ia/features_radius", sac_features_radius_))
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold",
@@ -110,9 +108,6 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
                rotation_max_iterations_))
     return false;
   if (!pu::Get(param_ns_ + "/TEASERPP/noise_bound", noise_bound_))
-    return false;
-  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_normals_radius",
-               TEASER_FPFH_normals_radius_))
     return false;
   if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_features_radius",
                TEASER_FPFH_features_radius_))

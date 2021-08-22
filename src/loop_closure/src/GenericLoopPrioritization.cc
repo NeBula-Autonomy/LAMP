@@ -44,8 +44,7 @@ bool GenericLoopPrioritization::Initialize(const ros::NodeHandle& n) {
 
   ROS_INFO_STREAM("Initialized GenericLoopPrioritization."
                   << "\nchoose_best: " << choose_best_
-                  << "\nmin_observability: " << min_observability_
-                  << "\nthreads: " << num_threads_);
+                  << "\nmin_observability: " << min_observability_);
 
   return true;
 }
@@ -61,13 +60,7 @@ bool GenericLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
                min_observability_))
     return false;
 
-  if (!pu::Get(param_ns_ + "/gen_prioritization/normals_search_radius",
-               normals_radius_))
-    return false;
   if (!pu::Get(param_ns_ + "/gen_prioritization/choose_best", choose_best_))
-    return false;
-
-  if (!pu::Get(param_ns_ + "/gen_prioritization/threads", num_threads_))
     return false;
 
   return true;

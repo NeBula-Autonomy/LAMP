@@ -37,9 +37,7 @@ robot:
   #--------------------------------------------------------------------------------
   gen_prioritization:
     min_observability: 100
-    normals_search_radius: 1.0
     choose_best: true # send only the best candidate for geometric verification
-    threads: 4
 
   #--------------------------------------------------------------------------------
   # Observability prioritization loop closure
@@ -48,8 +46,6 @@ robot:
     publish_n_best: 10
     min_observability: 0.2
     horizon: 120
-    normals_search_radius: 1.0
-    therads: 4
 
   #--------------------------------------------------------------------------------
   #### Loop closure computation
@@ -104,7 +100,6 @@ robot:
     b_accumulate_source: true
     
     # Radii of area to consider when computing normals and features
-    normals_radius: 1.0
     features_radius: 2.0
 
     # If SAC fitness score is more than the following value, it will be rejected
@@ -121,7 +116,6 @@ robot:
     rotation_max_iterations: 100
     noise_bound: 0.05
     # For finding FPFH correspondences
-    TEASER_FPFH_normals_radius: 1.5
     TEASER_FPFH_features_radius: 2.0
 
   #--------------------------------------------------------------------------------
@@ -186,9 +180,7 @@ base:
   #--------------------------------------------------------------------------------
   gen_prioritization:
     min_observability: 100
-    normals_search_radius: 1.0
     choose_best: false # send only the best candidate for geometric verification
-    threads: 8
 
   #--------------------------------------------------------------------------------
   # Observability prioritization loop closure
@@ -197,8 +189,6 @@ base:
     publish_n_best: 300
     min_observability: 0.2 # normalized from 0 to 1
     horizon: 300
-    normals_search_radius: 1.0
-    threads: 8
 
   #--------------------------------------------------------------------------------
   #### Loop closure computation
@@ -260,7 +250,6 @@ base:
     b_accumulate_source: false
     
     # Radii of area to consider when computing normals and features
-    normals_radius: 1.0
     features_radius: 2.0
 
     # If SAC fitness score is more than the following value, it will be rejected
@@ -277,7 +266,6 @@ base:
     rotation_max_iterations: 100
     noise_bound: 0.05
     # For finding FPFH correspondences
-    TEASER_FPFH_normals_radius: 1.5
     TEASER_FPFH_features_radius: 2.0
 
   #--------------------------------------------------------------------------------

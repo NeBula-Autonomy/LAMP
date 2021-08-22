@@ -108,7 +108,6 @@ protected:
   unsigned int sac_iterations_;
   unsigned int sac_num_prev_scans_;
   unsigned int sac_num_next_scans_;
-  double sac_normals_radius_;
   double sac_features_radius_;
   double sac_fitness_score_threshold_;
 
@@ -117,7 +116,6 @@ protected:
   double rotation_cost_threshold_;
   double rotation_max_iterations_;
   double noise_bound_;
-  double TEASER_FPFH_normals_radius_;
   double TEASER_FPFH_features_radius_;
 
   int teaser_count_ = 0;
