@@ -115,6 +115,7 @@ void ConvertPointCloud(const PointCloud::ConstPtr& point_normal_cloud,
                        PointXyziCloud::Ptr point_cloud);
 
 void AddNormals(const PointXyziCloud::ConstPtr& point_normal_cloud,
+                const NormalComputeParams& params,
                 PointCloud::Ptr point_cloud);
 
 } // namespace utils

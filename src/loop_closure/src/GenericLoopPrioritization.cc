@@ -190,8 +190,7 @@ void GenericLoopPrioritization::KeyedScanCallback(
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
   Eigen::Matrix<double, 3, 1> obs_eigenv;
-  utils::ComputeIcpObservability(
-      scan, normals_radius_, num_threads_, &obs_eigenv);
+  utils::ComputeIcpObservability(scan, &obs_eigenv);
   double min_obs = obs_eigenv.minCoeff();
   // Add the key and observability
   keyed_observability_.insert(std::pair<gtsam::Key, double>(key, min_obs));

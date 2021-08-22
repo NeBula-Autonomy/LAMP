@@ -6,7 +6,6 @@
 
 // Includes
 #include <factor_handlers/PoseGraphHandler.h>
-#include <utils/PointCloudUtils.h>
 
 PoseGraphHandler::PoseGraphHandler() { }
 
@@ -181,7 +180,7 @@ void PoseGraphHandler::KeyedScanCallback(const pose_graph_msgs::KeyedScan::Const
   PointXyziCloud::Ptr msg_cloud(new PointXyziCloud);
   PointCloud::Ptr pub_cloud(new PointCloud);
   pcl::fromROSMsg(msg->scan, *msg_cloud);
-  utils::AddNormals(msg_cloud, pub_cloud);
+  utils::AddNormals(msg_cloud, normals_compute_params_, pub_cloud);
   pcl::toROSMsg(*pub_cloud, new_pub_ks->scan);
   keyed_scan_pub_.publish(new_pub_ks);
   // Add scan
