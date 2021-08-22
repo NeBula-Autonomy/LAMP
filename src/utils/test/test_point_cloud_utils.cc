@@ -41,7 +41,8 @@ TEST_F(TestPointCloudUtils, ComputeNormals) {
   PointCloud::Ptr plane(new PointCloud);
   Normals::Ptr plane_normals(new Normals);
   plane = GeneratePlane();
-  ComputeNormals(plane, 1.0, 4, plane_normals);
+  NormalComputeParams default_params;
+  ComputeNormals<Point>(plane, default_params, plane_normals);
 
   EXPECT_EQ(100, plane_normals->size());
   for (size_t i = 0; i < 100; i++) {
@@ -55,7 +56,7 @@ TEST_F(TestPointCloudUtils, ExtractNormals) {
   PointCloud::Ptr plane(new PointCloud);
   Normals::Ptr plane_normals(new Normals);
   plane = GeneratePlane();
-  ExtractNormals(plane, 4, plane_normals);
+  ExtractNormals(plane, plane_normals);
 
   EXPECT_EQ(100, plane_normals->size());
   for (size_t i = 0; i < 100; i++) {
@@ -119,7 +120,7 @@ TEST_F(TestPointCloudUtils, ComputeKeypoints2) {
   corner = GenerateCorner();
 
   Normals::Ptr corner_normals(new Normals);
-  ExtractNormals(corner, 4, corner_normals);
+  ExtractNormals(corner, corner_normals);
 
   HarrisParams params = GenerateHarrisParams();
 
@@ -137,7 +138,7 @@ TEST_F(TestPointCloudUtils, ComputeFeatures) {
   corner = GenerateCorner();
 
   Normals::Ptr corner_normals(new Normals);
-  ExtractNormals(corner, 4, corner_normals);
+  ExtractNormals(corner, corner_normals);
 
   HarrisParams params = GenerateHarrisParams();
 
@@ -154,7 +155,7 @@ TEST_F(TestPointCloudUtils, ComputeIcpObservability) {
   Eigen::Matrix<double, 3, 1> eigenvalues_new =
       Eigen::Matrix<double, 3, 1>::Zero();
   auto query = GeneratePlane();
-  ComputeIcpObservability(query, 1.0, 4, &eigenvalues_new);
+  ComputeIcpObservability(query, &eigenvalues_new);
   // Note Eigen sorts this automatically
   EXPECT_NEAR(eigenvalues_new(0), 0, tolerance_);
   EXPECT_NEAR(eigenvalues_new(1), 0, tolerance_);
@@ -167,7 +168,7 @@ TEST_F(TestPointCloudUtils, ComputeAp_ForPoint2PlaneICP) {
   Normals::Ptr plane_normals(new Normals);
   Eigen::Matrix<double, 6, 6> Ap = Eigen::Matrix<double, 6, 6>::Zero();
   PointCloud::Ptr plane_normalized(new PointCloud);
-  ExtractNormals(plane, 4, plane_normals);
+  ExtractNormals(plane, plane_normals);
   NormalizePCloud(plane, plane_normalized);
   std::vector<size_t> correspondences(plane->size());
   std::iota(std::begin(correspondences), std::end(correspondences), 0);

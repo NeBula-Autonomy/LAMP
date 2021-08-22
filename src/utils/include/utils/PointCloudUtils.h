@@ -7,9 +7,12 @@ Some utility functions for workng with Point Clouds
 #ifndef POINT_CLOUD_UTILS_H_
 #define POINT_CLOUD_UTILS_H_
 
+#include <pcl/features/normal_3d_omp.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl_ros/point_cloud.h>
 #include <utils/CommonStructs.h>
+#include <utils/PointCloudTypes.h>
 
 namespace utils {
 
@@ -24,20 +27,44 @@ struct HarrisParams {
   int harris_response_;
 };
 
-void ComputeNormals(const PointCloud::ConstPtr& input,
-                    const double& search_radius,
-                    const int& num_threads,
-                    Normals::Ptr normals);
+struct NormalComputeParams {
+  int search_method = 0;
+  // search_method = 0: use KNN, = 1: use radius
+  int k = 10;
+  double radius = 1.0;
+  int num_threads = 4;
+};
 
-void ComputeNormals(const PointXyziCloud::ConstPtr& input,
-                    const double& search_radius,
-                    const int& num_threads,
-                    Normals::Ptr normals);
+template <typename pointT>
+void ComputeNormals(const typename pcl::PointCloud<pointT>::ConstPtr& input,
+                    const NormalComputeParams& params,
+                    Normals::Ptr normals) {
+  typename pcl::search::KdTree<pointT>::Ptr search_method(
+      new pcl::search::KdTree<pointT>);
+  typename pcl::NormalEstimationOMP<pointT, pcl::Normal> norm_est;
 
-void ExtractNormals(const PointCloud::ConstPtr& input,
-                    const int& num_threads,
-                    Normals::Ptr normals,
-                    const double& search_radius = 1.0);
+  if (params.search_method == 0) {
+    norm_est.setRadiusSearch(0);
+    norm_est.setKSearch(params.k);
+  } else if (params.search_method == 1) {
+    norm_est.setKSearch(0);
+    norm_est.setRadiusSearch(params.radius);
+  } else {
+    ROS_ERROR(
+        "Wrong normal search method in lamp basestation normal computation. ");
+    EXIT_FAILURE;
+  }
+  norm_est.setNumberOfThreads(params.num_threads);
+
+  norm_est.setInputCloud(input);
+  norm_est.setSearchMethod(search_method);
+  norm_est.compute(*normals);
+}
+
+void ExtractNormals(
+    const PointCloud::ConstPtr& input,
+    Normals::Ptr normals,
+    const NormalComputeParams& normal_params = NormalComputeParams());
 
 void NormalizePCloud(const PointCloud::ConstPtr& cloud,
                      PointCloud::Ptr pclptr_normalized);
@@ -62,10 +89,10 @@ void ComputeFeatures(const PointCloud::ConstPtr& keypoints,
                      const int& num_threads,
                      Features::Ptr features);
 
-void ComputeIcpObservability(PointCloudConstPtr scan,
-                             const double& normals_radius,
-                             const size_t& num_threads,
-                             Eigen::Matrix<double, 3, 1>* eigenvalues);
+void ComputeIcpObservability(
+    PointCloudConstPtr scan,
+    Eigen::Matrix<double, 3, 1>* eigenvalues,
+    const NormalComputeParams& params = NormalComputeParams());
 
 bool ComputeICPCovariancePointPoint(const PointCloud::ConstPtr& pointCloud,
                                     const Eigen::Matrix4f& T,
