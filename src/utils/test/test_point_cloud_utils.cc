@@ -66,6 +66,24 @@ TEST_F(TestPointCloudUtils, ExtractNormals) {
   }
 }
 
+TEST_F(TestPointCloudUtils, AddNormals) {
+  PointXyziCloud::Ptr plane(new PointXyziCloud);
+  PointCloud::Ptr plane_w_normals(new PointCloud);
+  plane_w_normals = GeneratePlane();
+  ConvertPointCloud(plane_w_normals, plane);
+  plane_w_normals->clear();
+
+  NormalComputeParams default_params;
+  AddNormals(plane, default_params, plane_w_normals);
+
+  EXPECT_EQ(100, plane_w_normals->size());
+  for (size_t i = 0; i < 100; i++) {
+    EXPECT_NEAR(0, plane_w_normals->points[i].normal_x, tolerance_);
+    EXPECT_NEAR(0, plane_w_normals->points[i].normal_y, tolerance_);
+    EXPECT_NEAR(1, plane_w_normals->points[i].normal_z, tolerance_);
+  }
+}
+
 TEST_F(TestPointCloudUtils, normalizePCloud) {
   PointCloud::Ptr plane(new PointCloud);
   PointCloud::Ptr plane_normalized(new PointCloud);
