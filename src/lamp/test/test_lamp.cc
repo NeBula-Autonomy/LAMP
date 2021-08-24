@@ -21,6 +21,8 @@ public:
     system("rosparam load $(rospack find lamp)/config/lamp_init_noise.yaml");
     system("rosparam load $(rospack find lamp)/config/lamp_settings.yaml");
 
+    system("rosparam set b_use_fixed_covariances false");
+
     system("rosparam set artifact_prefix 'A'");
 
     system("rosparam load $(rospack find "

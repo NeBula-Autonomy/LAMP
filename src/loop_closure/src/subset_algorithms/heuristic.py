@@ -91,16 +91,16 @@ class MaximallySeperatedNodes(LoopClosureBatchSelector):
             all_indexes = np.array(range(self.remaining_points.shape[0]))
             if self.needed_extra_points > 0:
                 #indexes = np.array(random.sample(all_indexes, self.needed_extra_points))
-                indexes = np.random.choice(all_indexes,size=self.needed_extra_points,replace=False)
+                indexes = np.random.choice(all_indexes, size=self.needed_extra_points, replace=False)
                 selected_remaining_points = self.remaining_points[indexes, :]
                 if self.initially_accepted_points != []:
                     selected_points = np.concatenate((selected_remaining_points, self.initially_accepted_points), axis=0)
                 else:
                     selected_points = selected_remaining_points
                 #fitness = np.sum(pdist(selected_points))
-                centroid = np.average(selected_points,axis=0)
+                centroid = np.average(selected_points, axis=0)
 
-                fitness = np.sum(np.linalg.norm(selected_points - centroid.reshape(3,1).T,ord=2,axis=1))
+                fitness = np.sum(np.linalg.norm(selected_points - centroid.reshape(3, 1).T, ord=2, axis=1))
                 if fitness > self.best_fitness:
                     self.best_fitness = fitness
                     self.best_points = selected_points

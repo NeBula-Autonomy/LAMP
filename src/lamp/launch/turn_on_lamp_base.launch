@@ -32,6 +32,9 @@
       <remap from="~suggest_loop_closures" to="lamp/seed_loop_closure" />
       <remap from="~reset_pgo" to="lamp_pgo/reset" />
 
+      <!-- Use fixed covariances, rather than computed -->
+      <param name="b_use_fixed_covariances" value="false" />
+
       <!-- Robots -->
       <rosparam file="$(find lamp)/config/robot_names.yaml" subst_value="true"/>
 
@@ -98,12 +101,12 @@
   </group>
 
   <!-- Pose Graph Tools -->
-  <include file="$(find pose_graph_tools)/launch/pose_graph_tools.launch" >
+  <!--include file="$(find pose_graph_tools)/launch/pose_graph_tools.launch" >
     <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-  </include>
+  </include-->
 
   <!-- Localization Uncertainty Analysis -->
-  <group ns="$(arg robot_namespace)/localization_analysis">
+  <!--group ns="$(arg robot_namespace)/localization_analysis">
     <node pkg="localizer_localization_uncertainty_analysis"
           type="localization_analysis_node.py"
           name="localization_uncertainty_analysis"
@@ -118,10 +121,9 @@
           name="lamp_pgo"
           type="lamp_pgo_node"
           output="screen">
-      <!-- <remap from="~pose_graph_to_optimize" to="pg_sim/pose_graph_to_optimize" /> -->
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>
       <param name="log_path" value="$(find lamp_pgo)/log" />
     </node>
-  </group>
+  </group-->
 
 </launch>

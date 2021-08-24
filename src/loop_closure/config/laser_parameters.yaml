@@ -130,7 +130,7 @@ robot:
   
   harris3D:
     # Set the threshold value to filter out weak corners. This is only evaluated if non maxima suppression is turned on.
-    harris_threshold: 0.000000005 # was 0.05
+    harris_threshold: 0.000000005
 
     # Whether non maxima suppression should be applied or the response for each point should be returned
     harris_suppression: true
@@ -213,7 +213,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.8 #0.04 - TEASER had 5.0
+  max_tolerable_fitness: 0.4 #0.04 - TEASER had 5.0
 
   # How long to "wait" for keyed scans 
   keyed_scans_max_delay: 600.0
@@ -275,7 +275,7 @@ base:
     num_inlier_threshold: 5
     rotation_cost_threshold: 1.0 # Default value in TEASER++: 0.005
     rotation_max_iterations: 100
-    noise_bound: 1.0
+    noise_bound: 0.05
     # For finding FPFH correspondences
     TEASER_FPFH_normals_radius: 1.5
     TEASER_FPFH_features_radius: 2.0
@@ -292,7 +292,7 @@ base:
     harris_suppression: true
 
     # the radius for normal estimation as well as for non maxima suppression
-    harris_radius: 0.05 # 0.1 for TEASER
+    harris_radius: 0.1
 
     # Whether the detected key points should be refined or not
     harris_refine: false

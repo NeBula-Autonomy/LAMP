@@ -98,8 +98,7 @@ TEST(FPFHMatcherTest, kNeighborMatchSingle) {
     EXPECT_EQ(correspondences[i].first, i);
     EXPECT_EQ(correspondences[i].second, i);
   }
- }
-
+}
 
 TEST(FPFHMatcherTest, kNeighborMatchMultiple) {
   teaser::PLYReader reader;

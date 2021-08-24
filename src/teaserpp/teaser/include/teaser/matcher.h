@@ -70,10 +70,11 @@ public:
    * @param k
    * @return
    */
-  std::vector<std::pair<int, int>>
-  calculateKCorrespondences(teaser::PointCloud& source_points, teaser::PointCloud& target_points,
-                            teaser::FPFHCloud& source_features, teaser::FPFHCloud& target_features,
-                            int k = 10);
+  std::vector<std::pair<int, int>> calculateKCorrespondences(teaser::PointCloud& source_points,
+                                                             teaser::PointCloud& target_points,
+                                                             teaser::FPFHCloud& source_features,
+                                                             teaser::FPFHCloud& target_features,
+                                                             int k = 10);
 
   /**
    * @brief For all source points, find top k matching correspondences.
@@ -88,8 +89,7 @@ public:
   calculateKCorrespondences(pcl::PointCloud<pcl::PointXYZINormal>::Ptr source_points,
                             pcl::PointCloud<pcl::PointXYZINormal>::Ptr target_points,
                             pcl::PointCloud<pcl::FPFHSignature33>::Ptr source_features,
-                            pcl::PointCloud<pcl::FPFHSignature33>::Ptr target_features,
-                            int k = 10);
+                            pcl::PointCloud<pcl::FPFHSignature33>::Ptr target_features, int k = 10);
 
 private:
   template <typename T> void buildKDTree(const std::vector<T>& data, KDTree* tree);
@@ -107,7 +107,8 @@ private:
   std::vector<std::pair<int, int>> corres_;
   std::vector<teaser::PointCloud> pointcloud_;
   std::vector<Feature> features_;
-  std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > means_; // for normalization
+  std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>
+      means_; // for normalization
   float global_scale_;
 };
 
