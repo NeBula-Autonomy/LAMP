@@ -192,11 +192,6 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
         // config
         float path_loss = CalculatePathLossForNeighbor(neighbour);
 
-        auto scom_pose_associated_for_scom_robot = GetClosestPoseAtTime(
-            robots_trajectory_[utils::GetRobotPrefix(
-                scom_robot.second.robot_name)],
-            rssi_scom_robot_list_updated_time_stamp_[scom_robot.first]);
-
         if (path_loss < measured_path_loss_dB_) {
           // get the pose from robot trajectory that was the closest at time
           // stamp
