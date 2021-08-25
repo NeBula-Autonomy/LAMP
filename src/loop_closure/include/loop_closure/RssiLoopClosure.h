@@ -4,6 +4,7 @@
 #include <core_msgs/CommNodeInfo.h>
 #include <core_msgs/CommNodeStatus.h>
 #include <gtsam/inference/Symbol.h>
+#include <omp.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <rviz_visual_tools/rviz_visual_tools.h>
 #include <silvus_msgs/SilvusStreamscape.h>
@@ -31,10 +32,9 @@ using AllNodesAroundComm = std::vector<NodesAroundCommOneFlyby>;
 
 struct RssiRawInfo {
   bool b_dropped{false};
-  ros::Time time_stamp;
+
   core_msgs::CommNodeInfo comm_node_info;
   pose_graph_msgs::PoseGraphNode pose_graph_node;
-  //  std::map<gtsam::Key, PoseGraphNodeLoopClosureStatus> nodes_around_comm;
   AllNodesAroundComm all_nodes_around_comm;
   int flyby_number{0};
   const uint close_keys_threshold_{20};
@@ -62,7 +62,8 @@ struct RssiRawInfo {
      * basically compare with 0th node of flyby and check if diff index number
      * crossed threshold_ (20 by default)) */
     auto node_a =
-        gtsam::Symbol(all_nodes_around_comm[flyby_number][0].candidate_pose.key)
+        gtsam::Symbol(
+            all_nodes_around_comm[flyby_number].back().candidate_pose.key)
             .index();
     auto node_b = gtsam::Symbol(node.key).index();
     std::uint64_t diff_index;
@@ -163,7 +164,7 @@ private:
   // variables needed
   std::map<std::string, RssiRawInfo>
       rssi_scom_dropped_list_; //<scom2, scom3,...>
-  std::map<std::string, ros::Time> rssi_scom_dropped_time_stamp_;
+
   std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
       rssi_scom_robot_list_; // robot names <scom-husky4 , scom-spot2,...>
   std::map<std::string, ros::Time>
@@ -171,7 +172,7 @@ private:
                                                 // scom-spot2,...>
   std::map<unsigned char, std::map<double, pose_graph_msgs::PoseGraphNode>>
       robots_trajectory_;
-  int idx2{0}; // todo it's not needed at some point
+  //  int idx2{0}; // todo it's not needed at some point
 
   // const
   const int ANTENAS_NUMBER_IN_ROBOT{2};
@@ -191,6 +192,7 @@ private:
   ros::Publisher db_tracking;
   ros::Publisher visualize_rssi_placement;
   ros::Publisher highlight_pub_;
+  ros::Publisher visualize_all_markers_;
 
   //*************Callbacks*******************/
   void CommNodeAggregatedStatusCallback(
@@ -210,7 +212,10 @@ private:
       const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
       const ros::Time& stamp,
       double time_threshold = 2.0,
-      bool check_threshold = false);
+      bool check_threshold = false) const;
+  pose_graph_msgs::PoseGraphNode GetPoseGraphNodeFromKey(
+      const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
+      const gtsam::Symbol& key) const;
   bool is_robot_radio(const std::string& hostname) const;
 
   //*************Math*******************/
@@ -218,11 +223,12 @@ private:
       const silvus_msgs::SilvusStreamscapeNeighbor& neighbor);
 
   //*************Visualization and Printing*******************/
+  visualization_msgs::MarkerArray all_markers_;
   void PrintDropStatus(const core_msgs::CommNodeInfo& msg) const;
   void ShowRssiList() const;
   void ShowRobotList() const;
   void ShowDroppedRssiList() const;
-  void VisualizeRssi();
+  void VisualizeRssi(const std::string& name, const RssiRawInfo& node);
   void VisualizeRobotNodesWithPotentialLoopClosure(
       const pose_graph_msgs::PoseGraphNode& node_pose,
       float red = 1.0,
@@ -233,7 +239,5 @@ private:
   bool VisualizeEdgesForPotentialLoopClosure(
       const pose_graph_msgs::PoseGraphNode& node1,
       const pose_graph_msgs::PoseGraphNode& node2);
-  void VisualizeText(const pose_graph_msgs::PoseGraphNode& node_pose,
-                     std::string name);
 };
 } // namespace lamp_loop_closure

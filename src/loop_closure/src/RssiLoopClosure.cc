@@ -37,7 +37,6 @@ bool RssiLoopClosure::LoadParameters(const ros::NodeHandle& n) {
     return false;
   }
 
-  ShowRobotList();
   return true;
 }
 
@@ -82,25 +81,27 @@ bool RssiLoopClosure::CreatePublishers(const ros::NodeHandle& n) {
 
   ros::NodeHandle nl(n);
   db_tracking = nl.advertise<std_msgs::Float64>("db_tracking", 10, false);
-  visualize_rssi_placement =
-      nl.advertise<visualization_msgs::Marker>("rssi", 1000, false);
-  highlight_pub_ =
-      nl.advertise<visualization_msgs::Marker>("potential_rssi", 10, false);
+  //  visualize_rssi_placement =
+  //      nl.advertise<visualization_msgs::Marker>("rssi", 1000, false);
+  visualize_all_markers_ = nl.advertise<visualization_msgs::MarkerArray>(
+      "rssi_markers", 1000, false);
+  //  highlight_pub_ =
+  //      nl.advertise<visualization_msgs::Marker>("potential_rssi", 10, false);
   return true;
 }
 bool RssiLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
-  pose_graph_sub_ =
-      nl.subscribe("pose_graph", 10, &RssiLoopClosure::KeyedPoseCallback, this);
+  pose_graph_sub_ = nl.subscribe(
+      "pose_graph", 10000, &RssiLoopClosure::KeyedPoseCallback, this);
 
   comm_node_aggregated_status_sub_ =
       nl.subscribe("rssi_aggregated_drop_status",
-                   10,
+                   10000,
                    &RssiLoopClosure::CommNodeAggregatedStatusCallback,
                    this);
 
   comm_node_raw_ = nl.subscribe(
-      "silvus_raw", 10, &RssiLoopClosure::CommNodeRawCallback, this);
+      "silvus_raw", 10000, &RssiLoopClosure::CommNodeRawCallback, this);
 
   // Timers
   uwb_update_timer_ =
@@ -112,13 +113,7 @@ bool RssiLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void RssiLoopClosure::KeyedPoseCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
-  raw_mutex_.lock(); // raw mutes for robots_trajectory
-
-  pose_graph_msgs::PoseGraphNode node_msg;
-
-  for (auto& robot_trajectory : robots_trajectory_) {
-    robot_trajectory.second.clear();
-  }
+#pragma parallel for
   for (const auto& node_msg : graph_msg->nodes) {
     gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract
     if (!utils::IsRobotPrefix(new_key.chr()))
@@ -126,7 +121,7 @@ void RssiLoopClosure::KeyedPoseCallback(
     robots_trajectory_[new_key.chr()].insert(
         {node_msg.header.stamp.toSec(), node_msg});
   }
-  raw_mutex_.unlock();
+
   return;
 }
 
@@ -141,11 +136,9 @@ bool RssiLoopClosure::is_robot_radio(const std::string& hostname) const {
 // of dropping topic: comm_node_manager/status_agg
 void RssiLoopClosure::CommNodeAggregatedStatusCallback(
     const core_msgs::CommNodeStatus::ConstPtr& msg) {
-  auto rssi_list_dropped = msg->dropped;
-  auto time_stamp = msg->header.stamp;
-  raw_mutex_.lock();
   // for all dropped radios
-  for (const auto& rssi_comm_dropped : rssi_list_dropped) {
+#pragma parallel for
+  for (const auto& rssi_comm_dropped : msg->dropped) {
     // if radio is on the robot (and for some weird reason has status dropped)
     // -> don't take any action
     if (is_robot_radio(rssi_comm_dropped.hostname))
@@ -155,29 +148,21 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
         rssi_scom_dropped_list_.end()) {
       continue;
     } else {
-      // if the radio doesn't exist bookeep timestamp of the dropping
-      if (rssi_scom_dropped_time_stamp_.find(rssi_comm_dropped.hostname) ==
-          rssi_scom_dropped_time_stamp_.end()) {
-        ROS_INFO_STREAM("Time stamp for node arrival: "
-                        << rssi_comm_dropped.hostname
-                        << " time stamp: " << time_stamp);
-        rssi_scom_dropped_time_stamp_[rssi_comm_dropped.hostname] = time_stamp;
-      }
       // Looking for the closest node in the trajectory of the robot that was
       // dropping the radio
-      auto the_closest_pose = GetClosestPoseAtTime(
-          robots_trajectory_[utils::GetRobotPrefix(
-              rssi_comm_dropped.robot_name)],
-          rssi_scom_dropped_time_stamp_[rssi_comm_dropped.hostname]);
+      auto the_closest_pose =
+          GetPoseGraphNodeFromKey(robots_trajectory_[utils::GetRobotPrefix(
+                                      rssi_comm_dropped.robot_name)],
+                                  rssi_comm_dropped.pose_graph_key);
 
       // if key is 0 it means the pose hasn't been found therefore we try to add
       // the radio to rssi_node_drooped_list_ in next callback
       if (the_closest_pose.key == 0) {
-        ROS_WARN_STREAM(
-            "KEY 0, poses couldn't be assigned yet! Trajectory size: "
-            << robots_trajectory_[utils::GetRobotPrefix(
-                                      rssi_comm_dropped.robot_name)]
-                   .size());
+        ROS_WARN_STREAM("Key 0, pose for the dropped node couldn't be assigned "
+                        "yet. Trajectory size: "
+                        << robots_trajectory_[utils::GetRobotPrefix(
+                                                  rssi_comm_dropped.robot_name)]
+                               .size());
         continue;
       }
 
@@ -186,15 +171,12 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
       rssi_scom_dropped_list_[rssi_comm_dropped.hostname].b_dropped = true;
       rssi_scom_dropped_list_[rssi_comm_dropped.hostname].pose_graph_node =
           the_closest_pose;
-      rssi_scom_dropped_list_[rssi_comm_dropped.hostname].time_stamp =
-          rssi_scom_dropped_time_stamp_[rssi_comm_dropped.hostname];
+      VisualizeRssi(rssi_comm_dropped.hostname,
+                    rssi_scom_dropped_list_[rssi_comm_dropped.hostname]);
 
       PrintDropStatus(rssi_comm_dropped);
     }
   }
-
-  raw_mutex_.unlock();
-  VisualizeRssi();
 }
 
 void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
@@ -209,6 +191,11 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
         // calculate path loss in db and compare with the threshikd value from
         // config
         float path_loss = CalculatePathLossForNeighbor(neighbour);
+
+        auto scom_pose_associated_for_scom_robot = GetClosestPoseAtTime(
+            robots_trajectory_[utils::GetRobotPrefix(
+                scom_robot.second.robot_name)],
+            rssi_scom_robot_list_updated_time_stamp_[scom_robot.first]);
 
         if (path_loss < measured_path_loss_dB_) {
           // get the pose from robot trajectory that was the closest at time
@@ -285,7 +272,7 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
     const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
     const ros::Time& stamp,
     double time_threshold,
-    bool check_threshold) {
+    bool check_threshold) const {
   // If there are no keys, throw an error
 
   if (robot_trajectory.empty()) {
@@ -344,6 +331,17 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
         << ", allowable max is: " << time_threshold);
   }
   return pose_out;
+}
+
+pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetPoseGraphNodeFromKey(
+    const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
+    const gtsam::Symbol& key) const {
+  for (const auto& robot_pose : robot_trajectory) {
+    if (robot_pose.second.key == key) {
+      return robot_pose.second;
+    }
+  }
+  return pose_graph_msgs::PoseGraphNode();
 }
 
 void RssiLoopClosure::GenerateLoops() {
@@ -504,43 +502,40 @@ void RssiLoopClosure::ShowDroppedRssiList() const {
 
 void RssiLoopClosure::ShowRobotList() const {
   for (const auto& [robot_label, info] : rssi_scom_robot_list_) {
-    ROS_INFO_STREAM("Robot label: " << robot_label
-                                    << "\t node_label: " << info.node_label
-                                    << "\t robot_name: " << info.robot_name
-                                    << "\t node_id " << info.node_id);
+    ROS_INFO_STREAM("Robot registered for rssi-loop closure detection: "
+                    << robot_label << "\t node_label: " << info.node_label
+                    << "\t robot_name: " << info.robot_name << "\t node_id "
+                    << info.node_id);
   }
 }
 
-void RssiLoopClosure::VisualizeRssi() {
-  int indx = 56000;
-  for (const auto& node : rssi_scom_dropped_list_) {
-    visualization_msgs::Marker m;
-    m.header.frame_id = "world";
-    // m.ns = pose_graph_.fixed_frame_id + "node" + std::to_string(key);
-    m.action = visualization_msgs::Marker::ADD;
-    m.type = visualization_msgs::Marker::SPHERE;
-    m.color.r = 1.0;
-    m.color.g = 0.0;
-    m.color.b = 0.0;
-    m.color.a = 0.1;
-    m.scale.x = 1.0;
-    m.scale.y = 1.0;
-    m.scale.z = 1.0;
-    m.text = node.first;
-    m.id = indx;
-    m.pose.position = node.second.pose_graph_node.pose.position;
-    visualize_rssi_placement.publish(m);
-    indx++;
-    m.scale.z = 0.5;
-    m.color.r = 1.0;
-    m.color.g = 1.0;
-    m.color.b = 1.0;
-    m.color.a = 1.0;
-    m.id = indx;
-    m.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-    visualize_rssi_placement.publish(m);
-    indx++;
-  }
+void RssiLoopClosure::VisualizeRssi(const std::string& name,
+                                    const RssiRawInfo& node) {
+  visualization_msgs::Marker m;
+  m.header.frame_id = "world";
+  m.action = visualization_msgs::Marker::ADD;
+  m.type = visualization_msgs::Marker::CUBE;
+  m.color.r = 1.0;
+  m.color.g = 0.0;
+  m.color.b = 0.0;
+  m.color.a = 0.5;
+  m.scale.x = 0.5;
+  m.scale.y = 0.5;
+  m.scale.z = 0.5;
+  m.text = name;
+  m.id = all_markers_.markers.size();
+  m.pose.position = node.pose_graph_node.pose.position;
+  all_markers_.markers.push_back(m);
+  m.scale.z = 0.5;
+  m.color.r = 1.0;
+  m.color.g = 1.0;
+  m.color.b = 1.0;
+  m.color.a = 1.0;
+  m.id = all_markers_.markers.size();
+  m.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  all_markers_.markers.push_back(m);
+
+  visualize_all_markers_.publish(all_markers_);
 }
 
 void RssiLoopClosure::VisualizeRobotNodesWithPotentialLoopClosure(
@@ -552,7 +547,6 @@ void RssiLoopClosure::VisualizeRobotNodesWithPotentialLoopClosure(
     std::string name) {
   visualization_msgs::Marker m;
   m.header.frame_id = "world";
-  // m.ns = pose_graph_.fixed_frame_id + "node" + std::to_string(key);
   m.action = visualization_msgs::Marker::ADD;
   m.type = visualization_msgs::Marker::SPHERE;
   m.color.r = red;
@@ -562,70 +556,39 @@ void RssiLoopClosure::VisualizeRobotNodesWithPotentialLoopClosure(
   m.scale.x = scale;
   m.scale.y = scale;
   m.scale.z = scale;
-  m.id = idx2;
   m.text = name;
-  idx2++;
+  m.id = all_markers_.markers.size();
   m.pose.position = node_pose.pose.position;
-  visualize_rssi_placement.publish(m);
+  all_markers_.markers.push_back(m);
   m.scale.z = 0.1;
   m.color.r = 1.0;
   m.color.g = 1.0;
   m.color.b = 1.0;
   m.color.a = 1.0;
-  m.id = idx2++;
+  m.id = all_markers_.markers.size();
   m.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-  visualize_rssi_placement.publish(m);
-}
+  all_markers_.markers.push_back(m);
 
-void RssiLoopClosure::VisualizeText(
-    const pose_graph_msgs::PoseGraphNode& node_pose, std::string name) {
-  visualization_msgs::Marker marker;
-  marker.header.frame_id = "world";
-  // marker.header.stamp = ros::Time();
-  marker.ns = "";
-  marker.id = idx2;
-  marker.pose.position = node_pose.pose.position;
-  marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-  marker.action = visualization_msgs::Marker::ADD;
-  marker.scale.z = 1.05;
-  marker.color.a = 1.0; // Don't forget to set the alpha!
-  marker.color.r = 1.0;
-  marker.color.g = 0.0;
-  marker.color.b = 0.0;
-  marker.text = "XD";
-
-  visualize_rssi_placement.publish(marker);
-  idx2++;
+  visualize_all_markers_.publish(all_markers_);
 }
 
 bool RssiLoopClosure::VisualizeEdgesForPotentialLoopClosure(
     const pose_graph_msgs::PoseGraphNode& node1,
     const pose_graph_msgs::PoseGraphNode& node2) {
-  ROS_INFO("Highlighting factor between %lu and %lu.",
-           node1.pose.position,
-           node2.pose.position);
-
   visualization_msgs::Marker m;
   m.header.frame_id = "world";
-
-  m.id = idx2;
-  idx2++;
   m.action = visualization_msgs::Marker::ADD;
   m.type = visualization_msgs::Marker::LINE_LIST;
-  m.color.r = 0.0;
+  m.color.r = 1.0;
   m.color.g = 1.0;
   m.color.b = 0.0;
-  m.color.a = 0.5;
+  m.color.a = 0.1;
   m.scale.x = 0.05;
-  // m.scale.y = 1.0;
-  // m.scale.z = 1.0;
-
+  m.id = all_markers_.markers.size();
   m.points.push_back(node1.pose.position);
   m.points.push_back(node2.pose.position);
-  highlight_pub_.publish(m);
-
-  //  VisualizeRobotNodesWithPotentialLoopClosure(node1, 0.0, 1.0, 0.0, 1.0);
-  // VisualizeRobotNodesWithPotentialLoopClosure(node2, 0.0, 1.0, 0.0, 0.6);
+  all_markers_.markers.push_back(m);
+  visualize_all_markers_.publish(all_markers_);
 
   return true;
 }
