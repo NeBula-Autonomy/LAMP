@@ -104,8 +104,9 @@ bool RssiLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
       "silvus_raw", 10000, &RssiLoopClosure::CommNodeRawCallback, this);
 
   // Timers
-  uwb_update_timer_ =
-      nl.createTimer(update_rate_, &RssiLoopClosure::RssiTimerCallback, this);
+  //  uwb_update_timer_ =
+  //      nl.createTimer(update_rate_, &RssiLoopClosure::RssiTimerCallback,
+  //      this);
   return true;
 }
 
@@ -113,7 +114,6 @@ bool RssiLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void RssiLoopClosure::KeyedPoseCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
-#pragma parallel for
   for (const auto& node_msg : graph_msg->nodes) {
     gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract
     if (!utils::IsRobotPrefix(new_key.chr()))
@@ -137,7 +137,7 @@ bool RssiLoopClosure::is_robot_radio(const std::string& hostname) const {
 void RssiLoopClosure::CommNodeAggregatedStatusCallback(
     const core_msgs::CommNodeStatus::ConstPtr& msg) {
   // for all dropped radios
-#pragma parallel for
+
   for (const auto& rssi_comm_dropped : msg->dropped) {
     // if radio is on the robot (and for some weird reason has status dropped)
     // -> don't take any action
@@ -179,13 +179,14 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
   }
 }
 
-void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
-  raw_mutex_.lock();
+// void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
+void RssiLoopClosure::Update(const ros::Time& time_stamp) {
+  //  raw_mutex_.lock();
   for (auto& scom_robot : rssi_scom_robot_list_) {
     // iterate over radios that are connected to the scom robot radio
     for (const auto& neighbour : scom_robot.second.neighbors) {
-      // if radio conntected to the robot radio was dropped (so it must exist in
-      // the rssi_node_dropped_list) -> true since haven't reached end
+      // if radio conntected to the robot radio was dropped (so it must exist
+      // in the rssi_node_dropped_list) -> true since haven't reached end
       if (rssi_scom_dropped_list_.find(neighbour.neighbor_node_label) !=
           rssi_scom_dropped_list_.end()) {
         // calculate path loss in db and compare with the threshikd value from
@@ -196,10 +197,11 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
           // get the pose from robot trajectory that was the closest at time
           // stamp
 
-          auto scom_pose_associated_for_scom_robot = GetClosestPoseAtTime(
-              robots_trajectory_[utils::GetRobotPrefix(
-                  scom_robot.second.robot_name)],
-              rssi_scom_robot_list_updated_time_stamp_[scom_robot.first]);
+          auto scom_pose_associated_for_scom_robot =
+              GetClosestPoseAtTime(robots_trajectory_[utils::GetRobotPrefix(
+                                       scom_robot.second.robot_name)],
+                                   time_stamp);
+          // rssi_scom_robot_list_updated_time_stamp_[scom_robot.first]);
 
           bool appended = rssi_scom_dropped_list_[neighbour.neighbor_node_label]
                               .append_node(scom_pose_associated_for_scom_robot);
@@ -222,7 +224,7 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
     }
   }
 
-  raw_mutex_.unlock();
+  //  raw_mutex_.unlock();
   GenerateLoops();
   if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {
     PublishLoops();
@@ -240,7 +242,7 @@ void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
 // topic to listen : comm/silvus/raw
 void RssiLoopClosure::CommNodeRawCallback(
     const silvus_msgs::SilvusStreamscape::ConstPtr& msg) {
-  raw_mutex_.lock();
+  //  raw_mutex_.lock();
   // for every radio node that was sent to the base and it's in kind of range
   for (const auto& node : msg->nodes) {
     // if it's a robot radio (so it's scom-huskyx, scom-spotx, etc)
@@ -254,12 +256,13 @@ void RssiLoopClosure::CommNodeRawCallback(
         rssi_scom_robot_list_[node.node_label] = node;
         // keep timestamp when it happened because then you need to get
         // association from the pose_graph
-        rssi_scom_robot_list_updated_time_stamp_[node.node_label] =
-            msg->header.stamp;
+        //        rssi_scom_robot_list_updated_time_stamp_[node.node_label] =
+        //            msg->header.stamp;
       }
     }
   }
-  raw_mutex_.unlock();
+  Update(msg->header.stamp);
+  //  raw_mutex_.unlock();
 }
 //*************HELPER FUNCTIONS*******************/
 
@@ -293,7 +296,7 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
     t_closest = t2;
     b_is_end_case = true;
   } else if (iterAfter == robot_trajectory.end()) {
-    ROS_ERROR("Time past end of the range (GetClosestKeyAtTime)");
+    ROS_ERROR("Time past end of the range (GetClosestKeyAtTime).");
     pose_out = iterBefore->second;
     t_closest = t1;
     b_is_end_case = true;
@@ -354,9 +357,8 @@ void RssiLoopClosure::GenerateLoops() {
     EXIT_FAILURE;
   }
 
-  ROS_INFO_STREAM("Sending loop closures: " << candidates_.size());
-
   if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {
+    ROS_INFO_STREAM("Sending potential loop closures: " << candidates_.size());
     PublishLoops();
     ClearLoops();
   }

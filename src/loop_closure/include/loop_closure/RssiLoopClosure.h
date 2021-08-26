@@ -32,7 +32,6 @@ using AllNodesAroundComm = std::vector<NodesAroundCommOneFlyby>;
 
 struct RssiRawInfo {
   bool b_dropped{false};
-
   core_msgs::CommNodeInfo comm_node_info;
   pose_graph_msgs::PoseGraphNode pose_graph_node;
   AllNodesAroundComm all_nodes_around_comm;
@@ -40,20 +39,30 @@ struct RssiRawInfo {
   const uint close_keys_threshold_{20};
   bool append_node(const pose_graph_msgs::PoseGraphNode& node) {
     // if there are no nodes nearby, just append
-    ROS_INFO_STREAM("Appending node to " << all_nodes_around_comm.size());
-    if (is_node_exist(node) or is_node_same_as_comm(node) or
-        not has_node_pose(node)) {
-      if (is_node_exist(node))
-        ROS_INFO_STREAM("Node exist around comm");
-      if (is_node_same_as_comm(node))
-        ROS_INFO_STREAM("node is the same as comm");
-      if (not has_node_pose(node))
-        ROS_INFO_STREAM("Doesn't have node associated with");
+
+    if (not has_node_pose(node)) {
+      ROS_MAGENTA_STREAM("Doesn't have node associated with");
       return false;
     }
+
+    if (is_node_same_as_comm(node)) {
+      ROS_MAGENTA_STREAM(
+          "The node is the same as a comm node, so is rejected for flyby list");
+      return false;
+    }
+
+    if (is_node_exist(node)) {
+      ROS_MAGENTA_STREAM("The node is in the flyby list of the comm node.");
+      return false;
+    }
+
     if (all_nodes_around_comm.size() == 0) {
       NodesAroundCommOneFlyby one_flyby;
       one_flyby.emplace_back(PoseGraphNodeForLoopClosureStatus{false, node});
+      ROS_GREEN_STREAM("Appending to  comm: "
+                       << comm_node_info.hostname
+                       << " node stamp: " << node.header.stamp << " frame id: "
+                       << node.header.frame_id << " pose: " << node.pose);
       all_nodes_around_comm.emplace_back(one_flyby);
       return true;
     }
@@ -78,18 +87,24 @@ struct RssiRawInfo {
             .chr();
 
     if (not the_same_flyby or not the_same_robot) {
-      ROS_INFO_STREAM("NOT THE SAME FLYBY");
+      ROS_INFO_STREAM("Generating a new flyby");
       NodesAroundCommOneFlyby new_flyby;
+      ROS_GREEN_STREAM("Appending to  comm: "
+                       << comm_node_info.hostname
+                       << " node stamp: " << node.header.stamp << " frame id: "
+                       << node.header.frame_id << " pose: " << node.pose);
       new_flyby.emplace_back(PoseGraphNodeForLoopClosureStatus{false, node});
       all_nodes_around_comm.emplace_back(new_flyby);
       flyby_number++;
       return true;
     }
+    ROS_GREEN_STREAM("Appending to  comm: "
+                     << comm_node_info.hostname
+                     << " node stamp: " << node.header.stamp << " frame id: "
+                     << node.header.frame_id << " pose: " << node.pose);
     all_nodes_around_comm[flyby_number].emplace_back(
         PoseGraphNodeForLoopClosureStatus{false, node});
-    ROS_INFO_STREAM("NODES AROUND "
-                    << flyby_number << " "
-                    << all_nodes_around_comm[flyby_number].size());
+
     return true;
   }
   // if pose has key 0 it means that node haven't been found; if keys
@@ -101,6 +116,8 @@ struct RssiRawInfo {
       for (const auto& flyby_node : one_flyby_nodes) {
         {
           if (flyby_node.candidate_pose.key == node.key) {
+            ROS_INFO_STREAM("key: " << flyby_node.candidate_pose.key << " vs "
+                                    << flyby_node.candidate_pose.key);
             return true;
           }
         }
@@ -108,8 +125,8 @@ struct RssiRawInfo {
     return false;
   }
   bool is_node_same_as_comm(const pose_graph_msgs::PoseGraphNode& node) {
-    ROS_INFO_STREAM("key: " << node.key << " vs " << pose_graph_node.key);
     if (node.key == pose_graph_node.key) {
+      ROS_INFO_STREAM("key: " << node.key << " vs " << pose_graph_node.key);
       return true;
     }
     return false;
@@ -118,6 +135,7 @@ struct RssiRawInfo {
     if (node.key != 0) {
       return true;
     }
+    ROS_INFO_STREAM("Key 0: " << node.key);
     return false;
   }
 };
@@ -167,9 +185,10 @@ private:
 
   std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
       rssi_scom_robot_list_; // robot names <scom-husky4 , scom-spot2,...>
-  std::map<std::string, ros::Time>
-      rssi_scom_robot_list_updated_time_stamp_; // robot names <scom-husky4 ,
-                                                // scom-spot2,...>
+                             //  std::map<std::string, ros::Time>
+  //      rssi_scom_robot_list_updated_time_stamp_; // robot names <scom-husky4
+  //      ,
+  //                                                // scom-spot2,...>
   std::map<unsigned char, std::map<double, pose_graph_msgs::PoseGraphNode>>
       robots_trajectory_;
   //  int idx2{0}; // todo it's not needed at some point
@@ -202,7 +221,8 @@ private:
   //*************Timer*******************/
   ros::Timer uwb_update_timer_;
   double update_rate_;
-  void RssiTimerCallback(const ros::TimerEvent& event);
+  //  void RssiTimerCallback(const ros::TimerEvent& event);
+  void Update(const ros::Time& time_stamp);
 
   //*************HELPER FUNCTIONS*******************/
   void GenerateLoops();
