@@ -73,8 +73,8 @@ void RoundRobinLoopCandidateQueue::FindNextSet() {
     ROS_INFO_STREAM("Queue " << cur_queue.first << " has " << cur_queue.second.size() << " elements.");
   }
 
-
-  LoopCandidateQueue::PublishLoopCandidate(out_array);
+  if (out_array.candidates.size() > 0)
+    LoopCandidateQueue::PublishLoopCandidate(out_array);
 }
 
 void RoundRobinLoopCandidateQueue::OnNewLoopClosure() {
