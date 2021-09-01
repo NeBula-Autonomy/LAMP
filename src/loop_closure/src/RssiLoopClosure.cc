@@ -81,12 +81,8 @@ bool RssiLoopClosure::CreatePublishers(const ros::NodeHandle& n) {
 
   ros::NodeHandle nl(n);
   db_tracking = nl.advertise<std_msgs::Float64>("db_tracking", 10, false);
-  //  visualize_rssi_placement =
-  //      nl.advertise<visualization_msgs::Marker>("rssi", 1000, false);
   visualize_all_markers_ = nl.advertise<visualization_msgs::MarkerArray>(
       "rssi_markers", 1000, false);
-  //  highlight_pub_ =
-  //      nl.advertise<visualization_msgs::Marker>("potential_rssi", 10, false);
   return true;
 }
 bool RssiLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
@@ -102,11 +98,6 @@ bool RssiLoopClosure::RegisterCallbacks(const ros::NodeHandle& n) {
 
   comm_node_raw_ = nl.subscribe(
       "silvus_raw", 10000, &RssiLoopClosure::CommNodeRawCallback, this);
-
-  // Timers
-  //  uwb_update_timer_ =
-  //      nl.createTimer(update_rate_, &RssiLoopClosure::RssiTimerCallback,
-  //      this);
   return true;
 }
 
@@ -116,10 +107,30 @@ void RssiLoopClosure::KeyedPoseCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
   for (const auto& node_msg : graph_msg->nodes) {
     gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract
+    // if node has a robot prefix
     if (!utils::IsRobotPrefix(new_key.chr()))
       continue;
+    // append to the trajectory with time stamp
     robots_trajectory_[new_key.chr()].insert(
         {node_msg.header.stamp.toSec(), node_msg});
+    // if (Debug) // FOR DEBUGGING PURPOSES
+    //    {
+    //    if (keyed_poses_.count(new_key) > 0) {
+    //      continue; // Not a new node
+    //    }
+
+    //    gtsam::Pose3 new_pose;
+    //    gtsam::Point3 pose_translation(node_msg.pose.position.x,
+    //                                   node_msg.pose.position.y,
+    //                                   node_msg.pose.position.z);
+    //    gtsam::Rot3 pose_orientation(node_msg.pose.orientation.w,
+    //                                 node_msg.pose.orientation.x,
+    //                                 node_msg.pose.orientation.y,
+    //                                 node_msg.pose.orientation.z);
+    //    new_pose = gtsam::Pose3(pose_orientation, pose_translation);
+
+    //    keyed_poses_[new_key] = new_pose;
+    //  }
   }
 
   return;
@@ -132,8 +143,8 @@ bool RssiLoopClosure::is_robot_radio(const std::string& hostname) const {
   return false;
 }
 
-// callback that monitors the dropping status of the node and stores time stamp
-// of dropping topic: comm_node_manager/status_agg
+// callback that monitors the dropping status of the node and stores time
+// stamp of dropping topic: comm_node_manager/status_agg
 void RssiLoopClosure::CommNodeAggregatedStatusCallback(
     const core_msgs::CommNodeStatus::ConstPtr& msg) {
   // for all dropped radios
@@ -143,7 +154,8 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
     // -> don't take any action
     if (is_robot_radio(rssi_comm_dropped.hostname))
       continue;
-    // if the radio exists in the list it means it was added before => continue
+    // if the radio exists in the list it means it was added before =>
+    // continue
     if (rssi_scom_dropped_list_.find(rssi_comm_dropped.hostname) !=
         rssi_scom_dropped_list_.end()) {
       continue;
@@ -155,8 +167,8 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
                                       rssi_comm_dropped.robot_name)],
                                   rssi_comm_dropped.pose_graph_key);
 
-      // if key is 0 it means the pose hasn't been found therefore we try to add
-      // the radio to rssi_node_drooped_list_ in next callback
+      // if key is 0 it means the pose hasn't been found therefore we try to
+      // add the radio to rssi_node_drooped_list_ in next callback
       if (the_closest_pose.key == 0) {
         ROS_WARN_STREAM("Key 0, pose for the dropped node couldn't be assigned "
                         "yet. Trajectory size: "
@@ -165,7 +177,7 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
                                .size());
         continue;
       }
-
+      // here de facto we say "rssi was dropped from the robot"
       rssi_scom_dropped_list_[rssi_comm_dropped.hostname].comm_node_info =
           rssi_comm_dropped;
       rssi_scom_dropped_list_[rssi_comm_dropped.hostname].b_dropped = true;
@@ -179,33 +191,72 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
   }
 }
 
-// void RssiLoopClosure::RssiTimerCallback(const ros::TimerEvent& event) {
 void RssiLoopClosure::Update(const ros::Time& time_stamp) {
-  //  raw_mutex_.lock();
+  // for every scom-{robot} (radio on the robot) look for loop closure
   for (auto& scom_robot : rssi_scom_robot_list_) {
-    // iterate over radios that are connected to the scom robot radio
+    // iterate over radios that are connected to the scom-{robot} radio
     for (const auto& neighbour : scom_robot.second.neighbors) {
-      // if radio conntected to the robot radio was dropped (so it must exist
-      // in the rssi_node_dropped_list) -> true since haven't reached end
+      // if radio conntected to the scom-{robot} and was dropped (so it must
+      // exist in the rssi_node_dropped_list)
       if (rssi_scom_dropped_list_.find(neighbour.neighbor_node_label) !=
           rssi_scom_dropped_list_.end()) {
-        // calculate path loss in db and compare with the threshikd value from
-        // config
+        // calculate path loss in db and compare with the threshold value from
+        // config (default 60)
         float path_loss = CalculatePathLossForNeighbor(neighbour);
 
-        if (path_loss < measured_path_loss_dB_) {
+        // if (debug) //FOR DEBUGGING PURPOSES
+        //  {
+        //        auto pose_describe =
+        //            GetClosestPoseAtTime(robots_trajectory_[utils::GetRobotPrefix(
+        //                                     scom_robot.second.robot_name)],
+        //                                 time_stamp);
+
+        //        ROS_INFO_STREAM("LOWEST DISTANCE HANDLING");
+        //        if (lowest_distance_.find(pose_describe.key) ==
+        //            lowest_distance_.end()) {
+        //          lowest_distance_.insert({pose_describe.key, path_loss});
+        //        } else {
+        //          if (lowest_distance_.at(pose_describe.key) < path_loss) {
+        //            lowest_distance_.at(pose_describe.key) = path_loss;
+        //          }
+        //        }
+
+        //        auto color2 = getColorByIndex(8);
+        //        auto quick_pose_graph_node =
+        //        pose_graph_msgs::PoseGraphNode(); if
+        //        (keyed_poses_.find(pose_describe.key) == keyed_poses_.end())
+        //        {
+        //          continue;
+        //        } else {
+        //          auto gtsam_pose = keyed_poses_.at(pose_describe.key);
+        //          quick_pose_graph_node.pose.position.x = gtsam_pose.x();
+        //          quick_pose_graph_node.pose.position.y = gtsam_pose.y();
+        //          quick_pose_graph_node.pose.position.z = gtsam_pose.z();
+        //        }
+
+        //        VisualizeRobotNodesWithPotentialLoopClosure(
+        //            quick_pose_graph_node,
+        //            color2.r,
+        //            color2.g,
+        //            color2.b,
+        //            0.2,
+        //            std::to_string(lowest_distance_.at(pose_describe.key)));
+        //          }
+
+        // if path loss between scom-{robot} and scom-{number} is below
+        // threshold it means that the robot is nearby
+        if (path_loss < measured_path_loss_dB_ and path_loss > 0.0) {
           // get the pose from robot trajectory that was the closest at time
           // stamp
-
           auto scom_pose_associated_for_scom_robot =
               GetClosestPoseAtTime(robots_trajectory_[utils::GetRobotPrefix(
                                        scom_robot.second.robot_name)],
                                    time_stamp);
-          // rssi_scom_robot_list_updated_time_stamp_[scom_robot.first]);
-
+          // to the dropped nodes append robot pose associated with the signal
+          // (there are some conditions inside)
           bool appended = rssi_scom_dropped_list_[neighbour.neighbor_node_label]
                               .append_node(scom_pose_associated_for_scom_robot);
-
+          // visualization
           if (appended) {
             auto color = getColorByIndex(
                 rssi_scom_dropped_list_[neighbour.neighbor_node_label]
@@ -223,49 +274,38 @@ void RssiLoopClosure::Update(const ros::Time& time_stamp) {
       }
     }
   }
-
-  //  raw_mutex_.unlock();
   GenerateLoops();
-  if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {
-    PublishLoops();
-    ClearLoops();
-  }
 }
 
 // This callback reads raw msgs from silvus and updates radio information for
-// robots that we want them to do loop closures (in config you set it up) -
-// (rssi_scom_robot_list_).
-// Moreover it stores information when the radio information was updated
-// (rssi_scom_robot_list_updated_time_stamp_), basically update is needed for
-// gathering information about strength of the signal to calculate the
-// pseudorange
-// topic to listen : comm/silvus/raw
+// scom-{robot} that should look for loop closures (in config you set it up -
+// by default husky1..4 and spot1..4) topic to listen : comm/silvus/raw
 void RssiLoopClosure::CommNodeRawCallback(
     const silvus_msgs::SilvusStreamscape::ConstPtr& msg) {
-  //  raw_mutex_.lock();
   // for every radio node that was sent to the base and it's in kind of range
   for (const auto& node : msg->nodes) {
     // if it's a robot radio (so it's scom-huskyx, scom-spotx, etc)
     if (!node.robot_name.empty()) {
-      // if the loop closure from this robot we are interested in -> update
-      // (in config you can specify)
+      // if the loop closure from this robot list we are interested in ->
+      // update
       if (rssi_scom_robot_list_.count(node.node_label)) {
         // update scom-robot information regarding neighbours, etc...
         //        ROS_INFO_STREAM("Update communication msgs with" <<
         //        node.node_label);
         rssi_scom_robot_list_[node.node_label] = node;
-        // keep timestamp when it happened because then you need to get
-        // association from the pose_graph
-        //        rssi_scom_robot_list_updated_time_stamp_[node.node_label] =
-        //            msg->header.stamp;
       }
     }
   }
+  // calling for loop closure proposal generation from the given signals
+  auto t_start = std::chrono::high_resolution_clock::now();
   Update(msg->header.stamp);
-  //  raw_mutex_.unlock();
+  auto t_end = std::chrono::high_resolution_clock::now();
+  double elapsed_time_ms =
+      std::chrono::duration<double, std::milli>(t_end - t_start).count();
+  ROS_CYAN_STREAM("Update took " << elapsed_time_ms << " ms.");
 }
 //*************HELPER FUNCTIONS*******************/
-
+// it is adapted from pose_graph class
 pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
     const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
     const ros::Time& stamp,
@@ -346,15 +386,15 @@ void RssiLoopClosure::GenerateLoops() {
   // Loop closure off. No candidates generated
   if (!b_check_for_loop_closures_)
     return;
-
+  // by default "nodes_to_nodes"
   if (radio_loop_closure_method_ == "radio_to_nodes") {
     RadioToNodesLoopClosure();
   } else if (radio_loop_closure_method_ == "nodes_to_nodes") {
     NodesToNodesLoopClosures();
   } else {
-    ROS_ERROR_STREAM("Something is wrong in RSSI LOOP CLOSURE SINCE THE METHOD "
-                     "DOESN't EXIST!!!!");
-    EXIT_FAILURE;
+    // TODO: I prefer doing this with enum and switch statement
+    ROS_WARN_STREAM("GenerateLoops: Something is wrong in RSSI loop generation "
+                    "since the method doesn't exist. ");
   }
 
   if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {
@@ -365,6 +405,7 @@ void RssiLoopClosure::GenerateLoops() {
   return;
 }
 
+//[[deprecated]]
 void RssiLoopClosure::RadioToNodesLoopClosure() {
   for (auto& rssi_node_dropped : rssi_scom_dropped_list_) {
     for (size_t i = 0;
@@ -396,17 +437,26 @@ void RssiLoopClosure::RadioToNodesLoopClosure() {
   }
 }
 void RssiLoopClosure::NodesToNodesLoopClosures() {
+  // for every scom-{number} dropped
   for (auto& rssi_node_dropped : rssi_scom_dropped_list_) {
+    // for every flyby of the robot by the node (so basically the robot was
+    // close to the node)
     for (size_t flyby_i = 0;
          flyby_i < rssi_node_dropped.second.all_nodes_around_comm.size();
          flyby_i++) {
+      // if it's first flyby for the dropped node there is no sense to look
+      // for loop proposal
       if (flyby_i == 0)
         continue;
+      // for every node from the i-th flyby
       for (auto& flyby_node :
            rssi_node_dropped.second.all_nodes_around_comm[flyby_i]) {
+        // if it was sent as a loop proposal then it's fine
         if (flyby_node.was_sent == true) {
           continue;
         }
+        // do loop closure proposal to the comm node pose (scom-{number} pose
+        // that is associated with node from the robot's trajectory)
         pose_graph_msgs::LoopCandidate candidate_to_comm;
         candidate_to_comm.header.stamp = ros::Time::now();
         candidate_to_comm.key_from =
@@ -416,15 +466,23 @@ void RssiLoopClosure::NodesToNodesLoopClosures() {
             rssi_node_dropped.second.pose_graph_node.pose;
         candidate_to_comm.pose_to = flyby_node.candidate_pose.pose;
         candidate_to_comm.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
-        candidate_to_comm.value = 0.0;
+        candidate_to_comm.value =
+            0.0; // as far as i understand Yun's it's not neeeded right now
         candidates_.push_back(candidate_to_comm);
         flyby_node.was_sent = true;
 
+        // visualize loop proposal for node - to scom-{number} node associated
+        // with robot pose
         VisualizeEdgesForPotentialLoopClosure(
             rssi_node_dropped.second.pose_graph_node,
             flyby_node.candidate_pose);
 
+        // iterate over previous flybys to have more loop proposals to
+        // "previous nodes" from different robots or from different times for
+        // the same robot, flyby_j < flyby_i because we can't be more far away
+        // than we are
         for (size_t flyby_j = 0; flyby_j < flyby_i; flyby_j++) {
+          // for each node in each previous flyby generate loop proposal
           for (const auto& flyby_j_node :
                rssi_node_dropped.second.all_nodes_around_comm[flyby_j]) {
             pose_graph_msgs::LoopCandidate candidate;
@@ -436,8 +494,8 @@ void RssiLoopClosure::NodesToNodesLoopClosures() {
             candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
             candidate.value = 0.0;
             candidates_.push_back(candidate);
-            //            flyby_node.was_sent = true;
-
+            // visualize loop proposal for given node from the previous nodes
+            // that are nearby scom-{number}
             VisualizeEdgesForPotentialLoopClosure(flyby_j_node.candidate_pose,
                                                   flyby_node.candidate_pose);
           }
@@ -447,7 +505,7 @@ void RssiLoopClosure::NodesToNodesLoopClosures() {
   }
 }
 //*************MATH CALCULATION*******************/
-// Calculating pass loss for the given node
+// Calculating pass loss for the given node, formula by Jeff
 float RssiLoopClosure::CalculatePathLossForNeighbor(
     const silvus_msgs::SilvusStreamscapeNeighbor& neighbor) {
   float signal_power_sum = neighbor.my_txpw_actual_dBm -
@@ -589,4 +647,113 @@ bool RssiLoopClosure::VisualizeEdgesForPotentialLoopClosure(
 
   return true;
 }
+
+//*************RssiRawInfo*******************/
+// functions for handling appending node to drop nodes
+
+bool RssiRawInfo::append_node(const pose_graph_msgs::PoseGraphNode& node) {
+  // if the node has no pose associated then can't append
+  if (not has_node_pose(node)) {
+    ROS_MAGENTA_STREAM("Doesn't have node associated with");
+    return false;
+  }
+  // if node has the same as a comm node then it means that the robot doesn't
+  // move so let it go
+  if (is_node_same_as_comm(node)) {
+    ROS_MAGENTA_STREAM(
+        "The node is the same as a comm node, so is rejected for flyby list");
+    return false;
+  }
+  // if node has been appended before in one flyby then let it go
+  if (is_node_exist(node)) {
+    ROS_MAGENTA_STREAM("The node is in the flyby list of the comm node.");
+    return false;
+  }
+  // if there are no nodes nearby, just append
+  if (all_nodes_around_comm.size() == 0) {
+    // create first flyby container
+    NodesAroundCommOneFlyby one_flyby;
+    one_flyby.emplace_back(PoseGraphNodeForLoopClosureStatus{false, node});
+    ROS_GREEN_STREAM("Appending to  comm: "
+                     << comm_node_info.hostname
+                     << " node stamp: " << node.header.stamp << " frame id: "
+                     << node.header.frame_id << " pose: " << node.pose);
+    all_nodes_around_comm.emplace_back(one_flyby);
+    return true;
+  }
+
+  /* if there are nodes nearby,  check whether we are still in the same flyby(
+   * basically compare with last node of flyby and check if diff index number
+   * crossed threshold_ (20 by default)) */
+  auto node_a =
+      gtsam::Symbol(
+          all_nodes_around_comm[flyby_number].back().candidate_pose.key)
+          .index();
+  auto node_b = gtsam::Symbol(node.key).index();
+  std::uint64_t diff_index;
+  if (node_a > node_b) {
+    diff_index = node_a - node_b;
+  } else {
+    diff_index = node_b - node_a;
+  }
+  bool the_same_flyby = diff_index < close_keys_threshold_;
+  bool the_same_robot = gtsam::Symbol(node.key).chr() ==
+      gtsam::Symbol(all_nodes_around_comm[flyby_number][0].candidate_pose.key)
+          .chr();
+  // if it's not the same flyby (so we are above close_keys_threshold_) create a
+  // new flyby
+  // sometimes may happen that diff_index is below 20 with different
+  // trajectories, therefore we are also checking if it's the same robot, it not
+  // -> create a new flyby
+  if (not the_same_flyby or not the_same_robot) {
+    ROS_INFO_STREAM("Generating a new flyby");
+    NodesAroundCommOneFlyby new_flyby;
+    ROS_GREEN_STREAM("Appending to  comm: "
+                     << comm_node_info.hostname
+                     << " node stamp: " << node.header.stamp << " frame id: "
+                     << node.header.frame_id << " pose: " << node.pose);
+    new_flyby.emplace_back(PoseGraphNodeForLoopClosureStatus{false, node});
+    all_nodes_around_comm.emplace_back(new_flyby);
+    flyby_number++;
+    return true;
+  }
+  ROS_GREEN_STREAM("Appending to  comm: "
+                   << comm_node_info.hostname << " node stamp: "
+                   << node.header.stamp << " frame id: " << node.header.frame_id
+                   << " pose: " << node.pose);
+  all_nodes_around_comm[flyby_number].emplace_back(
+      PoseGraphNodeForLoopClosureStatus{false, node});
+
+  return true;
+}
+
+bool RssiRawInfo::is_node_exist(const pose_graph_msgs::PoseGraphNode& node) {
+  for (const auto& one_flyby_nodes : all_nodes_around_comm)
+    for (const auto& flyby_node : one_flyby_nodes) {
+      {
+        if (flyby_node.candidate_pose.key == node.key) {
+          ROS_INFO_STREAM("key: " << flyby_node.candidate_pose.key << " vs "
+                                  << flyby_node.candidate_pose.key);
+          return true;
+        }
+      }
+    }
+  return false;
+}
+bool RssiRawInfo::is_node_same_as_comm(
+    const pose_graph_msgs::PoseGraphNode& node) {
+  if (node.key == pose_graph_node.key) {
+    ROS_INFO_STREAM("key: " << node.key << " vs " << pose_graph_node.key);
+    return true;
+  }
+  return false;
+}
+bool RssiRawInfo::has_node_pose(const pose_graph_msgs::PoseGraphNode& node) {
+  if (node.key != 0) {
+    return true;
+  }
+  ROS_INFO_STREAM("Key 0: " << node.key);
+  return false;
+}
+
 } // namespace lamp_loop_closure

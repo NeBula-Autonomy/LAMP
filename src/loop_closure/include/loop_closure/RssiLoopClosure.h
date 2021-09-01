@@ -37,107 +37,14 @@ struct RssiRawInfo {
   AllNodesAroundComm all_nodes_around_comm;
   int flyby_number{0};
   const uint close_keys_threshold_{20};
-  bool append_node(const pose_graph_msgs::PoseGraphNode& node) {
-    // if there are no nodes nearby, just append
-
-    if (not has_node_pose(node)) {
-      ROS_MAGENTA_STREAM("Doesn't have node associated with");
-      return false;
-    }
-
-    if (is_node_same_as_comm(node)) {
-      ROS_MAGENTA_STREAM(
-          "The node is the same as a comm node, so is rejected for flyby list");
-      return false;
-    }
-
-    if (is_node_exist(node)) {
-      ROS_MAGENTA_STREAM("The node is in the flyby list of the comm node.");
-      return false;
-    }
-
-    if (all_nodes_around_comm.size() == 0) {
-      NodesAroundCommOneFlyby one_flyby;
-      one_flyby.emplace_back(PoseGraphNodeForLoopClosureStatus{false, node});
-      ROS_GREEN_STREAM("Appending to  comm: "
-                       << comm_node_info.hostname
-                       << " node stamp: " << node.header.stamp << " frame id: "
-                       << node.header.frame_id << " pose: " << node.pose);
-      all_nodes_around_comm.emplace_back(one_flyby);
-      return true;
-    }
-
-    /* if there are nodes nearby,  check whether we are still in the same flyby(
-     * basically compare with 0th node of flyby and check if diff index number
-     * crossed threshold_ (20 by default)) */
-    auto node_a =
-        gtsam::Symbol(
-            all_nodes_around_comm[flyby_number].back().candidate_pose.key)
-            .index();
-    auto node_b = gtsam::Symbol(node.key).index();
-    std::uint64_t diff_index;
-    if (node_a > node_b) {
-      diff_index = node_a - node_b;
-    } else {
-      diff_index = node_b - node_a;
-    }
-    bool the_same_flyby = diff_index < close_keys_threshold_;
-    bool the_same_robot = gtsam::Symbol(node.key).chr() ==
-        gtsam::Symbol(all_nodes_around_comm[flyby_number][0].candidate_pose.key)
-            .chr();
-
-    if (not the_same_flyby or not the_same_robot) {
-      ROS_INFO_STREAM("Generating a new flyby");
-      NodesAroundCommOneFlyby new_flyby;
-      ROS_GREEN_STREAM("Appending to  comm: "
-                       << comm_node_info.hostname
-                       << " node stamp: " << node.header.stamp << " frame id: "
-                       << node.header.frame_id << " pose: " << node.pose);
-      new_flyby.emplace_back(PoseGraphNodeForLoopClosureStatus{false, node});
-      all_nodes_around_comm.emplace_back(new_flyby);
-      flyby_number++;
-      return true;
-    }
-    ROS_GREEN_STREAM("Appending to  comm: "
-                     << comm_node_info.hostname
-                     << " node stamp: " << node.header.stamp << " frame id: "
-                     << node.header.frame_id << " pose: " << node.pose);
-    all_nodes_around_comm[flyby_number].emplace_back(
-        PoseGraphNodeForLoopClosureStatus{false, node});
-
-    return true;
-  }
+  bool append_node(const pose_graph_msgs::PoseGraphNode& node);
   // if pose has key 0 it means that node haven't been found; if keys
   // are the same means that the robot doesn't move and is in the same
   // place what the comm node has a pose, and check if the same pose was
   // included before - > if 3x yes then accept the pose for the signal
-  bool is_node_exist(const pose_graph_msgs::PoseGraphNode& node) {
-    for (const auto& one_flyby_nodes : all_nodes_around_comm)
-      for (const auto& flyby_node : one_flyby_nodes) {
-        {
-          if (flyby_node.candidate_pose.key == node.key) {
-            ROS_INFO_STREAM("key: " << flyby_node.candidate_pose.key << " vs "
-                                    << flyby_node.candidate_pose.key);
-            return true;
-          }
-        }
-      }
-    return false;
-  }
-  bool is_node_same_as_comm(const pose_graph_msgs::PoseGraphNode& node) {
-    if (node.key == pose_graph_node.key) {
-      ROS_INFO_STREAM("key: " << node.key << " vs " << pose_graph_node.key);
-      return true;
-    }
-    return false;
-  }
-  bool has_node_pose(const pose_graph_msgs::PoseGraphNode& node) {
-    if (node.key != 0) {
-      return true;
-    }
-    ROS_INFO_STREAM("Key 0: " << node.key);
-    return false;
-  }
+  bool is_node_exist(const pose_graph_msgs::PoseGraphNode& node);
+  bool is_node_same_as_comm(const pose_graph_msgs::PoseGraphNode& node);
+  bool has_node_pose(const pose_graph_msgs::PoseGraphNode& node);
 };
 
 struct LoopCandidateToPrepare {
@@ -186,12 +93,10 @@ private:
   std::map<std::string, silvus_msgs::SilvusStreamscapeNode>
       rssi_scom_robot_list_; // robot names <scom-husky4 , scom-spot2,...>
                              //  std::map<std::string, ros::Time>
-  //      rssi_scom_robot_list_updated_time_stamp_; // robot names <scom-husky4
-  //      ,
-  //                                                // scom-spot2,...>
+  std::map<gtsam::Key, gtsam::Pose3> keyed_poses_;
+  std::map<gtsam::Key, float> lowest_distance_;
   std::map<unsigned char, std::map<double, pose_graph_msgs::PoseGraphNode>>
       robots_trajectory_;
-  //  int idx2{0}; // todo it's not needed at some point
 
   // const
   const int ANTENAS_NUMBER_IN_ROBOT{2};
