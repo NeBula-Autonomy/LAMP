@@ -245,7 +245,7 @@ void RssiLoopClosure::Update(const ros::Time& time_stamp) {
 
         // if path loss between scom-{robot} and scom-{number} is below
         // threshold it means that the robot is nearby
-        if (path_loss < measured_path_loss_dB_ and path_loss > 0.0) {
+        if (path_loss < measured_path_loss_dB_ and path_loss > 0.0f) {
           // get the pose from robot trajectory that was the closest at time
           // stamp
           auto scom_pose_associated_for_scom_robot =
@@ -424,7 +424,7 @@ void RssiLoopClosure::RadioToNodesLoopClosure() {
         candidate.key_to = flyby_node.candidate_pose.key;
         candidate.pose_from = rssi_node_dropped.second.pose_graph_node.pose;
         candidate.pose_to = flyby_node.candidate_pose.pose;
-        candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
+        candidate.type = pose_graph_msgs::LoopCandidate::MANUAL;
         candidate.value = 0.0;
         candidates_.push_back(candidate);
         flyby_node.was_sent = true;
@@ -465,7 +465,7 @@ void RssiLoopClosure::NodesToNodesLoopClosures() {
         candidate_to_comm.pose_from =
             rssi_node_dropped.second.pose_graph_node.pose;
         candidate_to_comm.pose_to = flyby_node.candidate_pose.pose;
-        candidate_to_comm.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
+        candidate_to_comm.type = pose_graph_msgs::LoopCandidate::MANUAL;
         candidate_to_comm.value =
             0.0; // as far as i understand Yun's it's not neeeded right now
         candidates_.push_back(candidate_to_comm);
@@ -491,7 +491,7 @@ void RssiLoopClosure::NodesToNodesLoopClosures() {
             candidate.key_to = flyby_node.candidate_pose.key;
             candidate.pose_from = flyby_j_node.candidate_pose.pose;
             candidate.pose_to = flyby_node.candidate_pose.pose;
-            candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
+            candidate.type = pose_graph_msgs::LoopCandidate::MANUAL;
             candidate.value = 0.0;
             candidates_.push_back(candidate);
             // visualize loop proposal for given node from the previous nodes
