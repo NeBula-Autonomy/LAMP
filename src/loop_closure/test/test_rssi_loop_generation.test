@@ -1,0 +1,7 @@
+<launch>
+  <test test-name="test_loop_generation"
+        pkg="loop_closure"
+        type="test_rssi_loop_generation"
+        time-limit="300.0"
+        ns="base1"/>
+</launch>

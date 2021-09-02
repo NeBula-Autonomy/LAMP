@@ -29,6 +29,7 @@ find_package(catkin REQUIRED COMPONENTS
   parameter_utils
   sensor_msgs
   pcl_ros
+  pose_graph_msgs
   utils
 )
 
@@ -47,21 +48,29 @@ catkin_package(
     Boost
 )
 
+find_package(GTSAM REQUIRED)
+if (NOT GTSAM_FOUND)
+  message(FATAL_ERROR "This program requires the GTSAM library.")
+endif(NOT GTSAM_FOUND)
+
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
+  ${GTSAM_INCLUDE_DIR}
 )
 
 link_directories(
   ${catkin_LIBRARY_DIRS}
   ${PCL_LIBRARY_DIRS}
+  ${GTSAM_LIBRARY_DIRS}
 )
 
 add_library(${PROJECT_NAME} src/PointCloudVisualizer.cc)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
+  gtsam
 )
 
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc)
@@ -73,6 +82,7 @@ target_link_libraries(${PROJECT_NAME}_node
 
 # Add Gtest for the package
 if(CATKIN_ENABLE_TESTING)
-  catkin_add_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.cpp)
+  find_package(rostest REQUIRED)
+  add_rostest_gtest(test_${PROJECT_NAME} test/test_${PROJECT_NAME}.test  test/test_${PROJECT_NAME}.cpp)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})  
 endif(CATKIN_ENABLE_TESTING)

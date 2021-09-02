@@ -165,7 +165,7 @@ void LampBase::MergeOptimizedGraph(
   // }
 
   if (b_repub_values_after_optimization_) {
-    ROS_INFO("Republishing all values on incremental pose graph");
+    // ROS_INFO("Republishing all values on incremental pose graph");
     pose_graph_.AddAllValuesToNew();
   }
 }
@@ -259,8 +259,8 @@ bool LampBase::CombineKeyedScansWorld(PointCloud* points) {
     // Append the world-frame point cloud to the output.
     *points += *scan_world;
   }
-  ROS_INFO_STREAM("Points size is: " << points->points.size()
-                                     << ", in CombineKeyedScansWorld");
+  ROS_DEBUG_STREAM("Points size is: " << points->points.size()
+                                      << ", in CombineKeyedScansWorld");
   return true;
 }
 
@@ -346,9 +346,9 @@ bool LampBase::PublishPoseGraph(bool b_publish_incremental) {
     // - no want to make sure it is published
 
     if (g_inc->nodes.size() > 0 || g_inc->edges.size() > 0) {
-      ROS_INFO_STREAM("Publishing incremental graph with "
-                      << g_inc->nodes.size() << " nodes and "
-                      << g_inc->edges.size() << " edges");
+      ROS_DEBUG_STREAM("Publishing incremental graph with "
+                       << g_inc->nodes.size() << " nodes and "
+                       << g_inc->edges.size() << " edges");
 
       // Publish
       pose_graph_incremental_pub_.publish(*g_inc);
@@ -366,9 +366,9 @@ bool LampBase::PublishPoseGraph(bool b_publish_incremental) {
 
   // Publish
   pose_graph_pub_.publish(*g_full);
-  ROS_INFO_STREAM("Publishing full graph with "
-                  << g_full->nodes.size() << " nodes and "
-                  << g_full->edges.size() << " edges");
+  ROS_DEBUG_STREAM("Publishing full graph with "
+                   << g_full->nodes.size() << " nodes and "
+                   << g_full->edges.size() << " edges");
 
   return true;
 }
@@ -466,7 +466,7 @@ void LampBase::PublishAllKeyedScans() {
     return;
   }
 
-  ROS_INFO("Publishing All Keyed Scans");
+  // ROS_INFO("Publishing All Keyed Scans");
   pose_graph_msgs::KeyedScan keyed_scan_msg;
 
   for (auto it = pose_graph_.keyed_scans.begin();

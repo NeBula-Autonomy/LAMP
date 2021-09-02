@@ -26,7 +26,7 @@ struct ArtifactInfo {
   artifact_msgs::Artifact
       msg; // All fields in the artifact message that we need
   ArtifactInfo(std::string art_id = "")
-    : id(art_id), num_updates(0), global_position(gtsam::Point3()) {}
+    : id(art_id), num_updates(0), global_position(gtsam::Point3(0, 0, 0)) {}
 };
 
 struct ArtifactGroundTruth {
@@ -34,7 +34,10 @@ struct ArtifactGroundTruth {
   std::string type;                       // backpack, drill, etc.
   gtsam::Point3 position;                 // Global pose of the artifact
 
-  ArtifactGroundTruth() : key(utils::GTSAM_ERROR_SYMBOL), type(""), position(gtsam::Point3()) {}
+  ArtifactGroundTruth()
+    : key(utils::GTSAM_ERROR_SYMBOL),
+      type(""),
+      position(gtsam::Point3(0, 0, 0)) {}
 
   ArtifactGroundTruth(std::string data) {
         // Used to split string around spaces. 

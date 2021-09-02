@@ -16,6 +16,14 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
+
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
@@ -58,11 +66,17 @@ link_directories(
   ${PCL_LIBRARY_DIRS}
 )
 
-add_library(${PROJECT_NAME} src/PointCloudMapper.cc src/PointCloudMultiThreadedMapper.cc src/SimplePointCloudMapper.cc)
+add_library(${PROJECT_NAME} src/PointCloudMapper.cc
+                            src/PointCloudMultiThreadedMapper.cc
+                            src/SimplePointCloudMapper.cc
+                            src/PointCloudIkdTreeMapper.cc
+                            src/ikd_tree/ikd_Tree.cpp
+                            )
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   gtsam
+  OpenMP::OpenMP_CXX
 )
 
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cc)

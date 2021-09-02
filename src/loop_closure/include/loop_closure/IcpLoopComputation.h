@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "ThreadPool.h"
 #include "loop_closure/PointCloudUtils.h"
 #include <geometry_utils/GeometryUtils.h>
 #include <gtsam/geometry/Pose3.h>
@@ -13,8 +14,8 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
+#include <unordered_map>
 #include <utils/CommonStructs.h>
-#include "ThreadPool.h"
 
 #include "loop_closure/LoopComputation.h"
 
@@ -52,6 +53,8 @@ public:
 
   bool PerformAlignment(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
+                        const gtsam::Pose3& pose1,
+                        const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance,
                         double* fitness_score,
@@ -64,8 +67,7 @@ public:
 
   void GetTeaserInitialAlignment(PointCloud::ConstPtr source,
                                  PointCloud::ConstPtr target,
-                                 Eigen::Matrix4f* tf_out,
-                                 int& n_inliers);
+                                 Eigen::Matrix4f* tf_out);
 
   bool
   ComputeICPCovariancePointPlane(const PointCloud::ConstPtr& query_cloud,
@@ -90,8 +92,8 @@ protected:
   ros::Timer update_timer_;
 
   // Store keyed scans
-  std::map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
-  std::map<gtsam::Key, gtsam::Pose3> keyed_poses_;
+  std::unordered_map<gtsam::Key, PointCloudConstPtr> keyed_scans_;
+  std::unordered_map<gtsam::Key, gtsam::Pose3> keyed_poses_;
 
   double max_tolerable_fitness_;
   double icp_tf_epsilon_;
@@ -118,6 +120,9 @@ protected:
   double TEASER_FPFH_normals_radius_;
   double TEASER_FPFH_features_radius_;
 
+  int teaser_count_ = 0;
+  int odom_count_ = 0;
+
   utils::HarrisParams harris_params_;
 
   double laser_lc_rot_sigma_;
@@ -131,7 +136,8 @@ protected:
     ODOMETRY,
     ODOM_ROTATION,
     FEATURES,
-    TEASERPP
+    TEASERPP,
+    CANDIDATE
   };
 
   enum class IcpCovarianceMethod { POINT2POINT, POINT2PLANE };

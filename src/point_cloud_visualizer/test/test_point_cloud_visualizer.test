@@ -1,0 +1,6 @@
+<launch>
+  <test test-name="test_point_cloud_visualizer"
+        pkg="point_cloud_visualizer"
+        type="test_point_cloud_visualizer"
+        time-limit="300.0"/>
+</launch>

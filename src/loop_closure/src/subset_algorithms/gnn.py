@@ -71,18 +71,24 @@ class BinomialCEM(GNNBasedLoopClosureBatchSelector):
         # Compute fitness
         graphs_to_run = []
         for cur_sample in cur_samples:
-            appended_pose_graph_edges = deepcopy(self.current_pose_graph_edges)
-            appended_pose_graph_edge_attrs = deepcopy(self.current_pose_graph_edge_atrrs)
+            edges = []
+            edge_attrs = []
             included = 0
             for edge_idx,include in enumerate(cur_sample):
                 if include == 1:
-                    appended_pose_graph_edges.append(self.possible_new_edges[edge_idx])
-                    appended_pose_graph_edge_attrs.append(self.possible_edge_attrs[edge_idx])
-                    included += 1
+                    try:
+                        edges.append(self.possible_new_edges[edge_idx])
+                        edge_attrs.append(self.possible_edge_attrs[edge_idx])
+                        included += 1
+                    except IndexError:
+                        self.log_debug("IndexError")
+            edges = np.concatenate((self.current_pose_graph_edges,np.array(edges)))
+            edge_attrs = np.concatenate((self.current_pose_graph_edge_atrrs,np.array(edge_attrs)))
             assert included == self.number_of_loop_closures_to_select, "Included {}, Required {}".format(included,self.number_of_loop_closures_to_select)
+
             graphs_to_run.append(
-                constuct_pytorch_geometric_graph(self.current_pose_graph_nodes, appended_pose_graph_edges,
-                                                 appended_pose_graph_edge_attrs))
+                constuct_pytorch_geometric_graph(self.current_pose_graph_nodes, edges,
+                                                 edge_attrs))
         errors = run_model_on_list_of_graphs(self.gnn_model, graphs_to_run)
         new_probabilities = np.zeros(len(self.possible_new_edges))
 
@@ -423,14 +429,20 @@ class DiscretePSO(GNNBasedLoopClosureBatchSelector):
         assert len(samples.shape) == 2, "Samples should be 2d but it's {}, samples: {}".format(samples.shape,samples)
         graphs_to_run = []
         for cur_sample in samples:
-            appended_pose_graph_edges = deepcopy(self.current_pose_graph_edges)
-            appended_pose_graph_edge_attrs = deepcopy(self.current_pose_graph_edge_atrrs)
+            edges = []
+            edge_attrs = []
             for edge_idx in cur_sample:
-                    appended_pose_graph_edges.append(self.possible_new_edges[edge_idx])
-                    appended_pose_graph_edge_attrs.append(self.possible_edge_attrs[edge_idx])
+                try:
+                    edges.append(self.possible_new_edges[edge_idx])
+                    edge_attrs.append(self.possible_edge_attrs[edge_idx])
+                except IndexError:
+                    self.log_debug("IndexError")
+            edges = np.concatenate((self.current_pose_graph_edges,np.array(edges)))
+            edge_attrs = np.concatenate((self.current_pose_graph_edge_atrrs,np.array(edge_attrs)))
+
             graphs_to_run.append(
-                constuct_pytorch_geometric_graph(self.current_pose_graph_nodes, appended_pose_graph_edges,
-                                                 appended_pose_graph_edge_attrs))
+                constuct_pytorch_geometric_graph(self.current_pose_graph_nodes, edges,
+                                                 edge_attrs))
         return run_model_on_list_of_graphs(self.gnn_model, graphs_to_run)
 
     def calculate_new_best(self,particle, sample, scaling_factor):

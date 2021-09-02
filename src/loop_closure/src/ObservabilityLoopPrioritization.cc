@@ -99,7 +99,7 @@ bool ObservabilityLoopPrioritization::RegisterCallbacks(
       this);
 
   update_timer_ =
-      nl.createTimer(ros::Duration(0.1),
+      nl.createTimer(ros::Duration(1.0),
                      &ObservabilityLoopPrioritization::ProcessTimerCallback,
                      this);
 
@@ -117,24 +117,30 @@ void ObservabilityLoopPrioritization::ProcessTimerCallback(
 }
 
 void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
-  if (keyed_observability_.size() == 0)
+  if (keyed_observability_.size() == 0) {
+    ROS_WARN("No keyed scans received yet. Not populating priority queue.");
     return;
+  }
   size_t n = candidate_queue_.size();
+  ROS_INFO("ObservabilityLoopPrioritization: Reveived %d loop candidates", n);
+  size_t added = 0;
   for (size_t i = 0; i < n; i++) {
     auto candidate = candidate_queue_.front();
-    candidate_queue_.pop();
 
     // Check if keyed scans exist
     if (keyed_observability_.count(candidate.key_from) == 0 ||
         keyed_observability_.count(candidate.key_to) == 0) {
-      ROS_WARN("Keyed scans do not exist and observability score not yet "
-               "calculated. ");
+      ROS_DEBUG("Keyed scans do not exist and observability score not yet "
+                "calculated. ");
       if ((ros::Time::now() - candidate.header.stamp).toSec() <
-          keyed_scans_max_delay_)
+          keyed_scans_max_delay_) {
         candidate_queue_.push(candidate);
+        candidate_queue_.pop();
+      }
       continue;
     }
 
+    candidate_queue_.pop();
     double min_obs_from = keyed_observability_[candidate.key_from];
     if (min_obs_from < min_observability_)
       continue;
@@ -146,6 +152,7 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     double score = min_obs_from + min_obs_to;
 
     candidate.value = score;
+    priority_queue_mutex_.lock();
     std::deque<double>::iterator score_it = observability_score_.begin();
     std::deque<pose_graph_msgs::LoopCandidate>::iterator candidate_it =
         priority_queue_.begin();
@@ -157,11 +164,13 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
         break;
       }
     }
-    priority_queue_mutex_.lock();
     observability_score_.insert(score_it, score);
     priority_queue_.insert(candidate_it, candidate);
+    added++;
     priority_queue_mutex_.unlock();
   }
+  ROS_INFO("ObservabilityLoopPrioritization: Added %d loop candidates to queue",
+           added);
   return;
 }
 
@@ -177,8 +186,6 @@ void ObservabilityLoopPrioritization::PrunePriorityQueue() {
       temp_priority_queue.push_back(priority_queue_[i]);
     }
   }
-  observability_score_.clear();
-  priority_queue_.clear();
   observability_score_ = temp_observability_score;
   priority_queue_ = temp_priority_queue;
   priority_queue_mutex_.unlock();
@@ -213,7 +220,7 @@ ObservabilityLoopPrioritization::GetBestCandidates() {
 void ObservabilityLoopPrioritization::KeyedScanCallback(
     const pose_graph_msgs::KeyedScan::ConstPtr& scan_msg) {
   const gtsam::Key key = scan_msg->key;
-  if (keyed_observability_.count(key) == 0) {
+  if (keyed_observability_.count(key) > 0) {
     ROS_DEBUG_STREAM("KeyedScanCallback: Key "
                      << gtsam::DefaultKeyFormatter(key)
                      << " already processed. Not adding.");

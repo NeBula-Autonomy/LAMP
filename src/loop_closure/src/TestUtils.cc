@@ -578,6 +578,8 @@ void OutputTestSummary(
   std::unordered_map<std::string, double> max_rot_error;
   std::vector<std::pair<double, double>> fit_to_trans_err;
   std::vector<std::pair<double, double>> fit_to_rot_err;
+  std::vector<std::pair<double, double>> fit_to_trans_err_fp;
+  std::vector<std::pair<double, double>> fit_to_rot_err_fp;
 
   for (const auto& enl : expected_num_lc) {
     num_lc[enl.first] = 0;
@@ -626,6 +628,24 @@ void OutputTestSummary(
   for (const auto& edge : false_results) {
     std::string label = data.labels_.at(edge.key_from);
     num_false_lc[label]++;
+
+    gtsam::Pose3 transform = utils::ToGtsam(edge.pose);
+    gtsam::Pose3 gt_transform =
+        data.gt_keyed_poses_.at(edge.key_from)
+            .between(data.gt_keyed_poses_.at(edge.key_to));
+    gtsam::Pose3 error_pose3 = transform.between(gt_transform);
+    gtsam::Vector error_log = gtsam::Pose3::Logmap(error_pose3);
+
+    double trans_error =
+        std::sqrt(error_log.tail(3).transpose() * error_log.tail(3));
+    double rot_error =
+        std::sqrt(error_log.head(3).transpose() * error_log.head(3));
+
+    // Track fitness and false positives
+    fit_to_trans_err_fp.push_back(
+        std::pair<double, double>{edge.range_error, trans_error});
+    fit_to_rot_err_fp.push_back(
+        std::pair<double, double>{edge.range_error, rot_error});
   }
 
   // Write to file
@@ -672,6 +692,22 @@ void OutputTestSummary(
              << "," << fit_to_rot_err[i].second * 180 / 3.1416 << "\n";
   }
   statfile.close();
+
+  // Write fitness score and error to file for the false positives
+  std::ofstream fp_statfile;
+  std::string fp_stat_file = output_dir + "/" + test_name + "_fp_fitness.csv";
+  fp_statfile.open(fp_stat_file);
+  if (!fp_statfile.is_open()) {
+    std::cout << "Unable to open output false positive fitness error file. \n";
+    return;
+  }
+  fp_statfile << "fitness,trans-error(m),rot-error(deg)\n";
+  for (size_t i = 0; i < fit_to_trans_err_fp.size(); i++) {
+    fp_statfile << fit_to_trans_err_fp[i].first << ","
+                << fit_to_trans_err_fp[i].second << ","
+                << fit_to_rot_err_fp[i].second * 180 / 3.1416 << "\n";
+  }
+  fp_statfile.close();
 }
 
 } // namespace test_utils

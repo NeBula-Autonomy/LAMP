@@ -24,6 +24,8 @@ class TestLoopComputation : public ::testing::Test {
     system(
         "rosparam load $(rospack find "
         "loop_closure)/config/laser_parameters.yaml");
+
+    system("rosparam set b_use_fixed_covariances false");
   }
   ~TestLoopComputation() {}
 
@@ -40,11 +42,13 @@ class TestLoopComputation : public ::testing::Test {
 
   bool performAlignment(const gtsam::Symbol& key1,
                         const gtsam::Symbol& key2,
+                        const gtsam::Pose3& pose1,
+                        const gtsam::Pose3& pose2,
                         geometry_utils::Transform3* delta,
                         gtsam::Matrix66* covariance) {
     double fitness_score;
     return icp_compute_.PerformAlignment(
-        key1, key2, delta, covariance, &fitness_score);
+        key1, key2, pose1, pose2, delta, covariance, &fitness_score);
   }
 
   void getSacInitialAlignment(PointCloud::ConstPtr source,
@@ -57,9 +61,8 @@ class TestLoopComputation : public ::testing::Test {
 
   void getTeaserInitialAlignment(PointCloud::ConstPtr source,
                                  PointCloud::ConstPtr target,
-                                 Eigen::Matrix4f* tf_out,
-                                 int& n_inliers) {
-    icp_compute_.GetTeaserInitialAlignment(source, target, tf_out, n_inliers);
+                                 Eigen::Matrix4f* tf_out) {
+    icp_compute_.GetTeaserInitialAlignment(source, target, tf_out);
   }
 
   IcpLoopComputation icp_compute_;
@@ -125,7 +128,6 @@ TEST_F(TestLoopComputation, PerformAlignment) {
 
   // Add some keyed scans
   PointCloud::Ptr corner(new PointCloud);
-  PointCloud::Ptr box(new PointCloud);
   corner = GenerateCorner();
   // Perturb a bit
   PointCloud::Ptr corner_moved(new PointCloud);
@@ -136,26 +138,33 @@ TEST_F(TestLoopComputation, PerformAlignment) {
 
   pose_graph_msgs::KeyedScan::Ptr ks0(new pose_graph_msgs::KeyedScan);
   *ks0 = PointCloudToKeyedScan(corner, gtsam::Symbol('a', 0));
-  pose_graph_msgs::KeyedScan::Ptr ks1(new pose_graph_msgs::KeyedScan);
-  *ks1 = PointCloudToKeyedScan(corner_moved, gtsam::Symbol('a', 1));
+  pose_graph_msgs::KeyedScan::Ptr ks100(new pose_graph_msgs::KeyedScan);
+  *ks100 = PointCloudToKeyedScan(corner_moved, gtsam::Symbol('a', 100));
+  // Note we cannot use consecutive scans to test since we are accumulating
+  // scans
 
   keyedScanCallback(ks0);
-  keyedScanCallback(ks1);
+  keyedScanCallback(ks100);
 
   pose_graph_msgs::PoseGraph::Ptr kp(new pose_graph_msgs::PoseGraph);
-  pose_graph_msgs::PoseGraphNode kp0, kp1;
+  pose_graph_msgs::PoseGraphNode kp0, kp100;
   kp0.key = gtsam::Symbol('a', 0);
-  kp1.key = gtsam::Symbol('a', 1);
-  kp0.pose.position.z = 0.99;
+  kp100.key = gtsam::Symbol('a', 100);
+  kp0.pose.position.z = 0.1; // some perturbation
+  kp100.pose.position.x = -0.9;
+  kp100.pose.position.y = 0.1;
   kp->nodes.push_back(kp0);
-  kp->nodes.push_back(kp1);
+  kp->nodes.push_back(kp100);
+
+  gtsam::Pose3 p0 = utils::ToGtsam(kp0.pose);
+  gtsam::Pose3 p100 = utils::ToGtsam(kp100.pose);
 
   keyedPoseCallback(kp);
 
   geometry_utils::Transform3 tf, tf_exp;
   gtsam::Matrix66 covar;
   EXPECT_TRUE(performAlignment(
-      gtsam::Symbol('a', 1), gtsam::Symbol('a', 0), &tf, &covar));
+      gtsam::Symbol('a', 100), gtsam::Symbol('a', 0), p100, p0, &tf, &covar));
 
   tf_exp.translation = geometry_utils::Vec3(T(0, 3), T(1, 3), T(2, 3));
   tf_exp.rotation = geometry_utils::Rot3(T(0, 0),

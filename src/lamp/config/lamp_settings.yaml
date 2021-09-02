@@ -2,14 +2,11 @@
 # Higher level settings for LAMP for development purposes
 #######################################
 
-# Use fixed covariances, rather than computed
-b_use_fixed_covariances: false
-
 # Flag for whether or not to do loop closure with the artifacts
 use_artifact_loop_closure: false
 
 # Flag for whether of not to use uwb data for range-based loop closure
-b_use_uwb: true
+b_use_uwb: false
 
 # Flag for whether of not to use imu data for roll and pitch constraints
 b_add_imu_factors: true
@@ -44,4 +41,4 @@ base:
 
   # if true, optimize every time a new artifact edge is received
   # if false, currently won't optimize for artifact loop closures
-  b_optimize_on_artifacts: true
+  b_optimize_on_artifacts: false

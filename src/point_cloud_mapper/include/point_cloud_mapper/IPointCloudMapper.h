@@ -11,7 +11,8 @@
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 
-#include <utils/CommonStructs.h>
+//#include <utils/CommonStructs.h>
+#include <utils/PointCloudTypes.h>
 class IPointCloudMapper {
 public:
   using Ptr = std::shared_ptr<IPointCloudMapper>;
@@ -46,8 +47,20 @@ public:
     return map_data_;
   }
 
+  void SetupNumberThreads(int no_threads) {
+    number_threads_ = no_threads;
+    ROS_INFO_STREAM(
+        "Setting up number threads for local mapping: " << number_threads_);
+  }
+
   virtual void Refresh(const geometry_utils::Transform3& current_pose) = 0;
+
+  void UpdateCurrentPose(const geometry_utils::Transform3& current_pose) {
+    current_pose_estimate_ = current_pose;
+  }
 
 protected:
   PointCloud::Ptr map_data_;
+  geometry_utils::Transform3 current_pose_estimate_;
+  int number_threads_{1};
 };
