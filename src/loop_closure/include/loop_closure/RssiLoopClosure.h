@@ -6,7 +6,7 @@
 #include <gtsam/inference/Symbol.h>
 #include <omp.h>
 #include <parameter_utils/ParameterUtils.h>
-#include <rviz_visual_tools/rviz_visual_tools.h>
+
 #include <silvus_msgs/SilvusStreamscape.h>
 #include <std_msgs/Float64.h>
 #include <string>
