@@ -5,7 +5,7 @@
   <arg name="b_use_hero" default="false"/>
 
   <!-- List of robots with hovermap mounted -->
-  <arg name="hovermap_robots" value="spot3 spot4" />
+  <arg name="hovermap_robots" value="spot3 spot4 husky2" />
   <arg name="b_use_hovermap" value="$(eval robot_namespace in hovermap_robots)" />
 
   <!-- Select odometry source -->
@@ -28,6 +28,10 @@
 
       <!-- Load graph -->
       <param name="load_graph" value="$(arg load_pose_graph_file)"/>
+
+      <!-- Use fixed covariances, rather than computed -->
+      <param if="$(eval b_use_hovermap)" name="b_use_fixed_covariances" value="true" />
+      <param unless="$(eval b_use_hovermap)" name="b_use_fixed_covariances" value="false" />
 
       <!-- Topics -->
       <remap from="~pcld" to="locus_input" unless="$(arg b_use_hovermap)"/>

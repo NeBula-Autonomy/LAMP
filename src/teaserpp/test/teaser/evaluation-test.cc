@@ -46,4 +46,3 @@ TEST(EvaluationTest, Simple) {
   auto err = evaluator.computeErrorMetric(T.topLeftCorner(3, 3), T.topRightCorner(3, 1));
   EXPECT_NEAR(err, 0, 1e-6);
 }
-

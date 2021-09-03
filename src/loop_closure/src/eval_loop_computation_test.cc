@@ -161,7 +161,8 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
   auto start = std::chrono::high_resolution_clock::now();
-//  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  //  std::chrono::steady_clock::time_point begin =
+  //  std::chrono::steady_clock::now();
   // Add the keyed scans and keyed poses
   evaluate.AddKeyedScans(test_data.keyed_scans_);
   if (use_gt_odom) {
@@ -193,12 +194,15 @@ int main(int argc, char** argv) {
 
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start)/1000;
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start) /
+      1000;
 
-  // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  // double duration = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000000.0;
+  // std::chrono::steady_clock::time_point end =
+  // std::chrono::steady_clock::now(); double duration =
+  // std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
+  // / 1000000.0;
 
-  ROS_INFO ("%d seconds to omplete lc analysis: ", duration);
+  ROS_INFO("%d seconds to omplete lc analysis: ", duration);
   ROS_INFO("Detected %d loop closures.", results.size());
   ROS_INFO("Detected %d incorrect loop closures.", false_results.size());
 

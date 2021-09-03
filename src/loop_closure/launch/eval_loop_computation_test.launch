@@ -16,6 +16,7 @@
       <param name="output_dir"     value="$(arg output_dir)" />
       <param name="test_name"      value="$(arg test_name)" />
       <param name="use_gt_odom"    value="$(arg use_gt_odom)" />
+      <param name="b_use_fixed_covariances" value="true" />
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
       <rosparam file="$(find loop_closure)/config/laser_parameters.yaml" subst_value="true"/>     
       <rosparam file="$(find lamp)/config/precision_parameters.yaml" subst_value="true"/> 

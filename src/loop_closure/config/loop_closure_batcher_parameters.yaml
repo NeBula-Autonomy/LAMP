@@ -8,7 +8,7 @@ min_queue_size: 550
 #Minimum amount of seconds between sucessive outputs of the batcher
 min_processing_time_seconds: 0
 # Verbosity goes from 0, (Nothing), 1 (Only errors), 2 errors and info,  3 (debug info) (Default 2)
-verbose: 3
+verbose: 2
 cem:
   #Number of samples to sample from the posterior distribution per iteration
   samples: 100

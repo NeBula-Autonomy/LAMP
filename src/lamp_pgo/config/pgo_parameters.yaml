@@ -9,6 +9,9 @@ robot:
   # GNC confidence threshold 
   gnc_alpha: 0
 
+  # GNC bias odom
+  b_gnc_bias_odom: true
+
   # outlier rejection thresholds (distances)
   translation_check_threshold: 0.01 # 1 centimeter
   rotation_check_threshold: 0.005 # ~0.3 degrees
@@ -23,9 +26,12 @@ base:
   b_use_outlier_rejection: true
 
   # GNC confidence threshold 
-  gnc_alpha: 0.9999999999
+  gnc_alpha: 0.99
+
+  # GNC bias odom
+  b_gnc_bias_odom: true
 
   # outlier rejection thresholds (distances)
-  translation_check_threshold: 0.5 # 50 centimeters
-  rotation_check_threshold: 0.1 # ~6 degrees
+  translation_check_threshold: 10 # 1 m
+  rotation_check_threshold: 10 # 1 rad
   # TODO make these dynamic with the translation threshold for nodes
