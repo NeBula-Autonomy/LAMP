@@ -21,7 +21,7 @@
       <remap from="~rssi_aggregated_drop_status" to="comm_node_manager/status_agg"/>
       <remap from="~silvus_raw" to="comm/silvus/raw"/>
       <remap from="~pose_graph" to="lamp/pose_graph_incremental"/>
-      <remap from="~loop_candidates" to="lamp/loop_generation/loop_candidates" />
+      <remap from="~loop_candidates" to="lamp/prioritization/prioritized_loop_candidates" />
       <rosparam file="$(find loop_closure)/config/rssi_parameters.yaml" subst_value="true"/>
       <!-- Loop closure parameters  -->
       <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
