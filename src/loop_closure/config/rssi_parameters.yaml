@@ -7,7 +7,7 @@ robots_loop_closure: ["husky4", "husky1", "husky2", "husky3", "spot1", "spot2", 
 
 #method for radio_loop_closure
 ## radio_to_nodes
-radio_loop_closure_method: "radio_to_nodes"
+radio_loop_closure_method: "nodes_to_nodes"
 close_keys_threshold: 20
 
 
