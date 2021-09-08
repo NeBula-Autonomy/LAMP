@@ -1,0 +1,152 @@
+<launch>
+  <arg name="robot_namespace" default="base_station"/>
+  <arg name="sim" default="false"/>
+  <arg name="nodelet_manager" value="nodelet_manager_pc_viz"/>
+  <arg name="voxel_filter_size" value="2.5"/>
+
+
+  <group ns="$(arg robot_namespace)">
+    
+    <group ns="lamp">
+      <!-- Robots -->
+      <rosparam file="$(find lamp)/config/robot_names.yaml" subst_value="true"/>
+      <!-- Frames -->
+      <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>
+    </group>
+
+    <!-- Pose graph visualization -->
+    <node pkg="pose_graph_visualizer"
+          name="pose_graph_visualizer"
+          type="pose_graph_visualizer_node"
+          output="screen">
+      <!-- LAMP settings -->
+      <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>
+      <!-- Frames -->
+      <rosparam file="$(find lamp)/config/lamp_frames_base.yaml" subst_value="true"/>
+      <!-- Config - TODO move the proximity_threshold param elsewhere -->
+      <rosparam file="$(find pose_graph_visualizer)/config/visualizer_parameters.yaml" subst_value="true"/>
+      <!-- Robots -->
+      <rosparam file="$(find lamp)/config/robot_names.yaml" subst_value="true"/>
+
+      <!-- Topics -->
+      <remap from="~lamp/pose_graph" to="lamp_base/pose_graph"/>
+      <remap if="$(arg sim)" from="/husky1/artifact" to="/husky1/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/husky2/artifact" to="/husky2/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/husky3/artifact" to="/husky3/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/husky4/artifact" to="/husky4/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/spot1/artifact" to="/spot1/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/spot2/artifact" to="/spot2/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/spot3/artifact" to="/spot3/lamp/artifact_global"/>
+      <remap if="$(arg sim)" from="/spot4/artifact" to="/spot4/lamp/artifact_global"/>
+    </node>
+
+    <!-- Pose graph visualizer -->
+    <node pkg="point_cloud_visualizer"
+          name="point_cloud_visualizer"
+          type="point_cloud_visualizer_node"
+          output="screen">
+          <rosparam file="$(find point_cloud_visualizer)/config/parameters.yaml" subst_value="true"/>
+          <!-- Robots -->
+          <rosparam file="$(find lamp)/config/robot_names.yaml" subst_value="true"/>
+    </node>
+
+
+    <node pkg="nodelet"
+          type="nodelet"
+          name="$(arg nodelet_manager)"
+          args="manager"
+          respawn="false"/>
+
+    <node pkg="nodelet" type="nodelet" name="base_voxel_grid_h1" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+        <remap from="~input" to="point_cloud_visualizer/husky1/lamp/octree_map" />
+        <remap from="~output" to="point_cloud_visualizer/husky1/lamp/octree_map_filtered" />
+        <rosparam subst_value="true">
+            filter_field_name: z
+            filter_limit_min: -100
+            filter_limit_max: 100
+            leaf_size: $(arg voxel_filter_size)
+            output_frame: world
+        </rosparam>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="base_voxel_grid_h2" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+        <remap from="~input" to="point_cloud_visualizer/husky2/lamp/octree_map" />
+        <remap from="~output" to="point_cloud_visualizer/husky2/lamp/octree_map_filtered" />
+        <rosparam subst_value="true">
+            filter_field_name: z
+            filter_limit_min: -100
+            filter_limit_max: 100
+            leaf_size: $(arg voxel_filter_size)
+            output_frame: world
+        </rosparam>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="base_voxel_grid_h3" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+        <remap from="~input" to="point_cloud_visualizer/husky3/lamp/octree_map" />
+        <remap from="~output" to="point_cloud_visualizer/husky3/lamp/octree_map_filtered" />
+        <rosparam subst_value="true">
+            filter_field_name: z
+            filter_limit_min: -100
+            filter_limit_max: 100
+            leaf_size: $(arg voxel_filter_size)
+            output_frame: world
+        </rosparam>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="base_voxel_grid_h4" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+        <remap from="~input" to="point_cloud_visualizer/husky4/lamp/octree_map" />
+        <remap from="~output" to="point_cloud_visualizer/husky4/lamp/octree_map_filtered" />
+        <rosparam subst_value="true">
+            filter_field_name: z
+            filter_limit_min: -100
+            filter_limit_max: 100
+            leaf_size: $(arg voxel_filter_size)
+            output_frame: world
+        </rosparam>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="base_voxel_grid_s1" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+        <remap from="~input" to="point_cloud_visualizer/spot1/lamp/octree_map" />
+        <remap from="~output" to="point_cloud_visualizer/spot1/lamp/octree_map_filtered" />
+        <rosparam subst_value="true">
+            filter_field_name: z
+            filter_limit_min: -100
+            filter_limit_max: 100
+            leaf_size: $(arg voxel_filter_size)
+            output_frame: world
+        </rosparam>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="base_voxel_grid_s2" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+        <remap from="~input" to="point_cloud_visualizer/spot2/lamp/octree_map" />
+        <remap from="~output" to="point_cloud_visualizer/spot2/lamp/octree_map_filtered" />
+        <rosparam subst_value="true">
+            filter_field_name: z
+            filter_limit_min: -100
+            filter_limit_max: 100
+            leaf_size: $(arg voxel_filter_size)
+            output_frame: world
+        </rosparam>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="base_voxel_grid_s3" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+        <remap from="~input" to="point_cloud_visualizer/spot3/lamp/octree_map" />
+        <remap from="~output" to="point_cloud_visualizer/spot3/lamp/octree_map_filtered" />
+        <rosparam subst_value="true">
+            filter_field_name: z
+            filter_limit_min: -100
+            filter_limit_max: 100
+            leaf_size: $(arg voxel_filter_size)
+            output_frame: world
+        </rosparam>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="base_voxel_grid_s4" args="load pcl/VoxelGrid $(arg nodelet_manager)" output="screen" respawn="true">
+        <remap from="~input" to="point_cloud_visualizer/spot4/lamp/octree_map" />
+        <remap from="~output" to="point_cloud_visualizer/spot4/lamp/octree_map_filtered" />
+        <rosparam subst_value="true">
+            filter_field_name: z
+            filter_limit_min: -100
+            filter_limit_max: 100
+            leaf_size: $(arg voxel_filter_size)
+            output_frame: world
+        </rosparam>
+    </node>
+
+
+  </group>
+
+</launch>
