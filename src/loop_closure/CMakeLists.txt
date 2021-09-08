@@ -41,6 +41,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   silvus_msgs
   multithreaded_gicp
+
 )
 
 find_package(OpenMP)

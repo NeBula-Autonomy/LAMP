@@ -183,7 +183,7 @@ bool IcpLoopComputation::RegisterCallbacks(const ros::NodeHandle& n) {
       this);
 
   update_timer_ =
-      nl.createTimer(2.0, &IcpLoopComputation::ProcessTimerCallback, this);
+      nl.createTimer(1.0, &IcpLoopComputation::ProcessTimerCallback, this);
   return true;
 }
 

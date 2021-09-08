@@ -21,17 +21,9 @@ protected:
   }
   ~TestRSSILoopGeneration() {}
 
-  //  void generateLoops(const gtsam::Key& new_key) {
-  //    proximity_lc_.GenerateLoops(new_key);
-  //  }
-
   void
   keyedPoseCallback(const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
     rssi_lc_.KeyedPoseCallback(graph_msg);
-  }
-
-  void rssiTimerCallback() {
-    rssi_lc_.RssiTimerCallback(ros::TimerEvent());
   }
 
   void commNodeAggregatedStatusCallback(
@@ -79,22 +71,11 @@ protected:
     return rssi_lc_.rssi_scom_dropped_list_;
   }
 
-  std::map<std::string, ros::Time> getScomDroppedListTimeStamps() {
-    return rssi_lc_.rssi_scom_dropped_time_stamp_;
+  pose_graph_msgs::PoseGraphNode getPoseGraphNodeFromKey(
+      const std::map<double, pose_graph_msgs::PoseGraphNode>& robot_trajectory,
+      const gtsam::Symbol& key) {
+    return rssi_lc_.GetPoseGraphNodeFromKey(robot_trajectory, key);
   }
-
-  std::map<std::string, ros::Time> getRssiScomRobotListUpdatedTimeStamp() {
-    return rssi_lc_.rssi_scom_robot_list_updated_time_stamp_;
-  }
-
-  //  std::vector<pose_graph_msgs::LoopCandidate> getCandidates() {
-  //    return proximity_lc_.candidates_;
-  //  }
-
-  //  double distanceBetweenKeys(const gtsam::Symbol& key1,
-  //                             const gtsam::Symbol& key2) {
-  //    return proximity_lc_.DistanceBetweenKeys(key1, key2);
-  //  }
 
   RssiLoopClosure rssi_lc_;
 };
@@ -105,7 +86,7 @@ TEST_F(TestRSSILoopGeneration, TestInitialize) {
   ASSERT_TRUE(init);
 }
 
-TEST_F(TestRSSILoopGeneration, TestTrajectorySize) {
+TEST_F(TestRSSILoopGeneration, TestKeyedPoseCallback) {
   ros::NodeHandle nh;
   bool init = rssi_lc_.Initialize(nh);
   pose_graph_msgs::PoseGraph::Ptr graph_msg(new pose_graph_msgs::PoseGraph);
@@ -134,8 +115,7 @@ TEST_F(TestRSSILoopGeneration, TestTrajectorySize) {
   EXPECT_EQ(getRobotTrajectory('b').size(), 4);
 }
 
-// is robot radio todo i think it should be moved somewhere else
-TEST_F(TestRSSILoopGeneration, TestRadioNameDetection) {
+TEST_F(TestRSSILoopGeneration, Test_is_robot_radio) {
   ros::NodeHandle nh;
   bool init = rssi_lc_.Initialize(nh);
   EXPECT_EQ(isRobotRadio("husky"), false);
@@ -146,7 +126,7 @@ TEST_F(TestRSSILoopGeneration, TestRadioNameDetection) {
   EXPECT_EQ(isRobotRadio("hehe"), false);
 }
 
-TEST_F(TestRSSILoopGeneration, GetClosestPoseAtTime) {
+TEST_F(TestRSSILoopGeneration, TestGetClosestPoseAtTime) {
   ros::NodeHandle nh;
   bool init = rssi_lc_.Initialize(nh);
   pose_graph_msgs::PoseGraph::Ptr graph_msg(new pose_graph_msgs::PoseGraph);
@@ -199,7 +179,7 @@ TEST_F(TestRSSILoopGeneration, GetClosestPoseAtTime) {
             0);
 }
 
-TEST_F(TestRSSILoopGeneration, CalculatePathLossForNeighbor) {
+TEST_F(TestRSSILoopGeneration, TestCalculatePathLossForNeighbor) {
   silvus_msgs::SilvusStreamscapeNeighbor neighbor;
   // from Jeffrey example
   neighbor.received_signal_power_dBm.push_back(-25);
@@ -212,7 +192,7 @@ TEST_F(TestRSSILoopGeneration, CalculatePathLossForNeighbor) {
   EXPECT_NEAR(average_path_loss_dB, 54.35, 0.1);
 }
 
-TEST_F(TestRSSILoopGeneration, CommNodeRawCallback) {
+TEST_F(TestRSSILoopGeneration, TestCommNodeRawCallback) {
   ros::NodeHandle nh;
   bool init = rssi_lc_.Initialize(nh);
   silvus_msgs::SilvusStreamscape::Ptr msg(new silvus_msgs::SilvusStreamscape);
@@ -268,14 +248,6 @@ TEST_F(TestRSSILoopGeneration, CommNodeRawCallback) {
   EXPECT_NEAR(rssi_scom_robot["scom-husky4"].txpw_requested_dBm, 5.0, 0.1);
   EXPECT_NEAR(rssi_scom_robot["scom-husky4"].txpw_actual_dBm, 2.0, 0.1);
 
-  auto get_time_stamp_last_updates = getRssiScomRobotListUpdatedTimeStamp();
-  EXPECT_NEAR(get_time_stamp_last_updates["scom-husky4"].toSec(),
-              time_stamp1.toSec(),
-              0.1);
-  EXPECT_NEAR(get_time_stamp_last_updates["scom-spot2"].toSec(),
-              time_stamp1.toSec(),
-              0.1);
-
   silvus_msgs::SilvusStreamscape::Ptr msg2(new silvus_msgs::SilvusStreamscape);
 
   auto time_stamp2 = ros::Time::now() + ros::Duration(10 * 60 * 60);
@@ -330,16 +302,38 @@ TEST_F(TestRSSILoopGeneration, CommNodeRawCallback) {
   EXPECT_EQ(rssi_scom_robot["scom-husky4"].node_id, 1);
   EXPECT_NEAR(rssi_scom_robot["scom-husky4"].txpw_requested_dBm, 52.0, 0.1);
   EXPECT_NEAR(rssi_scom_robot["scom-husky4"].txpw_actual_dBm, 22.0, 0.1);
-
-  get_time_stamp_last_updates = getRssiScomRobotListUpdatedTimeStamp();
-  EXPECT_NEAR(get_time_stamp_last_updates["scom-husky4"].toSec(),
-              time_stamp2.toSec(),
-              0.1);
-  EXPECT_NEAR(get_time_stamp_last_updates["scom-spot2"].toSec(),
-              time_stamp2.toSec(),
-              0.1);
 }
 
+TEST_F(TestRSSILoopGeneration, TestGetPoseGraphNodeFromKey) {
+  ros::NodeHandle nh;
+  bool init = rssi_lc_.Initialize(nh);
+  pose_graph_msgs::PoseGraph::Ptr graph_msg(new pose_graph_msgs::PoseGraph);
+  pose_graph_msgs::PoseGraphNode node1, node2, node3, node4, node5, node6;
+  node1.key = gtsam::Symbol('a', 0);
+  node1.header.stamp = ros::Time::now() + ros::Duration(24 * 60 * 60);
+  node2.key = gtsam::Symbol('a', 1);
+  node2.header.stamp = ros::Time::now() + ros::Duration(23 * 60 * 60);
+  node3.key = gtsam::Symbol('b', 0);
+  node3.header.stamp = ros::Time::now() + ros::Duration(22 * 60 * 60);
+  node4.key = gtsam::Symbol('b', 1);
+  node4.header.stamp = ros::Time::now() + ros::Duration(21 * 60 * 60);
+  node5.key = gtsam::Symbol('b', 2);
+  node5.header.stamp = ros::Time::now() + ros::Duration(20 * 60 * 60);
+  node6.key = gtsam::Symbol('b', 3);
+  node6.header.stamp = ros::Time::now() + ros::Duration(19 * 60 * 60);
+  graph_msg->nodes.push_back(node1);
+  graph_msg->nodes.push_back(node2);
+  graph_msg->nodes.push_back(node3);
+  graph_msg->nodes.push_back(node4);
+  graph_msg->nodes.push_back(node5);
+  graph_msg->nodes.push_back(node6);
+  keyedPoseCallback(graph_msg);
+
+  auto result = getPoseGraphNodeFromKey(getRobotTrajectory('a'), node1.key);
+  EXPECT_EQ(result.key, node1.key);
+  auto result2 = getPoseGraphNodeFromKey(getRobotTrajectory('a'), 5430543034);
+  EXPECT_EQ(result2.key, 0);
+}
 TEST_F(TestRSSILoopGeneration, CommNodeAggregatedStatusCallback) {
   ros::NodeHandle nh;
   bool init = rssi_lc_.Initialize(nh);
@@ -390,28 +384,28 @@ TEST_F(TestRSSILoopGeneration, CommNodeAggregatedStatusCallback) {
   remain.hostname = "scom1";
   remain.uwb_id = "A32";
   remain.robot_name = "husky4";
-  remain.pose_graph_key = 151241241241;
+  remain.pose_graph_key = gtsam::Symbol('d', 0);
   remain.relative_pose = geometry_msgs::Pose();
 
   core_msgs::CommNodeInfo remain2;
   remain2.hostname = "scom2";
   remain2.uwb_id = "A322";
   remain2.robot_name = "husky4";
-  remain2.pose_graph_key = 151241241242;
+  remain2.pose_graph_key = gtsam::Symbol('d', 1);
   remain2.relative_pose = geometry_msgs::Pose();
 
   core_msgs::CommNodeInfo remain3;
   remain3.hostname = "scom3";
   remain3.uwb_id = "A321111";
   remain3.robot_name = "husky4";
-  remain3.pose_graph_key = 151241241243;
+  remain3.pose_graph_key = gtsam::Symbol('d', 2);
   remain3.relative_pose = geometry_msgs::Pose();
 
   core_msgs::CommNodeInfo remain4;
   remain4.hostname = "scom4";
   remain4.uwb_id = "A321111";
   remain4.robot_name = "husky4";
-  remain4.pose_graph_key = 151241241244;
+  remain4.pose_graph_key = gtsam::Symbol('d', 3);
   remain4.relative_pose = geometry_msgs::Pose();
 
   core_msgs::CommNodeInfo remain5;
@@ -422,136 +416,39 @@ TEST_F(TestRSSILoopGeneration, CommNodeAggregatedStatusCallback) {
   remain5.relative_pose = geometry_msgs::Pose();
 
   EXPECT_EQ(getScomDroppedList().size(), 0);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 0);
-
   commNodeAggregatedStatusCallback(node_status);
   EXPECT_EQ(getScomDroppedList().size(), 0);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 0);
-
   auto time_stamp1 = node_status->header.stamp =
       ros::Time(0) + ros::Duration(1 * 60 * 60);
   node_status->dropped.push_back(remain);
   commNodeAggregatedStatusCallback(node_status);
   EXPECT_EQ(getScomDroppedList().size(), 1);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 1);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain.hostname].toSec(),
-              time_stamp1.toSec(),
-              0.01);
-
   auto time_stamp2 = node_status->header.stamp =
       ros::Time(0) + ros::Duration(2 * 60 * 60);
   node_status->dropped.push_back(remain2);
   commNodeAggregatedStatusCallback(node_status);
   EXPECT_EQ(getScomDroppedList().size(), 2);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 2);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain.hostname].toSec(),
-              time_stamp1.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain2.hostname].toSec(),
-              time_stamp2.toSec(),
-              0.01);
-
   auto time_stamp3 = node_status->header.stamp =
       ros::Time(0) + ros::Duration(3 * 60 * 60);
   node_status->dropped.push_back(remain3);
   commNodeAggregatedStatusCallback(node_status);
   EXPECT_EQ(getScomDroppedList().size(), 3);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 3);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain.hostname].toSec(),
-              time_stamp1.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain2.hostname].toSec(),
-              time_stamp2.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain3.hostname].toSec(),
-              time_stamp3.toSec(),
-              0.01);
-
   auto time_stamp4 = node_status->header.stamp =
       ros::Time(0) + ros::Duration(4 * 60 * 60);
   node_status->dropped.push_back(remain4);
   commNodeAggregatedStatusCallback(node_status);
   EXPECT_EQ(getScomDroppedList().size(), 4);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 4);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain.hostname].toSec(),
-              time_stamp1.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain2.hostname].toSec(),
-              time_stamp2.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain3.hostname].toSec(),
-              time_stamp3.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain4.hostname].toSec(),
-              time_stamp4.toSec(),
-              0.01);
-
   commNodeAggregatedStatusCallback(node_status);
   EXPECT_EQ(getScomDroppedList().size(), 4);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 4);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain.hostname].toSec(),
-              time_stamp1.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain2.hostname].toSec(),
-              time_stamp2.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain3.hostname].toSec(),
-              time_stamp3.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain4.hostname].toSec(),
-              time_stamp4.toSec(),
-              0.01);
   commNodeAggregatedStatusCallback(node_status);
-
   auto time_stamp5 = node_status->header.stamp =
       ros::Time(0) + ros::Duration(5 * 60 * 60);
   node_status->dropped.push_back(remain5);
   EXPECT_EQ(getScomDroppedList().size(), 4);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 4);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain.hostname].toSec(),
-              time_stamp1.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain2.hostname].toSec(),
-              time_stamp2.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain3.hostname].toSec(),
-              time_stamp3.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain4.hostname].toSec(),
-              time_stamp4.toSec(),
-              0.01);
-
   commNodeAggregatedStatusCallback(node_status);
   EXPECT_EQ(getScomDroppedList().size(), 4);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 4);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain.hostname].toSec(),
-              time_stamp1.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain2.hostname].toSec(),
-              time_stamp2.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain3.hostname].toSec(),
-              time_stamp3.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain4.hostname].toSec(),
-              time_stamp4.toSec(),
-              0.01);
-
   commNodeAggregatedStatusCallback(node_status);
   EXPECT_EQ(getScomDroppedList().size(), 4);
-  EXPECT_EQ(getScomDroppedListTimeStamps().size(), 4);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain.hostname].toSec(),
-              time_stamp1.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain2.hostname].toSec(),
-              time_stamp2.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain3.hostname].toSec(),
-              time_stamp3.toSec(),
-              0.01);
-  EXPECT_NEAR(getScomDroppedListTimeStamps()[remain4.hostname].toSec(),
-              time_stamp4.toSec(),
-              0.01);
 }
 
 TEST_F(TestRSSILoopGeneration, RadioToNodesLoopClosure) {
@@ -636,14 +533,35 @@ TEST_F(TestRSSILoopGeneration, RadioToNodesLoopClosure) {
   msg->nodes.push_back(comm_node1);
   msg->header.stamp = ros::Time(0) + ros::Duration(2 * 60 * 60);
   commNodeRawCallback(msg);
-  rssiTimerCallback();
-
-  EXPECT_EQ(getScomDroppedList()["scom2"].nodes_around_comm.size(), 1);
-  // TODO: work it out
-  //  std::vector<pose_graph_msgs::LoopCandidate> candidates = getCandidates();
-  //  EXPECT_EQ(1, candidates.size());
-  //  std::cout << "candidateS: " << candidates.size() << std::endl;
 }
+
+TEST(RssiRawInfo, TestAppendNode) {
+  RssiRawInfo rssi_raw_info;
+  core_msgs::CommNodeInfo node_dropped;
+  node_dropped.hostname = "scom1";
+  node_dropped.uwb_id = "A32";
+  node_dropped.robot_name = "husky4";
+  node_dropped.pose_graph_key = 151241241241;
+  node_dropped.relative_pose = geometry_msgs::Pose();
+
+  rssi_raw_info.b_dropped = true;
+  rssi_raw_info.comm_node_info = node_dropped;
+  pose_graph_msgs::PoseGraphNode node0;
+  node0.key = 151241241241;
+  rssi_raw_info.pose_graph_node = node0;
+
+  EXPECT_EQ(rssi_raw_info.is_node_same_as_comm(node0), true);
+  EXPECT_EQ(rssi_raw_info.is_node_exist(node0), false);
+  EXPECT_EQ(rssi_raw_info.has_node_pose(node0), true);
+
+  pose_graph_msgs::PoseGraphNode node1;
+  node1.key = gtsam::Symbol('a', 0);
+  rssi_raw_info.append_node(node1);
+  EXPECT_EQ(rssi_raw_info.is_node_same_as_comm(node1), false);
+  EXPECT_EQ(rssi_raw_info.is_node_exist(node1), true);
+  EXPECT_EQ(rssi_raw_info.has_node_pose(node1), true);
+}
+
 } // namespace lamp_loop_closure
 
 int main(int argc, char** argv) {

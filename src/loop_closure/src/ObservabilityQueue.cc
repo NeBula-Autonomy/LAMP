@@ -57,7 +57,9 @@ void ObservabilityQueue::FindNextSet() {
       observability_queue_.pop();
       if (observability_queue_.empty()) break;
     }
-    LoopCandidateQueue::PublishLoopCandidate(out_array);
+
+    if (out_array.candidates.size() > 0)
+      LoopCandidateQueue::PublishLoopCandidate(out_array);
   }
 }
 double ObservabilityQueue::ComputeObservability(const pose_graph_msgs::LoopCandidate& candidate){
