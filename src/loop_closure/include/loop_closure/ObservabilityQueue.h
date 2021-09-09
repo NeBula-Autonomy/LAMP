@@ -6,17 +6,15 @@
  */
 #pragma once
 
-#include <deque>
-#include <map>
-#include <queue>
-#include <vector>
-#include <queue>
-#include <gtsam/inference/Symbol.h>
-#include <pose_graph_msgs/KeyedScan.h>
-#include "loop_closure/PointCloudUtils.h"
 #include "loop_closure/LoopCandidateQueue.h"
+#include "utils/PointCloudUtils.h"
+#include <deque>
+#include <gtsam/inference/Symbol.h>
+#include <map>
+#include <pose_graph_msgs/KeyedScan.h>
+#include <queue>
 #include <utils/CommonStructs.h>
-
+#include <vector>
 
 namespace lamp_loop_closure {
 

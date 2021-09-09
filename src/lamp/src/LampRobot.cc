@@ -14,6 +14,7 @@
 
 // Includes
 #include <lamp/LampRobot.h>
+#include <utils/PointCloudUtils.h>
 
 // #include <math.h>
 // #include <ctime>
@@ -629,7 +630,10 @@ void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
   // publish keyed scan
   pose_graph_msgs::KeyedScan keyed_scan_msg;
   keyed_scan_msg.key = current_key;
-  pcl::toROSMsg(*new_scan, keyed_scan_msg.scan);
+  // Publish the keyed scans without normals
+  PointXyziCloud::Ptr pub_scan(new PointXyziCloud);
+  utils::ConvertPointCloud(new_scan, pub_scan);
+  pcl::toROSMsg(*pub_scan, keyed_scan_msg.scan);
   keyed_scan_pub_.publish(keyed_scan_msg);
 }
 

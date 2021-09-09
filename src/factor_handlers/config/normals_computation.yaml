@@ -1,0 +1,5 @@
+normals_computation:
+  method: 0 # 0 for knn, 1 for radius search 
+  k: 10
+  radius: 1.0
+  num_threads: 8

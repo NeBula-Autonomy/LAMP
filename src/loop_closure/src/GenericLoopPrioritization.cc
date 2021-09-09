@@ -5,7 +5,7 @@
  * @author Yun Chang
  */
 
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 #include <Eigen/Eigenvalues>
 #include <algorithm>
 #include <numeric>
@@ -44,8 +44,7 @@ bool GenericLoopPrioritization::Initialize(const ros::NodeHandle& n) {
 
   ROS_INFO_STREAM("Initialized GenericLoopPrioritization."
                   << "\nchoose_best: " << choose_best_
-                  << "\nmin_observability: " << min_observability_
-                  << "\nthreads: " << num_threads_);
+                  << "\nmin_observability: " << min_observability_);
 
   return true;
 }
@@ -61,13 +60,7 @@ bool GenericLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
                min_observability_))
     return false;
 
-  if (!pu::Get(param_ns_ + "/gen_prioritization/normals_search_radius",
-               normals_radius_))
-    return false;
   if (!pu::Get(param_ns_ + "/gen_prioritization/choose_best", choose_best_))
-    return false;
-
-  if (!pu::Get(param_ns_ + "/gen_prioritization/threads", num_threads_))
     return false;
 
   return true;
@@ -190,8 +183,7 @@ void GenericLoopPrioritization::KeyedScanCallback(
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
   Eigen::Matrix<double, 3, 1> obs_eigenv;
-  utils::ComputeIcpObservability(
-      scan, normals_radius_, num_threads_, &obs_eigenv);
+  utils::ComputeIcpObservability(scan, &obs_eigenv);
   double min_obs = obs_eigenv.minCoeff();
   // Add the key and observability
   keyed_observability_.insert(std::pair<gtsam::Key, double>(key, min_obs));

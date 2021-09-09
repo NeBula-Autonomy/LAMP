@@ -3,46 +3,29 @@ PointCloudUtils.cc
 Author: Yun Chang
 Some utility functions for wokring with Point Clouds
 */
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 
 #include <geometry_utils/Transform3.h>
 #include <pcl/features/fpfh_omp.h>
-#include <pcl/features/normal_3d_omp.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/keypoints/harris_3d.h>
 #include <pcl/registration/ia_ransac.h>
 #include <pcl_conversions/pcl_conversions.h>
 
 namespace utils {
 
-void ComputeNormals(const PointCloud::ConstPtr& input,
-                    const double& search_radius,
-                    const int& num_threads,
-                    Normals::Ptr normals) {
-  pcl::search::KdTree<pcl::PointXYZINormal>::Ptr search_method(
-      new pcl::search::KdTree<pcl::PointXYZINormal>);
-  pcl::NormalEstimationOMP<pcl::PointXYZINormal, pcl::Normal> norm_est;
-  norm_est.setInputCloud(input);
-  norm_est.setSearchMethod(search_method);
-  norm_est.setRadiusSearch(search_radius);
-  norm_est.setNumberOfThreads(num_threads);
-  norm_est.compute(*normals);
-}
-
 void ExtractNormals(const PointCloud::ConstPtr& input,
-                    const int& num_threads,
                     Normals::Ptr normals,
-                    const double& search_radius) {
+                    const NormalComputeParams& params) {
   normals->resize(input->size());
-  if (input->size() == 0) return;
+  if (input->size() == 0)
+    return;
   // Check that there are normals to extract
   if (input->points[0].normal_x == 0 && input->points[0].normal_y == 0 &&
       input->points[0].normal_z == 0) {
-    return ComputeNormals(input, search_radius, num_threads, normals);
+    return ComputeNormals<Point>(input, params, normals);
   }
-  int enable_omp = (1 < num_threads);
+  int enable_omp = (1 < params.num_threads);
 #pragma omp parallel for schedule(dynamic, 1) if (enable_omp)
   for (size_t i = 0; i < input->size(); ++i) {
     normals->points[i].normal_x = input->points[i].normal_x;
@@ -144,25 +127,26 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
       continue;
     }
     if (query_normalized != NULL) {
-      a_i << query_normalized->points[i].x,  //////
-          query_normalized->points[i].y,     //////
+      a_i << query_normalized->points[i].x, //////
+          query_normalized->points[i].y,    //////
           query_normalized->points[i].z;
-    } else{
-      a_i << 0,0,0;
+    } else {
+      a_i << 0, 0, 0;
       query_null = true;
     }
 
     if ((reference_normals != NULL) &&
         (reference_normals->points.size() > correspondences[i])) {
-      n_i << reference_normals->points[correspondences[i]].normal_x,  //////
-          reference_normals->points[correspondences[i]].normal_y,     //////
+      n_i << reference_normals->points[correspondences[i]].normal_x, //////
+          reference_normals->points[correspondences[i]].normal_y,    //////
           reference_normals->points[correspondences[i]].normal_z;
     } else {
-      n_i << 0,0,0;
+      n_i << 0, 0, 0;
       reference_normals_null = true;
     }
 
-    if (a_i.hasNaN() || n_i.hasNaN()) continue;
+    if (a_i.hasNaN() || n_i.hasNaN())
+      continue;
 
     Eigen::Matrix<double, 1, 6> H = Eigen::Matrix<double, 1, 6>::Zero();
     Eigen::Matrix3d R = T.block<3, 3>(0, 0).cast<double>();
@@ -179,14 +163,13 @@ void ComputeAp_ForPoint2PlaneICP(const PointCloud::Ptr query_normalized,
 }
 
 void ComputeIcpObservability(PointCloud::ConstPtr cloud,
-                             const double& normals_radius,
-                             const size_t& num_threads,
-                             Eigen::Matrix<double, 3, 1>* eigenvalues) {
+                             Eigen::Matrix<double, 3, 1>* eigenvalues,
+                             const NormalComputeParams& params) {
   // Get normals
-  Normals::Ptr normals(new Normals);           // pc with normals
-  PointCloud::Ptr normalized(new PointCloud);  // pc whose points have been
-                                               // rearranged.
-  utils::ExtractNormals(cloud, num_threads, normals, normals_radius);
+  Normals::Ptr normals(new Normals);          // pc with normals
+  PointCloud::Ptr normalized(new PointCloud); // pc whose points have been
+                                              // rearranged.
+  utils::ExtractNormals(cloud, normals, params);
   utils::NormalizePCloud(cloud, normalized);
 
   for (size_t i = 0; i < cloud->size(); i++) {
@@ -196,7 +179,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
 
   // Correspondence with itself (not really used anyways)
   std::vector<size_t> c(cloud->size());
-  std::iota(std::begin(c), std::end(c), 0);  // Fill with 0, 1, ...
+  std::iota(std::begin(c), std::end(c), 0); // Fill with 0, 1, ...
 
   Eigen::Matrix4f T_unsued = Eigen::Matrix4f::Identity(); // Unused
 
@@ -212,4 +195,50 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   }
 }
 
-}  // namespace utils
+void ConvertPointCloud(const PointCloud::ConstPtr& point_normal_cloud,
+                       PointXyziCloud::Ptr point_cloud) {
+  assert(NULL != point_normal_cloud);
+  assert(NULL != point_cloud);
+  point_cloud->clear();
+
+  for (const auto& point : point_normal_cloud->points) {
+    PointXyzi pt;
+    pt.x = point.x;
+    pt.y = point.y;
+    pt.z = point.z;
+    pt.intensity = point.intensity;
+    point_cloud->push_back(pt);
+  }
+  return;
+}
+
+void AddNormals(const PointXyziCloud::ConstPtr& point_cloud,
+                const NormalComputeParams& params,
+                PointCloud::Ptr point_normal_cloud) {
+  assert(NULL != point_normal_cloud);
+  assert(NULL != point_cloud);
+  point_normal_cloud->clear();
+
+  // TODO: remove hard coded search radius and num threads
+  // Or use k neighbors instead of radius?
+  Normals::Ptr computed_normals(new Normals);
+  ComputeNormals<PointXyzi>(point_cloud, params, computed_normals);
+
+  for (size_t i = 0; i < point_cloud->size(); i++) {
+    Point new_pt;
+    const PointXyzi pt_xyzi = point_cloud->points[i];
+    const pcl::Normal normal = computed_normals->points[i];
+    new_pt.x = pt_xyzi.x;
+    new_pt.y = pt_xyzi.y;
+    new_pt.z = pt_xyzi.z;
+    new_pt.intensity = pt_xyzi.intensity;
+
+    new_pt.normal_x = normal.normal_x;
+    new_pt.normal_y = normal.normal_y;
+    new_pt.normal_z = normal.normal_z;
+    point_normal_cloud->push_back(new_pt);
+  }
+  return;
+}
+
+} // namespace utils
