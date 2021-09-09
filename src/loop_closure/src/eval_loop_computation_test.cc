@@ -33,6 +33,17 @@ public:
     filter_params_.decimate_percentage =
         std::min(1.0, std::max(0.0, filter_params_.decimate_percentage));
 
+    if (!pu::Get("normals_computation/method",
+                 normals_compute_params_.search_method))
+      return false;
+    if (!pu::Get("normals_computation/k", normals_compute_params_.k))
+      return false;
+    if (!pu::Get("normals_computation/radius", normals_compute_params_.radius))
+      return false;
+    if (!pu::Get("normals_computation/num_threads",
+                 normals_compute_params_.num_threads))
+      return false;
+
     if (!icp_lc_.LoadParameters(n))
       return false;
 
@@ -114,6 +125,13 @@ public:
       grid.filter(*new_scan);
     }
 
+    // Remove normals
+    PointXyziCloud::Ptr no_normals_scan(new PointXyziCloud);
+    utils::ConvertPointCloud(new_scan, no_normals_scan);
+
+    // Recompute normals
+    utils::AddNormals(no_normals_scan, normals_compute_params_, new_scan);
+
     pcl::toROSMsg(*new_scan, new_ks->scan);
     new_ks->key = original_ks.key;
   }
@@ -130,6 +148,8 @@ protected:
     // Percentage of points to discard. Must be between 0.0 and 1.0;
     double decimate_percentage;
   } filter_params_;
+
+  utils::NormalComputeParams normals_compute_params_;
 };
 
 } // namespace lamp_loop_closure

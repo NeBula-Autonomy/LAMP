@@ -13,7 +13,7 @@
 #include <teaser/registration.h>
 #include <utils/CommonFunctions.h>
 
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 
 #include "loop_closure/IcpLoopComputation.h"
 
@@ -91,8 +91,6 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/b_accumulate_source", b_accumulate_source_))
     return false;
-  if (!pu::Get(param_ns_ + "/sac_ia/normals_radius", sac_normals_radius_))
-    return false;
   if (!pu::Get(param_ns_ + "/sac_ia/features_radius", sac_features_radius_))
     return false;
   if (!pu::Get(param_ns_ + "/sac_ia/fitness_score_threshold",
@@ -110,9 +108,6 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
                rotation_max_iterations_))
     return false;
   if (!pu::Get(param_ns_ + "/TEASERPP/noise_bound", noise_bound_))
-    return false;
-  if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_normals_radius",
-               TEASER_FPFH_normals_radius_))
     return false;
   if (!pu::Get(param_ns_ + "/TEASERPP/TEASER_FPFH_features_radius",
                TEASER_FPFH_features_radius_))
@@ -595,10 +590,8 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ExtractNormals(
-      source, icp_threads_, source_normals, sac_features_radius_);
-  utils::ExtractNormals(
-      target, icp_threads_, target_normals, sac_features_radius_);
+  utils::ExtractNormals(source, source_normals);
+  utils::ExtractNormals(target, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
@@ -659,8 +652,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
                                                     // been rearranged.
   Eigen::Matrix<double, 6, 6> Ap;
 
-  utils::ExtractNormals(
-      reference_cloud, icp_threads_, reference_normals, sac_features_radius_);
+  utils::ExtractNormals(reference_cloud, reference_normals);
   utils::NormalizePCloud(query_cloud, query_normalized);
 
   utils::ComputeAp_ForPoint2PlaneICP(
@@ -896,10 +888,8 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ExtractNormals(
-      source, icp_threads_, source_normals, sac_features_radius_);
-  utils::ExtractNormals(
-      target, icp_threads_, target_normals, sac_features_radius_);
+  utils::ExtractNormals(source, source_normals);
+  utils::ExtractNormals(target, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);

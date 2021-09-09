@@ -1,6 +1,6 @@
 <launch>
   <test test-name="test_point_cloud_utils"
-        pkg="loop_closure"
+        pkg="utils"
         type="test_point_cloud_utils"
         time-limit="300.0"
         ns="base1"/>

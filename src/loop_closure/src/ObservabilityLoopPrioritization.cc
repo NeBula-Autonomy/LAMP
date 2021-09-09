@@ -5,7 +5,7 @@
  * @author Yun Chang
  */
 
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 #include <Eigen/Eigenvalues>
 #include <algorithm>
 #include <numeric>
@@ -44,8 +44,7 @@ bool ObservabilityLoopPrioritization::Initialize(const ros::NodeHandle& n) {
 
   ROS_INFO_STREAM("Initialized ObservabilityLoopPrioritization."
                   << "\npublish_n_best: " << publish_n_best_
-                  << "\nmin_observability: " << min_observability_
-                  << "\nthreads: " << num_threads_);
+                  << "\nmin_observability: " << min_observability_);
 
   return true;
 }
@@ -65,14 +64,7 @@ bool ObservabilityLoopPrioritization::LoadParameters(const ros::NodeHandle& n) {
                min_observability_))
     return false;
 
-  if (!pu::Get(param_ns_ + "/obs_prioritization/normals_search_radius",
-               normals_radius_))
-    return false;
-
   if (!pu::Get(param_ns_ + "/obs_prioritization/horizon", horizon_))
-    return false;
-
-  if (!pu::Get(param_ns_ + "/obs_prioritization/threads", num_threads_))
     return false;
 
   return true;
@@ -232,8 +224,7 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
 
   char prefix = gtsam::Symbol(key).chr();
   Eigen::Matrix<double, 3, 1> obs_eigenv;
-  utils::ComputeIcpObservability(
-      scan, normals_radius_, num_threads_, &obs_eigenv);
+  utils::ComputeIcpObservability(scan, &obs_eigenv);
   if (max_observability_.count(prefix) == 0 ||
       max_observability_[prefix] < obs_eigenv.minCoeff())
     max_observability_[prefix] = obs_eigenv.minCoeff();

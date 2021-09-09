@@ -5,14 +5,14 @@
  */
 #pragma once
 
-#include "loop_closure/PointCloudUtils.h"
+#include "utils/PointCloudUtils.h"
 #include <gtsam/inference/Symbol.h>
 #include <map>
+#include <mutex>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <utils/CommonStructs.h>
-#include <mutex>
 
 #include "loop_closure/LoopPrioritization.h"
 
@@ -67,7 +67,6 @@ protected:
   int publish_n_best_;       // Publish only the top n candidates
   double min_observability_; // Discard any candidate with observability
                              // below threshold
-  double normals_radius_;    // radius used for cloud normal computation
   double horizon_;           // time until a candidate is discarded
 
   int num_threads_; // number of threads for normal computation
