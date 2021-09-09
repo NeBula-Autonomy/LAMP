@@ -446,8 +446,30 @@ void RssiLoopClosure::NodesToNodesLoopClosures() {
          flyby_i++) {
       // if it's first flyby for the dropped node there is no sense to look
       // for loop proposal
-      if (flyby_i == 0)
-        continue;
+
+      if (flyby_i == 0) {
+        // if it's first flyby but there was nodes around we check whether this
+        // is the "close" flyby or maybe we haven't detected nearest nodes
+        // during dropping procedure
+        auto node_a =
+            gtsam::Symbol(
+                rssi_node_dropped.second.comm_node_info.pose_graph_key)
+                .index();
+        // compare with the first node of flyby
+        auto node_b = gtsam::Symbol(rssi_node_dropped.second
+                                        .all_nodes_around_comm[flyby_i][0]
+                                        .candidate_pose.key)
+                          .index();
+        std::uint64_t diff_index;
+        if (node_a > node_b) {
+          diff_index = node_a - node_b;
+        } else {
+          diff_index = node_b - node_a;
+        }
+        bool conditional_loops_ = diff_index > close_keys_threshold_;
+        if (!conditional_loops_)
+          continue;
+      }
       // for every node from the i-th flyby
       for (auto& flyby_node :
            rssi_node_dropped.second.all_nodes_around_comm[flyby_i]) {
