@@ -185,7 +185,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Send data to optimizer - pose graph and map publishing happens in
   // callback when data is received back from optimizer
   if (b_run_optimization_) {
-    ROS_INFO_STREAM("Publishing pose graph to optimizer");
+    ROS_DEBUG_STREAM("Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
 
     b_run_optimization_ = false;
