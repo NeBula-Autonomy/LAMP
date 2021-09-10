@@ -64,7 +64,7 @@ bool AprilTagHandler::LoadParameters(const ros::NodeHandle& n) {
  * Returns bool
  */
 bool AprilTagHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
-  ROS_INFO("%s: Registering online callbacks for April Tags.", name_.c_str());
+  ROS_DEBUG("%s: Registering online callbacks for April Tags.", name_.c_str());
 
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);

@@ -173,7 +173,7 @@ void LampBase::MergeOptimizedGraph(
 // Callback from a laser loop closure message
 void LampBase::LaserLoopClosureCallback(
     const pose_graph_msgs::PoseGraphConstPtr msg) {
-  ROS_INFO_STREAM("Received laser loop closure message "
+  ROS_DEBUG_STREAM("Received laser loop closure message "
                   "--------------------------------------------------");
 
   // Do things particular to loop closures from the laser
@@ -317,7 +317,7 @@ bool LampBase::AddTransformedPointCloudToMap(const gtsam::Symbol key) {
 
   GetTransformedPointCloudWorld(key, points.get());
 
-  ROS_INFO_STREAM("Points size is: " << points->points.size()
+  ROS_DEBUG_STREAM("Points size is: " << points->points.size()
                                      << ", in AddTransformedPointCloudToMap");
 
   // Add to the map
@@ -356,7 +356,7 @@ bool LampBase::PublishPoseGraph(bool b_publish_incremental) {
       // Reset new tracking
       pose_graph_.ClearIncrementalMessages();
     } else {
-      ROS_INFO("No information for incremental publishing");
+      ROS_DEBUG("No information for incremental publishing");
     }
   }
 

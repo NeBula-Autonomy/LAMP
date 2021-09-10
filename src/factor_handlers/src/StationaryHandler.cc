@@ -60,7 +60,7 @@ void StationaryHandler::StationaryCallback(
     const StationaryMessage::ConstPtr& msg) {
   if (msg->status == 0) {
     if (!currently_stationary_) {
-      ROS_INFO("Robot stopped. Preparing attitude factor...");
+      ROS_DEBUG("Robot stopped. Preparing attitude factor...");
       // We want to place the stationary factors when the robot stops
       last_detection_ =
           StationaryData(msg->header.stamp, msg->average_acceleration);
@@ -79,7 +79,7 @@ std::shared_ptr<FactorData> StationaryHandler::GetData() {
   factors_output->b_has_data = false;
 
   if (has_data_) {
-    ROS_INFO("New attitude factor in StationaryHandler.");
+    ROS_DEBUG("New attitude factor in StationaryHandler.");
     ImuFactor new_factor(CreateAttitudeFactor(last_detection_.second));
     factors_output->b_has_data = true;
     factors_output->type = "imu";

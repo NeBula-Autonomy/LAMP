@@ -164,7 +164,7 @@ void PoseGraphToolsNode::ClickedPointCallback(
   uint64_t candidate_key = pose_graph_out_msg_.nodes[idx_closest].key;
   // When switching to tune another key, update store current correction
   if (candidate_key != node_candidate_key_) {
-    ROS_INFO_STREAM(
+    ROS_DEBUG_STREAM(
         "Reconfiguring key: " << gtsam::DefaultKeyFormatter(candidate_key));
     pose_graph_in_mutex_enter();
     pose_graph_in_msg_ = pose_graph_out_msg_;

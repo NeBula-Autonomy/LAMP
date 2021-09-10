@@ -333,13 +333,13 @@ geometry_utils::Transform3 Merger::GetPoseAtTime(const ros::Time& stamp) {
   }
 
   if (timestamped_poses_.size() == 1) {
-    ROS_INFO("Only one fast pose in map, using it");
+    ROS_DEBUG("Only one fast pose in map, using it");
     return std::prev(timestamped_poses_.end(), 1)->second;
   }
 
   auto iter = timestamped_poses_.lower_bound(
       stamp.toSec()); // First key that is not less than timestamp
-  ROS_INFO_STREAM("slow timestamp is " << stamp.toSec());
+  ROS_DEBUG_STREAM("slow timestamp is " << stamp.toSec());
 
   double t2 = iter->first;
   double t1 = std::prev(iter, 1)->first;
@@ -362,7 +362,7 @@ geometry_utils::Transform3 Merger::GetPoseAtTime(const ros::Time& stamp) {
     iter--;
   }
 
-  ROS_INFO_STREAM("Corresponding fast timestamp is " << iter->first);
+  ROS_DEBUG_STREAM("Corresponding fast timestamp is " << iter->first);
 
   return pose;
 }
@@ -372,10 +372,10 @@ void Merger::CleanUpMap(const ros::Time& stamp) {
       stamp.toSec()); // First key that is not less than timestamp
 
   // Erase from the start to the last time below the current.
-  ROS_INFO_STREAM("Size of timestamped poses before erase is: "
+  ROS_DEBUG_STREAM("Size of timestamped poses before erase is: "
                   << timestamped_poses_.size());
   timestamped_poses_.erase(timestamped_poses_.begin(), std::prev(iter, 1));
-  ROS_INFO_STREAM("Size of timestamped poses after erase is: "
+  ROS_DEBUG_STREAM("Size of timestamped poses after erase is: "
                   << timestamped_poses_.size());
 }
 

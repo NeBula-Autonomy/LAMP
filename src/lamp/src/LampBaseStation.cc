@@ -219,7 +219,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  ROS_INFO_STREAM("New data received at base: "
+  ROS_DEBUG_STREAM("New data received at base: "
                   << pose_graph_data->graphs.size() << " graphs, "
                   << pose_graph_data->scans.size() << " scans ");
   b_has_new_factor_ = true;
@@ -275,13 +275,13 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
         latest_node_pose_[prefix] =
             std::make_pair(n.key, utils::ToGtsam(n.pose));
       } else if (latest_node_pose_[prefix].first <= n.key) {
-        ROS_INFO_STREAM("Updated pose for robot " << prefix);
+        ROS_DEBUG_STREAM("Updated pose for robot " << prefix);
         latest_node_pose_[prefix] =
             std::make_pair(n.key, utils::ToGtsam(n.pose));
       }
     }
 
-    ROS_INFO_STREAM("Added new pose graph");
+    ROS_DEBUG_STREAM("Added new pose graph");
   }
 
   ROS_DEBUG_STREAM("Keyed stamps: " << pose_graph_.keyed_stamps.size());
@@ -303,7 +303,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     // Add key to the list of scan candidates to add to the map
     keyed_scan_candidates_.push_back(s->key);
 
-    ROS_INFO_STREAM("Added new point cloud to map, " << scan_ptr->points.size()
+    ROS_DEBUG_STREAM("Added new point cloud to map, " << scan_ptr->points.size()
                                                      << " points");
   }
 
@@ -333,7 +333,7 @@ void LampBaseStation::AddKeyedScanCandidatesToMap() {
       ++key_it;
     }
   }
-  ROS_INFO_STREAM("Added " << scan_count << " scans to the map.");
+  ROS_DEBUG_STREAM("Added " << scan_count << " scans to the map.");
 }
 
 bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
@@ -379,7 +379,7 @@ bool LampBaseStation::ProcessManualLoopClosureData(
     return false;
   }
 
-  ROS_INFO_STREAM("Received new manual loop closure data");
+  ROS_DEBUG_STREAM("Received new manual loop closure data");
 
   for (auto factor : manual_loop_closure_data->factors) {
     pose_graph_.TrackFactor(factor.key_from,
@@ -461,7 +461,7 @@ void LampBaseStation::RemoveRobotCallback(const std_msgs::String msg) {
   lamp_pgo_reset_pub_.publish(signal);
 
   // Publish graph to optimize
-  ROS_INFO_STREAM("Sending pose graph to optimizer");
+  ROS_DEBUG_STREAM("Sending pose graph to optimizer");
   PublishPoseGraphForOptimizer();
 }
 

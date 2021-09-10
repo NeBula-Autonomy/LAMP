@@ -196,7 +196,7 @@ void PoseGraphHandler::KeyedScanCallback(const pose_graph_msgs::KeyedScan::Const
   keyed_scan_pub_.publish(new_pub_ks);
   // Add scan
   if (keyed_scans_keys_.count(msg->key) > 0){
-      ROS_INFO_STREAM("PoseGraphHandler: Repeated keyed Scan for key " << msg->key);
+      ROS_DEBUG_STREAM("PoseGraphHandler: Repeated keyed Scan for key " << msg->key);
   } else {
       keyed_scans_keys_.insert(msg->key);
 
