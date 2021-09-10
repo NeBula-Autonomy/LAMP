@@ -167,7 +167,7 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
 }
 
 void ObservabilityLoopPrioritization::PrunePriorityQueue() {
-  ROS_INFO_STREAM("Prune priority queue... size: " << priority_queue_.size());
+  ROS_DEBUG_STREAM("Prune priority queue... size: " << priority_queue_.size());
   priority_queue_mutex_.lock();
   std::deque<double> temp_observability_score;
   std::deque<pose_graph_msgs::LoopCandidate> temp_priority_queue;
@@ -181,15 +181,15 @@ void ObservabilityLoopPrioritization::PrunePriorityQueue() {
   observability_score_ = temp_observability_score;
   priority_queue_ = temp_priority_queue;
   priority_queue_mutex_.unlock();
-  ROS_INFO_STREAM(
+  ROS_DEBUG_STREAM(
       "Discarded old measurements. size: " << priority_queue_.size());
   return;
 }
 
 void ObservabilityLoopPrioritization::PublishBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg = GetBestCandidates();
-  ROS_INFO("Published %d prioritized candidates. ",
-           output_msg.candidates.size());
+  ROS_DEBUG("Published %d prioritized candidates. ",
+            output_msg.candidates.size());
   loop_candidate_pub_.publish(output_msg);
 }
 
