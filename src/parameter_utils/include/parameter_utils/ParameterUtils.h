@@ -84,25 +84,25 @@ bool Get(const std::string& s, M& p, M def) {
 
   std::string r;
   if (!ros::param::search(s, r)) {
-    ROS_DEBUG("%s: Failed to search for parameter '%s', using default.",
-              name.c_str(),
-              s.c_str());
+    ROS_INFO("%s: Failed to search for parameter '%s', using default.",
+             name.c_str(),
+             s.c_str());
     p = def;
     ret = false;
   }
 
   if (ret && !ros::param::has(r)) {
-    ROS_DEBUG("%s: Missing required parameter '%s', using default.",
-              name.c_str(),
-              s.c_str());
+    ROS_INFO("%s: Missing required parameter '%s', using default.",
+             name.c_str(),
+             s.c_str());
     p = def;
     ret = false;
   }
 
   if (ret && !ros::param::get(r, p)) {
-    ROS_DEBUG("%s: Failed to get parameter '%s', using default.",
-              name.c_str(),
-              s.c_str());
+    ROS_INFO("%s: Failed to get parameter '%s', using default.",
+             name.c_str(),
+             s.c_str());
     p = def;
     ret = false;
   }

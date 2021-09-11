@@ -269,7 +269,7 @@ bool ImuHandler::LoadCalibrationFromTfTree() {
         tf::transformStampedTFToMsg(imu_T_base_transform, imu_T_base_tmp_msg);        
         tf::transformMsgToEigen(imu_T_base_tmp_msg.transform, I_T_B_);
         B_T_I_ = I_T_B_.inverse();
-        ROS_INFO_STREAM("Loaded pose_sensor to imu calibration B_T_L:");
+        ROS_DEBUG_STREAM("Loaded pose_sensor to imu calibration B_T_L:");
         std::cout << I_T_B_.translation() << std::endl;
         std::cout << I_T_B_.rotation() << std::endl;        
         I_T_B_q_ = Eigen::Quaterniond(I_T_B_.rotation());

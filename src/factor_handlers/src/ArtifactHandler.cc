@@ -112,7 +112,7 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
 
   // Process artifact only is pose graph is initialized
   if (!is_pgo_initialized) {
-    ROS_INFO("Rejecting Artifacts as pose graph not initialized.");
+    ROS_DEBUG("Rejecting Artifacts as pose graph not initialized.");
     return;
   }
 
@@ -137,7 +137,7 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
   // Check if the ID of the object already exists in the object hash
   if (artifact_id2key_hash.find(artifact_id) != artifact_id2key_hash.end()) {
     cur_artifact_key = artifact_id2key_hash[artifact_id];
-    ROS_INFO_STREAM(
+    ROS_DEBUG_STREAM(
         "\nArtifact Handler: artifact previously observed, artifact id "
         << artifact_id);
     std::cout << "artifact previously observed, artifact id " << artifact_id
@@ -152,10 +152,8 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
     cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
     ++largest_artifact_id_;
     ROS_INFO_STREAM("\nArtifact Handler: new artifact observed, artifact id "
-                    << artifact_id);
-    std::cout << "new artifact observed, artifact id " << artifact_id
-              << " with key in pose graph "
-              << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
+                    << artifact_id << "with key"
+                    << gtsam::DefaultKeyFormatter(cur_artifact_key));
     // update hash
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
 
@@ -198,7 +196,7 @@ std::shared_ptr<FactorData> ArtifactHandler::GetData() {
  * Returns  Values
  */
 bool ArtifactHandler::RegisterLogCallbacks(const ros::NodeHandle& n) {
-  ROS_INFO("%s: Registering log callbacks.", name_.c_str());
+  ROS_DEBUG("%s: Registering log callbacks.", name_.c_str());
   return CreatePublishers(n);
 }
 
@@ -217,7 +215,7 @@ bool ArtifactHandler::CreatePublishers(const ros::NodeHandle& n) {
  * Returns bool
  */
 bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
-  ROS_INFO("%s: Registering online callbacks for Artifacts.", name_.c_str());
+  ROS_DEBUG("%s: Registering online callbacks for Artifacts.", name_.c_str());
 
   // Create a local nodehandle to manage callback subscriptions.
   ros::NodeHandle nl(n);
@@ -274,13 +272,13 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
         artifact_key.chr() == 'K' || artifact_key.chr() == 'L' ||
         artifact_key.chr() == 'M' || artifact_key.chr() == 'X')) {
     ROS_WARN("ERROR - have a non-landmark ID");
-    ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
+    ROS_WARN_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
     return;
   }
 
   // Using the artifact key to publish that artifact
-  ROS_INFO("Publishing the new artifact");
-  ROS_INFO_STREAM("Artifact key to publish is "
+  ROS_DEBUG("Publishing the new artifact");
+  ROS_DEBUG_STREAM("Artifact key to publish is "
                   << gtsam::DefaultKeyFormatter(artifact_key));
 
   // Check that the key exists
@@ -405,13 +403,11 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
                                         const artifact_msgs::Artifact& msg) {
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) == artifact_key2info_hash_.end()) {
-    ROS_INFO_STREAM("New artifact detected with key " << gtsam::DefaultKeyFormatter(artifact_key));
     ArtifactInfo artifactinfo(msg.parent_id);
     artifactinfo.msg = msg;
     artifactinfo.num_updates = artifactinfo.num_updates+1;
     artifact_key2info_hash_[artifact_key] = artifactinfo;
   } else {
-    ROS_INFO("Existing artifact detected");
     // Existing artifact. Hence update the artifact info
     artifact_key2info_hash_[artifact_key].num_updates += 1;
     artifact_key2info_hash_[artifact_key].msg = msg;

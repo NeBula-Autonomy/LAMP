@@ -69,10 +69,14 @@ void RoundRobinLoopCandidateQueue::FindNextSet() {
     }
     attempts++;
   }
-  for (auto cur_queue : queues) {
-    ROS_INFO_STREAM("Queue " << cur_queue.first << " has " << cur_queue.second.size() << " elements.");
+  static int info_count = 0;
+  if (info_count % 10 == 0) {
+    for (auto cur_queue : queues) {
+      ROS_INFO_STREAM("Queue " << cur_queue.first << " has "
+                               << cur_queue.second.size() << " elements.");
+    }
   }
-
+  info_count++;
   if (out_array.candidates.size() > 0)
     LoopCandidateQueue::PublishLoopCandidate(out_array);
 }

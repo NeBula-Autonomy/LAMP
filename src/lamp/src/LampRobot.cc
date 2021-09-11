@@ -295,8 +295,8 @@ bool LampRobot::SetInitialPosition() {
 
   gtsam::noiseModel::Diagonal::shared_ptr covariance(
       gtsam::noiseModel::Diagonal::Sigmas(initial_noise_));
-  ROS_INFO_STREAM("covariance is");
-  ROS_INFO_STREAM(initial_noise_);
+  ROS_DEBUG_STREAM("covariance is");
+  ROS_DEBUG_STREAM(initial_noise_);
 
   // Initialize graph  with the initial position
   InitializeGraph(pose, covariance);
@@ -442,7 +442,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Publish the pose graph
   if (b_has_new_factor_) {
-    ROS_INFO("Have new factor, publishing pose-graph");
+    ROS_DEBUG("Have new factor, publishing pose-graph");
     PublishPoseGraph();
 
     // Publish the full map (for debug)
@@ -527,12 +527,12 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
   }
 
   // Record new factor being added - need to publish pose graph(
-  ROS_INFO("Have Odom Factor");
+  ROS_DEBUG("Have Odom Factor");
   b_has_new_factor_ = true;
 
   // process data for each new factor
   for (auto odom_factor : odom_data->factors) {
-    ROS_INFO("Adding new odom factor to pose graph");
+    ROS_DEBUG("Adding new odom factor to pose graph");
     // Get the transforms - odom transforms
     Pose3 transform = odom_factor.transform;
     gtsam::SharedNoiseModel covariance =
@@ -556,13 +556,13 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
 
     // Compute the new value with a normalized transform
     Pose3 last_pose = pose_graph_.GetPose(prev_key);
-    ROS_INFO_STREAM(
+    ROS_DEBUG_STREAM(
         "Last pose det: " << last_pose.rotation().matrix().determinant());
     Eigen::Quaterniond quat(last_pose.rotation().matrix());
     quat = quat.normalized();
     last_pose =
         Pose3(gtsam::Rot3(quat.toRotationMatrix()), last_pose.translation());
-    ROS_INFO_STREAM(
+    ROS_DEBUG_STREAM(
         "Last pose det after: " << last_pose.rotation().matrix().determinant());
 
     // Add values to graph so have it for adding map TODO - use unit covariance
@@ -744,7 +744,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  ROS_INFO("Have Artifact Factor");
+  ROS_DEBUG("Have Artifact Factor");
   b_has_new_factor_ = true;
 
   // Necessary variables
@@ -780,7 +780,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       }
     } else {
       // Is in relative already
-      ROS_INFO("Have artifact in relative frame");
+      ROS_DEBUG("Have artifact in relative frame");
       temp_transform = gtsam::Pose3(gtsam::Rot3(), artifact.position);
     }
 
@@ -811,7 +811,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
 
     // Check if it is a new artifact or not
     if (!pose_graph_.HasKey(cur_artifact_key)) {
-      ROS_INFO("Have a new artifact in LAMP");
+      ROS_DEBUG("Have a new artifact in LAMP");
 
       // Insert into the values TODO - add unit covariance
       std::string id = artifact_handler_.GetArtifactID(cur_artifact_key);
@@ -829,7 +829,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
       pose_graph_.TrackFactor(
           pose_key, cur_artifact_key, type, transform, covariance);
-      ROS_INFO("Added artifact to pose graph factors in lamp");
+      ROS_DEBUG("Added artifact to pose graph factors in lamp");
 
     } else {
       // Find artifact edge that is already connected to cur_artifact_key
@@ -838,7 +838,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       if (edge == nullptr) {
         ROS_ERROR_STREAM("Edge is not found!!!");
         if (pose_graph_.HasKey(cur_artifact_key)) {
-          ROS_INFO_STREAM("Posegraph has this key!! "
+          ROS_DEBUG_STREAM("Posegraph has this key!! "
                           << gtsam::DefaultKeyFormatter(cur_artifact_key));
         }
         return false;
@@ -874,11 +874,11 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
       pose_graph_.TrackArtifactFactor(
           edge->key_from, cur_artifact_key, transform, covariance, true, true);
-      ROS_INFO("Added resighted artifact to pose graph factors in lamp");
+      ROS_DEBUG("Added resighted artifact to pose graph factors in lamp");
     }
   }
 
-  ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
+  ROS_DEBUG("Successfully complete ArtifactProcess call with an artifact");
 
   // Clean up for next iteration
   artifact_handler_.CleanFailedFactors(true);
@@ -903,7 +903,7 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  ROS_INFO("Have April Factor");
+  ROS_DEBUG("Have April Factor");
   b_has_new_factor_ = true;
 
   // Necessary variables
@@ -945,7 +945,7 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
       }
     } else {
       // Is in relative already
-      ROS_INFO("Have April tag in relative frame");
+      ROS_DEBUG("Have April tag in relative frame");
       temp_transform = gtsam::Pose3(gtsam::Rot3(), april_tag.position);
     }
 
@@ -974,7 +974,7 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
 
     // Check if it is a new april tag or not
     if (!pose_graph_.HasKey(cur_april_tag_key)) {
-      ROS_INFO("Have a new April Tag in LAMP");
+      ROS_DEBUG("Have a new April Tag in LAMP");
 
       // Insert into the values. TODO - use correct covariance
       pose_graph_.TrackNode(
@@ -987,11 +987,11 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
       gtsam::SharedNoiseModel noise = SetFixedNoiseModels("april");
 
       // Add and track the prior factor if its a new april tag.
-      ROS_INFO("Adding prior factor for April Tag");
+      ROS_DEBUG("Adding prior factor for April Tag");
       pose_graph_.TrackPrior(cur_april_tag_key, ground_truth, noise);
     } else {
       // Second sighting of an april tag - we have a loop closure
-      ROS_INFO_STREAM("April tag re-sighted with key: "
+      ROS_DEBUG_STREAM("April tag re-sighted with key: "
                       << gtsam::DefaultKeyFormatter(cur_april_tag_key));
     }
     // Since a factor is added in any case new or seen, run optimization
@@ -1001,10 +1001,11 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
     int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
     pose_graph_.TrackFactor(
         pose_key, cur_april_tag_key, type, transform, covariance);
-    ROS_INFO("Added April Tag to pose graph factors in lamp");
+    ROS_DEBUG("Added April Tag to pose graph factors in lamp");
   }
 
-  ROS_INFO("Successfully completed ProcessAprilTagData call with an April Tag");
+  ROS_DEBUG(
+      "Successfully completed ProcessAprilTagData call with an April Tag");
 
   // Clean the new keys
   april_tag_handler_.CleanFailedFactors(true);

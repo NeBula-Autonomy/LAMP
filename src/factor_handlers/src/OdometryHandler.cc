@@ -252,7 +252,7 @@ bool OdometryHandler::GetOdomDelta(const ros::Time t_now,
       query_timestamp_first_ = t_now;
     }
 
-    ROS_INFO_STREAM("First query to Odometry Handler, Input timestamp is "
+    ROS_DEBUG_STREAM("First query to Odometry Handler, Input timestamp is "
                     << t_now.toSec() << ". setting first timestamp to "
                     << query_timestamp_first_.toSec());
     b_is_first_query_ = false;
@@ -408,7 +408,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
       ROS_WARN(
           "Time diff between point cloud and node larger than threshold Using "
           "earliest scan in buffer [GetKeyedScanAtTime]");
-      ROS_INFO_STREAM("Thresh: " << keyed_scan_time_diff_limit_
+      ROS_WARN_STREAM("Thresh: " << keyed_scan_time_diff_limit_
                                  << " s. Time diff is: " << time_diff
                                  << ". [GetKeyedScanAtTime]");
     }
@@ -422,7 +422,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
       if (b_debug_pointcloud_buffer_) {
         ROS_WARN(
             "Timestamp past the end of the point cloud buffer [GetKeyedScan]");
-        ROS_INFO_STREAM("input time is "
+        ROS_WARN_STREAM("input time is "
                         << stamp.toSec() << "s, and latest time is "
                         << itrTime->first << " s [GetKeyedScan]"
                         << " diff is " << time_diff
@@ -457,7 +457,7 @@ bool OdometryHandler::GetKeyedScanAtTime(const ros::Time& stamp,
       keyed_scan_time_diff_limit_) { // TODO make this threshold a parameter
     ROS_WARN("Time difference between request and latest point cloud is too "
              "large, returning no point cloud");
-    ROS_INFO_STREAM("Time difference is "
+    ROS_WARN_STREAM("Time difference is "
                     << time_diff << " s which is more than limit: "
                     << keyed_scan_time_diff_limit_ << "s");
     return false;
@@ -591,17 +591,17 @@ void OdometryHandler::InitializeOdomValueAtKey(
   case LIDAR_ODOM_BUFFER_ID:
     lidar_odom_value_at_key_ = odom_value_at_key;
     b_odom_value_initialized_.lidar = true;
-    ROS_INFO("Initialize lidar odometry value at key");
+    ROS_DEBUG("Initialize lidar odometry value at key");
     break;
   case VISUAL_ODOM_BUFFER_ID:
     visual_odom_value_at_key_ = odom_value_at_key;
     b_odom_value_initialized_.visual = true;
-    ROS_INFO("Initialize visual odometry value at key");
+    ROS_DEBUG("Initialize visual odometry value at key");
     break;
   case WHEEL_ODOM_BUFFER_ID:
     wheel_odom_value_at_key_ = odom_value_at_key;
     b_odom_value_initialized_.wheel = true;
-    ROS_INFO("Initialize wheel odometry value at key");
+    ROS_DEBUG("Initialize wheel odometry value at key");
     break;
   default:
     ROS_ERROR("Invalid odometry buffer id in "
@@ -658,7 +658,7 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
     if (time_diff > ts_threshold_) {
       ROS_WARN("Timestamp before the start of the odometry buffer beyond "
                "threshold [GetPoseAtTime]");
-      ROS_INFO_STREAM("time diff is: " << time_diff << ". [GetPoseAtTime]");
+      ROS_WARN_STREAM("time diff is: " << time_diff << ". [GetPoseAtTime]");
     }
   } else if (itrTime == odom_buffer.end()) {
     // Check if it is past the end of the buffer - if so, then take the last
@@ -669,7 +669,7 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
     if (time_diff > ts_threshold_) {
       ROS_WARN("Timestamp past the end of the odometry buffer and beyond "
                "threshold [GetPoseAtTime]");
-      ROS_INFO_STREAM("input time is "
+      ROS_WARN_STREAM("input time is "
                       << stamp.toSec() << "s, and latest time is "
                       << itrTime->first << " s"
                       << " diff is " << time_diff << ". [GetPoseAtTime]");
@@ -699,7 +699,7 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
   if (time_diff > ts_threshold_) {
     ROS_WARN("Time difference between request and latest PosCovStamped is too "
              "large, returning no PosC [GetPoseAtTime]");
-    ROS_INFO_STREAM("Time difference is "
+    ROS_WARN_STREAM("Time difference is "
                     << time_diff << "s, threshold is: " << ts_threshold_
                     << ". [GetPoseAtTime]");
     return false;
@@ -724,7 +724,7 @@ bool OdometryHandler::GetTransformBetweenTimes(
     switch (odom_buffer_id) {
     case LIDAR_ODOM_BUFFER_ID:
       first_pose = lidar_odom_value_at_key_;
-      ROS_INFO("correct lidar odom buffer id");
+      ROS_DEBUG("correct lidar odom buffer id");
       break;
     case VISUAL_ODOM_BUFFER_ID:
       first_pose = visual_odom_value_at_key_;
@@ -788,7 +788,7 @@ bool OdometryHandler::GetClosestLidarTime(const ros::Time stamp,
     if ((stamp - closest_stamp).toSec() > ts_threshold_) {
       ROS_WARN("Timestamp past the end of the lidar odometry buffer "
                "[GetClosestLidarTime]");
-      ROS_INFO_STREAM("input time is "
+      ROS_WARN_STREAM("input time is "
                       << stamp.toSec() << "s, and latest time is "
                       << itrTime->first << " s [GetClosestLidarTime]");
     }
@@ -814,7 +814,7 @@ bool OdometryHandler::GetClosestLidarTime(const ros::Time stamp,
   if (time_diff > ts_threshold_) {
     ROS_WARN("Time difference between request and latest PosCovStamped is too "
              "large, returning no PosC");
-    ROS_INFO_STREAM("Time difference is " << time_diff << "s");
+    ROS_WARN_STREAM("Time difference is " << time_diff << "s");
     return false;
   }
 

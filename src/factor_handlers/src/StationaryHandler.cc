@@ -79,7 +79,7 @@ std::shared_ptr<FactorData> StationaryHandler::GetData() {
   factors_output->b_has_data = false;
 
   if (has_data_) {
-    ROS_INFO("New attitude factor in StationaryHandler.");
+    ROS_DEBUG("New attitude factor in StationaryHandler.");
     ImuFactor new_factor(CreateAttitudeFactor(last_detection_.second));
     factors_output->b_has_data = true;
     factors_output->type = "imu";

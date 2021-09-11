@@ -507,28 +507,28 @@ PointCloudVisualizer::SelectLevelForNode2(const gtsam::Symbol current_key) {
   const gu::Transform3 current_pose =
       utils::ToGu(pose_graph_.GetPose(current_key));
   std::vector<std::pair<double, size_t>> potential_levels;
-  ROS_INFO_STREAM("<=====================================================>");
-  ROS_INFO_STREAM("Levels to check: " << levels_.size());
+  ROS_DEBUG_STREAM("<=====================================================>");
+  ROS_DEBUG_STREAM("Levels to check: " << levels_.size());
   if (AllLevelsAreInitialized()) {
-    ROS_INFO_STREAM(" ALL NODES INITAILIZED");
+    ROS_DEBUG_STREAM(" ALL NODES INITAILIZED");
     for (size_t i = 0; i < levels_.size(); ++i) {
-      ROS_INFO_STREAM("Level "
+      ROS_DEBUG_STREAM("Level "
                       << i << " has " << levels_[i].nodes_.size()
                       << " init nodes: " << levels_[i].init_nodes_.size());
       double distance =
           point2planedistnace(current_pose, levels_[i].coefficients_);
-      ROS_INFO_STREAM("Distance: " << distance);
+      ROS_DEBUG_STREAM("Distance: " << distance);
       if (distance < 2.0) {
         potential_levels.emplace_back(std::pair<double, size_t>(distance, i));
       }
     }
   } else {
-    ROS_INFO_STREAM("NOT ALL NODES INITAILIZED");
+    ROS_DEBUG_STREAM("NOT ALL NODES INITAILIZED");
     for (size_t i = 0; i < levels_.size(); ++i) {
-      ROS_INFO_STREAM("Level "
+      ROS_DEBUG_STREAM("Level "
                       << i << " has " << levels_[i].nodes_.size()
                       << " init nodes: " << levels_[i].init_nodes_.size());
-      ROS_INFO_STREAM("Distance: "
+      ROS_DEBUG_STREAM("Distance: "
                       << levels_[i].MinDistanceFromNodes(current_pose)
                       << " for " << i);
       potential_levels.emplace_back(std::pair<double, size_t>(
@@ -546,7 +546,7 @@ PointCloudVisualizer::SelectLevelForNode2(const gtsam::Symbol current_key) {
                                          const std::pair<double, size_t>& rhs) {
                                         return lhs.first < rhs.first;
                                       });
-    ROS_INFO_STREAM("POTENTIAL LEVELS "
+    ROS_DEBUG_STREAM("POTENTIAL LEVELS "
                     << potential_levels.size() << " LEVEL TO CHOOSE: "
                     << min_pair.first << " " << min_pair.second);
     selected_level = min_pair.second;
@@ -556,7 +556,7 @@ PointCloudVisualizer::SelectLevelForNode2(const gtsam::Symbol current_key) {
   levels_[selected_level].EstimatePlane();
 
   for (size_t i = 0; i < levels_.size(); i++) {
-    ROS_INFO_STREAM("Current "
+    ROS_DEBUG_STREAM("Current "
                     "plane coefficients: "
                     << i << " : " << levels_[i].coefficients_.values[0] << " "
                     << levels_[i].coefficients_.values[1] << " "
@@ -570,7 +570,7 @@ void PointCloudVisualizer::RefreshPlanes() {
   std::vector<size_t> to_remove;
   for (size_t i = 0; i < levels_.size(); i++) {
     if (levels_[i].AngleWithXYPlaneRad() > 0.75) {
-      ROS_INFO_STREAM("REMOVING " << i << " DUE TO ANGLE");
+      ROS_DEBUG_STREAM("REMOVING " << i << " DUE TO ANGLE");
       to_remove.push_back(i);
       continue;
     }
@@ -579,7 +579,7 @@ void PointCloudVisualizer::RefreshPlanes() {
         if (std::abs(levels_[i].coefficients_.values[3] -
                      levels_[j].coefficients_.values[3]) < 0.5f) {
           to_remove.push_back(j);
-          ROS_INFO_STREAM("REMOVING " << j << " DUE TO being close");
+          ROS_DEBUG_STREAM("REMOVING " << j << " DUE TO being close");
           levels_[i].nodes_.insert(levels_[i].nodes_.end(),
                                    levels_[j].nodes_.begin(),
                                    levels_[j].nodes_.end());
@@ -625,9 +625,9 @@ void PointCloudVisualizer::AddPointCloudToCorrespondingLevel2(
 void PointCloudVisualizer::CreateNewLevel() {
   std::string name = "level_" + std::to_string(levels_.size());
   double x = static_cast<double>(levels_.size() + 1) * 0.0;
-  ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-  ROS_INFO_STREAM("CreateNewLevel  " << name);
-  ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+  ROS_DEBUG_STREAM("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+  ROS_DEBUG_STREAM("CreateNewLevel  " << name);
+  ROS_DEBUG_STREAM("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
   tf::StampedTransform transform(
       tf::Transform(tf::Quaternion(0.0, 0.0, 0.0, 1.0),
                     tf::Vector3(0.0, x, 0.0)),
@@ -690,20 +690,20 @@ void PointCloudVisualizer::Level::EstimatePlane() {
     return;
   if (nodes_.size() % 5 != 0)
     return;
-  ROS_INFO_STREAM("ESTIMATING!");
+  ROS_DEBUG_STREAM("ESTIMATING!");
   Eigen::MatrixXd A(nodes_.size(), 4);
-  ROS_INFO_STREAM("ESTIMATING!");
+  ROS_DEBUG_STREAM("ESTIMATING!");
   for (size_t i = 0; i < nodes_.size(); i++) {
     A(i, 0) = nodes_[i].translation.X();
     A(i, 1) = nodes_[i].translation.Y();
     A(i, 2) = nodes_[i].translation.Z();
     A(i, 3) = 1.0;
   }
-  ROS_INFO_STREAM("ESTIMATING!");
+  ROS_DEBUG_STREAM("ESTIMATING!");
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(
       A, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-  ROS_INFO_STREAM("SVD: \n " << svd.matrixV().col(3));
+  ROS_DEBUG_STREAM("SVD: \n " << svd.matrixV().col(3));
   coefficients_.values[0] = svd.matrixV().col(3)(0);
   coefficients_.values[1] = svd.matrixV().col(3)(1);
   coefficients_.values[2] = svd.matrixV().col(3)(2);
@@ -717,7 +717,7 @@ void PointCloudVisualizer::Level::EstimatePlane() {
     coefficients_.values[i] = coefficients_.values[i] / norm;
   }
 
-  ROS_INFO_STREAM("Estimate plane: " << coefficients_.values[0] << " "
+  ROS_DEBUG_STREAM("Estimate plane: " << coefficients_.values[0] << " "
                                      << coefficients_.values[1] << " "
                                      << coefficients_.values[2] << " "
                                      << coefficients_.values[3]);
