@@ -45,10 +45,6 @@ bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
   if (!LoopGeneration::LoadParameters(n))
     return false;
 
-  double distance_to_skip_recent_poses, translation_threshold_nodes;
-  if (!pu::Get(param_ns_ + "/translation_threshold_nodes",
-               translation_threshold_nodes))
-    return false;
   if (!pu::Get(param_ns_ + "/proximity_threshold_max",
                proximity_threshold_max_))
     return false;
@@ -56,9 +52,6 @@ bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
                proximity_threshold_min_))
     return false;
   if (!pu::Get(param_ns_ + "/increase_rate", increase_rate_))
-    return false;
-  if (!pu::Get(param_ns_ + "/distance_to_skip_recent_poses",
-               distance_to_skip_recent_poses))
     return false;
 
   if (!pu::Get(param_ns_ + "/n_closest", n_closest_))
@@ -70,8 +63,6 @@ bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
   if (!b_take_n_closest)
     n_closest_ = std::numeric_limits<int>::max();
 
-  skip_recent_poses_ =
-      (int)(distance_to_skip_recent_poses / translation_threshold_nodes);
   return true;
 }
 
@@ -115,16 +106,18 @@ void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
     if (key == other_key)
       continue;
 
-    // Don't compare against poses that were recently collected.
-    if (utils::IsKeyFromSameRobot(key, other_key) &&
-        std::llabs(key.index() - other_key.index()) < skip_recent_poses_)
-      continue;
-
     double distance = DistanceBetweenKeys(key, other_key);
-
-    double radius = std::max(
-        proximity_threshold_min_,
-        std::min(proximity_threshold_max_, key.index() * increase_rate_));
+    double radius;
+    if (utils::IsKeyFromSameRobot(key, other_key)) {
+      radius = std::max(
+          0.0,
+          std::min(proximity_threshold_max_,
+                   (key.index() - other_key.index()) * increase_rate_));
+    } else {
+      radius = std::max(
+          proximity_threshold_min_,
+          std::min(proximity_threshold_max_, key.index() * increase_rate_));
+    }
 
     if (distance > radius) {
       continue;

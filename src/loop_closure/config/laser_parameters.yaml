@@ -8,9 +8,6 @@ robot:
   #### Loop closure generation 
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
-  # Translation threshold for new nodes to compute values for loop closure checking
-  translation_threshold_nodes: 1.0
-
   # When searching through old poses for loop closures, only consider old poses
   # that are within an adaptive radius of the new pose
   proximity_threshold_min: 3
@@ -21,10 +18,6 @@ robot:
   # of everything within the proximity threshold.
   n_closest: 3
   b_take_n_closest: true
-
-  # Don't attempt loop closures with poses in the graph that were collected within
-  # this translational distance (m) from the current pose.
-  distance_to_skip_recent_poses: 15 #10 # 200
 
   #--------------------------------------------------------------------------------
   #### Loop closure prioritization
@@ -153,9 +146,6 @@ base:
   #### Loop closure generation 
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
-  # Translation threshold for new nodes to compute values for loop closure checking
-  translation_threshold_nodes: 1.0
-
   # When searching through old poses for loop closures, only consider old poses
   # that are within an adaptive radius of the new pose
   proximity_threshold_min: 3
@@ -166,10 +156,6 @@ base:
   # of everything within the proximity threshold.
   n_closest: 10
   b_take_n_closest: true
-
-  # Don't attempt loop closures with poses in the graph that were collected within
-  # this translational distance (m) from the current pose.
-  distance_to_skip_recent_poses: 50 #Reducing from 80, to allow more frequent LC
 
   #--------------------------------------------------------------------------------
   #### Loop closure prioritization

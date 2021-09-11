@@ -38,7 +38,6 @@ protected:
   double proximity_threshold_max_;
   double proximity_threshold_min_;
   double increase_rate_;
-  size_t skip_recent_poses_;
   int n_closest_;
 };
 
