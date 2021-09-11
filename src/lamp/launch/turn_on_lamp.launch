@@ -72,7 +72,8 @@
       <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>
 
       <!-- Point cloud filter -->
-      <rosparam file="$(find point_cloud_filter)/config/lamp_parameters.yaml"/>
+      <rosparam if="$(eval b_use_hovermap)" file="$(find lamp)/config/filter_parameters_hvm.yaml"/>
+      <rosparam unless="$(eval b_use_hovermap)" file="$(find lamp)/config/filter_parameters.yaml"/>
 
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
