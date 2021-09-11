@@ -49,7 +49,13 @@ bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/translation_threshold_nodes",
                translation_threshold_nodes))
     return false;
-  if (!pu::Get(param_ns_ + "/proximity_threshold", proximity_threshold_))
+  if (!pu::Get(param_ns_ + "/proximity_threshold_max",
+               proximity_threshold_max_))
+    return false;
+  if (!pu::Get(param_ns_ + "/proximity_threshold_min",
+               proximity_threshold_min_))
+    return false;
+  if (!pu::Get(param_ns_ + "/increase_rate", increase_rate_))
     return false;
   if (!pu::Get(param_ns_ + "/distance_to_skip_recent_poses",
                distance_to_skip_recent_poses))
@@ -116,7 +122,11 @@ void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
 
     double distance = DistanceBetweenKeys(key, other_key);
 
-    if (distance > proximity_threshold_) {
+    double radius = std::max(
+        proximity_threshold_min_,
+        std::min(proximity_threshold_max_, key.index() * increase_rate_));
+
+    if (distance > radius) {
       continue;
     }
 

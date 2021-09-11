@@ -132,6 +132,38 @@ TEST_F(TestLoopGeneration, TestGenerateLoopsTakeClosest) {
   EXPECT_EQ(gtsam::Symbol('a', 1), candidate2.key_to);
 }
 
+TEST_F(TestLoopGeneration, TestAdaptiveRadius) {
+  ros::NodeHandle nh;
+  ros::param::set("base/n_closest", 1);
+  ros::param::set("base/b_take_n_closest", true);
+  bool init = proximity_lc_.Initialize(nh);
+  pose_graph_msgs::PoseGraph::Ptr graph_msg(new pose_graph_msgs::PoseGraph);
+  pose_graph_msgs::PoseGraphNode node0, node2, node100;
+  node0.key = gtsam::Symbol('a', 0);
+  node2.key = gtsam::Symbol('a', 2);
+  node100.key = gtsam::Symbol('a', 100);
+  node2.pose.position.x = 10;
+  node100.pose.position.x = 10;
+  graph_msg->nodes.push_back(node0);
+  keyedPoseCallback(graph_msg);
+
+  std::vector<pose_graph_msgs::LoopCandidate> candidates = getCandidates();
+  EXPECT_EQ(0, candidates.size());
+
+  graph_msg->nodes.clear();
+  graph_msg->nodes.push_back(node2);
+
+  candidates = getCandidates();
+  EXPECT_EQ(0, candidates.size());
+
+  graph_msg->nodes.clear();
+  graph_msg->nodes.push_back(node100);
+  keyedPoseCallback(graph_msg);
+
+  candidates = getCandidates();
+  EXPECT_EQ(1, candidates.size());
+}
+
 }  // namespace lamp_loop_closure
 
 int main(int argc, char** argv) {
