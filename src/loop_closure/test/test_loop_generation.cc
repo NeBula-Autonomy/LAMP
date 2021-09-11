@@ -152,14 +152,14 @@ TEST_F(TestLoopGeneration, TestAdaptiveRadius) {
 
   graph_msg->nodes.clear();
   graph_msg->nodes.push_back(node2);
-
+  // Because idx is 2 radius is still small so no candidate generated
   candidates = getCandidates();
   EXPECT_EQ(0, candidates.size());
 
   graph_msg->nodes.clear();
   graph_msg->nodes.push_back(node100);
   keyedPoseCallback(graph_msg);
-
+  // idx now 100 so larger radius
   candidates = getCandidates();
   EXPECT_EQ(1, candidates.size());
 }
