@@ -114,7 +114,9 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     return;
   }
   size_t n = candidate_queue_.size();
-  ROS_INFO("ObservabilityLoopPrioritization: Reveived %d loop candidates", n);
+  if (n > 0) {
+    ROS_INFO("ObservabilityLoopPrioritization: Reveived %d loop candidates", n);
+  }
   size_t added = 0;
   for (size_t i = 0; i < n; i++) {
     auto candidate = candidate_queue_.front();
@@ -161,8 +163,11 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     added++;
     priority_queue_mutex_.unlock();
   }
-  ROS_INFO("ObservabilityLoopPrioritization: Added %d loop candidates to queue",
-           added);
+  if (added > 0) {
+    ROS_INFO(
+        "ObservabilityLoopPrioritization: Added %d loop candidates to queue",
+        added);
+  }
   return;
 }
 

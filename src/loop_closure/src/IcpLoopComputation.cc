@@ -530,9 +530,9 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   *fitness_score = icp->getFitnessScore();
 
   if (*fitness_score > max_tolerable_fitness_) {
-    ROS_INFO_STREAM("ICP: Converged or max iterations reached, but score: "
-                    << icp->getFitnessScore()
-                    << ", Exceeds threshold: " << max_tolerable_fitness_);
+    ROS_DEBUG_STREAM("ICP: Converged or max iterations reached, but score: "
+                     << icp->getFitnessScore()
+                     << ", Exceeds threshold: " << max_tolerable_fitness_);
     return false;
   }
 
@@ -548,7 +548,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   if (icp_transform_thresholding_ &&
       (trans_diff > icp_max_translation_ ||
        rot_diff > icp_max_rotation_ * M_PI / 180.0)) {
-    ROS_INFO_STREAM(
+    ROS_DEBUG_STREAM(
         "ICP: Convered and passes fitness, but translation or rotation exceeds "
         "threshold.\n\tTranslation: "
         << trans_diff << ", thresh: " << icp_max_translation_
@@ -583,9 +583,10 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     }
   }
 
-  ROS_INFO_STREAM("Successfully compelted alignment between "
+  ROS_INFO_STREAM("Successfully completed alignment between "
                   << gtsam::DefaultKeyFormatter(key1) << " and "
-                  << gtsam::DefaultKeyFormatter(key2));
+                  << gtsam::DefaultKeyFormatter(key2)
+                  << " with fitness score: " << *fitness_score);
 
   return true;
 }
@@ -642,7 +643,7 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   sac_ia.align(*aligned_output, *tf_out);
 
   sac_fitness_score = sac_ia.getFitnessScore();
-  ROS_INFO_STREAM("SAC fitness score: " << sac_fitness_score);
+  ROS_DEBUG_STREAM("SAC fitness score: " << sac_fitness_score);
 
   *tf_out = sac_ia.getFinalTransformation();
 }

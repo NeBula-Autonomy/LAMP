@@ -100,7 +100,7 @@ public:
     bool initalized;
     BoundingBox bounding_box_;
     bool IsInitialized() const {
-      ROS_INFO_STREAM(
+      ROS_DEBUG_STREAM(
           "Diagonal distance: " << bounding_box_.DiagonalDistance());
       return init_nodes_.size() >= 20 and
           bounding_box_.DiagonalDistance() > 10.0;

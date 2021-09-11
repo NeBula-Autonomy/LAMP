@@ -510,7 +510,7 @@ PointCloudVisualizer::SelectLevelForNode2(const gtsam::Symbol current_key) {
   ROS_DEBUG_STREAM("<=====================================================>");
   ROS_DEBUG_STREAM("Levels to check: " << levels_.size());
   if (AllLevelsAreInitialized()) {
-    ROS_INFO_STREAM(" ALL NODES INITAILIZED");
+    ROS_DEBUG_STREAM(" ALL NODES INITAILIZED");
     for (size_t i = 0; i < levels_.size(); ++i) {
       ROS_DEBUG_STREAM("Level "
                       << i << " has " << levels_[i].nodes_.size()
@@ -523,7 +523,7 @@ PointCloudVisualizer::SelectLevelForNode2(const gtsam::Symbol current_key) {
       }
     }
   } else {
-    ROS_INFO_STREAM("NOT ALL NODES INITAILIZED");
+    ROS_DEBUG_STREAM("NOT ALL NODES INITAILIZED");
     for (size_t i = 0; i < levels_.size(); ++i) {
       ROS_DEBUG_STREAM("Level "
                       << i << " has " << levels_[i].nodes_.size()
