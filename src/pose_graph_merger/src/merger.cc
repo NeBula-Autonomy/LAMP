@@ -219,11 +219,11 @@ void Merger::OnFastGraphMsg(const pose_graph_msgs::PoseGraphConstPtr& msg) {
     // Check if the prior node exists
     if (merged_graph_KeyToIndex_.count(prevFastKey) == 0) {
       // Prior node doesn't exist - don't adjust
-      ROS_DEBUG_STREAM("[FastGraph] Have missing node with an edge-from. Key: "
-                       << gtsam::DefaultKeyFormatter(prevFastKey)
-                       << ", edge to: "
-                       << gtsam::DefaultKeyFormatter(fastNode->key)
-                       << ". Using current robot-graph value.");
+      ROS_WARN_STREAM("[FastGraph] Have missing node with an edge-from. Key: "
+                      << gtsam::DefaultKeyFormatter(prevFastKey)
+                      << ", edge to: "
+                      << gtsam::DefaultKeyFormatter(fastNode->key)
+                      << ". Using current robot-graph value.");
       // Just use the existing pose value
       ROS_DEBUG_STREAM("\n[Fast Graph Add] Adding new node with key "
                        << gtsam::DefaultKeyFormatter(new_merged_graph_node.key)

@@ -157,7 +157,7 @@ void LampBase::MergeOptimizedGraph(
   // prune outliers given optimized graph
   pose_graph_.UpdateLoopClosures(msg);
 
-  ROS_DEBUG_STREAM("Pose graph after update: ");
+  // ROS_DEBUG_STREAM("Pose graph after update: ");
   // for (auto n : pose_graph_.GetNodes()) {
   //   ROS_INFO_STREAM(gtsam::DefaultKeyFormatter(n.key)
   //                   << "(" << n.pose.position.x << ", " << n.pose.position.y

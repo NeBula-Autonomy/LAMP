@@ -185,7 +185,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Send data to optimizer - pose graph and map publishing happens in
   // callback when data is received back from optimizer
   if (b_run_optimization_) {
-    ROS_DEBUG_STREAM("Publishing pose graph to optimizer");
+    ROS_INFO_STREAM("Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
 
     b_run_optimization_ = false;
@@ -379,7 +379,7 @@ bool LampBaseStation::ProcessManualLoopClosureData(
     return false;
   }
 
-  ROS_DEBUG_STREAM("Received new manual loop closure data");
+  ROS_INFO_STREAM("Received new manual loop closure data");
 
   for (auto factor : manual_loop_closure_data->factors) {
     pose_graph_.TrackFactor(factor.key_from,
@@ -461,7 +461,7 @@ void LampBaseStation::RemoveRobotCallback(const std_msgs::String msg) {
   lamp_pgo_reset_pub_.publish(signal);
 
   // Publish graph to optimize
-  ROS_DEBUG_STREAM("Sending pose graph to optimizer");
+  ROS_INFO_STREAM("Sending pose graph to optimizer");
   PublishPoseGraphForOptimizer();
 }
 

@@ -167,7 +167,12 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
 }
 
 void ObservabilityLoopPrioritization::PrunePriorityQueue() {
-  ROS_DEBUG_STREAM("Prune priority queue... size: " << priority_queue_.size());
+  static int old_size = 0;
+  if (priority_queue_.size() != old_size) {
+    ROS_DEBUG_STREAM(
+        "Prune priority queue... size: " << priority_queue_.size());
+    old_size = priority_queue_.size();
+  }
   priority_queue_mutex_.lock();
   std::deque<double> temp_observability_score;
   std::deque<pose_graph_msgs::LoopCandidate> temp_priority_queue;

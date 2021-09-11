@@ -459,7 +459,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   // Start optimize, if needed
   if (b_run_optimization_) {
-    ROS_DEBUG_STREAM(
+    ROS_INFO_STREAM(
         "Optimization activated: Publishing pose graph to optimizer");
     PublishPoseGraphForOptimizer();
 
@@ -467,7 +467,7 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   }
 
   if (b_received_optimizer_update_) {
-    ROS_DEBUG("LampRobot: received optimizer update");
+    ROS_INFO("LampRobot: received optimizer update");
     pose_graph_.AddLastNodeToNew();
     PublishPoseGraph();
 
@@ -878,7 +878,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
     }
   }
 
-  ROS_INFO("Successfully complete ArtifactProcess call with an artifact");
+  ROS_DEBUG("Successfully complete ArtifactProcess call with an artifact");
 
   // Clean up for next iteration
   artifact_handler_.CleanFailedFactors(true);
@@ -1004,7 +1004,8 @@ bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
     ROS_DEBUG("Added April Tag to pose graph factors in lamp");
   }
 
-  ROS_INFO("Successfully completed ProcessAprilTagData call with an April Tag");
+  ROS_DEBUG(
+      "Successfully completed ProcessAprilTagData call with an April Tag");
 
   // Clean the new keys
   april_tag_handler_.CleanFailedFactors(true);

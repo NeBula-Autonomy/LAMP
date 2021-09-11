@@ -354,8 +354,8 @@ pose_graph_msgs::PoseGraphNode RssiLoopClosure::GetClosestPoseAtTime(
   // Check threshold
   if (check_threshold && std::abs(t_closest - stamp.toSec()) > time_threshold) {
     ROS_ERROR("Delta between queried time and closest time in graph too large");
-    ROS_DEBUG_STREAM("Time queried is: " << stamp.toSec()
-                                         << ", closest time is: " << t_closest);
+    ROS_INFO_STREAM("Time queried is: " << stamp.toSec()
+                                        << ", closest time is: " << t_closest);
     ROS_INFO_STREAM("Difference is "
                     << std::abs(stamp.toSec() - t_closest)
                     << ", allowable max is: " << time_threshold);
@@ -398,7 +398,7 @@ void RssiLoopClosure::GenerateLoops() {
   }
 
   if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {
-    ROS_DEBUG_STREAM("Sending potential loop closures: " << candidates_.size());
+    ROS_INFO_STREAM("Sending potential loop closures: " << candidates_.size());
     PublishLoops();
     ClearLoops();
   }

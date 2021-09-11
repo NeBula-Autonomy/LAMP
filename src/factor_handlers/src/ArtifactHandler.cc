@@ -151,11 +151,9 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
               << artifact_prefix_ << std::endl;
     cur_artifact_key = gtsam::Symbol(artifact_prefix_, largest_artifact_id_);
     ++largest_artifact_id_;
-    ROS_DEBUG_STREAM("\nArtifact Handler: new artifact observed, artifact id "
-                    << artifact_id);
-    std::cout << "new artifact observed, artifact id " << artifact_id
-              << " with key in pose graph "
-              << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
+    ROS_INFO_STREAM("\nArtifact Handler: new artifact observed, artifact id "
+                    << artifact_id << "with key"
+                    << gtsam::DefaultKeyFormatter(cur_artifact_key));
     // update hash
     artifact_id2key_hash[artifact_id] = cur_artifact_key;
 
@@ -274,7 +272,7 @@ void ArtifactHandler::PublishArtifacts(const gtsam::Symbol artifact_key,
         artifact_key.chr() == 'K' || artifact_key.chr() == 'L' ||
         artifact_key.chr() == 'M' || artifact_key.chr() == 'X')) {
     ROS_WARN("ERROR - have a non-landmark ID");
-    ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
+    ROS_WARN_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(artifact_key));
     return;
   }
 
@@ -405,13 +403,11 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
                                         const artifact_msgs::Artifact& msg) {
   // keep track of artifact info: add to hash if not added
   if (artifact_key2info_hash_.find(gtsam::Key(artifact_key)) == artifact_key2info_hash_.end()) {
-    ROS_DEBUG_STREAM("New artifact detected with key " << gtsam::DefaultKeyFormatter(artifact_key));
     ArtifactInfo artifactinfo(msg.parent_id);
     artifactinfo.msg = msg;
     artifactinfo.num_updates = artifactinfo.num_updates+1;
     artifact_key2info_hash_[artifact_key] = artifactinfo;
   } else {
-    ROS_DEBUG("Existing artifact detected");
     // Existing artifact. Hence update the artifact info
     artifact_key2info_hash_[artifact_key].num_updates += 1;
     artifact_key2info_hash_[artifact_key].msg = msg;

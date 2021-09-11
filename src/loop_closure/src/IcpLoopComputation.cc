@@ -583,6 +583,10 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
     }
   }
 
+  ROS_INFO_STREAM("Successfully compelted alignment between "
+                  << gtsam::DefaultKeyFormatter(key1) << " and "
+                  << gtsam::DefaultKeyFormatter(key2));
+
   return true;
 }
 
