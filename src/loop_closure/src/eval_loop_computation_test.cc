@@ -276,7 +276,7 @@ int main(int argc, char** argv) {
   std::vector<pose_graph_msgs::PoseGraphEdge> false_results =
       evaluate.GetLoopClosures();
 
-  ROS_INFO("%d seconds to omplete lc analysis: ", duration);
+  ROS_INFO("%d seconds to complete lc analysis: ", duration);
   ROS_INFO("Max keyed scan size: %d and Min keyed scan size: %d",
            evaluate.maxKsSize(),
            evaluate.minKsSize());
