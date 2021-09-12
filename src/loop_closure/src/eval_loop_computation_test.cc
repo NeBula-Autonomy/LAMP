@@ -33,6 +33,11 @@ public:
     filter_params_.decimate_percentage =
         std::min(1.0, std::max(0.0, filter_params_.decimate_percentage));
 
+    if (!pu::Get("filtering/adaptive_filter", filter_params_.adaptive_filter))
+      return false;
+    if (!pu::Get("filtering/adaptive_target", filter_params_.adaptive_target))
+      return false;
+
     if (!pu::Get("normals_computation/method",
                  normals_compute_params_.search_method))
       return false;
@@ -54,6 +59,9 @@ public:
       icp_lc_.icp_computation_pool_.resize(
           icp_lc_.number_of_threads_in_icp_computation_pool_);
     }
+
+    min_ks_size_ = std::numeric_limits<size_t>::max();
+    max_ks_size_ = 0;
     return true;
   }
 
@@ -70,6 +78,12 @@ public:
     for (auto ks : keyed_scans) {
       pose_graph_msgs::KeyedScan::Ptr ks_msg(new pose_graph_msgs::KeyedScan);
       FilterKeyedScans(ks, ks_msg);
+
+      if (ks_msg->scan.width < min_ks_size_)
+        min_ks_size_ = ks_msg->scan.width;
+      if (ks_msg->scan.width > max_ks_size_)
+        max_ks_size_ = ks_msg->scan.width;
+
       icp_lc_.KeyedScanCallback(ks_msg);
     }
   }
@@ -98,16 +112,49 @@ public:
     icp_lc_.output_queue_.clear();
   }
 
+  void AdaptiveFilter(const double& target_pt_size,
+                      const double& init_leaf_size,
+                      const PointCloud& original_cloud,
+                      PointCloud::Ptr new_cloud) {
+    if (original_cloud.size() < target_pt_size) {
+      *new_cloud = original_cloud;
+      return;
+    }
+    double leaf_size = init_leaf_size;
+
+    int count = 0;
+    while (abs(new_cloud->size() - target_pt_size) > 10 && count < 100) {
+      *new_cloud = original_cloud;
+      pcl::VoxelGrid<Point> grid;
+      grid.setLeafSize(leaf_size, leaf_size, leaf_size);
+      grid.setInputCloud(new_cloud);
+      grid.filter(*new_cloud);
+
+      leaf_size = leaf_size *
+          (static_cast<double>(new_cloud->size()) /
+           static_cast<double>(target_pt_size));
+      count++;
+    }
+  }
+
   void FilterKeyedScans(const pose_graph_msgs::KeyedScan& original_ks,
                         pose_graph_msgs::KeyedScan::Ptr new_ks) {
     PointCloud::Ptr new_scan(new PointCloud);
-    pcl::fromROSMsg(original_ks.scan, *new_scan);
+    PointCloud adaptive_input;
+    pcl::fromROSMsg(original_ks.scan, adaptive_input);
     // Filter and publish scan
-    const int n_points = static_cast<int>(
-        (1.0 - filter_params_.decimate_percentage) * new_scan->size());
+    // Adaptive filter
+    if (filter_params_.adaptive_filter) {
+      AdaptiveFilter(
+          filter_params_.adaptive_target, 0.25, adaptive_input, new_scan);
+    } else {
+      *new_scan = adaptive_input;
+    }
 
-    // // Apply random downsampling to the keyed scan
+    // Apply random downsampling to the keyed scan
     if (filter_params_.random_filter) {
+      const int n_points = static_cast<int>(
+          (1.0 - filter_params_.decimate_percentage) * new_scan->size());
       pcl::RandomSample<Point> random_filter;
       random_filter.setSample(n_points);
       random_filter.setInputCloud(new_scan);
@@ -136,6 +183,14 @@ public:
     new_ks->key = original_ks.key;
   }
 
+  inline size_t maxKsSize() {
+    return max_ks_size_;
+  }
+
+  inline size_t minKsSize() {
+    return min_ks_size_;
+  }
+
 protected:
   IcpLoopComputation icp_lc_;
   struct FilterParams {
@@ -147,7 +202,14 @@ protected:
     bool random_filter;
     // Percentage of points to discard. Must be between 0.0 and 1.0;
     double decimate_percentage;
+    // Adaptive filter
+    bool adaptive_filter;
+    // Adaptive point size
+    int adaptive_target;
   } filter_params_;
+
+  size_t max_ks_size_;
+  size_t min_ks_size_;
 
   utils::NormalComputeParams normals_compute_params_;
 };
@@ -180,9 +242,6 @@ int main(int argc, char** argv) {
     ROS_ERROR("Failed to load parameters for EvalIcpLoopCompute class. ");
     return EXIT_FAILURE;
   }
-  auto start = std::chrono::high_resolution_clock::now();
-  //  std::chrono::steady_clock::time_point begin =
-  //  std::chrono::steady_clock::now();
   // Add the keyed scans and keyed poses
   evaluate.AddKeyedScans(test_data.keyed_scans_);
   if (use_gt_odom) {
@@ -195,8 +254,13 @@ int main(int argc, char** argv) {
   evaluate.AddLoopCandidates(test_data.real_candidates_);
 
   ROS_INFO("Computing loop closures... ");
+  auto start = std::chrono::high_resolution_clock::now();
   // Compute
   evaluate.ComputeLoopClosures();
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start) /
+      1000;
 
   // Get the computed loop closures
   std::vector<pose_graph_msgs::PoseGraphEdge> results =
@@ -212,17 +276,10 @@ int main(int argc, char** argv) {
   std::vector<pose_graph_msgs::PoseGraphEdge> false_results =
       evaluate.GetLoopClosures();
 
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start) /
-      1000;
-
-  // std::chrono::steady_clock::time_point end =
-  // std::chrono::steady_clock::now(); double duration =
-  // std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
-  // / 1000000.0;
-
   ROS_INFO("%d seconds to omplete lc analysis: ", duration);
+  ROS_INFO("Max keyed scan size: %d and Min keyed scan size: %d",
+           evaluate.maxKsSize(),
+           evaluate.minKsSize());
   ROS_INFO("Detected %d loop closures.", results.size());
   ROS_INFO("Detected %d incorrect loop closures.", false_results.size());
 
