@@ -7,7 +7,9 @@
 #include <loop_closure/IcpLoopComputation.h>
 #include <loop_closure/TestUtils.h>
 #include <parameter_utils/ParameterUtils.h>
-#include <point_cloud_filter/PointCloudFilter.h>
+#include <pcl/filters/filter.h>
+#include <pcl/filters/random_sample.h>
+#include <pcl/filters/voxel_grid.h>
 #include <ros/ros.h>
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
