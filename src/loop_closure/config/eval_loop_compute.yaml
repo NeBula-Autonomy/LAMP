@@ -1,17 +1,23 @@
 filtering:
 
   # VOXEL GRID FILTER 
-  grid_filter: true
+  grid_filter: false
   # Resolution of voxel grid filter
-  grid_res: 0.3
+  grid_res: 0.8
 
   # RANDOM DOWNSAMPLE FILTER
   random_filter: true
   # Percentage of points to discard. Must be between 0.0 and 1.0.
-  decimate_percentage: 0.90
+  decimate_percentage: 0.60
   decimate_percentage_open_space: 0.97
 
   # ADAPTIVE FILTER 
-  adaptive_filter: false
+  adaptive_filter: true
   # Number of points to target for adaptive filter
   adaptive_target: 3000
+  # Max grid size for adaptive filter
+  adaptive_max_grid: 0.8
+  # Min grid size for adaptive filter
+  adaptive_min_grid: 0.1
+  # Check observability
+  observability_check: true

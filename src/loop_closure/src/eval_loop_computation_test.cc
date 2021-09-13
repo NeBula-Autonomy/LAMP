@@ -46,6 +46,9 @@ public:
     if (!pu::Get("filtering/adaptive_min_grid",
                  filter_params_.adaptive_min_grid))
       return false;
+    if (!pu::Get("filtering/observability_check",
+                 filter_params_.observability_check))
+      return false;
 
     if (!pu::Get("normals_computation/method",
                  normals_compute_params_.search_method))
@@ -125,6 +128,7 @@ public:
                       const double& init_leaf_size,
                       const double& min_leaf_size,
                       const double& max_leaf_size,
+                      const bool& observability_check,
                       const PointCloud& original_cloud,
                       PointCloud::Ptr new_cloud) {
     if (original_cloud.size() < target_pt_size) {
@@ -134,10 +138,13 @@ public:
     double leaf_size = init_leaf_size;
 
     *new_cloud = original_cloud;
+    double prev_observability = 0.0;
     Eigen::Matrix<double, 3, 1> obs_eigenv;
-    utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
-    double prev_observability =
-        obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
+    if (observability_check) {
+      utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+      prev_observability =
+          obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
+    }
     int count = 0;
     while (abs(new_cloud->size() - target_pt_size) > 10 && count < 100) {
       *new_cloud = original_cloud;
@@ -146,17 +153,21 @@ public:
       grid.setInputCloud(new_cloud);
       grid.filter(*new_cloud);
 
-      utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
-      double observability =
-          obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
-
+      double obs_factor = 0.0;
+      if (observability_check) {
+        utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+        double observability =
+            obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
+        obs_factor = (prev_observability - observability) / prev_observability;
+        prev_observability = observability;
+      }
       double size_factor = static_cast<double>(new_cloud->size()) /
           static_cast<double>(target_pt_size);
-      double obs_factor = prev_observability / observability;
-
       leaf_size = std::min(
           max_leaf_size,
-          std::max(min_leaf_size, leaf_size * size_factor * obs_factor));
+          std::max(min_leaf_size,
+                   leaf_size *
+                       (size_factor - abs(size_factor - 1) * obs_factor)));
 
       count++;
     }
@@ -209,6 +220,7 @@ public:
                      0.25,
                      filter_params_.adaptive_min_grid,
                      filter_params_.adaptive_max_grid,
+                     filter_params_.observability_check,
                      adaptive_input,
                      new_scan);
     } else {
@@ -274,6 +286,7 @@ protected:
     // Adaptive constraint
     double adaptive_max_grid;
     double adaptive_min_grid;
+    bool observability_check;
   } filter_params_;
 
   size_t max_ks_size_;

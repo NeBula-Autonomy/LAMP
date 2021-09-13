@@ -58,17 +58,19 @@ void LampPcldFilter::AdaptiveGridFilter(const double& target_pt_size,
 
     double size_factor = static_cast<double>(new_cloud->size()) /
         static_cast<double>(target_pt_size);
-    double obs_factor = 1;
+    double obs_factor = 0.0;
     if (params_.observability_check) {
       if (!processed_first_cloud_)
         prev_observability_ = observability;
 
-      obs_factor = prev_observability_ / observability;
+      obs_factor = (prev_observability_ - observability) / prev_observability_;
       prev_observability_ = observability;
     }
 
     grid_leaf_size_ = std::min(
         max_leaf_size,
-        std::max(min_leaf_size, grid_leaf_size_ * size_factor * obs_factor));
+        std::max(min_leaf_size,
+                 grid_leaf_size_ *
+                     (size_factor - abs(size_factor - 1) * obs_factor)));
   }
 }
