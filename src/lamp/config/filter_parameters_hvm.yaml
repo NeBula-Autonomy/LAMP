@@ -3,7 +3,7 @@ filtering:
   # VOXEL GRID FILTER 
   grid_filter: true
   # Resolution of voxel grid filter
-  grid_res: 0.25
+  grid_res: 0.8
 
   # RANDOM DOWNSAMPLE FILTER
   random_filter: true
