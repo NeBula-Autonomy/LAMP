@@ -11,6 +11,7 @@
 #include <ros/ros.h>
 #include <utils/CommonFunctions.h>
 #include <utils/CommonStructs.h>
+#include <utils/PointCloudUtils.h>
 
 namespace tu = test_utils;
 namespace pu = parameter_utils;
@@ -36,6 +37,12 @@ public:
     if (!pu::Get("filtering/adaptive_filter", filter_params_.adaptive_filter))
       return false;
     if (!pu::Get("filtering/adaptive_target", filter_params_.adaptive_target))
+      return false;
+    if (!pu::Get("filtering/adaptive_max_grid",
+                 filter_params_.adaptive_max_grid))
+      return false;
+    if (!pu::Get("filtering/adaptive_min_grid",
+                 filter_params_.adaptive_min_grid))
       return false;
 
     if (!pu::Get("normals_computation/method",
@@ -114,6 +121,8 @@ public:
 
   void AdaptiveFilter(const double& target_pt_size,
                       const double& init_leaf_size,
+                      const double& min_leaf_size,
+                      const double& max_leaf_size,
                       const PointCloud& original_cloud,
                       PointCloud::Ptr new_cloud) {
     if (original_cloud.size() < target_pt_size) {
@@ -122,6 +131,11 @@ public:
     }
     double leaf_size = init_leaf_size;
 
+    *new_cloud = original_cloud;
+    Eigen::Matrix<double, 3, 1> obs_eigenv;
+    utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+    double prev_observability =
+        obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
     int count = 0;
     while (abs(new_cloud->size() - target_pt_size) > 10 && count < 100) {
       *new_cloud = original_cloud;
@@ -130,9 +144,52 @@ public:
       grid.setInputCloud(new_cloud);
       grid.filter(*new_cloud);
 
-      leaf_size = leaf_size *
-          (static_cast<double>(new_cloud->size()) /
-           static_cast<double>(target_pt_size));
+      utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+      double observability = obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
+
+      double size_factor = static_cast<double>(new_cloud->size()) /
+                                 static_cast<double>(target_pt_size);
+      double obs_factor = prev_observability / observability;
+
+      leaf_size = std::min(
+          max_leaf_size,
+          std::max(min_leaf_size, leaf_size * size_factor * obs_factor));
+
+      count++;
+    }
+  }
+
+  void AdaptiveRandomFilter(const double& target_pt_size,
+                            const double& obs_epsilon,
+                            const PointCloud& original_cloud,
+                            PointCloud::Ptr new_cloud) {
+    if (original_cloud.size() < target_pt_size) {
+      *new_cloud = original_cloud;
+      return;
+    }
+    *new_cloud = original_cloud;
+    Eigen::Matrix<double, 3, 1> obs_eigenv;
+    utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+    double prev_observability =
+        obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
+    int count = 0;
+    int decrement = (original_cloud.size() - target_pt_size) / 100;
+    while (new_cloud->size() > target_pt_size && count < 100) {
+      const int n_points = new_cloud->size() - decrement;
+      pcl::RandomSample<Point> random_filter;
+      random_filter.setSample(n_points);
+      random_filter.setInputCloud(new_cloud);
+      random_filter.filter(*new_cloud);
+
+      Eigen::Matrix<double, 3, 1> obs_eigenv;
+      utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+      double observability =
+          obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
+
+      if (prev_observability - observability > obs_epsilon)
+        break;
+
+      prev_observability = observability;
       count++;
     }
   }
@@ -145,8 +202,12 @@ public:
     // Filter and publish scan
     // Adaptive filter
     if (filter_params_.adaptive_filter) {
-      AdaptiveFilter(
-          filter_params_.adaptive_target, 0.25, adaptive_input, new_scan);
+      AdaptiveFilter(filter_params_.adaptive_target,
+                     0.25,
+                     filter_params_.adaptive_min_grid,
+                     filter_params_.adaptive_max_grid,
+                     adaptive_input,
+                     new_scan);
     } else {
       *new_scan = adaptive_input;
     }
@@ -159,6 +220,7 @@ public:
       random_filter.setSample(n_points);
       random_filter.setInputCloud(new_scan);
       random_filter.filter(*new_scan);
+      // AdaptiveRandomFilter(n_points, 0.1, *new_scan, new_scan);
     }
 
     // Apply voxel grid filter to the keyed scan
@@ -206,6 +268,9 @@ protected:
     bool adaptive_filter;
     // Adaptive point size
     int adaptive_target;
+    // Adaptive constraint 
+    double adaptive_max_grid;
+    double adaptive_min_grid;
   } filter_params_;
 
   size_t max_ks_size_;
