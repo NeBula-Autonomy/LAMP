@@ -48,11 +48,6 @@ bool LampRobot::Initialize(const ros::NodeHandle& n) {
   // Get the name of the process
   name_ = ros::names::append(n.getNamespace(), "LampRobot");
 
-  if (!filter_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize point cloud filter.", name_.c_str());
-    return false;
-  }
-
   if (!mapper_->Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize mapper.", name_.c_str());
     return false;
@@ -118,19 +113,31 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("time_threshold", pose_graph_.time_threshold))
     return false;
   // Load filtering parameters.
-  if (!pu::Get("filtering/grid_filter", params_.grid_filter))
+  if (!pu::Get("filtering/adaptive_grid_filter",
+               filter_params_.adaptive_grid_filter))
     return false;
-  if (!pu::Get("filtering/grid_res", params_.grid_res))
+  if (!pu::Get("filtering/adaptive_grid_target",
+               filter_params_.adaptive_grid_target))
     return false;
-  if (!pu::Get("filtering/random_filter", params_.random_filter))
+  if (!pu::Get("filtering/adaptive_max_grid", filter_params_.adaptive_max_grid))
     return false;
-  if (!pu::Get("filtering/decimate_percentage", params_.decimate_percentage))
+  if (!pu::Get("filtering/adaptive_min_grid", filter_params_.adaptive_min_grid))
     return false;
-  // Cap to [0.0, 1.0].
-  params_.decimate_percentage =
-      std::min(1.0, std::max(0.0, params_.decimate_percentage));
+  if (!pu::Get("filtering/observability_check",
+               filter_params_.observability_check))
+    return false;
+  if (!pu::Get("filtering/random_filter", filter_params_.random_filter))
+    return false;
+  if (!pu::Get("filtering/decimate_percentage",
+               filter_params_.decimate_percentage))
+    return false;
 
-  // TODO - bring in other parameter
+  // Cap to [0.0, 1.0].
+  filter_params_.decimate_percentage =
+      std::min(1.0, std::max(0.0, filter_params_.decimate_percentage));
+
+  // Initialize Filter
+  filter_ = LampPcldFilter(filter_params_);
 
   // Set Precisions
   // TODO - eventually remove the need to use this
@@ -603,25 +610,7 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
 void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
                                        gtsam::Symbol current_key) {
   // Filter and publish scan
-  const int n_points =
-      static_cast<int>((1.0 - params_.decimate_percentage) * new_scan->size());
-
-  // // Apply random downsampling to the keyed scan
-  if (params_.random_filter) {
-    pcl::RandomSample<Point> random_filter;
-    random_filter.setSample(n_points);
-    random_filter.setInputCloud(new_scan);
-    random_filter.filter(*new_scan);
-  }
-
-  // Apply voxel grid filter to the keyed scan
-  if (params_.grid_filter) {
-    // TODO - have option to turn on and off keyed scans
-    pcl::VoxelGrid<Point> grid;
-    grid.setLeafSize(params_.grid_res, params_.grid_res, params_.grid_res);
-    grid.setInputCloud(new_scan);
-    grid.filter(*new_scan);
-  }
+  filter_.Filter(*new_scan, new_scan);
 
   pose_graph_.InsertKeyedScan(current_key, new_scan);
 
