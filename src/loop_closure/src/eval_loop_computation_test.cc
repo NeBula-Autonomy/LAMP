@@ -145,10 +145,11 @@ public:
       grid.filter(*new_cloud);
 
       utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
-      double observability = obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
+      double observability =
+          obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
 
       double size_factor = static_cast<double>(new_cloud->size()) /
-                                 static_cast<double>(target_pt_size);
+          static_cast<double>(target_pt_size);
       double obs_factor = prev_observability / observability;
 
       leaf_size = std::min(
@@ -268,7 +269,7 @@ protected:
     bool adaptive_filter;
     // Adaptive point size
     int adaptive_target;
-    // Adaptive constraint 
+    // Adaptive constraint
     double adaptive_max_grid;
     double adaptive_min_grid;
   } filter_params_;
