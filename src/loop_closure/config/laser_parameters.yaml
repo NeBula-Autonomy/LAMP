@@ -8,22 +8,16 @@ robot:
   #### Loop closure generation 
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
-  # Translation threshold for new nodes to compute values for loop closure checking
-  translation_threshold_nodes: 1.0
-
   # When searching through old poses for loop closures, only consider old poses
-  # that are within this distance of the current pose.
-
-  proximity_threshold: 5
+  # that are within an adaptive radius of the new pose
+  proximity_threshold_min: 3
+  proximity_threshold_max: 80
+  increase_rate: 0.3
 
   # When generating loop closures, only generate with n closest old poses instead 
   # of everything within the proximity threshold.
   n_closest: 3
   b_take_n_closest: true
-
-  # Don't attempt loop closures with poses in the graph that were collected within
-  # this translational distance (m) from the current pose.
-  distance_to_skip_recent_poses: 15 #10 # 200
 
   #--------------------------------------------------------------------------------
   #### Loop closure prioritization
@@ -152,21 +146,16 @@ base:
   #### Loop closure generation 
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
-  # Translation threshold for new nodes to compute values for loop closure checking
-  translation_threshold_nodes: 1.0
-
   # When searching through old poses for loop closures, only consider old poses
-  # that are within this distance of the current pose.
-  proximity_threshold: 50 # approximately 2X the width of Kentucky tunnels
+  # that are within an adaptive radius of the new pose
+  proximity_threshold_min: 3
+  proximity_threshold_max: 80
+  increase_rate: 0.3
 
   # When generating loop closures, only generate with n closest old poses instead 
   # of everything within the proximity threshold.
   n_closest: 10
   b_take_n_closest: true
-
-  # Don't attempt loop closures with poses in the graph that were collected within
-  # this translational distance (m) from the current pose.
-  distance_to_skip_recent_poses: 50 #Reducing from 80, to allow more frequent LC
 
   #--------------------------------------------------------------------------------
   #### Loop closure prioritization
@@ -203,7 +192,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.4 # Back to 0.4 - saw aliasing - [old]: Increased from 0.4, make sure to test this for aliasing!
+  max_tolerable_fitness: 2.0 # Adjust to match filter
 
   # How long to "wait" for keyed scans 
   keyed_scans_max_delay: 600.0

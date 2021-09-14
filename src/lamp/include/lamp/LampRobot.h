@@ -17,10 +17,8 @@
 #include <factor_handlers/StationaryHandler.h>
 #include <factor_handlers/UwbHandler.h>
 
-#include <pcl/filters/filter.h>
-#include <pcl/filters/random_sample.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl_ros/point_cloud.h>
+#include <utils/LampPcldFilter.h>
 // Services
 
 // Class Definition
@@ -135,19 +133,9 @@ class LampRobot : public LampBase {
    friend class TestLampRobot;
    friend class TestLampRobotArtifact;
 
-   struct Parameters {
-     // Apply a voxel grid filter.
-     bool grid_filter;
-
-     // Resolution of voxel grid filter.
-     double grid_res;
-
-     // Apply a random downsampling filter.
-     bool random_filter;
-
-     // Percentage of points to discard. Must be between 0.0 and 1.0;
-     double decimate_percentage;
-  } params_;
+   // Point cloud filter
+   LampPcldFilter filter_;
+   LampPcldFilterParams filter_params_;
 };
 
 #endif
