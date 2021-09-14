@@ -25,8 +25,7 @@ public:
 
     system("rosparam set artifact_prefix 'A'");
 
-    system("rosparam load $(rospack find "
-           "point_cloud_filter)/config/parameters.yaml");
+    system("rosparam load $(rospack find lamp)/config/filter_parameters.yaml");
     system("rosparam load $(rospack find "
            "point_cloud_mapper)/config/parameters.yaml");
     system("rosparam load $(rospack find "
