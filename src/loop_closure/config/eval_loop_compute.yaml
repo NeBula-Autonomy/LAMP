@@ -8,7 +8,7 @@ filtering:
   # RANDOM DOWNSAMPLE FILTER
   random_filter: true
   # Percentage of points to discard. Must be between 0.0 and 1.0.
-  decimate_percentage: 0.60
+  decimate_percentage: 0.80
   decimate_percentage_open_space: 0.97
 
   # ADAPTIVE FILTER 

@@ -673,7 +673,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
       (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
     return true;
   } else {
-    *covariance = 0.5 * 0.5 * Ap.inverse();
+    *covariance = 0.05 * 0.05 * Ap.inverse();
   }
 
   // Here bound the covariance using eigen values
@@ -683,7 +683,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   Eigen::VectorXd vecD = ldlt.vectorD();
 
   double lower_bound = 1e-12;
-  double upper_bound = 1e-2;
+  double upper_bound = 1;
 
   bool recompute = false;
   for (size_t i = 0; i < vecD.size(); i++) {
