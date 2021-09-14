@@ -1,0 +1,16 @@
+filtering:
+  # ADAPTIVE VOXEL GRID FILTER 
+  adaptive_grid_filter: true
+  # Target point size after grid filter
+  adaptive_grid_target: 3000
+  # Max allowable grid size
+  adaptive_max_grid: 0.8
+  # Min allowable grid size
+  adaptive_min_grid: 0.1
+  # Check observability when adapting
+  observability_check: false
+
+  # RANDOM DOWNSAMPLE FILTER
+  random_filter: true
+  # Percentage of points to discard. Must be between 0.0 and 1.0.
+  decimate_percentage: 0.80

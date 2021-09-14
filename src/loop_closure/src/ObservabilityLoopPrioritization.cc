@@ -235,10 +235,12 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
   char prefix = gtsam::Symbol(key).chr();
   Eigen::Matrix<double, 3, 1> obs_eigenv;
   utils::ComputeIcpObservability(scan, &obs_eigenv);
+  double obs_normalized =
+      obs_eigenv.minCoeff() / static_cast<double>(scan->size());
   if (max_observability_.count(prefix) == 0 ||
-      max_observability_[prefix] < obs_eigenv.minCoeff())
-    max_observability_[prefix] = obs_eigenv.minCoeff();
-  double observability = obs_eigenv.minCoeff() / max_observability_[prefix];
+      max_observability_[prefix] < obs_normalized)
+    max_observability_[prefix] = obs_normalized;
+  double observability = obs_normalized / max_observability_[prefix];
 
   keyed_observability_.insert(
       std::pair<gtsam::Key, double>(key, observability));

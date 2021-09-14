@@ -24,6 +24,8 @@ bool ArtifactHandler::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
+  last_existing_artifacts_update_time_ = ros::Time::now();
+
   return true;
 }
 
@@ -143,6 +145,13 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
     std::cout << "artifact previously observed, artifact id " << artifact_id
               << " with key in pose graph "
               << gtsam::DefaultKeyFormatter(cur_artifact_key) << std::endl;
+
+    // Fill ArtifactInfo hash
+    StoreArtifactInfo(cur_artifact_key, msg);
+
+    // do not add the artifact to artifact_data_ yet
+    ROS_INFO_STREAM("Skipping adding artifact directly: " << artifact_id);
+    return;
   } else {
     // New artifact - increment the id counters
     b_is_new_artifact = true;
@@ -159,15 +168,16 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
 
     // Add key to new_keys_
     new_keys_.push_back(cur_artifact_key);
+
+    // Fill ArtifactInfo hash
+    StoreArtifactInfo(cur_artifact_key, msg);
   }
+
   // Generate gtsam pose
   const gtsam::Pose3 relative_pose = gtsam::Pose3(gtsam::Rot3(),
                    gtsam::Point3(R_artifact_position[0],
                                  R_artifact_position[1],
                                  R_artifact_position[2]));
-
-  // Fill ArtifactInfo hash
-  StoreArtifactInfo(cur_artifact_key, msg);
 
   // Extract covariance
   gtsam::SharedNoiseModel noise = ExtractCovariance(msg.covariance);
@@ -181,6 +191,9 @@ void ArtifactHandler::ArtifactCallback(const artifact_msgs::Artifact& msg) {
  * TODO: IN case of AprilTag this would spit out ArtifactData which is wrong
  */
 std::shared_ptr<FactorData> ArtifactHandler::GetData() {
+  // Add updated factor of existing artifact
+  AddUpdatedArtifactData();
+
   // Create a temporary copy to return
   std::shared_ptr<ArtifactData> temp_artifact_data_ = std::make_shared<ArtifactData>(artifact_data_);
 
@@ -396,6 +409,60 @@ void ArtifactHandler::AddArtifactData(
   artifact_data_.factors.push_back(new_artifact);
 }
 
+void ArtifactHandler::AddUpdatedArtifactData() {
+  // wait until 60 seconds
+  if ((ros::Time::now() - last_existing_artifacts_update_time_).toSec() <
+      60.0) {
+    return;
+  }
+
+  ROS_INFO_STREAM("ArtifactHandler: Add UpdatedArtifact to artifact_data_");
+
+  // loop over the artifact_key2info_hash_,
+  for (auto it = artifact_id2key_hash.begin(); it != artifact_id2key_hash.end();
+       it++) {
+    // Get the artifact id
+    std::string artifact_id = it->first;
+
+    // Artifact key
+    gtsam::Symbol cur_artifact_key = it->second;
+
+    if (artifact_key2info_hash_[cur_artifact_key]
+            .b_included_in_artifact_data_ == true) {
+      continue;
+    }
+
+    ROS_INFO_STREAM("\n\nUpdating existing artifact to AddArtifactData "
+                    << artifact_id << "\n\n");
+
+    artifact_msgs::Artifact msg = artifact_key2info_hash_[cur_artifact_key].msg;
+
+    // Extract covariance
+    gtsam::SharedNoiseModel noise = ExtractCovariance(msg.covariance);
+
+    // Get the transformation
+    Eigen::Vector3d R_artifact_position = ComputeTransform(msg);
+
+    // Generate gtsam pose
+    const gtsam::Pose3 relative_pose =
+        gtsam::Pose3(gtsam::Rot3(),
+                     gtsam::Point3(R_artifact_position[0],
+                                   R_artifact_position[1],
+                                   R_artifact_position[2]));
+
+    // Fill artifact_data_
+    AddArtifactData(cur_artifact_key,
+                    msg.point.header.stamp,
+                    relative_pose.translation(),
+                    noise);
+
+    artifact_key2info_hash_[cur_artifact_key].b_included_in_artifact_data_ =
+        true;
+  }
+
+  last_existing_artifacts_update_time_ = ros::Time::now();
+}
+
 /*! \brief  Stores/Updated artifactInfo Hash
   * Returns  Void
   */
@@ -406,11 +473,13 @@ void ArtifactHandler::StoreArtifactInfo(const gtsam::Symbol artifact_key,
     ArtifactInfo artifactinfo(msg.parent_id);
     artifactinfo.msg = msg;
     artifactinfo.num_updates = artifactinfo.num_updates+1;
+    artifactinfo.b_included_in_artifact_data_ = true;
     artifact_key2info_hash_[artifact_key] = artifactinfo;
   } else {
     // Existing artifact. Hence update the artifact info
     artifact_key2info_hash_[artifact_key].num_updates += 1;
     artifact_key2info_hash_[artifact_key].msg = msg;
+    artifact_key2info_hash_[artifact_key].b_included_in_artifact_data_ = false;
   }
 }
 

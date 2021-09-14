@@ -530,9 +530,9 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   *fitness_score = icp->getFitnessScore();
 
   if (*fitness_score > max_tolerable_fitness_) {
-    ROS_DEBUG_STREAM("ICP: Converged or max iterations reached, but score: "
-                     << icp->getFitnessScore()
-                     << ", Exceeds threshold: " << max_tolerable_fitness_);
+    ROS_INFO_STREAM("ICP: Converged or max iterations reached, but score: "
+                    << icp->getFitnessScore()
+                    << ", Exceeds threshold: " << max_tolerable_fitness_);
     return false;
   }
 
@@ -673,7 +673,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
       (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
     return true;
   } else {
-    *covariance = 0.5 * 0.5 * Ap.inverse();
+    *covariance = 0.05 * 0.05 * Ap.inverse();
   }
 
   // Here bound the covariance using eigen values
@@ -683,7 +683,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   Eigen::VectorXd vecD = ldlt.vectorD();
 
   double lower_bound = 1e-12;
-  double upper_bound = 1e-2;
+  double upper_bound = 1;
 
   bool recompute = false;
   for (size_t i = 0; i < vecD.size(); i++) {

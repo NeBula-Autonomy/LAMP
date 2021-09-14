@@ -23,6 +23,7 @@ struct ArtifactInfo {
   std::string id;                       // this corresponds to parent_id
   int num_updates;                      // how many times the optimizer has updated this
   gtsam::Point3 global_position;        // Global pose of the artifact
+  bool b_included_in_artifact_data_;
   artifact_msgs::Artifact
       msg; // All fields in the artifact message that we need
   ArtifactInfo(std::string art_id = "")
@@ -40,19 +41,19 @@ struct ArtifactGroundTruth {
       position(gtsam::Point3(0, 0, 0)) {}
 
   ArtifactGroundTruth(std::string data) {
-        // Used to split string around spaces. 
-    std::istringstream ss(data); 
+    // Used to split string around spaces.
+    std::istringstream ss(data);
     std::vector<std::string> words;
-  
-    // Traverse through all words 
-    do { 
-        // Read a word 
-        std::string word; 
-        ss >> word; 
-        words.push_back(word);
-    
-        // While there is more to read 
-    } while (ss); 
+
+    // Traverse through all words
+    do {
+      // Read a word
+      std::string word;
+      ss >> word;
+      words.push_back(word);
+
+      // While there is more to read
+    } while (ss);
 
     key = gtsam::Symbol(words[0][0], std::stol(words[0].substr(1)));
     type = words[1];
@@ -78,12 +79,12 @@ class ArtifactHandler : public LampDataHandlerBase {
     // Destructor
     virtual ~ArtifactHandler() = default;
 
-    /*! \brief Initialize parameters and callbacks. 
+    /*! \brief Initialize parameters and callbacks.
      * n - Nodehandle
      * Returns bool
      */
     virtual bool Initialize(const ros::NodeHandle& n);
-    
+
     /*! \brief  Gives the artifact associated data to the caller.
      * Returns  Artifact data
      */
@@ -94,7 +95,7 @@ class ArtifactHandler : public LampDataHandlerBase {
      */
     std::unordered_map<long unsigned int, ArtifactInfo>& GetArtifactKey2InfoHash() {return artifact_key2info_hash_;};
 
-    /*! \brief  Updates the global pose of an artifact 
+    /*! \brief  Updates the global pose of an artifact
      * Returns  bool
      */
     bool UpdateGlobalPosition(const gtsam::Symbol artifact_key ,const gtsam::Point3 global_position);
@@ -117,28 +118,28 @@ class ArtifactHandler : public LampDataHandlerBase {
     /*! \brief  Get artifacts ID from artifact key
      * Returns Artifacts ID
      */
-    std::string GetArtifactID(const gtsam::Symbol artifact_key);    
+    std::string GetArtifactID(const gtsam::Symbol artifact_key);
 
-    protected:
-    /*! \brief Load artifact parameters. 
+  protected:
+    /*! \brief Load artifact parameters.
      * n - Nodehandle
      * Returns bool
      */
     virtual bool LoadParameters(const ros::NodeHandle& n);
 
-    /*! \brief Register callbacks. 
+    /*! \brief Register callbacks.
      * n - Nodehandle, from_log - ????
      * Returns bool
      */
     bool RegisterCallbacks(const ros::NodeHandle& n, bool from_log);
 
-    /*! \brief Register Log callbacks. 
+    /*! \brief Register Log callbacks.
      * n - Nodehandle
      * Returns bool
      */
     bool RegisterLogCallbacks(const ros::NodeHandle& n);
 
-    /*! \brief Register Online callbacks. 
+    /*! \brief Register Online callbacks.
      * n - Nodehandle
      * Returns bool
      */
@@ -195,8 +196,13 @@ class ArtifactHandler : public LampDataHandlerBase {
     void StoreArtifactInfo(const gtsam::Symbol artifact_key,
                            const artifact_msgs::Artifact& msg);
 
-    // Stores the artifact id to info mapping which is used to update any artifact associated parameters 
-    // from the pose graph
+    /*! \brief  Add updated artifact data for every specific interval
+     * Returns  Void
+     */
+    void AddUpdatedArtifactData();
+
+    // Stores the artifact id to info mapping which is used to update any
+    // artifact associated parameters from the pose graph
     std::unordered_map<long unsigned int, ArtifactInfo> artifact_key2info_hash_;
 
     // Mapping between a artifact id and the node where it is present in the pose graph
@@ -207,7 +213,7 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     // Parameters
     bool b_artifacts_in_global_;
-    int largest_artifact_id_; 
+    int largest_artifact_id_;
     bool use_artifact_loop_closure_;
 
     // Namespace for publishing
@@ -224,16 +230,18 @@ class ArtifactHandler : public LampDataHandlerBase {
 
     // Artifact prefix
     unsigned char artifact_prefix_;
-    
-    // New artifact keys. This is kept so that if the ProcessArtifactData fails, I can 
-    // revert the Maps and Id no to the previous state.
+
+    // New artifact keys. This is kept so that if the ProcessArtifactData fails,
+    // I can revert the Maps and Id no to the previous state.
     std::vector<gtsam::Symbol> new_keys_;
 
-    private:
+    // last time existing artifacts are updated
+    ros::Time last_existing_artifacts_update_time_;
 
+  private:
     // Artifact output data
     ArtifactData artifact_data_;
-    
+
     // Test class
     friend class TestArtifactHandler;
     friend class TestLampRobotArtifact;

@@ -250,7 +250,7 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
             std::pow(msg_found->pose.position.x - msg.pose.position.x, 2) +
             std::pow(msg_found->pose.position.y - msg.pose.position.y, 2) +
             std::pow(msg_found->pose.position.z - msg.pose.position.z, 2)) <
-        0.01) {
+        0.1) {
       diff_position = false;
     }
 
@@ -278,8 +278,8 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
     }
 
     if (!diff_position && !diff_covariance) {
-      ROS_DEBUG_STREAM("TrackArtifactFactor: Not updating values because same "
-                       "position and covariance");
+      ROS_DEBUG_STREAM("TrackArtifactFactor: Not updating values because "
+                       "position and covariance only have small changes");
       return true;
     }
 
