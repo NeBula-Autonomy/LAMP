@@ -20,4 +20,4 @@ filtering:
   # Min grid size for adaptive filter
   adaptive_min_grid: 0.1
   # Check observability
-  observability_check: true
+  observability_check: false
