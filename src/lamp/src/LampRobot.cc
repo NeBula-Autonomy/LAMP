@@ -834,7 +834,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
       }
 
       // Second sighting of an artifact - we have a loop closure
-      ROS_WARN_STREAM("\nProcessArtifactData: Artifact re-sighted with key: "
+      ROS_INFO_STREAM("\nProcessArtifactData: Artifact re-sighted with key: "
                       << gtsam::DefaultKeyFormatter(cur_artifact_key)
                       << " and from pose key: "
                       << gtsam::DefaultKeyFormatter(pose_key)
@@ -848,8 +848,6 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
 
       // Insert into the values TODO - add unit covariance
       std::string id = artifact_handler_.GetArtifactID(cur_artifact_key);
-      pose_graph_.TrackNode(
-          timestamp, cur_artifact_key, global_pose, covariance, id);
 
       // TODO Add keyed stamps. If the time stamp changes, .
       pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
@@ -861,9 +859,14 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
 
       // Add and track the edges that have been added
       int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
+
+      pose_graph_.TrackNode(
+          timestamp, cur_artifact_key, global_pose, covariance, id);
+
       pose_graph_.TrackArtifactFactor(
           edge->key_from, cur_artifact_key, transform, covariance, true, true);
-      ROS_DEBUG("Added resighted artifact to pose graph factors in lamp");
+
+      ROS_INFO("Added resighted artifact to pose graph factors in lamp");
     }
   }
 
