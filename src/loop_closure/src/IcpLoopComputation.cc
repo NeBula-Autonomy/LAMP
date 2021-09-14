@@ -530,9 +530,9 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   *fitness_score = icp->getFitnessScore();
 
   if (*fitness_score > max_tolerable_fitness_) {
-    ROS_DEBUG_STREAM("ICP: Converged or max iterations reached, but score: "
-                     << icp->getFitnessScore()
-                     << ", Exceeds threshold: " << max_tolerable_fitness_);
+    ROS_INFO_STREAM("ICP: Converged or max iterations reached, but score: "
+                    << icp->getFitnessScore()
+                    << ", Exceeds threshold: " << max_tolerable_fitness_);
     return false;
   }
 
