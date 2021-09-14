@@ -35,6 +35,8 @@ public:
     system("rosparam load $(rospack find "
            "factor_handlers)/config/manual_lc_parameters.yaml");
     system("rosparam load $(rospack find "
+           "factor_handlers)/config/normals_computation.yaml");
+    system("rosparam load $(rospack find "
            "point_cloud_mapper)/config/parameters.yaml");
 
     // Create data in the point cloud
