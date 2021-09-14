@@ -8,7 +8,7 @@ filtering:
   # Min allowable grid size
   adaptive_min_grid: 0.1
   # Check observability when adapting
-  observability_check: true
+  observability_check: false
 
   # RANDOM DOWNSAMPLE FILTER
   random_filter: true
