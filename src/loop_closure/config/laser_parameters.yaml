@@ -8,11 +8,17 @@ robot:
   #### Loop closure generation 
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
+  # Translation threshold for new nodes to compute values for loop closure checking
+  translation_threshold_nodes: 1.0
+  # Don't attempt loop closures with poses in the graph that were collected within
+  # this translational distance (m) from the current pose.
+  distance_to_skip_recent_poses: 15
+
   # When searching through old poses for loop closures, only consider old poses
   # that are within an adaptive radius of the new pose
-  proximity_threshold_min: 3
+  proximity_threshold_min: 5
   proximity_threshold_max: 80
-  increase_rate: 0.3
+  increase_rate: 0.2
 
   # When generating loop closures, only generate with n closest old poses instead 
   # of everything within the proximity threshold.
@@ -146,11 +152,17 @@ base:
   #### Loop closure generation 
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
+  # Translation threshold for new nodes to compute values for loop closure checking
+  translation_threshold_nodes: 1.0
+  # Don't attempt loop closures with poses in the graph that were collected within
+  # this translational distance (m) from the current pose.
+  distance_to_skip_recent_poses: 15
+
   # When searching through old poses for loop closures, only consider old poses
   # that are within an adaptive radius of the new pose
-  proximity_threshold_min: 3
+  proximity_threshold_min: 5
   proximity_threshold_max: 80
-  increase_rate: 0.3
+  increase_rate: 0.2
 
   # When generating loop closures, only generate with n closest old poses instead 
   # of everything within the proximity threshold.
@@ -192,7 +204,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 2.0 # Adjust to match filter
+  max_tolerable_fitness: 1.0 # Adjust to match filter
 
   # How long to "wait" for keyed scans 
   keyed_scans_max_delay: 600.0

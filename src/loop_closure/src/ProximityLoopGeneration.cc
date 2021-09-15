@@ -63,6 +63,16 @@ bool ProximityLoopGeneration::LoadParameters(const ros::NodeHandle& n) {
   if (!b_take_n_closest)
     n_closest_ = std::numeric_limits<int>::max();
 
+  double distance_to_skip_recent_poses, translation_threshold_nodes;
+  if (!pu::Get(param_ns_ + "/translation_threshold_nodes",
+               translation_threshold_nodes))
+    return false;
+  if (!pu::Get(param_ns_ + "/distance_to_skip_recent_poses",
+               distance_to_skip_recent_poses))
+    return false;
+
+  skip_recent_poses_ =
+      (int)(distance_to_skip_recent_poses / translation_threshold_nodes);
   return true;
 }
 
@@ -104,6 +114,11 @@ void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
 
     // Don't self-check.
     if (key == other_key)
+      continue;
+
+    // Don't compare against poses that were recently collected.
+    if (utils::IsKeyFromSameRobot(key, other_key) &&
+        std::llabs(key.index() - other_key.index()) < skip_recent_poses_)
       continue;
 
     double distance = DistanceBetweenKeys(key, other_key);

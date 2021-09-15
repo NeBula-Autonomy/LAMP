@@ -39,6 +39,7 @@ protected:
   double proximity_threshold_min_;
   double increase_rate_;
   int n_closest_;
+  size_t skip_recent_poses_;
 };
 
 } // namespace lamp_loop_closure
