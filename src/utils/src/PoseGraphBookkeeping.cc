@@ -97,11 +97,11 @@ bool PoseGraph::TrackFactor(const gtsam::Symbol& key_from,
         utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
     if (edges_.find(msg) != edges_.end()) {
       // gtg
-      ROS_INFO_STREAM("Edge of type " << type << " from key "
-                                      << gtsam::DefaultKeyFormatter(key_from)
-                                      << " to key "
-                                      << gtsam::DefaultKeyFormatter(key_to)
-                                      << " already exists.");
+      ROS_DEBUG_STREAM("Edge of type " << type << " from key "
+                                       << gtsam::DefaultKeyFormatter(key_from)
+                                       << " to key "
+                                       << gtsam::DefaultKeyFormatter(key_to)
+                                       << " already exists.");
       return false;
     }
     edges_.insert(msg);
@@ -210,7 +210,7 @@ bool PoseGraph::TrackIMUFactor(const gtsam::Symbol& key_to,
                                     noise);
 
     if (edges_.find(msg) != edges_.end()) {
-      ROS_INFO_STREAM("IMU factor for key "
+      ROS_DEBUG_STREAM("IMU factor for key "
                        << gtsam::DefaultKeyFormatter(key_to)
                        << " already exists.");
       return false;
@@ -237,11 +237,11 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
   auto msg_found = edges_.find(msg);
 
   if (msg_found != edges_.end()) {
-    ROS_INFO_STREAM("TrackArtifactFactor: Edge of type "
-                    << type << " from key "
-                    << gtsam::DefaultKeyFormatter(key_from) << " to key "
-                    << gtsam::DefaultKeyFormatter(key_to)
-                    << " already exists.");
+    ROS_DEBUG_STREAM("TrackArtifactFactor: Edge of type "
+                     << type << " from key "
+                     << gtsam::DefaultKeyFormatter(key_from) << " to key "
+                     << gtsam::DefaultKeyFormatter(key_to)
+                     << " already exists.");
 
     // Check if there is any changes in the updated factor
     bool diff_position = true, diff_covariance = true;
@@ -250,7 +250,7 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
             std::pow(msg_found->pose.position.x - msg.pose.position.x, 2) +
             std::pow(msg_found->pose.position.y - msg.pose.position.y, 2) +
             std::pow(msg_found->pose.position.z - msg.pose.position.z, 2)) <
-        0.01) {
+        0.1) {
       diff_position = false;
     }
 
@@ -278,8 +278,8 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
     }
 
     if (!diff_position && !diff_covariance) {
-      ROS_DEBUG_STREAM("TrackArtifactFactor: Not updating values because same "
-                       "position and covariance");
+      ROS_DEBUG_STREAM("TrackArtifactFactor: Not updating values because "
+                       "position and covariance only have small changes");
       return true;
     }
 

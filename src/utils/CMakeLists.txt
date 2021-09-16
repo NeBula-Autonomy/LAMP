@@ -42,7 +42,9 @@ add_library(${PROJECT_NAME}
   src/PoseGraphMessageConversion.cc
   src/PoseGraphBookkeeping.cc
   src/PoseGraphLookupUtils.cc
-  src/PointCloudUtils.cc)
+  src/PointCloudUtils.cc
+  src/LampPcldFilter.cc
+)
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   gtsam

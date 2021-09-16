@@ -34,8 +34,8 @@
       <param unless="$(eval b_use_hovermap)" name="b_use_fixed_covariances" value="false" />
 
       <!-- Topics -->
-      <remap from="~pcld" to="locus_input" unless="$(arg b_use_hovermap)"/>
-      <remap from="~pcld" to="hvm/lidar/sweep" if="$(arg b_use_hovermap)"/>
+      <remap from="~pcld" to="body_filter/output" unless="$(arg b_use_hovermap)"/>
+      <remap from="~pcld" to="hvm/body_filter/output" if="$(arg b_use_hovermap)"/>
       <!-- <remap from="~pcld" to="velodyne_points/transformed"/> -->
       <!-- <remap from="~pcld" to="lo_frontend/local_scan_map" /> -->
       <!-- Note that the transformed points come from the transforming node launched with lo_frontend -->
@@ -72,8 +72,7 @@
       <rosparam file="$(find lamp)/config/lamp_frames.yaml" subst_value="true"/>
 
       <!-- Point cloud filter -->
-      <rosparam if="$(eval b_use_hovermap)" file="$(find lamp)/config/filter_parameters_hvm.yaml"/>
-      <rosparam unless="$(eval b_use_hovermap)" file="$(find lamp)/config/filter_parameters.yaml"/>
+      <rosparam file="$(find lamp)/config/filter_parameters.yaml"/>
 
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>

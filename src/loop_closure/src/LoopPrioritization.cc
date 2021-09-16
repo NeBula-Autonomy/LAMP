@@ -47,8 +47,7 @@ std::vector<ros::AsyncSpinner> LoopPrioritization::SetAsyncSpinners(const ros::N
 }
 
 void LoopPrioritization::ProcessPopulateCallback(const ros::TimerEvent& ev) {
-    ROS_INFO_STREAM("Populating..");
-    PopulatePriorityQueue();
+  PopulatePriorityQueue();
 }
 
 void LoopPrioritization::InputCallback(

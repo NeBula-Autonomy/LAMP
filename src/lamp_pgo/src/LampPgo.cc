@@ -329,8 +329,8 @@ void LampPgo::PublishValues() const {
         }
       }
       catch (std::exception& e) {
-        ROS_DEBUG_STREAM("Key is not found in the clique"
-                         << gtsam::DefaultKeyFormatter(key));
+        ROS_WARN_STREAM("Key is not found in the clique"
+                        << gtsam::DefaultKeyFormatter(key));
       }
     }
   } catch (gtsam::IndeterminantLinearSystemException e) {

@@ -252,53 +252,55 @@ void IcpLoopComputation::ComputeTransforms() {
           output_queue_.push_back(loop_closure);
       }
   } else {
-      ROS_INFO_STREAM("Threaded, Queue Size " << n);
-      std::vector<std::future<std::pair<bool, pose_graph_msgs::PoseGraphEdge>>> futures;
-      // Iterate and compute transforms
-      for (size_t i = 0; i < n; i++) {
-          auto candidate = input_queue_.front();
-          input_queue_.pop();
-          // Keyed scans do not exist
-          if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
-              keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
-              if ((ros::Time::now() - candidate.header.stamp).toSec() <
-                  keyed_scans_max_delay_)
-                  input_queue_.push(candidate);
-              if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end()){
-                  ROS_INFO_STREAM("Missing Candidate for " << candidate.key_from);
-              }
+    ROS_DEBUG_STREAM("Threaded, Queue Size " << n);
+    std::vector<std::future<std::pair<bool, pose_graph_msgs::PoseGraphEdge>>>
+        futures;
+    // Iterate and compute transforms
+    for (size_t i = 0; i < n; i++) {
+      auto candidate = input_queue_.front();
+      input_queue_.pop();
+      // Keyed scans do not exist
+      if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end() ||
+          keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
+        if ((ros::Time::now() - candidate.header.stamp).toSec() <
+            keyed_scans_max_delay_)
+          input_queue_.push(candidate);
+        if (keyed_scans_.find(candidate.key_from) == keyed_scans_.end()) {
+          ROS_INFO_STREAM("Missing Candidate for " << candidate.key_from);
+        }
 
-              if (keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
-                  ROS_INFO_STREAM("Missing Candidate for " << candidate.key_to); }
-              continue;
-          }
+        if (keyed_scans_.find(candidate.key_to) == keyed_scans_.end()) {
+          ROS_INFO_STREAM("Missing Candidate for " << candidate.key_to);
+        }
+        continue;
+      }
 
-          //pose_graph_msgs::LoopCandidate* candidate_ptr = new pose_graph_msgs::LoopCandidate(candidate);
-          futures.emplace_back(icp_computation_pool_.enqueue([&, candidate]() {
-              gtsam::Key key_from = candidate.key_from;
-              gtsam::Key key_to = candidate.key_to;
-              gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
-              gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
+      // pose_graph_msgs::LoopCandidate* candidate_ptr = new
+      // pose_graph_msgs::LoopCandidate(candidate);
+      futures.emplace_back(icp_computation_pool_.enqueue([&, candidate]() {
+        gtsam::Key key_from = candidate.key_from;
+        gtsam::Key key_to = candidate.key_to;
+        gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
+        gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
 
-              gu::Transform3 transform;
-              gtsam::Matrix66 covariance;
-              double icp_fitness;
-              if (!PerformAlignment(key_from,
-                                    key_to,
-                                    pose_from,
-                                    pose_to,
-                                    &transform,
-                                    &covariance,
-                                    &icp_fitness,
-                                    true))
-                return std::make_pair(false, pose_graph_msgs::PoseGraphEdge());
-              // If aligned create PoseGraphEdge msg
-              pose_graph_msgs::PoseGraphEdge loop_closure =
-                      CreateLoopClosureEdge(key_from, key_to, transform, covariance);
-              loop_closure.range_error = icp_fitness;
-              return std::make_pair(true, loop_closure);
-          }));
-
+        gu::Transform3 transform;
+        gtsam::Matrix66 covariance;
+        double icp_fitness;
+        if (!PerformAlignment(key_from,
+                              key_to,
+                              pose_from,
+                              pose_to,
+                              &transform,
+                              &covariance,
+                              &icp_fitness,
+                              true))
+          return std::make_pair(false, pose_graph_msgs::PoseGraphEdge());
+        // If aligned create PoseGraphEdge msg
+        pose_graph_msgs::PoseGraphEdge loop_closure =
+            CreateLoopClosureEdge(key_from, key_to, transform, covariance);
+        loop_closure.range_error = icp_fitness;
+        return std::make_pair(true, loop_closure);
+      }));
       }
       for (auto &future : futures) {
           future.wait();
@@ -463,7 +465,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
                            &initial_guess,
                            sac_fitness_score);
     if (sac_fitness_score >= sac_fitness_score_threshold_) {
-      ROS_INFO("SAC fitness score is too high");
+      ROS_DEBUG("SAC fitness score is too high");
       return false;
     }
   } break;
@@ -520,7 +522,8 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
 
   // Is the transform good?
   if (!icp->hasConverged()) {
-    ROS_INFO_STREAM("ICP: Not converged, score is: " << icp->getFitnessScore());
+    ROS_DEBUG_STREAM(
+        "ICP: Not converged, score is: " << icp->getFitnessScore());
     return false;
   }
 
@@ -545,7 +548,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   if (icp_transform_thresholding_ &&
       (trans_diff > icp_max_translation_ ||
        rot_diff > icp_max_rotation_ * M_PI / 180.0)) {
-    ROS_INFO_STREAM(
+    ROS_DEBUG_STREAM(
         "ICP: Convered and passes fitness, but translation or rotation exceeds "
         "threshold.\n\tTranslation: "
         << trans_diff << ", thresh: " << icp_max_translation_
@@ -579,6 +582,11 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
           "Check config.");
     }
   }
+
+  ROS_INFO_STREAM("Successfully completed alignment between "
+                  << gtsam::DefaultKeyFormatter(key1) << " and "
+                  << gtsam::DefaultKeyFormatter(key2)
+                  << " with fitness score: " << *fitness_score);
 
   return true;
 }
@@ -635,7 +643,7 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   sac_ia.align(*aligned_output, *tf_out);
 
   sac_fitness_score = sac_ia.getFitnessScore();
-  ROS_INFO_STREAM("SAC fitness score: " << sac_fitness_score);
+  ROS_DEBUG_STREAM("SAC fitness score: " << sac_fitness_score);
 
   *tf_out = sac_ia.getFinalTransformation();
 }
@@ -665,7 +673,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
       (*covariance)(i, i) = laser_lc_trans_sigma_ * laser_lc_trans_sigma_;
     return true;
   } else {
-    *covariance = 0.5 * 0.5 * Ap.inverse();
+    *covariance = 0.05 * 0.05 * Ap.inverse();
   }
 
   // Here bound the covariance using eigen values
@@ -675,7 +683,7 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
   Eigen::VectorXd vecD = ldlt.vectorD();
 
   double lower_bound = 1e-12;
-  double upper_bound = 1e-2;
+  double upper_bound = 1;
 
   bool recompute = false;
   for (size_t i = 0; i < vecD.size(); i++) {

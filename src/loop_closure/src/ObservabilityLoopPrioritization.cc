@@ -114,7 +114,9 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     return;
   }
   size_t n = candidate_queue_.size();
-  ROS_INFO("ObservabilityLoopPrioritization: Reveived %d loop candidates", n);
+  if (n > 0) {
+    ROS_INFO("ObservabilityLoopPrioritization: Reveived %d loop candidates", n);
+  }
   size_t added = 0;
   for (size_t i = 0; i < n; i++) {
     auto candidate = candidate_queue_.front();
@@ -161,13 +163,21 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
     added++;
     priority_queue_mutex_.unlock();
   }
-  ROS_INFO("ObservabilityLoopPrioritization: Added %d loop candidates to queue",
-           added);
+  if (added > 0) {
+    ROS_INFO(
+        "ObservabilityLoopPrioritization: Added %d loop candidates to queue",
+        added);
+  }
   return;
 }
 
 void ObservabilityLoopPrioritization::PrunePriorityQueue() {
-  ROS_INFO_STREAM("Prune priority queue... size: " << priority_queue_.size());
+  static int old_size = 0;
+  if (priority_queue_.size() != old_size) {
+    ROS_DEBUG_STREAM(
+        "Prune priority queue... size: " << priority_queue_.size());
+    old_size = priority_queue_.size();
+  }
   priority_queue_mutex_.lock();
   std::deque<double> temp_observability_score;
   std::deque<pose_graph_msgs::LoopCandidate> temp_priority_queue;
@@ -181,15 +191,15 @@ void ObservabilityLoopPrioritization::PrunePriorityQueue() {
   observability_score_ = temp_observability_score;
   priority_queue_ = temp_priority_queue;
   priority_queue_mutex_.unlock();
-  ROS_INFO_STREAM(
+  ROS_DEBUG_STREAM(
       "Discarded old measurements. size: " << priority_queue_.size());
   return;
 }
 
 void ObservabilityLoopPrioritization::PublishBestCandidates() {
   pose_graph_msgs::LoopCandidateArray output_msg = GetBestCandidates();
-  ROS_INFO("Published %d prioritized candidates. ",
-           output_msg.candidates.size());
+  ROS_DEBUG("Published %d prioritized candidates. ",
+            output_msg.candidates.size());
   loop_candidate_pub_.publish(output_msg);
 }
 
@@ -225,10 +235,12 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
   char prefix = gtsam::Symbol(key).chr();
   Eigen::Matrix<double, 3, 1> obs_eigenv;
   utils::ComputeIcpObservability(scan, &obs_eigenv);
+  double obs_normalized =
+      obs_eigenv.minCoeff() / static_cast<double>(scan->size());
   if (max_observability_.count(prefix) == 0 ||
-      max_observability_[prefix] < obs_eigenv.minCoeff())
-    max_observability_[prefix] = obs_eigenv.minCoeff();
-  double observability = obs_eigenv.minCoeff() / max_observability_[prefix];
+      max_observability_[prefix] < obs_normalized)
+    max_observability_[prefix] = obs_normalized;
+  double observability = obs_normalized / max_observability_[prefix];
 
   keyed_observability_.insert(
       std::pair<gtsam::Key, double>(key, observability));
