@@ -654,9 +654,10 @@ void PoseGraph::InsertStampedOdomKey(double seconds, const gtsam::Symbol& key) {
 bool PoseGraph::CheckGraphValid() const {
   // Check that pose graph is valid (i.e. no missing odom edges)
   for (const gtsam::Symbol& k : values_.keys()) {
-    if (utils::IsRobotPrefix(k.chr()) && !values_.exists(k - 1) &&
-        gtsam::Symbol(k - 1).index() > 0)
-      return false;
+    if (utils::IsRobotPrefix(k.chr())) {
+      if (k.index() > 0 && !values_.exists(k - 1))
+        return false;
+    }
   }
   return true;
 }
