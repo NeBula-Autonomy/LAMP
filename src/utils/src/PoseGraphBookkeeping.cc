@@ -655,8 +655,11 @@ bool PoseGraph::CheckGraphValid() const {
   // Check that pose graph is valid (i.e. no missing odom edges)
   for (const gtsam::Symbol& k : values_.keys()) {
     if (utils::IsRobotPrefix(k.chr())) {
-      if (k.index() > 0 && !values_.exists(k - 1))
+      if (k.index() > 0 && !values_.exists(k - 1)) {
+        ROS_ERROR("Missing node %s in pose graph. ",
+                  gtsam::DefaultKeyFormatter(k - 1));
         return false;
+      }
     }
   }
   return true;
