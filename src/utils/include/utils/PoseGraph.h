@@ -37,6 +37,8 @@ class PoseGraph {
   std::map<gtsam::Symbol, ros::Time> keyed_stamps;  // All nodes
   std::map<double, gtsam::Symbol> stamp_to_odom_key;
 
+  bool CheckGraphValid() const;
+
   void InsertKeyedScan(const gtsam::Symbol& key,
                        const PointCloud::ConstPtr& scan);
   void InsertKeyedStamp(const gtsam::Symbol& key, const ros::Time& stamp);

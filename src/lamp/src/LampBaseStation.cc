@@ -182,6 +182,9 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   // Check the handlers
   CheckHandlers();
 
+  if (!pose_graph_.CheckGraphValid()) {
+    ROS_WARN("Invalid pose graph on base. Not publishing and updating. ");
+  }
   // Send data to optimizer - pose graph and map publishing happens in
   // callback when data is received back from optimizer
   if (b_run_optimization_) {
