@@ -14,7 +14,8 @@ namespace pu = parameter_utils;
 namespace gu = geometry_utils;
 
 // Constructor (if there is override)
-LampBaseStation::LampBaseStation() : b_published_initial_node_(false) {
+LampBaseStation::LampBaseStation()
+  : b_published_initial_node_(false), last_pg_update_time_(ros::Time::now()) {
   // On base station LAMP, republish values after optimization
   b_repub_values_after_optimization_ = true;
   keyed_scan_candidates_.clear();
@@ -183,7 +184,11 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
   CheckHandlers();
 
   if (!pose_graph_.CheckGraphValid()) {
-    ROS_ERROR("Invalid pose graph on base. Not publishing and updating. ");
+    double time_since_last_update =
+        (ros::Time::now() - last_pg_update_time_).toSec();
+    ROS_ERROR("Invalid pose graph on base. Not publishing and updating. Time "
+              "since last successful update: %f s. ",
+              time_since_last_update);
     return;
   }
   // Send data to optimizer - pose graph and map publishing happens in
@@ -208,6 +213,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
     b_has_new_scan_ = false;
   }
 
+  last_pg_update_time_ = ros::Time::now();
   // Publish anything that is needed
 }
 

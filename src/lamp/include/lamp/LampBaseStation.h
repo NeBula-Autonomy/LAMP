@@ -102,6 +102,9 @@ private:
   // Vector list of keyed scans to add to map
   std::vector<gtsam::Symbol> keyed_scan_candidates_;
 
+  // Last pose graph publish time
+  ros::Time last_pg_update_time_;
+
   // Test class fixtures
   friend class TestLampBase;
 };
