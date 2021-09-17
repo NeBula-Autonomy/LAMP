@@ -153,10 +153,10 @@ base:
   #--------------------------------------------------------------------------------
   #--------------------------------------------------------------------------------
   # Translation threshold for new nodes to compute values for loop closure checking
-  translation_threshold_nodes: 1.0
+  translation_threshold_nodes: 2.0
   # Don't attempt loop closures with poses in the graph that were collected within
   # this translational distance (m) from the current pose.
-  distance_to_skip_recent_poses: 15
+  distance_to_skip_recent_poses: 20
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within an adaptive radius of the new pose
