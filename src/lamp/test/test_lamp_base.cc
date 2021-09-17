@@ -16,6 +16,7 @@ public:
   gtsam::Symbol init_key_;
   pose_graph_msgs::PoseGraphNode n0, n1;
   pose_graph_msgs::PoseGraphEdge e0;
+  ros::NodeHandle nh_;
 
   TestLampBase() : scan_(new PointCloud(3, 3)) {
     // Load params
