@@ -13,6 +13,7 @@ public:
     // Load Params
     system("rosparam load $(rospack find "
            "factor_handlers)/config/odom_parameters.yaml");
+    system("rosparam set translation_threshold 1.0");
 
     tolerance_ = 1e-5;
 
