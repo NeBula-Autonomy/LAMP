@@ -343,6 +343,7 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
     } else {
       // Take the time from the point cloud
       t2.fromNSec(new_scan->header.stamp * 1e3);
+      GetPoseAtTime(t2, lidar_odometry_buffer_, lidar_odom_value_at_key_, &t2);
 
       // Fill in the keyed scan for the odom factor
       new_odom.b_has_point_cloud = true;
@@ -639,7 +640,9 @@ void OdometryHandler::SetOdomValuesAtKey(const ros::Time query) {
 
 bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
                                     const OdomPoseBuffer& odom_buffer,
-                                    PoseCovStamped& output) const {
+                                    PoseCovStamped& output,
+                                    ros::Time* new_stamp) const {
+  new_stamp = new ros::Time(stamp);
   // If map is empty, return false to the caller
   if (odom_buffer.size() == 0) {
     return false;
@@ -654,6 +657,7 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
   // If this gives the start of the buffer, then take that PosCovStamped
   if (itrTime == odom_buffer.begin()) {
     output = itrTime->second;
+    *new_stamp = ros::Time(itrTime->first);
     time_diff = itrTime->first - stamp.toSec();
     if (time_diff > ts_threshold_) {
       ROS_WARN("Timestamp before the start of the odometry buffer beyond "
@@ -665,6 +669,7 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
     // PosCovStamped
     itrTime--;
     output = itrTime->second;
+    *new_stamp = ros::Time(itrTime->first);
     time_diff = stamp.toSec() - itrTime->first;
     if (time_diff > ts_threshold_) {
       ROS_WARN("Timestamp past the end of the odometry buffer and beyond "
@@ -682,10 +687,12 @@ bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
     // If closer to time2, then use that
     if (time2 - stamp.toSec() < stamp.toSec() - time1) {
       output = itrTime->second;
+      *new_stamp = ros::Time(itrTime->first);
       time_diff = time2 - stamp.toSec();
     } else {
       // Otherwise use time1
       output = std::prev(itrTime, 1)->second;
+      *new_stamp = ros::Time(std::prev(itrTime, 1)->first);
       time_diff = stamp.toSec() - time1;
     }
   }

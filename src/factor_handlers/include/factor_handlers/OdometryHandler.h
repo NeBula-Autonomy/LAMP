@@ -127,7 +127,8 @@ protected:
   // Getters
   bool GetPoseAtTime(const ros::Time stamp,
                      const OdomPoseBuffer& odom_buffer,
-                     PoseCovStamped& output) const;
+                     PoseCovStamped& output,
+                     ros::Time* new_stamp = nullptr) const;
   bool GetTransformBetweenTimes(const ros::Time t1,
                                 const ros::Time t2,
                                 const OdomPoseBuffer& odom_buffer,
