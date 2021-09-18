@@ -116,6 +116,8 @@ bool OdometryHandler::RegisterCallbacks(const ros::NodeHandle& n) {
     time_diff_pub_ =
         nl.advertise<std_msgs::Float64>("lamp_odom_time_diff", 10, false);
   }
+  factor_times_pub_ = nl.advertise<std_msgs::Float64MultiArray>(
+      "lamp_odom_factor_times", 10, false);
 
   return true;
 }
@@ -371,6 +373,12 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
     new_odom.covariance = fused_odom_for_factor.covariance;
     new_odom.stamps = TimeStampedPair(query_timestamp_first_, t2);
     output_data->factors.push_back(new_odom);
+
+    // Publish the two timestamps
+    std_msgs::Float64MultiArray timing_msg;
+    timing_msg.data[0] = query_timestamp_first_.toSec();
+    timing_msg.data[1] = t2.toSec();
+    factor_times_pub_.publish(timing_msg);
 
     // Update the query timestamp to the time of the new node
     // TODO - update name to link to node/factor creation
