@@ -1129,7 +1129,8 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
       odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
 
   if (!delta_pose_cov.b_has_value) {
-    ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
+    ROS_ERROR("---------- [LampRobot::HandleRelativePoseMeasurement] Could not "
+              "get delta between times - THIS CASE IS NOT "
               "WELL HANDLED YET-----------");
     key_from = utils::GTSAM_ERROR_SYMBOL;
     return;
@@ -1177,7 +1178,8 @@ void LampRobot::HandleRelativePoseMeasurementWithFixedKey(
       odometry_handler_.GetFusedOdomDeltaBetweenTimes(stamp_from, stamp);
 
   if (!delta_pose_cov.b_has_value) {
-    ROS_ERROR("----------Could not get delta between times - THIS CASE IS NOT "
+    ROS_ERROR("----------[LampRobot::HandleRelativePoseMeasurementWithFixedKey]"
+              "Could not get delta between times - THIS CASE IS NOT "
               "WELL HANDLED YET-----------");
     return;
   }
