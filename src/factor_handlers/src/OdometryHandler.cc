@@ -376,8 +376,8 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
 
     // Publish the two timestamps
     std_msgs::Float64MultiArray timing_msg;
-    timing_msg.data[0] = query_timestamp_first_.toSec();
-    timing_msg.data[1] = t2.toSec();
+    timing_msg.data.push_back(query_timestamp_first_.toSec());
+    timing_msg.data.push_back(t2.toSec());
     factor_times_pub_.publish(timing_msg);
 
     // Update the query timestamp to the time of the new node
