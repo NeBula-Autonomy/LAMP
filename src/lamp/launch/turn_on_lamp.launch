@@ -5,7 +5,7 @@
   <arg name="b_use_hero" default="false"/>
 
   <!-- List of robots with hovermap mounted -->
-  <arg name="hovermap_robots" value="spot3 spot4 husky2 husky3" />
+  <arg name="hovermap_robots" value="spot3 spot4 husky1 husky2 husky3" />
   <arg name="b_use_hovermap" value="$(eval robot_namespace in hovermap_robots)" />
 
   <!-- Select odometry source -->
