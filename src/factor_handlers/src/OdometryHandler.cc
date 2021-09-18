@@ -344,7 +344,9 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
       // Take the time from the point cloud
       t2.fromNSec(new_scan->header.stamp * 1e3);
       PoseCovStamped unused;
-      GetPoseAtTime(t2, lidar_odometry_buffer_, unused, &t2);
+      ros::Time t2_update;
+      GetPoseAtTime(t2, lidar_odometry_buffer_, unused, &t2_update);
+      t2 = t2_update;
 
       // Fill in the keyed scan for the odom factor
       new_odom.b_has_point_cloud = true;
@@ -638,12 +640,17 @@ void OdometryHandler::SetOdomValuesAtKey(const ros::Time query) {
 
 // Getters
 // -----------------------------------------------------------------------------------------------
-
+bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
+                                    const OdomPoseBuffer& odom_buffer,
+                                    PoseCovStamped& output) const {
+  ros::Time new_stamp;
+  return GetPoseAtTime(stamp, odom_buffer, output, &new_stamp);
+}
 bool OdometryHandler::GetPoseAtTime(const ros::Time stamp,
                                     const OdomPoseBuffer& odom_buffer,
                                     PoseCovStamped& output,
                                     ros::Time* new_stamp) const {
-  new_stamp = new ros::Time(stamp);
+  *new_stamp = stamp;
   // If map is empty, return false to the caller
   if (odom_buffer.size() == 0) {
     return false;
