@@ -343,7 +343,8 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
     } else {
       // Take the time from the point cloud
       t2.fromNSec(new_scan->header.stamp * 1e3);
-      GetPoseAtTime(t2, lidar_odometry_buffer_, lidar_odom_value_at_key_, &t2);
+      PoseCovStamped unused;
+      GetPoseAtTime(t2, lidar_odometry_buffer_, unused, &t2);
 
       // Fill in the keyed scan for the odom factor
       new_odom.b_has_point_cloud = true;
