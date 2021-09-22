@@ -213,6 +213,9 @@ void LampPgo::InputCallback(
     }
   }
 
+  gtsam::Values temp_values = values_;
+  temp_values.insert(new_values);
+
   // Extract the new factors
   for (size_t i = 0; i < all_factors.size(); i++) {
     bool factor_exists = false;
@@ -224,7 +227,19 @@ void LampPgo::InputCallback(
     }
     if (!factor_exists) {
       // this factor does not exist before
-      new_factors.add(all_factors[i]);
+      bool loop_closure =
+          (utils::IsRobotPrefix(gtsam::Symbol(all_factors[i]->back()).chr()) &&
+           utils::IsRobotPrefix(gtsam::Symbol(all_factors[i]->front()).chr()) &&
+           all_factors[i]->back() != all_factors[i]->front() + 1);
+      if (!loop_closure) {
+        new_factors.add(all_factors[i]);
+      } else {
+        if (all_factors[i]->error(temp_values) < 1e+8)
+          new_factors.add(all_factors[i]);
+        else {
+          ROS_WARN("Loop closure discarded because of large error. ");
+        }
+      }
     }
   }
 
