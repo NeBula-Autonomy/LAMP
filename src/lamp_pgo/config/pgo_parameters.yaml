@@ -26,7 +26,7 @@ base:
   b_use_outlier_rejection: true
 
   # GNC confidence threshold 
-  gnc_alpha: 0.9
+  gnc_alpha: 0.99
 
   # GNC bias odom
   b_gnc_bias_odom: true
