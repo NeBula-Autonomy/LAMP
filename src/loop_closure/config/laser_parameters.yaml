@@ -160,9 +160,9 @@ base:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within an adaptive radius of the new pose
-  proximity_threshold_min: 5
-  proximity_threshold_max: 80
-  increase_rate: 0.2
+  proximity_threshold_min: 0
+  proximity_threshold_max: 20
+  increase_rate: 0.1
 
   # When generating loop closures, only generate with n closest old poses instead 
   # of everything within the proximity threshold.
@@ -204,7 +204,7 @@ base:
   # To compute a loop closure we perform ICP between the current scan and laser
   # scans captured from nearby poses. In order to be considered a loop closure,
   # the ICP "fitness score" must be less than this number.
-  max_tolerable_fitness: 0.5 # Adjust to match filter
+  max_tolerable_fitness: 0.3 # Adjust to match filter
 
   # How long to "wait" for keyed scans 
   keyed_scans_max_delay: 600.0
@@ -233,8 +233,8 @@ base:
 
     # Transform thresholding - to limit for transforms too large
     transform_thresholding: true 
-    max_translation: 100 # max allowable translation in m 
-    max_rotation: 50 # max allowable rotation in deg
+    max_translation: 20 # max allowable translation in m 
+    max_rotation: 30 # max allowable rotation in deg
 
   #--------------------------------------------------------------------------------
   # SAC-IA Settings for feature-based initialization
