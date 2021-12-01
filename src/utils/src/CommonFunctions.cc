@@ -86,6 +86,14 @@ geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose) {
   return msg;
 }
 
+geometry_msgs::Point GtsamToRosMsg(const gtsam::Point3& point) {
+  geometry_msgs::Point msg;
+  msg.x = point.x();
+  msg.y = point.y();
+  msg.z = point.z();
+  return msg;
+}
+
 // Convert gtsam data types to a ros message
 geometry_msgs::PoseWithCovariance
 GtsamToRosMsg(const gtsam::Pose3& pose, const gtsam::Matrix66& covariance) {

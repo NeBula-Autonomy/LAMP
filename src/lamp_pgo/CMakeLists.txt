@@ -57,6 +57,14 @@ target_link_libraries(load_and_save_as_g2o
   gtsam
 )
 
+add_executable(lamp_g2o src/lamp_g2o_node.cc)
+target_link_libraries(lamp_g2o
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  KimeraRPGO
+  gtsam
+)
+
 if (CATKIN_ENABLE_TESTING)
   add_subdirectory(test)
 endif()

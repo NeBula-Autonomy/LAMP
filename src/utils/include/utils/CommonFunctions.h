@@ -114,6 +114,8 @@ GtsamToRosMsg(const gtsam::Pose3& pose, const gtsam::Matrix66& covariance);
 
 geometry_msgs::Pose GtsamToRosMsg(const gtsam::Pose3& pose);
 
+geometry_msgs::Point GtsamToRosMsg(const gtsam::Point3& pose);
+
 pose_graph_msgs::PoseGraphEdge
 GtsamToRosMsg(gtsam::Symbol key_from,
               gtsam::Symbol key_to,

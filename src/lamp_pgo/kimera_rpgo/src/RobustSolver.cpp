@@ -16,7 +16,6 @@ author: Yun Chang, Luca Carlone
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/GncOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/slam/dataset.h>
 
 #include "KimeraRPGO/logger.h"
 #include "KimeraRPGO/outlier/pcm.h"
@@ -362,7 +361,7 @@ std::vector<char> RobustSolver::getIgnoredPrefixes() {
 
 void RobustSolver::saveData(std::string folder_path) const {
   std::string g2o_file_path = folder_path + "/result.g2o";
-  gtsam::writeG2o(nfg_, values_, g2o_file_path);
+  KimeraRPGO::writeG2o(nfg_, values_, g2o_file_path);
   if (outlier_removal_) {
     outlier_removal_->saveData(folder_path);
   }
