@@ -89,6 +89,33 @@ buildCloudMap(const gtsam::Values& values,
   return *map_cloud;
 }
 
+PointCloud buildCloudMapByRobot(
+    const std::string robot_name,
+    const gtsam::Values& values,
+    const std::unordered_map<gtsam::Key, PointCloud>& keyed_scans,
+    const double& grid_size) {
+  const char prefix = utils::ROBOT_PREFIXES.at(robot_name);
+
+  PointCloud::Ptr map_cloud(new PointCloud);
+  for (const auto& ks : keyed_scans) {
+    if (gtsam::Symbol(ks.first).chr() != prefix) {
+      continue;
+    }
+
+    if (values.exists(ks.first)) {
+      PointCloud transformed_scan =
+          transformCloudToWorld(ks.first, values, ks.second);
+      *map_cloud += transformed_scan;
+    }
+  }
+  pcl::VoxelGrid<Point> grid;
+  grid.setLeafSize(grid_size, grid_size, grid_size);
+  grid.setInputCloud(map_cloud);
+  grid.filter(*map_cloud);
+
+  return *map_cloud;
+}
+
 bool isRobotKey(gtsam::Key key) {
   return utils::IsRobotPrefix(gtsam::Symbol(key).chr());
 }
@@ -137,7 +164,7 @@ void publishInlierEdges(const gtsam::Values& values,
     const auto& f = nfg[i];
     if (f->back() != f->front() + 1 && isRobotKey(f->front()) &&
         isRobotKey(f->back())) {
-      if (gnc_weights[i] > 0.5) {
+      if (gnc_weights.size() == 0 || gnc_weights[i] > 0.5) {
         inlier_edges.points.push_back(utils::GtsamToRosMsg(
             values.at<gtsam::Pose3>(f->front()).translation()));
         inlier_edges.points.push_back(utils::GtsamToRosMsg(
@@ -153,14 +180,18 @@ void publishOutlierEdges(const gtsam::Values& values,
                          const gtsam::Vector& gnc_weights,
                          ros::Publisher* publisher,
                          double marker_width) {
+  if (gnc_weights.size() == 0) {
+    return;
+  }
+
   // Extract outlier lc edges and convert to marker msg
   visualization_msgs::Marker outlier_edges;
   outlier_edges.header.frame_id = "world";
   outlier_edges.color.r = 0.5;
   outlier_edges.color.g = 0.5;
   outlier_edges.color.b = 0.5;
-  outlier_edges.color.a = 0.6;
-  outlier_edges.scale.x = marker_width;
+  outlier_edges.color.a = 0.5;
+  outlier_edges.scale.x = marker_width * 0.5;
   outlier_edges.pose.orientation.w = 1.0;
   outlier_edges.type = visualization_msgs::Marker::LINE_LIST;
   for (size_t i = 0; i < nfg.size(); i++) {
@@ -180,6 +211,15 @@ void publishOutlierEdges(const gtsam::Values& values,
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "lamp_from_g2o");
+
+  std::vector<std::string> robots{"husky1",
+                                  "husky2",
+                                  "husky3",
+                                  "husky4",
+                                  "spot1",
+                                  "spot2",
+                                  "spot3",
+                                  "spot4"};
   ros::NodeHandle n("~");
 
   //// Load parameters
@@ -293,10 +333,25 @@ int main(int argc, char** argv) {
   ROS_INFO("Building point cloud map from optimized values. ");
   PointCloud map_cloud = buildCloudMap(values, keyed_scans, map_grid_size);
 
+  std::unordered_map<std::string, PointCloud> robot_maps;
+  for (const auto& robot : robots) {
+    robot_maps.insert(
+        {robot,
+         buildCloudMapByRobot(robot, values, keyed_scans, map_grid_size)});
+  }
+
   if (save_output) {
     std::string pcd_file_name = output_dir + "/lamp_map.pcd";
     pcl::io::savePCDFileASCII(pcd_file_name, map_cloud);
     ROS_INFO("Saved map cloud to %s", pcd_file_name.c_str());
+    for (const auto& robot : robots) {
+      if (robot_maps[robot].size() == 0) {
+        continue;
+      }
+      pcd_file_name = output_dir + "/" + robot + "_map.pcd";
+      pcl::io::savePCDFileASCII(pcd_file_name, robot_maps[robot]);
+      ROS_INFO("Saved map cloud to %s", pcd_file_name.c_str());
+    }
   }
 
   if (visualize) {
@@ -313,6 +368,22 @@ int main(int argc, char** argv) {
     pcl::toROSMsg(map_cloud, map_msg);
     map_msg.header.frame_id = "world";
     map_pub.publish(map_msg);
+
+    std::vector<ros::Publisher> map_publishers;
+    for (const auto& robot : robots) {
+      if (robot_maps[robot].size() == 0) {
+        continue;
+      }
+      std::string topic_name = robot + "_map";
+      ros::Publisher robot_map_pub =
+          n.advertise<PointCloud>(topic_name, 1, true);
+      sensor_msgs::PointCloud2 robot_map_msg;
+      pcl::toROSMsg(robot_maps[robot], robot_map_msg);
+      robot_map_msg.header.frame_id = "world";
+      robot_map_pub.publish(robot_map_msg);
+      map_publishers.push_back(robot_map_pub);
+    }
+
     publishOdomEdges(values, nfg, &odom_edge_pub, marker_size);
     publishInlierEdges(values, nfg, gnc_weights, &inlier_edge_pub, marker_size);
     publishOutlierEdges(

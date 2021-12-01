@@ -23,7 +23,7 @@ base:
   solver: 1
 
   # Toggle outlier rejection
-  b_use_outlier_rejection: true
+  b_use_outlier_rejection: false
 
   # GNC confidence threshold 
   gnc_alpha: 0.99
