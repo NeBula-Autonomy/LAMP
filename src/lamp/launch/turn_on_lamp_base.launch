@@ -1,6 +1,7 @@
 <launch>
   <arg name="robot_namespace" default="base_station"/>
   <arg name="sim" default="false"/>
+  <arg name="pgo_log" default="$(find lamp_pgo)/log"/>
 
 
   <group ns="$(arg robot_namespace)">
@@ -17,6 +18,7 @@
       <remap from="~ignored_robots" to="lamp/ignored_robots" />
       <!-- Config - TODO move the proximity_threshold param elsewhere -->
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>
+      <param name="log_path" value="$(arg pgo_log)" />
     </node>
 
     <!-- Base station LAMP -->

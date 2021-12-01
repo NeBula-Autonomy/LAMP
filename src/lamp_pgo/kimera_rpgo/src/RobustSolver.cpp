@@ -89,7 +89,7 @@ RobustSolver::RobustSolver(const RobustSolverParams& params)
 
   // set log output
   if (params.log_output) {
-    if (outlier_removal_) outlier_removal_->logOutput(params.log_folder);
+    // if (outlier_removal_) outlier_removal_->logOutput(params.log_folder);
     log_ = true;
     log_folder_ = params.log_folder;
     std::string filename = log_folder_ + "/rpgo_status.csv";
@@ -278,6 +278,7 @@ void RobustSolver::update(const gtsam::NonlinearFactorGraph& factors,
     outfile << nfg_.size() << "," << spin_time.count() << "," << getNumLC()
             << "," << getNumLCInliers() << std::endl;
     outfile.close();
+    saveData(log_folder_);
   }
   return;
 }
@@ -364,6 +365,17 @@ void RobustSolver::saveData(std::string folder_path) const {
   gtsam::writeG2o(nfg_, values_, g2o_file_path);
   if (outlier_removal_) {
     outlier_removal_->saveData(folder_path);
+  }
+
+  std::string gnc_weights_file = folder_path + "/gnc_weights.csv";
+  if (params_.use_gnc_) {
+    const static Eigen::IOFormat CSVFormat(
+        Eigen::FullPrecision, Eigen::DontAlignCols, ", ", "\n");
+    std::ofstream gnc_file(gnc_weights_file);
+    if (gnc_file.is_open()) {
+      gnc_file << gnc_weights_.format(CSVFormat);
+      gnc_file.close();
+    }
   }
 }
 
