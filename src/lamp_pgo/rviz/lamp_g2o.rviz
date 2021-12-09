@@ -25,7 +25,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -86,7 +86,7 @@ Visualization Manager:
       Marker Topic: /base1/lamp_g2o/odom_edges
       Name: OdomEdges
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -94,7 +94,7 @@ Visualization Manager:
       Marker Topic: /base1/lamp_g2o/inlier_edges
       Name: InlierEdges
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -102,7 +102,7 @@ Visualization Manager:
       Marker Topic: /base1/lamp_g2o/outlier_edges
       Name: OutlierEdges
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -128,7 +128,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.20000000298023224
+      Size (m): 0.10000000149011612
       Style: Flat Squares
       Topic: /base1/lamp_g2o/husky3_map
       Unreliable: false
@@ -158,7 +158,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.20000000298023224
+      Size (m): 0.10000000149011612
       Style: Flat Squares
       Topic: /base1/lamp_g2o/spot1_map
       Unreliable: false
@@ -188,7 +188,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.20000000298023224
+      Size (m): 0.10000000149011612
       Style: Flat Squares
       Topic: /base1/lamp_g2o/spot3_map
       Unreliable: false
@@ -218,7 +218,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.20000000298023224
+      Size (m): 0.10000000149011612
       Style: Flat Squares
       Topic: /base1/lamp_g2o/spot4_map
       Unreliable: false
@@ -227,7 +227,7 @@ Visualization Manager:
       Value: true
   Enabled: true
   Global Options:
-    Background Color: 255; 255; 255
+    Background Color: 0; 0; 0
     Default Light: true
     Fixed Frame: world
     Frame Rate: 30
