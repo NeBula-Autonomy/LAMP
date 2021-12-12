@@ -48,12 +48,12 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   // Publishers
   loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
       "laser_loop_closures", 100000, false);
-  gt_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
-      "ground_truth", 100000, false);
-  current_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
-      "current_scan", 100000, false);
-  aligned_scan_pub_ = nl.advertise<sensor_msgs::PointCloud2>(
-      "aligned_scan", 100000, false);
+  gt_pub_ =
+      nl.advertise<sensor_msgs::PointCloud2>("ground_truth", 100000, false);
+  current_scan_pub_ =
+      nl.advertise<sensor_msgs::PointCloud2>("current_scan", 100000, false);
+  aligned_scan_pub_ =
+      nl.advertise<sensor_msgs::PointCloud2>("aligned_scan", 100000, false);
   lc_computation_time_pub_ = nl.advertise<std_msgs::Float64>(
       "loop_closure_computation_time", 100, false);
   // Parameters
@@ -149,9 +149,8 @@ void LaserLoopClosure::PublishLCComputationTime(
   pub.publish(computation_time);
 }
 
-void LaserLoopClosure::AccumulateScans(
-    gtsam::Key key,
-    PointCloud::Ptr scan_out) {
+void LaserLoopClosure::AccumulateScans(gtsam::Key key,
+                                       PointCloud::Ptr scan_out) {
   for (int i = 0; i < sac_num_prev_scans_; i++) {
     gtsam::Key prev_key = key - i - 1;
     // If scan doesn't exist, just skip it
@@ -207,10 +206,10 @@ void LaserLoopClosure::GetInitialAlignment(PointCloud::ConstPtr source,
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
 
-  utils::ComputeKeypoints(source, source_normals, harris_params_, icp_threads_,
-                          source_keypoints);
-  utils::ComputeKeypoints(target, target_normals, harris_params_, icp_threads_,
-                          target_keypoints);
+  utils::ComputeKeypoints(
+      source, source_normals, harris_params_, icp_threads_, source_keypoints);
+  utils::ComputeKeypoints(
+      target, target_normals, harris_params_, icp_threads_, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);

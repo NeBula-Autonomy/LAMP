@@ -42,14 +42,11 @@ public:
   typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
 
 private:
-  void AccumulateScans(
-      gtsam::Key key,
-      PointCloud::Ptr scan_out);
-  void GetInitialAlignment(
-      PointCloud::ConstPtr source,
-      PointCloud::ConstPtr target,
-      Eigen::Matrix4f* tf_out,
-      double& sac_fitness_score);
+  void AccumulateScans(gtsam::Key key, PointCloud::Ptr scan_out);
+  void GetInitialAlignment(PointCloud::ConstPtr source,
+                           PointCloud::ConstPtr target,
+                           Eigen::Matrix4f* tf_out,
+                           double& sac_fitness_score);
 
   bool FindLoopClosures(
       gtsam::Key new_key,
