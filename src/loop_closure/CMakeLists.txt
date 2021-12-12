@@ -100,6 +100,8 @@ add_library(${PROJECT_NAME}
   src/RoundRobinLoopCandidateQueue.cc
   src/ObservabilityQueue.cc
   src/RssiLoopClosure.cc
+  src/LoopClosureBase.cc
+  src/LaserLoopClosure.cc
 )
 
 find_package(Eigen3 REQUIRED)
@@ -149,6 +151,14 @@ target_link_libraries(loop_computation_node
 
 add_executable(rssi_loop_generation_node src/rssi_loop_generation_node.cc)
 target_link_libraries(rssi_loop_generation_node
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gtsam
+)
+
+add_executable(laser_loop_closure_node src/laser_loop_closure_node.cc)
+target_link_libraries(laser_loop_closure_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
