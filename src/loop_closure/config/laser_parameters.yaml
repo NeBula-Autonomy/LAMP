@@ -19,6 +19,9 @@ robot:
   proximity_threshold_min: 5
   proximity_threshold_max: 80
   increase_rate: 0.2
+  proximity_threshold: 15 # only for old LCD module
+  distance_before_reclosing: 5 # only for old LCD module
+  max_rotation_deg: 50 # only for old LCD module
 
   # When generating loop closures, only generate with n closest old poses instead 
   # of everything within the proximity threshold.
@@ -163,6 +166,9 @@ base:
   proximity_threshold_min: 0
   proximity_threshold_max: 20
   increase_rate: 0.1
+  proximity_threshold: 15 # only for old LCD module
+  distance_before_reclosing: 5 # only for old LCD module
+  max_rotation_deg: 50 # only for old LCD module
 
   # When generating loop closures, only generate with n closest old poses instead 
   # of everything within the proximity threshold.

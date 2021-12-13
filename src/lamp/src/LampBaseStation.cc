@@ -202,7 +202,7 @@ void LampBaseStation::ProcessTimerCallback(const ros::TimerEvent& ev) {
 
   if (b_has_new_factor_) {
     PublishPoseGraph();
-
+    PublishPoseGraphForOptimizer(); // To generate G2O
     b_has_new_factor_ = false;
   }
 
