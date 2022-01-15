@@ -89,6 +89,9 @@ class LampPgo {
 
   // Ignored list of robots that is not fused
   std::vector<std::string> ignored_list_;
+
+  // Max loop closure factor error
+  double max_lc_error_;
 };
 
 #endif  // LAMP_PGO_H_

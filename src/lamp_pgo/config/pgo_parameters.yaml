@@ -17,6 +17,8 @@ robot:
   rotation_check_threshold: 0.005 # ~0.3 degrees
   # TODO make these dynamic with the translation threshold for nodes
 
+  max_lc_error: 1.0E+8
+
 base:
   # Toggle loop closures on or off. Setting this to off will increase run-time
   # Solver used in backend. 1 for LM, 2 for GN
@@ -26,12 +28,14 @@ base:
   b_use_outlier_rejection: true
 
   # GNC confidence threshold 
-  gnc_alpha: 0.99 #0.9999999999999999
+  gnc_alpha: 0.9999 #0.9999999999999999
 
   # GNC bias odom
-  b_gnc_bias_odom: true
+  b_gnc_bias_odom: false
 
   # outlier rejection thresholds (distances)
-  translation_check_threshold: 1 #0.05 # 1 m
-  rotation_check_threshold: 1 #0.005 # 1 rad
+  translation_check_threshold: 10.0 #0.05 # 1 m
+  rotation_check_threshold: 10.0 #0.005 # 1 rad
   # TODO make these dynamic with the translation threshold for nodes
+
+  max_lc_error: 1.0E+6

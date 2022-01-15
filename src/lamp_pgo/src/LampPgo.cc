@@ -103,6 +103,9 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Use incremental max clique
   rpgo_params_.setIncremental();
 
+  if (!pu::Get(param_ns_ + "/max_lc_error", max_lc_error_))
+    return false;
+
   std::string log_path;
   if (pu::Get("log_path", log_path)) {
     rpgo_params_.logOutput(log_path);
@@ -234,7 +237,7 @@ void LampPgo::InputCallback(
       if (!loop_closure) {
         new_factors.add(all_factors[i]);
       } else {
-        if (all_factors[i]->error(temp_values) < 1e+8)
+        if (all_factors[i]->error(temp_values) < max_lc_error_)
           new_factors.add(all_factors[i]);
         else {
           ROS_WARN("Loop closure discarded because of large error. ");

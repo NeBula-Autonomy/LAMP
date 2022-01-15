@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
     if (!pu::Get(param_ns + "/b_gnc_bias_odom", b_gnc_bias_odom))
       return 1;
     rpgo_params.setPcmSimple3DParams(
-        trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
+        trans_threshold, rot_threshold, KimeraRPGO::Verbosity::UPDATE);
     if (gnc_alpha > 0 && gnc_alpha < 1) {
       rpgo_params.setGncInlierCostThresholdsAtProbability(gnc_alpha);
       if (b_gnc_bias_odom)
@@ -272,9 +272,12 @@ int main(int argc, char** argv) {
   // Use incremental max clique
   rpgo_params.setIncremental();
 
-  std::string log_path;
-  if (pu::Get("log_path", log_path)) {
-    rpgo_params.logOutput(log_path);
+  std::string output_dir;
+  bool save_output = true;
+  if (!pu::Get("output_dir", output_dir)) {
+    save_output = false;
+  } else {
+    rpgo_params.logOutput(output_dir);
     ROS_INFO("Enabled logging in Kimera-RPGO");
   }
 
@@ -302,19 +305,27 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  std::string output_dir;
-  bool save_output = true;
-  if (!pu::Get("output_dir", output_dir)) {
-    save_output = false;
-  }
-
   bool visualize;
   pu::Get("visualize", visualize);
 
   //// Load g2o file
-  gtsam::NonlinearFactorGraph nfg;
+  gtsam::NonlinearFactorGraph nfg, filtered_nfg;
   gtsam::Values values;
   inputG2oFile(g2o_file, &nfg, &values);
+
+  double max_lc_error;
+  if (!pu::Get(param_ns + "/max_lc_error", max_lc_error))
+    return 1;
+
+  // filter out bad loop closures
+  for (const auto& factor : nfg) {
+    if (factor->front() != factor->back() - 1) {
+      if (factor->error(values) > max_lc_error) {
+        continue;
+      }
+    }
+    filtered_nfg.add(factor);
+  }
 
   //// Load keyed scans
   std::unordered_map<gtsam::Key, PointCloud> keyed_scans;
@@ -324,7 +335,7 @@ int main(int argc, char** argv) {
   KimeraRPGO::RobustSolver pgo(rpgo_params);
 
   //// Input graphand values
-  pgo.update(nfg, values);
+  pgo.update(filtered_nfg, values);
 
   nfg = pgo.getFactorsUnsafe();
   values = pgo.calculateEstimate();

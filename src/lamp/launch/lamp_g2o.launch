@@ -1,10 +1,13 @@
 <launch>
   <arg name="robot_namespace" default="base1"/>
-  <arg name="input_path" />
+  <arg name="input_path" defualt=""/>
+  <arg name="g2o_file" default="$(arg input_path)/result.g2o"/>
+  <arg name="keyed_scans_bag" default="$(arg input_path)/keyed_scans.bag"/>
   <arg name="map_resolution" default="0.5" />
   <arg name="marker_size" default="0.3" />
   <arg name="output_dir" default="$(find lamp_pgo)/log"/>
   <arg name="visualize" default="true"/>
+  <arg name="log_path" default="$(find lamp_pgo)/log"/>
 
   <group ns="$(arg robot_namespace)">
 
@@ -14,15 +17,16 @@
           type="lamp_g2o"
           output="screen">
       <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>
-      <param name="g2o_file" value= "$(arg input_path)/result.g2o"/>
-      <param name="keyed_scans_bag" value="$(arg input_path)/keyed_scans.bag"/>
+      <param name="g2o_file" value= "$(arg g2o_file)"/>
+      <param name="keyed_scans_bag" value="$(arg keyed_scans_bag)"/>
       <param name="map_resolution" value="$(arg map_resolution)"/>
       <param name="marker_size" value="$(arg marker_size)"/>
       <param name="output_dir" value="$(arg output_dir)"/>
       <param name="visualize" value="$(arg visualize)"/>
+      <param name="log_path" value="$(arg log_path)"/>
     </node>
   </group>
 
-  <node name="rviz" pkg="rviz" type="rviz" output="log" args="-d $(find lamp_pgo)/rviz/lamp_g2o.rviz"/>
+  <node if="$(arg visualize)" name="rviz" pkg="rviz" type="rviz" output="log" args="-d $(find lamp_pgo)/rviz/lamp_g2o.rviz"/>
 
 </launch>
