@@ -1,11 +1,10 @@
 <launch>
-  <arg name="dataset_path"   default="/home/costar/Downloads/LcDataset" />
-  <arg name="gt_odom_bag"    default="odometry.bag" />
-  <arg name="lamp_bag"       default="base_input.bag" />
-  <arg name="robot_name"     default="husky1" />
+  <arg name="dataset"        default="tunnel"/>
+  <arg name="dataset_path"   default="/media/costar/Samsung_T5/LampLcdData" />
+  <arg name="gt_path"        default="/media/costar/Samsung_T5/SubtProcessed/$(arg dataset)/ground_truth" />
+  <arg name="lamp_bag_path"  default="/media/costar/Samsung_T5/SubtProcessed/$(arg dataset)/rosbag" />
   <arg name="radius_tol"     default="0.3" />
-  <arg name="gt_odom_topic"  default="/$(arg robot_name)/lo_frontend/odometry" />
-  <arg name="label"          default="unlabeled" />
+  <arg name="label"          default="$(arg dataset)" />
 
   <!-- Base station LAMP -->
   <node pkg="loop_closure"
@@ -13,12 +12,14 @@
         type="gen_loop_computation_test"
         output="screen"> 
     <param name="dataset_path"   value="$(arg dataset_path)" />
-    <param name="gt_odom_bag"    value="$(arg gt_odom_bag)" />
-    <param name="gt_odom_topic"  value="$(arg gt_odom_topic)" />
-    <param name="lamp_bag"       value="$(arg lamp_bag)" />
-    <param name="robot_name"     value="$(arg robot_name)" />
+    <param name="gt_path"        value="$(arg gt_path)" />
+    <param name="lamp_bag_path"  value="$(arg lamp_bag_path)" />
     <param name="radius_tol"     value="$(arg radius_tol)" />
     <param name="label"          value="$(arg label)" />
+    <rosparam param="robots"> ["husky3", "husky4"] </rosparam>
+    <!-- <rosparam param="robots"> ["husky1", "husky4", "spot1"] </rosparam> -->
+    <!-- <rosparam param="robots"> ["husky1", "husky2", "husky3", "husky4"] </rosparam> -->
+    <!-- <rosparam param="robots"> ["husky3", "spot1", "spot3", "spot4"] </rosparam> -->
   </node>
 
 </launch>

@@ -431,6 +431,9 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   }
   icp->setInputSource(accumulated_source);
   icp->setInputTarget(accumulated_target);
+  if (accumulated_source->size() < 20) {
+    icp->setCorrespondenceRandomness(accumulated_source->size());
+  }
 
   ///// ICP initialization scheme
   // Default is to initialize by identity. Other options include
@@ -1007,7 +1010,7 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
     // ROS_INFO("Solved TEASER Rigid Transform with %d inliers", n_inliers);
 
     if (error_teaser <= error_odom) {
-      std::cout << "Estimated T is: " << T << std::endl;
+      // std::cout << "Estimated T is: " << T << std::endl;
       *tf_out = T.cast<float>();
       teaser_count_++;
       // auto final_inliers = solver.getInlierMaxClique();

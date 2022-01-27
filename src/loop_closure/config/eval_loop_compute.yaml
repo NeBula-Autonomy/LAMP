@@ -6,13 +6,13 @@ filtering:
   grid_res: 0.8
 
   # RANDOM DOWNSAMPLE FILTER
-  random_filter: true
+  random_filter: false
   # Percentage of points to discard. Must be between 0.0 and 1.0.
   decimate_percentage: 0.80
   decimate_percentage_open_space: 0.97
 
   # ADAPTIVE FILTER 
-  adaptive_filter: true
+  adaptive_filter: false
   # Number of points to target for adaptive filter
   adaptive_target: 3000
   # Max grid size for adaptive filter

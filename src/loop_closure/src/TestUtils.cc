@@ -18,6 +18,7 @@ Some utility functions for wokring with Point Clouds
 
 #include "loop_closure/TestUtils.h"
 #include <utils/CommonFunctions.h>
+#include <utils/PrefixHandling.h>
 
 namespace test_utils {
 
@@ -412,6 +413,7 @@ bool ReadKeyedScansAndPosesFromBagFile(
     if (keyed_stamps->size() > keyed_scans->size()) {
       for (const auto& ks : *keyed_stamps) {
         if (keyed_scans->find(ks.first) == keyed_scans->end()) {
+          keyed_poses->erase(ks.first);
           keyed_stamps->erase(ks.first);
         }
       }
@@ -432,7 +434,7 @@ bool ReadKeyedScansAndPosesFromBagFile(
 }
 
 void FindLoopCandidateFromGt(
-    const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
+    const std::map<char, std::map<ros::Time, gtsam::Pose3>>& gt_pose_stamped,
     const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
     const double& radius,
     const size_t& key_dist,
@@ -441,7 +443,8 @@ void FindLoopCandidateFromGt(
   // First create gt keyed poses
   for (const auto& k : keyed_stamps) {
     gtsam::Pose3 kp;
-    GetPoseAtTime(gt_pose_stamped, k.second, &kp);
+    char prefix = gtsam::Symbol(k.first).chr();
+    GetPoseAtTime(gt_pose_stamped.at(prefix), k.second, &kp);
     gt_keyed_poses->insert(std::pair<gtsam::Key, gtsam::Pose3>{k.first, kp});
   }
 
@@ -465,10 +468,10 @@ void FindLoopCandidateFromGt(
 }
 
 void GenerateFalseLoopCandidateFromGt(
-    const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
+    const std::map<char, std::map<ros::Time, gtsam::Pose3>>& gt_pose_stamped,
     const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
     pose_graph_msgs::LoopCandidateArray* false_candidates) {
-  size_t n = 100;
+  size_t n = 500;
   while (false_candidates->candidates.size() < n) {
     auto it = keyed_stamps.begin();
     std::advance(it, rand() % keyed_stamps.size());
@@ -477,8 +480,10 @@ void GenerateFalseLoopCandidateFromGt(
     std::advance(it, rand() % keyed_stamps.size());
     gtsam::Key key_2 = it->first;
     gtsam::Pose3 p1, p2;
-    GetPoseAtTime(gt_pose_stamped, keyed_stamps.at(key_1), &p1);
-    GetPoseAtTime(gt_pose_stamped, keyed_stamps.at(key_2), &p2);
+    char c1 = gtsam::Symbol(key_1).chr();
+    char c2 = gtsam::Symbol(key_2).chr();
+    GetPoseAtTime(gt_pose_stamped.at(c1), keyed_stamps.at(key_1), &p1);
+    GetPoseAtTime(gt_pose_stamped.at(c2), keyed_stamps.at(key_2), &p2);
     if ((p1.translation() - p2.translation()).norm() > 10) {
       pose_graph_msgs::LoopCandidate cand;
       cand.key_from = key_1;
@@ -499,7 +504,9 @@ bool AppendNewCandidates(
     TestData* data) {
   if (candidate_keyed_scans.size() != candidate_keyed_poses.size()) {
     std::cout << "Number of candidate scans should match the number of "
-                 "candidate keys. \n";
+                 "candidate keys. "
+              << candidate_keyed_scans.size() << " vs. "
+              << candidate_keyed_poses.size() << std::endl;
     return false;
   }
 
@@ -576,6 +583,8 @@ void OutputTestSummary(
   std::unordered_map<std::string, double> max_trans_error;
   std::unordered_map<std::string, double> min_rot_error;
   std::unordered_map<std::string, double> max_rot_error;
+  std::unordered_map<std::string, std::vector<double>> trans_error_raw;
+  std::unordered_map<std::string, std::vector<double>> rot_error_raw;
   std::vector<std::pair<double, double>> fit_to_trans_err;
   std::vector<std::pair<double, double>> fit_to_rot_err;
   std::vector<std::pair<double, double>> fit_to_trans_err_fp;
@@ -589,6 +598,8 @@ void OutputTestSummary(
     max_trans_error[enl.first] = 0;
     min_rot_error[enl.first] = std::numeric_limits<double>::max();
     max_rot_error[enl.first] = 0;
+    trans_error_raw[enl.first] = std::vector<double>();
+    rot_error_raw[enl.first] = std::vector<double>();
   }
 
   for (const auto& edge : results) {
@@ -614,6 +625,8 @@ void OutputTestSummary(
         std::pair<double, double>{edge.range_error, rot_error});
     total_trans_error[label] += trans_error;
     total_rot_error[label] += rot_error;
+    trans_error_raw[label].push_back(trans_error);
+    rot_error_raw[label].push_back(rot_error);
 
     if (trans_error < min_trans_error[label])
       min_trans_error[label] = trans_error;
@@ -708,6 +721,23 @@ void OutputTestSummary(
                 << fit_to_rot_err_fp[i].second * 180 / 3.1416 << "\n";
   }
   fp_statfile.close();
+  // Write translation and rotation error to file
+  std::ofstream errorfile;
+  std::string error_file = output_dir + "/" + test_name + "_error.csv";
+  errorfile.open(error_file);
+  if (!errorfile.is_open()) {
+    std::cout << "Unable to open output false positive fitness error file. \n";
+    return;
+  }
+  errorfile << "label,trans-error(m),rot-error(deg)\n";
+  for (const auto& label_error : trans_error_raw) {
+    for (size_t i = 0; i < label_error.second.size(); i++) {
+      errorfile << label_error.first << ","
+                << trans_error_raw[label_error.first][i] << ","
+                << rot_error_raw[label_error.first][i] * 180 / 3.1416 << "\n";
+    }
+  }
+  errorfile.close();
 }
 
 } // namespace test_utils

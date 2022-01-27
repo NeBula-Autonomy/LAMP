@@ -74,7 +74,7 @@ bool ReadKeyedScansAndPosesFromBagFile(
     std::unordered_map<gtsam::Key, pose_graph_msgs::KeyedScan>* keyed_scans);
 
 void FindLoopCandidateFromGt(
-    const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
+    const std::map<char, std::map<ros::Time, gtsam::Pose3>>& gt_pose_stamped,
     const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
     const double& radius,
     const size_t& key_dist,
@@ -82,7 +82,7 @@ void FindLoopCandidateFromGt(
     std::map<gtsam::Key, gtsam::Pose3>* gt_keyed_poses);
 
 void GenerateFalseLoopCandidateFromGt(
-    const std::map<ros::Time, gtsam::Pose3>& gt_pose_stamped,
+    const std::map<char, std::map<ros::Time, gtsam::Pose3>>& gt_pose_stamped,
     const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
     pose_graph_msgs::LoopCandidateArray* false_candidates);
 
