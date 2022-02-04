@@ -8,6 +8,7 @@
     <remap from="~keyed_scans" to="lamp/keyed_scans" />
     <remap from="~laser_loop_closures" to="lamp/laser_loop_closures" />
     <remap from="~seed_loop_closure" to="lamp/seed_loop_closure" />
+    <remap from="~prioritized_loop_candidates" to="lamp/loop_candidate_queue/prioritized_loop_candidates" />
     <!-- Use fixed covariances, rather than computed -->
     <param name="b_use_fixed_covariances" value="false" />
     <rosparam file="$(find lamp)/config/lamp_settings.yaml" subst_value="true"/>

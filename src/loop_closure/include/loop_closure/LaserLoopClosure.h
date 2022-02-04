@@ -112,6 +112,7 @@ private:
   ros::Publisher current_scan_pub_;
   ros::Publisher aligned_scan_pub_;
   ros::Publisher lc_computation_time_pub_;
+  ros::Publisher loop_candidate_pub_;
 
   double max_tolerable_fitness_;
   double translation_threshold_nodes_;

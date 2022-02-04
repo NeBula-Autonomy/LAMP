@@ -20,6 +20,8 @@ Lidar pointcloud based loop closure
 #include <parameter_utils/ParameterUtils.h>
 #include <utils/CommonFunctions.h>
 
+#include <pose_graph_msgs/LoopCandidateArray.h>
+
 #include <Eigen/Core>
 
 namespace pu = parameter_utils;
@@ -48,6 +50,8 @@ bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   // Publishers
   loop_closure_pub_ = nl.advertise<pose_graph_msgs::PoseGraph>(
       "laser_loop_closures", 100000, false);
+  loop_candidate_pub_ = nl.advertise<pose_graph_msgs::LoopCandidateArray>(
+      "prioritized_loop_candidates", 100000, false);
   gt_pub_ =
       nl.advertise<sensor_msgs::PointCloud2>("ground_truth", 100000, false);
   current_scan_pub_ =
@@ -342,6 +346,14 @@ bool LaserLoopClosure::CheckForLoopClosure(
   if (DistanceBetweenKeys(key1, key2) > proximity_threshold_) {
     return false;
   }
+
+  pose_graph_msgs::LoopCandidateArray lc_candidates;
+  pose_graph_msgs::LoopCandidate candidate;
+  candidate.header.stamp = ros::Time::now();
+  candidate.key_from = key1;
+  candidate.key_to = key2;
+  lc_candidates.candidates.push_back(candidate);
+  loop_candidate_pub_.publish(lc_candidates);
 
   // Perform loop closure without a provided prior transform
   return PerformLoopClosure(
