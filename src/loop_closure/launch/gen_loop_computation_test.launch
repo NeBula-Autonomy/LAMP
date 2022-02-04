@@ -4,6 +4,7 @@
   <arg name="gt_path"        default="/media/costar/Samsung_T5/SubtProcessed/$(arg dataset)/ground_truth" />
   <arg name="lamp_bag_path"  default="/media/costar/Samsung_T5/SubtProcessed/$(arg dataset)/rosbag" />
   <arg name="radius_tol"     default="0.3" />
+  <arg name="min_radius"     default="0.1" />
   <arg name="label"          default="$(arg dataset)" />
 
   <!-- Base station LAMP -->
@@ -14,11 +15,12 @@
     <param name="dataset_path"   value="$(arg dataset_path)" />
     <param name="gt_path"        value="$(arg gt_path)" />
     <param name="lamp_bag_path"  value="$(arg lamp_bag_path)" />
+    <param name="min_radius"     value="$(arg min_radius)" />
     <param name="radius_tol"     value="$(arg radius_tol)" />
     <param name="label"          value="$(arg label)" />
-    <rosparam param="robots"> ["husky3", "husky4"] </rosparam>
+    <!-- <rosparam param="robots"> ["husky3", "husky4"] </rosparam> -->
     <!-- <rosparam param="robots"> ["husky1", "husky4", "spot1"] </rosparam> -->
-    <!-- <rosparam param="robots"> ["husky1", "husky2", "husky3", "husky4"] </rosparam> -->
+    <rosparam param="robots"> ["husky1", "husky2", "husky3", "husky4"] </rosparam>
     <!-- <rosparam param="robots"> ["husky3", "spot1", "spot3", "spot4"] </rosparam> -->
   </node>
 

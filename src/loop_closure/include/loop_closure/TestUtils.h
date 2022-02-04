@@ -76,7 +76,8 @@ bool ReadKeyedScansAndPosesFromBagFile(
 void FindLoopCandidateFromGt(
     const std::map<char, std::map<ros::Time, gtsam::Pose3>>& gt_pose_stamped,
     const std::unordered_map<gtsam::Key, ros::Time>& keyed_stamps,
-    const double& radius,
+    const double& min_radius,
+    const double& max_radius,
     const size_t& key_dist,
     pose_graph_msgs::LoopCandidateArray* candidates,
     std::map<gtsam::Key, gtsam::Pose3>* gt_keyed_poses);

@@ -30,8 +30,9 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  double radius_tol;
+  double radius_tol, min_radius;
   n.getParam("radius_tol", radius_tol);
+  n.getParam("min_radius", min_radius);
 
   tu::TestData test_data;
   // First try load existing (if exists)
@@ -80,6 +81,7 @@ int main(int argc, char** argv) {
   std::map<gtsam::Key, gtsam::Pose3> gt_keyed_poses;
   tu::FindLoopCandidateFromGt(gt_pose_stamped,
                               pg_keyed_stamps,
+                              min_radius,
                               radius_tol,
                               10,
                               &new_candidates,
