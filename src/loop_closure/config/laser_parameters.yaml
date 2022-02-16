@@ -163,9 +163,9 @@ base:
 
   # When searching through old poses for loop closures, only consider old poses
   # that are within an adaptive radius of the new pose
-  proximity_threshold_min: 0
+  proximity_threshold_min: 30
   proximity_threshold_max: 30
-  increase_rate: 0.2
+  increase_rate: 10
   proximity_threshold: 30 # only for old LCD module
   distance_before_reclosing: 5 # only for old LCD module
   max_rotation_deg: 50 # only for old LCD module
@@ -173,7 +173,7 @@ base:
   # When generating loop closures, only generate with n closest old poses instead 
   # of everything within the proximity threshold.
   n_closest: 10
-  b_take_n_closest: true
+  b_take_n_closest: false
 
   #--------------------------------------------------------------------------------
   #### Loop closure prioritization
