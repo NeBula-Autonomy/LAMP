@@ -91,7 +91,10 @@ class MaximallySeperatedNodes(LoopClosureBatchSelector):
             all_indexes = np.array(range(self.remaining_points.shape[0]))
             if self.needed_extra_points > 0:
                 #indexes = np.array(random.sample(all_indexes, self.needed_extra_points))
-                indexes = np.random.choice(all_indexes, size=self.needed_extra_points, replace=False)
+                try:
+                    indexes = np.random.choice(all_indexes, size=self.needed_extra_points, replace=False)
+                except ValueError: #Hot patch, not sure why this is happening
+                    indexes = np.random.choice(all_indexes, size=self.needed_extra_points, replace=True)
                 selected_remaining_points = self.remaining_points[indexes, :]
                 if self.initially_accepted_points != []:
                     selected_points = np.concatenate((selected_remaining_points, self.initially_accepted_points), axis=0)
