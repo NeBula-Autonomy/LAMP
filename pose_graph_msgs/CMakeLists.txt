@@ -8,8 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
 )
 
-catkin_python_setup()
-
 add_message_files(
   FILES
   PoseGraph.msg
@@ -37,9 +35,3 @@ catkin_package(
     geometry_msgs
     sensor_msgs
 )
-
-# Test
-if(CATKIN_ENABLE_TESTING)
-  find_package(rostest REQUIRED)
-  add_rostest(tests/test_bridge.test)
-endif()

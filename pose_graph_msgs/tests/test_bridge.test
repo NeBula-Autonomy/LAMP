@@ -1,5 +1,0 @@
-<launch>
-  <test test-name="test_bridge"
-        pkg="pose_graph_msgs"
-        type="test_bridge.py"/>
-</launch>
