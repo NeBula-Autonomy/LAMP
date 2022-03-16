@@ -1,0 +1,4 @@
+Explore failure modes:
+- A few IMU messages dropped
+- Many IMU messages dropped
+- NaN inputs from IMU (has been observed in the past month)

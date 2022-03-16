@@ -1,0 +1,31 @@
+session_name: husky_replay
+
+environment:
+  WS_PATH: /home/costar/subt_ws/src/husky_core/localizer_lamp/
+  DATA_PATH: /media/data/husky2_2019-12-23-15-58-00_b198_t1_game/
+  LOG_PATH: rosbag/
+  ROBOT_NAME: husky2
+  BASE_NAME: base1
+  DELAY: "2"
+  RATE: "1.0"
+
+options:
+  default-command: /bin/bash
+
+windows:
+- window_name: lamp
+  focus: true
+  layout: tiled
+  shell_command_before:
+    - rosparam set /use_sim_time true
+  panes:
+    - roslaunch bringup_ugv husky_rerun_perception.launch robot_namespace:=$ROBOT_NAME base_namespace:=$BASE_NAME log_path:=$DATA_PATH/$LOG_PATH rosbag_options:="-s$DELAY -r$RATE --pause"
+    - rosparam set /use_sim_time true; rosbag play $DATA_PATH/$LOG_PATH*.bag -s$DELAY -r$RATE --clock --pause --topics clock:=/clock /$ROBOT_NAME/vn100/imu /$ROBOT_NAME/velodyne_points /$ROBOT_NAME/velodyne_front/velodyne_points /$ROBOT_NAME/unreconciled_artifact /$ROBOT_NAME/camera_front/color/image_raw_throttle
+    - sleep 4; rosparam set /use_sim_time true; roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME #>> lo_frontend_log.txt
+    - sleep 2; rosparam set /use_sim_time true; roslaunch capability_ugv localizer_hero.launch robot_namespace:=$ROBOT_NAME # Optionally turn off if not used
+    - sleep 6; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME # >> lamp_log.txt
+    - sleep 1; rosparam set /use_sim_time true; roslaunch lamp turn_on_lamp_base.launch robot_namespace:=$BASE_NAME sim:=true
+    - rqt_multiplot --multiplot-config $WS_PATH/lamp_analysis.xml --force-discover 
+    - sleep 2; rosparam set /use_sim_time true; roslaunch velodyne_pointcloud offline_motion_correction.launch robot_namespace:=$ROBOT_NAME
+    - rostopic delay /husky3/lo_frontend/localization_integrated_estimate -w10
+    - python $(rospack find lamp)/scripts/manual_LC_publish.py $BASE_NAME \ # add two keys

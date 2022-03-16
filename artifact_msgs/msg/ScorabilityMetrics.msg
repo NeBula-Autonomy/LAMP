@@ -1,0 +1,9 @@
+float64[] yolo_confidence_vector
+float64[] color_confidence_vector
+float64[] size_confidence_vector
+float64[] height_vector
+float64[] width_vector
+float64[] localization_uncertainty_vector
+float32 detection_confidence_value
+float32 color_confidence_value
+float32 size_confidence_value

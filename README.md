@@ -6,9 +6,17 @@ Build this package in a catkin workspace
 ```bash
 mkdir -p catkin_ws/src
 cd catkin_ws
-catkin config --extend /opt/ros/melodic
+catkin init
+catkin config -DCMAKE_BUILD_TYPE=Release -DGTSAM_TANGENT_PREINTEGRATION=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DOPENGV_BUILD_WITH_MARCH_NATIVE=OFF
 ```
 
+```
+wstool init
+wstool merge localizer_lamp/install/lamp_ssh.rosinstall
+wstool up
+```
+
+```
 ### Dependencies
 This package requires the core_messages package to be built:
 ```bash

@@ -1,0 +1,12 @@
+<launch>
+  <arg name="robot_namespace" default="husky"/>
+
+  <group ns="$(arg robot_namespace)">
+    <node name="zero_velocity_detector_node" pkg="localizer_zero_velocity_detector" type="very_stable_genius_node" respawn="true" output="screen">
+      <remap from="imu" to="/$(arg robot_namespace)/vn100/imu_wori_wcov"/>
+      <remap from="stationary" to="/$(arg robot_namespace)/stationary"/>
+      <remap from="stationary_accel" to="/$(arg robot_namespace)/stationary_accel"/>    
+      <param name="config" value="$(find localizer_zero_velocity_detector)/cfg/very_stable_config.yaml" type="str"/>
+    </node>
+  </group>
+</launch>

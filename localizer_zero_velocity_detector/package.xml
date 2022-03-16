@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>localizer_zero_velocity_detector</name>
+  <version>0.1.0</version>
+  <description>Determines if robot is stationary if accel/gyro remain stable over N seconds</description>
+  <maintainer email="jeremy.nash@jpl.nasa.gov">Jeremy</maintainer>
+  <license>Very legal, very cool</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <depend>geometry_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>rosbag</depend>
+  <depend>visualization_msgs</depend>      
+  <export>
+  </export>
+</package>

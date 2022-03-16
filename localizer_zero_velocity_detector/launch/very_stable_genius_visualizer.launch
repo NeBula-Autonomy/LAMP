@@ -1,0 +1,7 @@
+<launch>
+  <node name="very_stable_genius_visualizer" pkg="localizer_zero_velocity_detector" type="very_stable_genius_visualizer" respawn="true" output="screen">
+    <remap from="imu" to="/husky2/vn100/imu"/>
+    <remap from="stationary" to="/husky2/stationary"/>
+    <param name="yaml_cfg_filename" value="$(find localizer_zero_velocity_detector)/cfg/very_stable_config.yaml" type="str"/>
+  </node>
+</launch>

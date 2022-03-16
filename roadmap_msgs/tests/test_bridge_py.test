@@ -1,0 +1,5 @@
+<launch>
+  <test test-name="test_bridge_py"
+        pkg="roadmap_msgs"
+        type="test_bridge.py"/>
+</launch>

@@ -1,0 +1,3 @@
+sensor_msgs/CompressedImage im
+---
+float32[] descriptor

@@ -1,0 +1,3 @@
+sensor_msgs/CompressedImage image
+---
+darknet_ros_msgs/Object[] detections

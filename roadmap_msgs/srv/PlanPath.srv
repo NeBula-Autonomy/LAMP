@@ -1,0 +1,7 @@
+# [Request]
+uint32 target_node_id
+
+---
+
+# [Response]
+uint32[] node_ids_on_path

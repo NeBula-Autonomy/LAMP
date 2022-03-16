@@ -1,0 +1,14 @@
+version: 1
+# These are the max allowed difference from the average reading
+# over the observation_period before it's considered moving
+# These are based on the Husky, which has a shaky IMU,
+# especially in the x-axis.
+imu_max_rate_x: 0.025    # rad/s
+imu_max_rate_y: 0.025    # rad/s
+imu_max_rate_z: 0.025    # rad/s
+imu_max_accel_x: 0.01    # m/s^2
+imu_max_accel_y: 0.01    # m/s^2
+imu_max_accel_z: 0.01    # m/s^2
+imu_rate_hz: 50          # hz
+observation_period_s: 5  # seconds
+
