@@ -51,7 +51,6 @@
 #include <eigen3/Eigen/Core>
 
 #include <factor_handlers/LampDataHandlerBase.h>
-#include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 #include <pose_graph_merger/merger.h>
 
@@ -176,9 +175,6 @@ protected:
 
   // Pose graph merger
   Merger merger_;
-
-  // Point cloud filter
-  PointCloudFilter filter_;
 
   // Mapper
   IPointCloudMapper::Ptr mapper_;

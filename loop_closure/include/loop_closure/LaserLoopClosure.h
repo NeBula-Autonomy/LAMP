@@ -25,7 +25,6 @@ Lidar pointcloud based loop closure
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <multithreaded_gicp/gicp.h>
-#include <point_cloud_filter/PointCloudFilter.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <map>
@@ -146,8 +145,6 @@ private:
   double gt_rot_sigma_;
   double gt_trans_sigma_;
   double gt_prior_covar_;
-
-  PointCloudFilter filter_;
 
   enum class IcpInitMethod {
     IDENTITY,

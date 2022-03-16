@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   geometry_utils
   parameter_utils
-  point_cloud_filter
   pose_graph_msgs
   core_msgs
   visualization_msgs

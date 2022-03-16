@@ -5,7 +5,7 @@
   <description>The pose_graph_visualizer package</description>
 
   <author email="heiden@usc.edu">Team COSTAR</author>
-  <maintainer email="heiden@usc.edu">Team COSTAR</maintainer>
+  <maintainer email="benjamin.morrell@jpl.nasa.gov">Benjamin Morrell</maintainer>
 
   <license>GPLv2</license>
 
@@ -15,7 +15,6 @@
   <depend>message_generation</depend>
   <depend>geometry_utils</depend>
   <depend>parameter_utils</depend>
-  <depend>point_cloud_filter</depend>
   <depend>core_msgs</depend>
   <depend>pose_graph_msgs</depend>
   <depend>visualization_msgs</depend>
