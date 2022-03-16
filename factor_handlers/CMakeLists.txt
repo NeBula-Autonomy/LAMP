@@ -31,7 +31,6 @@ find_package(catkin REQUIRED COMPONENTS
   parameter_utils
   pcl_ros
   pcl_conversions
-  core_msgs
   uwb_msgs
   mesh_msgs
   geometry_msgs
@@ -55,7 +54,6 @@ catkin_package(
     parameter_utils
     pcl_ros
     pcl_conversions
-    core_msgs
     uwb_msgs
     mesh_msgs
     geometry_msgs
@@ -87,7 +85,6 @@ add_library(${PROJECT_NAME}
   src/ArtifactHandler.cc 
   src/ManualLoopClosureHandler.cc 
   src/PoseGraphHandler.cc 
-  src/AprilTagHandler.cc 
   src/UwbHandler.cc 
   src/RobotPoseHandler.cc
   src/StationaryHandler.cc

@@ -146,7 +146,7 @@ bool RssiLoopClosure::is_robot_radio(const std::string& hostname) const {
 // callback that monitors the dropping status of the node and stores time
 // stamp of dropping topic: comm_node_manager/status_agg
 void RssiLoopClosure::CommNodeAggregatedStatusCallback(
-    const core_msgs::CommNodeStatus::ConstPtr& msg) {
+    const pose_graph_msgs::CommNodeStatus::ConstPtr &msg) {
   // for all dropped radios
 
   for (const auto& rssi_comm_dropped : msg->dropped) {
@@ -541,7 +541,7 @@ float RssiLoopClosure::CalculatePathLossForNeighbor(
 
 //*************Visualization and Printing*******************/
 void RssiLoopClosure::PrintDropStatus(
-    const core_msgs::CommNodeInfo& node_info) const {
+    const pose_graph_msgs::CommNodeInfo& node_info) const {
   ROS_INFO_STREAM(
       "RSSI ID:"
       << node_info.uwb_id << " was dropped by " << node_info.robot_name

@@ -24,7 +24,6 @@
   <run_depend>geometry_utils</run_depend>
   <run_depend>parameter_utils</run_depend>
   <run_depend>pose_graph_msgs</run_depend>
-  <run_depend>core_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>gtsam</run_depend>
   <run_depend>kimera_rpgo</run_depend>

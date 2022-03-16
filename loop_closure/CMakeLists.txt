@@ -35,7 +35,6 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   pcl_conversions
   std_msgs
-  core_msgs
   pose_graph_msgs
   geometry_msgs
   silvus_msgs
@@ -62,7 +61,6 @@ catkin_package(
     pcl_ros
     pcl_conversions
     std_msgs
-    core_msgs
     pose_graph_msgs
     geometry_msgs
     silvus_msgs

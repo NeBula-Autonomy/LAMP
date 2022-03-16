@@ -27,7 +27,7 @@ protected:
   }
 
   void commNodeAggregatedStatusCallback(
-      const core_msgs::CommNodeStatus::ConstPtr& msg) {
+      const pose_graph_msgs::CommNodeStatus::ConstPtr& msg) {
     rssi_lc_.CommNodeAggregatedStatusCallback(msg);
   }
 
@@ -378,37 +378,37 @@ TEST_F(TestRSSILoopGeneration, CommNodeAggregatedStatusCallback) {
   graph_msg->nodes.push_back(node62);
   keyedPoseCallback(graph_msg);
 
-  core_msgs::CommNodeStatus::Ptr node_status(new core_msgs::CommNodeStatus());
+  pose_graph_msgs::CommNodeStatus::Ptr node_status(new pose_graph_msgs::CommNodeStatus());
 
-  core_msgs::CommNodeInfo remain;
+  pose_graph_msgs::CommNodeInfo remain;
   remain.hostname = "scom1";
   remain.uwb_id = "A32";
   remain.robot_name = "husky4";
   remain.pose_graph_key = gtsam::Symbol('d', 0);
   remain.relative_pose = geometry_msgs::Pose();
 
-  core_msgs::CommNodeInfo remain2;
+  pose_graph_msgs::CommNodeInfo remain2;
   remain2.hostname = "scom2";
   remain2.uwb_id = "A322";
   remain2.robot_name = "husky4";
   remain2.pose_graph_key = gtsam::Symbol('d', 1);
   remain2.relative_pose = geometry_msgs::Pose();
 
-  core_msgs::CommNodeInfo remain3;
+  pose_graph_msgs::CommNodeInfo remain3;
   remain3.hostname = "scom3";
   remain3.uwb_id = "A321111";
   remain3.robot_name = "husky4";
   remain3.pose_graph_key = gtsam::Symbol('d', 2);
   remain3.relative_pose = geometry_msgs::Pose();
 
-  core_msgs::CommNodeInfo remain4;
+  pose_graph_msgs::CommNodeInfo remain4;
   remain4.hostname = "scom4";
   remain4.uwb_id = "A321111";
   remain4.robot_name = "husky4";
   remain4.pose_graph_key = gtsam::Symbol('d', 3);
   remain4.relative_pose = geometry_msgs::Pose();
 
-  core_msgs::CommNodeInfo remain5;
+  pose_graph_msgs::CommNodeInfo remain5;
   remain5.hostname = "scom-husky4";
   remain5.uwb_id = "A321111";
   remain5.robot_name = "husky4";
@@ -473,15 +473,15 @@ TEST_F(TestRSSILoopGeneration, RadioToNodesLoopClosure) {
   keyedPoseCallback(graph_msg);
 
   silvus_msgs::SilvusStreamscape::Ptr msg(new silvus_msgs::SilvusStreamscape);
-  core_msgs::CommNodeStatus::Ptr node_status(new core_msgs::CommNodeStatus());
-  core_msgs::CommNodeInfo remain;
+  pose_graph_msgs::CommNodeStatus::Ptr node_status(new pose_graph_msgs::CommNodeStatus());
+  pose_graph_msgs::CommNodeInfo remain;
   remain.hostname = "scom1";
   remain.uwb_id = "A32";
   remain.robot_name = "husky4";
   remain.pose_graph_key = 151241241241;
   remain.relative_pose = geometry_msgs::Pose();
 
-  core_msgs::CommNodeInfo remain2;
+  pose_graph_msgs::CommNodeInfo remain2;
   remain2.hostname = "scom2";
   remain2.uwb_id = "A322";
   remain2.robot_name = "husky4";
@@ -537,7 +537,7 @@ TEST_F(TestRSSILoopGeneration, RadioToNodesLoopClosure) {
 
 TEST(RssiRawInfo, TestAppendNode) {
   RssiRawInfo rssi_raw_info;
-  core_msgs::CommNodeInfo node_dropped;
+  pose_graph_msgs::CommNodeInfo node_dropped;
   node_dropped.hostname = "scom1";
   node_dropped.uwb_id = "A32";
   node_dropped.robot_name = "husky4";

@@ -27,7 +27,7 @@ endif()
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
-  core_msgs
+  pose_graph_msgs
   parameter_utils
   geometry_utils
   utils
@@ -39,6 +39,7 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     std_msgs
+    pose_graph_msgs
     parameter_utils
     geometry_utils
     utils

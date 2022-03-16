@@ -45,7 +45,7 @@
 #include <mutex>
 #include <thread>
 
-#include <core_msgs/MapInfo.h>
+#include <pose_graph_msgs/MapInfo.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>

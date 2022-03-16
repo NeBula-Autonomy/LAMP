@@ -1,8 +1,8 @@
 #pragma once
 #include "loop_closure/LoopGeneration.h"
 #include "loop_closure/colors.h"
-#include <core_msgs/CommNodeInfo.h>
-#include <core_msgs/CommNodeStatus.h>
+#include <pose_graph_msgs/CommNodeInfo.h>
+#include <pose_graph_msgs/CommNodeStatus.h>
 #include <gtsam/inference/Symbol.h>
 #include <omp.h>
 #include <parameter_utils/ParameterUtils.h>
@@ -32,7 +32,7 @@ using AllNodesAroundComm = std::vector<NodesAroundCommOneFlyby>;
 
 struct RssiRawInfo {
   bool b_dropped{false};
-  core_msgs::CommNodeInfo comm_node_info;
+  pose_graph_msgs::CommNodeInfo comm_node_info;
   pose_graph_msgs::PoseGraphNode pose_graph_node;
   AllNodesAroundComm all_nodes_around_comm;
   int flyby_number{0};
@@ -120,7 +120,7 @@ private:
 
   //*************Callbacks*******************/
   void CommNodeAggregatedStatusCallback(
-      const core_msgs::CommNodeStatus::ConstPtr& msg);
+      const pose_graph_msgs::CommNodeStatus::ConstPtr& msg);
   void CommNodeRawCallback(const silvus_msgs::SilvusStreamscape::ConstPtr& msg);
 
   //*************Timer*******************/
@@ -149,7 +149,7 @@ private:
 
   //*************Visualization and Printing*******************/
   visualization_msgs::MarkerArray all_markers_;
-  void PrintDropStatus(const core_msgs::CommNodeInfo& msg) const;
+  void PrintDropStatus(const pose_graph_msgs::CommNodeInfo& msg) const;
   void ShowRssiList() const;
   void ShowRobotList() const;
   void ShowDroppedRssiList() const;

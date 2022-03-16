@@ -75,7 +75,7 @@ bool PointCloudMultiThreadedMapper::RegisterCallbacks(
   incremental_map_pub_ =
       nl.advertise<PointCloud>("octree_map_updates", 10, true);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
-  map_info_pub_ = nl.advertise<core_msgs::MapInfo>("map_info", 10, false);
+  map_info_pub_ = nl.advertise<pose_graph_msgs::MapInfo>("map_info", 10, false);
 
   search_in_map_pub_ =
       nl.advertise<std_msgs::Float64>("search_in_map", 10, false);
@@ -342,7 +342,7 @@ void PointCloudMultiThreadedMapper::PublishMapInfo() {
     return;
   }
 
-  core_msgs::MapInfo map_info;
+  pose_graph_msgs::MapInfo map_info;
 
   // If the map has been recently updated
   if (initialized_ && map_updated_) {

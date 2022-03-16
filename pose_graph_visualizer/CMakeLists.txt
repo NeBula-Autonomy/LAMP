@@ -18,7 +18,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_utils
   parameter_utils
   pose_graph_msgs
-  core_msgs
   visualization_msgs
   std_msgs
   pcl_ros

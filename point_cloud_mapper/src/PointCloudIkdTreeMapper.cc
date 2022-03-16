@@ -61,7 +61,7 @@ bool PointCloudIkdTreeMapper::RegisterCallbacks(const ros::NodeHandle& n) {
   incremental_map_pub_ =
       nl.advertise<PointCloud>("octree_map_updates", 10, true);
   map_frozen_pub_ = nl.advertise<PointCloud>("octree_map_frozen", 10, false);
-  map_info_pub_ = nl.advertise<core_msgs::MapInfo>("map_info", 10, false);
+  map_info_pub_ = nl.advertise<pose_graph_msgs::MapInfo>("map_info", 10, false);
 
   boxes_vis_pub_ = nl.advertise<visualization_msgs::MarkerArray>(
       "points_inside_boxes_to_remove", 10, true);

@@ -13,11 +13,15 @@ add_message_files(
   PoseGraph.msg
   PoseGraphNode.msg
   PoseGraphEdge.msg
+  PoseAndScan.msg
   KeyedScan.msg
   KeyValue.msg
   LoopCandidate.msg
   LoopCandidateArray.msg
   LoopComputationStatus.msg
+  CommNodeInfo.msg
+  CommNodeStatus.msg
+  MapInfo.msg
 )
 
 

@@ -28,20 +28,6 @@
 #include <pose_graph_msgs/PoseGraphEdge.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
 
-// #include <tf/transform_broadcaster.h>
-// #include <tf/transform_listener.h>
-// #include <tf_conversions/tf_eigen.h>
-// #include <tf2_ros/transform_broadcaster.h>
-
-// #include <message_filters/subscriber.h>
-// #include <message_filters/synchronizer.h>
-// #include <message_filters/sync_policies/approximate_time.h>
-
-// #include <artifact_msgs/Artifact.h>
-// #include <core_msgs/PoseAndScan.h>
-// #include <uwb_msgs/Anchor.h>
-// #include <mesh_msgs/ProcessCommNode.h>
-
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <geometry_utils/Transform3.h>
 #include <parameter_utils/ParameterUtils.h>
