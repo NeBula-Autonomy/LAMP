@@ -32,7 +32,6 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   pcl_conversions
   uwb_msgs
-  mesh_msgs
   geometry_msgs
   nav_msgs
   std_msgs
@@ -55,7 +54,6 @@ catkin_package(
     pcl_ros
     pcl_conversions
     uwb_msgs
-    mesh_msgs
     geometry_msgs
     nav_msgs
     std_msgs
