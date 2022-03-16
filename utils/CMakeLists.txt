@@ -5,21 +5,15 @@ SET(CMAKE_BUILD_TYPE Release)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-find_package(GTSAM REQUIRED)
-if (NOT GTSAM_FOUND)
-  message(FATAL_ERROR "This program requires the GTSAM library.")
-endif(NOT GTSAM_FOUND)
-
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   geometry_utils
-  core_msgs
   pose_graph_msgs
   geometry_msgs
   pcl_ros
 )
 
+find_package(GTSAM REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 catkin_package(
@@ -28,7 +22,6 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     geometry_utils
-    core_msgs
     pose_graph_msgs
     geometry_msgs
     pcl_ros

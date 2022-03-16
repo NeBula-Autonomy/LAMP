@@ -12,8 +12,8 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>roscpp</depend>
+  <depend>gtsam</depend>
   <depend>geometry_utils</depend>
-  <depend>core_msgs</depend>
   <depend>pose_graph_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>pcl_ros</depend>
