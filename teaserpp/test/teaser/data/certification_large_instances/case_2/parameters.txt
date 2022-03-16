@@ -1,3 +1,0 @@
-cbar2: 1
-noise_bound: 0.2
-max_iterations: 1000
