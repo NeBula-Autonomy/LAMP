@@ -10,12 +10,9 @@
 // Includes
 #include <lamp/LampBase.h>
 
-#include <factor_handlers/AprilTagHandler.h>
 #include <factor_handlers/ArtifactHandler.h>
-#include <factor_handlers/ImuHandler.h>
 #include <factor_handlers/OdometryHandler.h>
 #include <factor_handlers/StationaryHandler.h>
-#include <factor_handlers/UwbHandler.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <utils/LampPcldFilter.h>
@@ -76,13 +73,10 @@ class LampRobot : public LampBase {
    bool ProcessOdomData(std::shared_ptr<FactorData> data);
    // Process the artifact factors if any available
    bool ProcessArtifactData(std::shared_ptr<FactorData> data);
-   // Process the uwb factors if any available
-   bool ProcessUwbData(std::shared_ptr<FactorData> data);
 
    // Process Stationary data when robot stops
    bool ProcessStationaryData(std::shared_ptr<FactorData> data);
 
-   bool ProcessAprilTagData(std::shared_ptr<FactorData> data);
    bool InitializeGraph(gtsam::Pose3& pose,
                         gtsam::noiseModel::Diagonal::shared_ptr& covariance);
    // Example use:
@@ -110,8 +104,6 @@ class LampRobot : public LampBase {
    // Data Handler classes
    OdometryHandler odometry_handler_;
    ArtifactHandler artifact_handler_;
-   AprilTagHandler april_tag_handler_;
-   UwbHandler uwb_handler_;
    StationaryHandler stationary_handler_;
 
    // Add new functions as needed
@@ -121,7 +113,6 @@ class LampRobot : public LampBase {
    // Parameters
    gtsam::Vector6 initial_noise_;
    bool b_artifacts_in_global_;
-   bool b_use_uwb_;
    bool b_add_imu_factors_;
    bool b_init_pg_pub_;
    int factor_count_;

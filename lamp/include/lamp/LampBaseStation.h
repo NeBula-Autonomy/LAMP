@@ -88,7 +88,6 @@ protected:
   // Booleans
   bool b_published_initial_node_;
   bool b_optimize_on_artifacts_;
-  bool b_use_uwb_;
 
 private:
   // Overwrite base classs functions where needed

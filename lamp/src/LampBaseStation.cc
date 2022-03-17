@@ -64,8 +64,6 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n) {
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("base/b_optimize_on_artifacts", b_optimize_on_artifacts_))
     return false;
-  if (!pu::Get("b_use_uwb", b_use_uwb_))
-    return false;
 
   // Names of all robots for base station to subscribe to
   if (!pu::Get("robot_names", robot_names_)) {
@@ -261,10 +259,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
       // Optimize on loop closures, IMU factors and artifact loop closures
       if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE ||
           (b_optimize_on_artifacts_ &&
-           e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) ||
-          (b_use_uwb_ && e.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) ||
-          (b_use_uwb_ &&
-           e.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN)) {
+           e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT)) {
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
       }

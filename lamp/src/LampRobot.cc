@@ -93,10 +93,6 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("b_use_fixed_covariances", b_use_fixed_covariances_))
     return false;
 
-  // Switch on/off flag for UWB
-  if (!pu::Get("b_use_uwb", b_use_uwb_))
-    return false;
-
   // Switch on/off flag for IMU
   if (!pu::Get("b_add_imu_factors", b_add_imu_factors_))
     return false;
@@ -332,16 +328,6 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
     return false;
   }
 
-  if (!april_tag_handler_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize the april tag handler.", name_.c_str());
-    return false;
-  }
-
-  if (!uwb_handler_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize the uwb handler.", name_.c_str());
-    return false;
-  }
-
   if (!stationary_handler_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize the imu handler.", name_.c_str());
     return false;
@@ -358,27 +344,19 @@ bool LampRobot::CheckHandlers() {
   bool b_have_odom_factors;
   // bool b_have_loop_closure;
   bool b_have_new_artifacts;
-  bool b_have_new_april_tags;
-  bool b_have_new_uwb;
 
   // Check the odom for adding new poses
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
 
   // Check all handlers
-  // Set the initialized flag in artifacts and april to start
+  // Set the initialized flag in artifacts to start
   // receiving messages.
   if ((pose_graph_.GetValues().size() > 0) && (!is_artifact_initialized)) {
     is_artifact_initialized = true;
     artifact_handler_.SetPgoInitialized(true);
-    april_tag_handler_.SetPgoInitialized(true);
   }
   // Check for artifacts
   b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
-  // Check for april tags
-  b_have_new_april_tags = ProcessAprilTagData(april_tag_handler_.GetData());
-  // Check for UWB data
-  if (b_use_uwb_)
-    b_have_new_uwb = ProcessUwbData(uwb_handler_.GetData());
 
   if (b_add_imu_factors_ && stationary_handler_.has_data_) {
     // Check if we have moved since the last stationary factor
@@ -689,8 +667,8 @@ bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
     return false;
   }
 
-  Unit3 ref_unit = imu_data->factors[0].attitude.nZ();
-  Unit3 meas_unit = imu_data->factors[0].attitude.bRef();
+  gtsam::Unit3 ref_unit = imu_data->factors[0].attitude.nZ();
+  gtsam::Unit3 meas_unit = imu_data->factors[0].attitude.bRef();
   geometry_msgs::Point meas, ref;
   meas.x = meas_unit.point3().x();
   meas.y = meas_unit.point3().y();
@@ -874,224 +852,6 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
 
   // Clean up for next iteration
   artifact_handler_.CleanFailedFactors(true);
-  return true;
-}
-
-/*!
-  \brief  Wrapper for the april tag class interactions
-  Creates factors from the april tag output
-  \param   data - the output data struct from the AprilTagHandler class
-  \warning ...
-  \author Abhishek Thakur
-  \date Oct 2019
-*/
-bool LampRobot::ProcessAprilTagData(std::shared_ptr<FactorData> data) {
-  // Extract artifact data
-  std::shared_ptr<AprilTagData> april_tag_data =
-      std::dynamic_pointer_cast<AprilTagData>(data);
-
-  // Check if there are new factors
-  if (!april_tag_data->b_has_data) {
-    return false;
-  }
-
-  ROS_DEBUG("Have April Factor");
-  b_has_new_factor_ = true;
-
-  // Necessary variables
-  Pose3 transform;
-  Pose3 temp_transform;
-  Pose3 global_pose;
-  gtsam::SharedNoiseModel covariance;
-  ros::Time timestamp;
-  gtsam::Symbol pose_key;
-  gtsam::Symbol cur_april_tag_key;
-
-  // process data for each new factor
-  for (auto april_tag : april_tag_data->factors) {
-    // Get the time
-    timestamp = april_tag.stamp;
-
-    // Get the april tag key
-    cur_april_tag_key = april_tag.key;
-
-    // Get the ground truth data using april tag key in info hashmap.
-    // TODO: Usefulness of ground truth in april tag factor
-    // Currently using ground truth from artifactkey2infohash
-    gtsam::Pose3 ground_truth =
-        april_tag_handler_.GetGroundTruthData(cur_april_tag_key);
-
-    // Get the pose measurement
-    if (b_artifacts_in_global_) {
-      // Convert pose to relative frame
-      if (!ConvertGlobalToRelative(
-              timestamp,
-              gtsam::Pose3(gtsam::Rot3(), april_tag.position),
-              temp_transform)) {
-        ROS_ERROR("Can't convert April tag from global to relative");
-        b_has_new_factor_ = false;
-
-        // Clean all the new factors
-        april_tag_handler_.CleanFailedFactors(false);
-        return false;
-      }
-    } else {
-      // Is in relative already
-      ROS_DEBUG("Have April tag in relative frame");
-      temp_transform = gtsam::Pose3(gtsam::Rot3(), april_tag.position);
-    }
-
-    // Is a relative tranform, so need to handle linking to the pose-graph
-    HandleRelativePoseMeasurement(
-        timestamp, temp_transform, transform, global_pose, pose_key);
-
-    if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
-      ROS_ERROR("Bad april tag time. Not adding to graph - ERROR THAT NEEDS TO "
-                "BE HANDLED OR LOSE APRIL TAG!!");
-      b_has_new_factor_ = false;
-
-      // Clean all the new factors
-      april_tag_handler_.CleanFailedFactors(false);
-
-      return false;
-    }
-
-    // Get the covariances (Should be in relative frame as well)
-    // TODO - handle this better - need to add covariances from the odom - do in
-    // the function above
-    covariance = april_tag.covariance;
-
-    // Can only use fixed covariance for april tag measurements
-    covariance = SetFixedNoiseModels("april");
-
-    // Check if it is a new april tag or not
-    if (!pose_graph_.HasKey(cur_april_tag_key)) {
-      ROS_DEBUG("Have a new April Tag in LAMP");
-
-      // Insert into the values. TODO - use correct covariance
-      pose_graph_.TrackNode(
-          timestamp, cur_april_tag_key, global_pose, covariance);
-
-      // Add keyed stamps
-      pose_graph_.InsertKeyedStamp(cur_april_tag_key, timestamp);
-
-      // Get the noise in ground truth data
-      gtsam::SharedNoiseModel noise = SetFixedNoiseModels("april");
-
-      // Add and track the prior factor if its a new april tag.
-      ROS_DEBUG("Adding prior factor for April Tag");
-      pose_graph_.TrackPrior(cur_april_tag_key, ground_truth, noise);
-    } else {
-      // Second sighting of an april tag - we have a loop closure
-      ROS_DEBUG_STREAM("April tag re-sighted with key: "
-                      << gtsam::DefaultKeyFormatter(cur_april_tag_key));
-    }
-    // Since a factor is added in any case new or seen, run optimization
-    b_run_optimization_ = true;
-
-    // Add and track the edges that have been added
-    int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
-    pose_graph_.TrackFactor(
-        pose_key, cur_april_tag_key, type, transform, covariance);
-    ROS_DEBUG("Added April Tag to pose graph factors in lamp");
-  }
-
-  ROS_DEBUG(
-      "Successfully completed ProcessAprilTagData call with an April Tag");
-
-  // Clean the new keys
-  april_tag_handler_.CleanFailedFactors(true);
-
-  return true;
-}
-
-/*!
-  \brief  Wrapper for the uwb class interactions
-  Creates factors from the uwb output
-  \param   data - the output data struct from the UwbHandler class
-  \warning ...
-  \author Nobuhiro Funabiki
-  \date Oct 2019
-*/
-bool LampRobot::ProcessUwbData(std::shared_ptr<FactorData> data) {
-  std::shared_ptr<UwbData> uwb_data = std::dynamic_pointer_cast<UwbData>(data);
-  if (!uwb_data->b_has_data)
-    return false;
-  // New Factors to be added
-  NonlinearFactorGraph new_factors;
-  Pose3 global_uwb_pose; // TODO: How to initialize the pose of UWB node?
-
-  ROS_INFO_STREAM("UWB ID to be added : u" << uwb_data->factors.at(0).key_to);
-  ROS_INFO_STREAM(
-      "Number of UWB factors to be added : " << uwb_data->factors.size());
-
-  for (auto factor : uwb_data->factors) {
-    auto odom_key = factor.key_from;
-    auto uwb_key = gtsam::Symbol('u', factor.key_to);
-
-    // Check if it is a new uwb id or not
-    auto values = pose_graph_.GetValues();
-
-    if (!values.exists(uwb_key) &&
-        factor.type != pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
-      // Insert it into the values
-      global_uwb_pose = pose_graph_.GetPose(odom_key);
-      // Add it into the keyed stamps
-      pose_graph_.InsertKeyedStamp(uwb_key, factor.stamp);
-      // TODO: SetFixedNoiseModels should be used for the following sentences
-      gtsam::Vector6 prior_precision;
-      prior_precision.head<3>().setConstant(0.0000001);
-      prior_precision.tail<3>().setConstant(0.0000001);
-      static const gtsam::SharedNoiseModel& prior_noise =
-          gtsam::noiseModel::Diagonal::Precisions(prior_precision);
-      pose_graph_.TrackNode(
-          factor.stamp, uwb_key, global_uwb_pose, prior_noise);
-    }
-
-    if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_RANGE) {
-      ROS_INFO("Adding a UWB range factor");
-      auto range = factor.range;
-      gtsam::noiseModel::Base::shared_ptr range_error =
-          gtsam::noiseModel::Isotropic::Sigma(1, uwb_range_sigma_);
-      new_factors.add(gtsam::RangeFactor<Pose3, Pose3>(
-          odom_key, uwb_key, range, range_error));
-      // Track the edges that have been added
-      EdgeMessage uwb_factor;
-      uwb_factor.key_from = odom_key;
-      uwb_factor.key_to = uwb_key;
-      uwb_factor.type = pose_graph_msgs::PoseGraphEdge::UWB_RANGE;
-      uwb_factor.range = range;
-      uwb_factor.range_error = uwb_range_sigma_;
-      // Add new factors to buffer to send to pgo
-      pose_graph_.TrackFactor(uwb_factor);
-    } else if (factor.type == pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN) {
-      ROS_INFO("Adding a UWB between factor");
-      auto odom_pose = pose_graph_.GetPose(odom_key);
-      auto dropped_relative_trans = factor.pose.translation();
-
-      auto rotation_matrix = odom_pose.rotation();
-      dropped_relative_trans = rotation_matrix * dropped_relative_trans;
-      auto dropped_relative_pose =
-          gtsam::Pose3(gtsam::Rot3(), dropped_relative_trans);
-
-      dropped_relative_pose.print("dropped_relative_pose");
-      auto global_uwb_pose = odom_pose.compose(dropped_relative_pose);
-      gtsam::Vector6 sigmas;
-      sigmas.head<3>().setConstant(uwb_between_rot_sigma_);
-      sigmas.tail<3>().setConstant(uwb_between_trans_sigma_);
-      auto noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
-      pose_graph_.TrackNode(factor.stamp, uwb_key, global_uwb_pose, noise);
-      // Add new factors to buffer to send to pgo
-      pose_graph_.TrackFactor(odom_key,
-                              uwb_key,
-                              pose_graph_msgs::PoseGraphEdge::UWB_BETWEEN,
-                              dropped_relative_pose,
-                              noise,
-                              true);
-    }
-  }
-  b_run_optimization_ = true;
-  uwb_handler_.ResetFactorData();
   return true;
 }
 
