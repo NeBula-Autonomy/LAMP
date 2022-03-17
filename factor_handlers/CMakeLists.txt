@@ -83,7 +83,6 @@ add_library(${PROJECT_NAME}
   src/ArtifactHandler.cc 
   src/ManualLoopClosureHandler.cc 
   src/PoseGraphHandler.cc 
-  src/UwbHandler.cc 
   src/RobotPoseHandler.cc
   src/StationaryHandler.cc
 )
