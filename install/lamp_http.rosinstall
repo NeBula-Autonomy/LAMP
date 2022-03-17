@@ -9,7 +9,7 @@
 - git:
     local-name: teaser_plusplus
     uri: https://github.com/MIT-SPARK/TEASER-plusplus.git
-    version: develop
+    version: feature/pcl-matcher
 - git:
     local-name: eigen_catkin
     uri: https://github.com/ethz-asl/eigen_catkin.git
