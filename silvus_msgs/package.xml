@@ -20,6 +20,5 @@
   <depend>message_runtime</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>roadmap_msgs</depend>
   
 </package>
