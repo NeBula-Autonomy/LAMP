@@ -8,7 +8,6 @@ Lidar pointcloud based loop closure
 #include <boost/range/as_array.hpp>
 #include <pcl/io/pcd_io.h>
 #include <pcl/registration/gicp.h>
-// #include <multithreaded_gicp/gicp.h>
 #include <pcl/common/io.h>
 #include <pcl/features/fpfh_omp.h>
 #include <pcl/features/normal_3d_omp.h>

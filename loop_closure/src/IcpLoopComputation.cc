@@ -9,6 +9,7 @@
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/registration/ia_ransac.h>
 #include <teaser/matcher.h>
+#include <teaser/evaluation.h>
 #include <teaser/registration.h>
 #include <utils/CommonFunctions.h>
 

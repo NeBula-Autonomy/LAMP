@@ -12,7 +12,7 @@ Lidar pointcloud based loop closure
 
 #include <unordered_map>
 
-#include <multithreaded_gicp/gicp.h>
+#include <utils/gicp.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
@@ -24,7 +24,6 @@ Lidar pointcloud based loop closure
 #include <gtsam/inference/Symbol.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
-#include <multithreaded_gicp/gicp.h>
 #include <point_cloud_mapper/PointCloudMapper.h>
 
 #include <map>

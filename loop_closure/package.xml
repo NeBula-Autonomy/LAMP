@@ -22,7 +22,6 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>silvus_msgs</build_depend>
-  <build_depend>multithreaded_gicp</build_depend>
   <build_depend>teaserpp</build_depend>
 
 
@@ -37,7 +36,6 @@
   <run_depend>std_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>silvus_msgs</run_depend>
-  <run_depend>multithreaded_gicp</run_depend>
   <run_depend>teaserpp</run_depend>
 
 

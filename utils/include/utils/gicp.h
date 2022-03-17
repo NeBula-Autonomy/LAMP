@@ -43,8 +43,7 @@
 
 #include <omp.h>
 
-#include <frontend_utils/CommonFunctions.h>
-#include <frontend_utils/CommonStructs.h>
+#include <utils/gicp_utils.h>
 #include <pcl/registration/bfgs.h>
 #include <pcl/registration/gicp.h>
 #include <pcl/registration/icp.h>
@@ -433,6 +432,6 @@ private:
 };
 } // namespace pcl
 
-#include <multithreaded_gicp/gicp.hpp>
+#include <utils/gicp.hpp>
 
 #endif //#ifndef MULTITHREADED_GICP_H_

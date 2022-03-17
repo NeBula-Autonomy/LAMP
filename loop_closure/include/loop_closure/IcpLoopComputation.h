@@ -10,7 +10,7 @@
 #include <geometry_utils/GeometryUtils.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>
-#include <multithreaded_gicp/gicp.h>
+#include <utils/gicp.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>

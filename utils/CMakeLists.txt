@@ -37,6 +37,7 @@ add_library(${PROJECT_NAME}
   src/PoseGraphLookupUtils.cc
   src/PointCloudUtils.cc
   src/LampPcldFilter.cc
+  src/gicp.cc
 )
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}

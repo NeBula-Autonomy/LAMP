@@ -38,7 +38,6 @@ find_package(catkin REQUIRED COMPONENTS
   pose_graph_msgs
   geometry_msgs
   silvus_msgs
-  multithreaded_gicp
 
 )
 
@@ -57,7 +56,6 @@ catkin_package(
     geometry_utils
     parameter_utils
     point_cloud_mapper
-    multithreaded_gicp
     pcl_ros
     pcl_conversions
     std_msgs
