@@ -62,9 +62,6 @@ bool LampBaseStation::Initialize(const ros::NodeHandle& n) {
 }
 
 bool LampBaseStation::LoadParameters(const ros::NodeHandle& n) {
-  if (!pu::Get("base/b_optimize_on_artifacts", b_optimize_on_artifacts_))
-    return false;
-
   // Names of all robots for base station to subscribe to
   if (!pu::Get("robot_names", robot_names_)) {
     ROS_ERROR("%s: No robot names provided to base station.", name_.c_str());
@@ -257,9 +254,7 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     // Check for new loop closure edges
     for (pose_graph_msgs::PoseGraphEdge e : g->edges) {
       // Optimize on loop closures, IMU factors and artifact loop closures
-      if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE ||
-          (b_optimize_on_artifacts_ &&
-           e.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT)) {
+      if (e.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
         // Run optimization to update the base station graph afterwards
         b_run_optimization_ = true;
       }
@@ -413,44 +408,6 @@ bool LampBaseStation::CheckHandlers() {
   return true;
 }
 
-bool LampBaseStation::ProcessArtifactGT() {
-  // Read from file
-  if (!pu::Get("artifacts_GT", artifact_GT_strings_)) {
-    ROS_ERROR("%s: No artifact ground truth data provided.", name_.c_str());
-    return false;
-  }
-
-  for (auto s : artifact_GT_strings_) {
-    ROS_INFO_STREAM("New artifact ground truth");
-    artifact_GT_.push_back(ArtifactGroundTruth(s));
-
-    ROS_INFO_STREAM(
-        "\t" << gtsam::DefaultKeyFormatter(artifact_GT_.back().key));
-    ROS_INFO_STREAM("\t" << artifact_GT_.back().type);
-    ROS_INFO_STREAM("\t" << artifact_GT_.back().position.x() << ", "
-                         << artifact_GT_.back().position.y() << ", "
-                         << artifact_GT_.back().position.z());
-  }
-
-  for (auto a : artifact_GT_) {
-    if (!pose_graph_.HasKey(a.key)) {
-      ROS_WARN_STREAM("Unable to add artifact ground truth for key "
-                      << gtsam::DefaultKeyFormatter(a.key));
-      continue;
-    }
-
-    // Add the prior
-    pose_graph_.TrackPrior(a.key,
-                           gtsam::Pose3(gtsam::Rot3(), a.position),
-                           SetFixedNoiseModels("artifact_gt"));
-
-    // Trigger optimisation
-    b_run_optimization_ = true;
-  }
-
-  return true;
-}
-
 void LampBaseStation::RemoveRobotCallback(const std_msgs::String msg) {
   ROS_INFO_STREAM("Recieved remove robot message for robot " << msg.data);
 
@@ -488,12 +445,6 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     mapper_->PublishMapFrozen();
   }
 
-  // Read in artifact ground truth data
-  else if (cmd == "artifact_gt") {
-    ROS_INFO_STREAM("Processing artifact ground truth data");
-    ProcessArtifactGT();
-  }
-
   // Save the pose graph
   else if (cmd == "save") {
     ROS_INFO_STREAM("Saving the pose graph");
@@ -527,7 +478,6 @@ void LampBaseStation::DebugCallback(const std_msgs::String msg) {
     ROS_INFO_STREAM("Done publishing keyed scans");
   }
 
-  // Read in artifact ground truth data
   else if (msg.data == "optimize") {
     ROS_INFO_STREAM("Sending pose graph to optimizer");
     PublishPoseGraphForOptimizer();

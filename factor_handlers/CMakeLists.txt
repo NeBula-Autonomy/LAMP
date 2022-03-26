@@ -36,7 +36,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf_conversions
   eigen_conversions
-  artifact_msgs
   localizer_zero_velocity_detector
 )
 
@@ -55,7 +54,6 @@ catkin_package(
     geometry_msgs
     nav_msgs
     std_msgs
-    artifact_msgs
     localizer_zero_velocity_detector
   DEPENDS
     Boost
@@ -77,7 +75,6 @@ link_directories(${catkin_LIBRARY_DIRS} ${GTSAM_LIBRARY_DIRS} ${Boost_LIBRARY_DI
 add_library(${PROJECT_NAME} 
   src/LampDataHandlerBase.cc 
   src/OdometryHandler.cc 
-  src/ArtifactHandler.cc 
   src/ManualLoopClosureHandler.cc 
   src/PoseGraphHandler.cc 
   src/RobotPoseHandler.cc
@@ -98,8 +95,6 @@ if (CATKIN_ENABLE_TESTING)
   ## Add gtest based cpp test target and link libraries
   add_rostest_gtest(test_odometry_handler test/test_odometry_handler.test test/test_odometry_handler.cc)
   target_link_libraries(test_odometry_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
-  add_rostest_gtest(test_artifact_handler test/test_artifact_handler.test test/test_artifact_handler.cc)
-  target_link_libraries(test_artifact_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
   add_rostest_gtest(test_stationary_handler test/test_stationary_handler.test test/test_stationary_handler.cc)
   target_link_libraries(test_stationary_handler ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()

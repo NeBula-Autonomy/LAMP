@@ -10,7 +10,6 @@
 // Includes
 #include <lamp/LampBase.h>
 
-#include <factor_handlers/ArtifactHandler.h>
 #include <factor_handlers/OdometryHandler.h>
 #include <factor_handlers/StationaryHandler.h>
 
@@ -57,30 +56,23 @@ class LampRobot : public LampBase {
   bool SetInitialPosition();
   bool SetInitialKey();
 
-  void UpdateArtifactPositions() override;
   void UpdateAndPublishOdom();
 
   // Publishers
   ros::Publisher pose_pub_;
-
-  // Flag for artifact initialization
-  bool is_artifact_initialized;
 
  private:
   // Overwrite base classs functions where needed
 
    // Factor Handler Wrappers
    bool ProcessOdomData(std::shared_ptr<FactorData> data);
-   // Process the artifact factors if any available
-   bool ProcessArtifactData(std::shared_ptr<FactorData> data);
 
    // Process Stationary data when robot stops
    bool ProcessStationaryData(std::shared_ptr<FactorData> data);
 
    bool InitializeGraph(gtsam::Pose3& pose,
                         gtsam::noiseModel::Diagonal::shared_ptr& covariance);
-   // Example use:
-   // ProcessArtifactData(artifact_handler_.GetData());
+
    void AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
                                gtsam::Symbol current_key);
 
@@ -103,7 +95,6 @@ class LampRobot : public LampBase {
 
    // Data Handler classes
    OdometryHandler odometry_handler_;
-   ArtifactHandler artifact_handler_;
    StationaryHandler stationary_handler_;
 
    // Add new functions as needed
@@ -112,7 +103,6 @@ class LampRobot : public LampBase {
 
    // Parameters
    gtsam::Vector6 initial_noise_;
-   bool b_artifacts_in_global_;
    bool b_add_imu_factors_;
    bool b_init_pg_pub_;
    int factor_count_;
@@ -122,7 +112,6 @@ class LampRobot : public LampBase {
 
    // Test class fixtures
    friend class TestLampRobot;
-   friend class TestLampRobotArtifact;
 
    // Point cloud filter
    LampPcldFilter filter_;

@@ -113,16 +113,13 @@ protected:
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
   gtsam::SharedNoiseModel laser_lc_noise_;
   gtsam::SharedNoiseModel odom_noise_;
-  gtsam::SharedNoiseModel artifact_noise_;
+
   // Zero noise param
   gtsam::noiseModel::Diagonal::shared_ptr zero_covariance_;
 
   // New pose graph values from optimizer
   void OptimizerUpdateCallback(const pose_graph_msgs::PoseGraphConstPtr& msg);
   void MergeOptimizedGraph(const pose_graph_msgs::PoseGraphConstPtr& msg);
-
-  // Set artifact positions
-  virtual void UpdateArtifactPositions(){};
 
   void PublishAllKeyedScans();
 
@@ -170,13 +167,9 @@ protected:
   double position_sigma_;
   double manual_lc_rot_precision_;
   double manual_lc_trans_precision_;
-  double artifact_rot_precision_;
-  double artifact_trans_precision_;
   double fiducial_trans_precision_;
   double fiducial_rot_precision_;
   double point_estimate_precision_;
-  double artifact_gt_rot_precision_;
-  double artifact_gt_trans_precision_;
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;
 

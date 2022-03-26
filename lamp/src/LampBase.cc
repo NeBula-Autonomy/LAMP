@@ -48,15 +48,7 @@ bool LampBase::SetFactorPrecisions() {
     return false;
   if (!pu::Get("laser_lc_trans_sigma", laser_lc_trans_sigma_))
     return false;
-  if (!pu::Get("artifact_rot_precision", artifact_rot_precision_))
-    return false;
-  if (!pu::Get("artifact_trans_precision", artifact_trans_precision_))
-    return false;
   if (!pu::Get("point_estimate_precision", point_estimate_precision_))
-    return false;
-  if (!pu::Get("artifact_gt_rot_precision", artifact_gt_rot_precision_))
-    return false;
-  if (!pu::Get("artifact_gt_trans_precision", artifact_gt_trans_precision_))
     return false;
   if (!pu::Get("fiducial_trans_precision", fiducial_trans_precision_))
     return false;
@@ -73,16 +65,6 @@ bool LampBase::SetFactorPrecisions() {
   sigmas.head<3>().setConstant(laser_lc_rot_sigma_);
   sigmas.tail<3>().setConstant(laser_lc_trans_sigma_);
   laser_lc_noise_ = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
-
-  // Artifact
-  gtsam::Vector6 precisions;
-  precisions.head<3>().setConstant(artifact_rot_precision_);
-  precisions.tail<3>().setConstant(artifact_trans_precision_);
-  artifact_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
-
-  // gtsam::Vector6 noise;
-  // noise << zero_noise_, zero_noise_, zero_noise_, zero_noise_, zero_noise_,
-  // zero_noise_; zero_covariance_ = gtsam::noiseModel::Diagonal::Sigmas(noise);
 
   return true;
 }
@@ -124,9 +106,6 @@ void LampBase::OptimizerUpdateCallback(
 
   // Update the map (also publishes)
   ReGenerateMapPointCloud();
-
-  // TODO - check that this works as it is defined in the LampRobot class
-  UpdateArtifactPositions();
 }
 
 void LampBase::MergeOptimizedGraph(
@@ -407,19 +386,7 @@ gtsam::SharedNoiseModel LampBase::SetFixedNoiseModels(std::string type) {
     // sigmas.tail<3>().setConstant(laser_lc_trans_sigma_);
     // noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
     noise = laser_lc_noise_;
-  } else if (type == "artifact") {
-    noise = artifact_noise_;
-  } else if (type == "april") {
-    gtsam::Vector6 precisions;
-    precisions.head<3>().setConstant(fiducial_rot_precision_);
-    precisions.tail<3>().setConstant(fiducial_trans_precision_);
-    noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
   } else if (type == "total_station") {
-  } else if (type == "artifact_gt") {
-    gtsam::Vector6 precisions;
-    precisions.head<3>().setConstant(artifact_gt_rot_precision_);
-    precisions.tail<3>().setConstant(artifact_gt_trans_precision_);
-    noise = gtsam::noiseModel::Diagonal::Precisions(precisions);
   } else {
     ROS_ERROR("Incorrect input into SetFixedNoiseModels - invalid type");
     throw std::invalid_argument("set fixed noise models");
@@ -441,9 +408,8 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
   }
 
   else {
-    // Artifact
-    // return artifact_handler_.GetArtifactID(key);// TODO
-    return "Artifact"; // TEMPORARY
+    ROS_ERROR("Unknown ID");
+    return "";
   }
 }
 

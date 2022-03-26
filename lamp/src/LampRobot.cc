@@ -34,8 +34,7 @@ using gtsam::Values;
 using gtsam::Vector3;
 
 // Constructor
-LampRobot::LampRobot()
-  : is_artifact_initialized(false), b_init_pg_pub_(false), init_count_(0) {
+LampRobot::LampRobot() : b_init_pg_pub_(false), init_count_(0) {
   b_run_optimization_ = false;
   mapper_ = std::make_shared<PointCloudMapper>();
 }
@@ -101,9 +100,6 @@ bool LampRobot::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get("frame_id/fixed", pose_graph_.fixed_frame_id))
     return false;
   if (!pu::Get("frame_id/base", base_frame_id_))
-    return false;
-
-  if (!pu::Get("b_artifacts_in_global", b_artifacts_in_global_))
     return false;
 
   if (!pu::Get("time_threshold", pose_graph_.time_threshold))
@@ -323,11 +319,6 @@ bool LampRobot::InitializeHandlers(const ros::NodeHandle& n) {
     return false;
   }
 
-  if (!artifact_handler_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize the artifact handler.", name_.c_str());
-    return false;
-  }
-
   if (!stationary_handler_.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize the imu handler.", name_.c_str());
     return false;
@@ -343,20 +334,9 @@ bool LampRobot::CheckHandlers() {
 
   bool b_have_odom_factors;
   // bool b_have_loop_closure;
-  bool b_have_new_artifacts;
 
   // Check the odom for adding new poses
   b_have_odom_factors = ProcessOdomData(odometry_handler_.GetData());
-
-  // Check all handlers
-  // Set the initialized flag in artifacts to start
-  // receiving messages.
-  if ((pose_graph_.GetValues().size() > 0) && (!is_artifact_initialized)) {
-    is_artifact_initialized = true;
-    artifact_handler_.SetPgoInitialized(true);
-  }
-  // Check for artifacts
-  b_have_new_artifacts = ProcessArtifactData(artifact_handler_.GetData());
 
   if (b_add_imu_factors_ && stationary_handler_.has_data_) {
     // Check if we have moved since the last stationary factor
@@ -460,34 +440,6 @@ void LampRobot::ProcessTimerCallback(const ros::TimerEvent& ev) {
   }
 
   // Publish anything that is needed
-}
-
-/*!
-  \brief  Calls handler function to update global position of the artifacts
-  \author Abhishek Thakur
-  \date 09 Oct 2019
-*/
-void LampRobot::UpdateArtifactPositions() {
-  // Get new positions of artifacts from the pose-graph for artifact_key
-  std::unordered_map<long unsigned int, ArtifactInfo>& artifact_info_hash =
-      artifact_handler_.GetArtifactKey2InfoHash();
-
-  // Result of updating the global pose
-  bool result;
-
-  // Loop over to update global pose.
-  for (auto const& it : artifact_info_hash) {
-    // Get the key
-    gtsam::Symbol artifact_key = gtsam::Symbol(it.first);
-
-    // Get the pose from the pose graph
-    gtsam::Point3 artifact_position =
-        pose_graph_.GetPose(artifact_key).translation();
-
-    // Update global pose just for what has changed. returns bool
-    result = result ||
-        artifact_handler_.UpdateGlobalPosition(artifact_key, artifact_position);
-  }
 }
 
 //-------------------------------------------------------------------
@@ -690,168 +642,6 @@ bool LampRobot::ProcessStationaryData(std::shared_ptr<FactorData> data) {
   // Do not optimize on the robot
   // Optimize every "imu_factors_per_opt"
   // b_run_optimization_ = false;
-  return true;
-}
-
-/*!
-  \brief  Wrapper for the artifact class interactions
-  Creates factors from the artifact output
-  \param   data - the output data struct from the ArtifactHandler class
-  \warning ...
-  \author Abhishek Thakur
-  \date 08 Oct 2019
-*/
-bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
-  // Extract artifact data
-  std::shared_ptr<ArtifactData> artifact_data =
-      std::dynamic_pointer_cast<ArtifactData>(data);
-
-  // Check if there are new factors
-  if (!artifact_data->b_has_data) {
-    return false;
-  }
-
-  ROS_DEBUG("Have Artifact Factor");
-  b_has_new_factor_ = true;
-
-  // Necessary variables
-  Pose3 transform;
-  Pose3 temp_transform;
-  Pose3 global_pose;
-  gtsam::SharedNoiseModel covariance;
-  ros::Time timestamp = ros::Time::now();
-  gtsam::Symbol pose_key;
-  gtsam::Symbol cur_artifact_key;
-
-  // process data for each new factor
-  for (auto artifact : artifact_data->factors) {
-    // Get the time
-    timestamp = artifact.stamp;
-
-    // Get the artifact key
-    cur_artifact_key = artifact.key;
-
-    // Get the pose measurement
-    if (b_artifacts_in_global_) {
-      // Convert pose to relative frame
-      if (!ConvertGlobalToRelative(
-              timestamp,
-              gtsam::Pose3(gtsam::Rot3(), artifact.position),
-              temp_transform)) {
-        ROS_ERROR("Can't convert artifact from global to relative");
-        b_has_new_factor_ = false;
-        // Clean Artifact handler so that these set of
-        // factors are removed from history
-        artifact_handler_.CleanFailedFactors(false);
-        return false;
-      }
-    } else {
-      // Is in relative already
-      ROS_DEBUG("Have artifact in relative frame");
-      temp_transform = gtsam::Pose3(gtsam::Rot3(), artifact.position);
-    }
-
-    // Is a relative tranform, so need to handle linking to the pose-graph
-    HandleRelativePoseMeasurement(
-        timestamp, temp_transform, transform, global_pose, pose_key);
-    ROS_DEBUG("HandleRelativePoseMeasurement");
-
-    if (pose_key == lamp_utils::GTSAM_ERROR_SYMBOL) {
-      ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
-                "BE HANDLED OR LOSE ARTIFACTS!!");
-      b_has_new_factor_ = false;
-      // Clean Artifact handler so that these set of
-      // factors are removed from history
-      artifact_handler_.CleanFailedFactors(false);
-      return false;
-    }
-
-    // Can only used fixed covariance for artifact edges TODO: use covariance
-    // from artifact msg
-    // covariance = SetFixedNoiseModels("artifact");
-    covariance = artifact.covariance;
-
-    // Get the covariances (Should be in relative frame as well)
-    // TODO - handle this better - need to add covariances from the odom - do in
-    // the function above
-    // std::cout << msg_d.pose.covariance << '\n';
-
-    // Check if it is a new artifact or not
-    if (!pose_graph_.HasKey(cur_artifact_key)) {
-      ROS_DEBUG("Have a new artifact in LAMP");
-
-      // Insert into the values TODO - add unit covariance
-      std::string id = artifact_handler_.GetArtifactID(cur_artifact_key);
-      pose_graph_.TrackNode(
-          timestamp, cur_artifact_key, global_pose, covariance, id);
-
-      // Add keyed stamps
-      pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
-
-      // Publish the new artifact, with the global pose
-      ROS_DEBUG("Calling Publish Artifacts");
-      artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
-
-      // Add and track the edges that have been added
-      int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
-      pose_graph_.TrackFactor(
-          pose_key, cur_artifact_key, type, transform, covariance);
-      ROS_DEBUG("Added artifact to pose graph factors in lamp");
-
-    } else {
-      // Find artifact edge that is already connected to cur_artifact_key
-      auto edge = pose_graph_.FindEdgeKeyTo(cur_artifact_key);
-
-      if (edge == nullptr) {
-        ROS_ERROR_STREAM("Edge is not found!!!");
-        if (pose_graph_.HasKey(cur_artifact_key)) {
-          ROS_DEBUG_STREAM("Posegraph has this key!! "
-                          << gtsam::DefaultKeyFormatter(cur_artifact_key));
-        }
-        return false;
-      }
-
-      // Second sighting of an artifact - we have a loop closure
-      ROS_INFO_STREAM("\nProcessArtifactData: Artifact re-sighted with key: "
-                      << gtsam::DefaultKeyFormatter(cur_artifact_key)
-                      << " and from pose key: "
-                      << gtsam::DefaultKeyFormatter(pose_key)
-                      << ". The artifact is already connected to key: "
-                      << gtsam::DefaultKeyFormatter(edge->key_from));
-
-      // Find the transform from the odom node that has been connected to the
-      // resighted artifact
-      HandleRelativePoseMeasurementWithFixedKey(
-          timestamp, temp_transform, edge->key_from, transform, global_pose);
-
-      // Insert into the values TODO - add unit covariance
-      std::string id = artifact_handler_.GetArtifactID(cur_artifact_key);
-
-      // TODO Add keyed stamps. If the time stamp changes, .
-      pose_graph_.InsertKeyedStamp(cur_artifact_key, timestamp);
-
-      // Publish the new artifact, with the global pose. FYI: We may removed
-      // this (check with Kyon)
-      // ROS_INFO("Calling Publish Artifacts");
-      artifact_handler_.PublishArtifacts(cur_artifact_key, global_pose);
-
-      // Add and track the edges that have been added
-      int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
-
-      pose_graph_.TrackNode(
-          timestamp, cur_artifact_key, global_pose, covariance, id);
-
-      pose_graph_.TrackArtifactFactor(
-          edge->key_from, cur_artifact_key, transform, covariance, true, true);
-
-      ROS_INFO("Added resighted artifact to pose graph factors in lamp");
-    }
-  }
-
-  ROS_DEBUG("Successfully complete ArtifactProcess call with an artifact");
-
-  // Clean up for next iteration
-  artifact_handler_.CleanFailedFactors(true);
   return true;
 }
 
