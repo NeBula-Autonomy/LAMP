@@ -14,7 +14,7 @@
 
 // Includes
 #include <lamp/LampRobot.h>
-#include <utils/PointCloudUtils.h>
+#include <lamp_utils/PointCloudUtils.h>
 
 // #include <math.h>
 // #include <ctime>
@@ -599,7 +599,7 @@ void LampRobot::AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
   keyed_scan_msg.key = current_key;
   // Publish the keyed scans without normals
   PointXyziCloud::Ptr pub_scan(new PointXyziCloud);
-  utils::ConvertPointCloud(new_scan, pub_scan);
+  lamp_utils::ConvertPointCloud(new_scan, pub_scan);
   pcl::toROSMsg(*pub_scan, keyed_scan_msg.scan);
   keyed_scan_pub_.publish(keyed_scan_msg);
 }
@@ -635,13 +635,13 @@ void LampRobot::UpdateAndPublishOdom() {
 
   // Convert to ROS to publish
   geometry_msgs::PoseStamped msg;
-  msg.pose = utils::GtsamToRosMsg(new_pose);
+  msg.pose = lamp_utils::GtsamToRosMsg(new_pose);
   msg.header.frame_id = pose_graph_.fixed_frame_id;
   msg.header.stamp = stamp;
 
   // TODO - use the covariance when we have it
   // geometry_msgs::PoseWithCovarianceStamped msg;
-  // msg.pose = utils::GtsamToRosMsg(new_pose, covariance);
+  // msg.pose = lamp_utils::GtsamToRosMsg(new_pose, covariance);
 
   // msg.header.frame_id = pose_graph_.fixed_frame_id;
   // msg.header.stamp = stamp;
@@ -756,7 +756,7 @@ bool LampRobot::ProcessArtifactData(std::shared_ptr<FactorData> data) {
         timestamp, temp_transform, transform, global_pose, pose_key);
     ROS_DEBUG("HandleRelativePoseMeasurement");
 
-    if (pose_key == utils::GTSAM_ERROR_SYMBOL) {
+    if (pose_key == lamp_utils::GTSAM_ERROR_SYMBOL) {
       ROS_ERROR("Bad artifact time. Not adding to graph - ERROR THAT NEEDS TO "
                 "BE HANDLED OR LOSE ARTIFACTS!!");
       b_has_new_factor_ = false;
@@ -875,7 +875,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
   // Get the key from:
   key_from = pose_graph_.GetClosestKeyAtTime(stamp, false);
 
-  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
+  if (key_from == lamp_utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR("Measurement is from a time out of range. Rejecting");
     return;
   }
@@ -892,7 +892,7 @@ void LampRobot::HandleRelativePoseMeasurement(const ros::Time& stamp,
     ROS_ERROR("---------- [LampRobot::HandleRelativePoseMeasurement] Could not "
               "get delta between times - THIS CASE IS NOT "
               "WELL HANDLED YET-----------");
-    key_from = utils::GTSAM_ERROR_SYMBOL;
+    key_from = lamp_utils::GTSAM_ERROR_SYMBOL;
     return;
   }
 
@@ -924,7 +924,7 @@ void LampRobot::HandleRelativePoseMeasurementWithFixedKey(
     const gtsam::Symbol& key_from,
     gtsam::Pose3& transform,
     gtsam::Pose3& global_pose) {
-  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
+  if (key_from == lamp_utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR("Measurement is from a time out of range. Rejecting");
     return;
   }
@@ -963,7 +963,7 @@ bool LampRobot::ConvertGlobalToRelative(const ros::Time stamp,
   // Get the closes node in the pose-graph
   gtsam::Symbol key_from = pose_graph_.GetClosestKeyAtTime(stamp, false);
 
-  if (key_from == utils::GTSAM_ERROR_SYMBOL) {
+  if (key_from == lamp_utils::GTSAM_ERROR_SYMBOL) {
     ROS_ERROR(
         "Key from artifact key_from is outside of range - can't link artifact");
     return false;

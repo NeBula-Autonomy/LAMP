@@ -9,7 +9,7 @@
 #include <rosbag/query.h>
 #include <rosbag/view.h>
 
-#include "utils/PoseGraph.h"
+#include "lamp_utils/PoseGraph.h"
 
 std::string absPath(const std::string& relPath) {
   return boost::filesystem::canonical(boost::filesystem::path(relPath))

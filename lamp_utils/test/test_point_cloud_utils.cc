@@ -10,11 +10,11 @@
 #include <pcl/io/pcd_io.h>
 #include <ros/ros.h>
 
-#include <utils/PointCloudUtils.h>
+#include <lamp_utils/PointCloudUtils.h>
 
 #include "test_artifacts.h"
 
-namespace utils {
+namespace lamp_utils {
 
 class TestPointCloudUtils : public ::testing::Test {
 public:
@@ -230,7 +230,7 @@ TEST_F(TestPointCloudUtils, ComputeAp_ForPoint2PlaneICP) {
   EXPECT_NEAR(Ap(5, 5), 100, tolerance_);
 }
 
-} // namespace utils
+} // namespace lamp_utils
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

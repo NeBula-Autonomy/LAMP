@@ -13,7 +13,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
-#include <utils/CommonStructs.h>
+#include <lamp_utils/CommonStructs.h>
 
 #include <pose_graph_msgs/KeyedScan.h>
 #include <pose_graph_msgs/PoseGraph.h>
@@ -30,7 +30,7 @@
 namespace gu = geometry_utils;
 namespace gr = gu::ros;
 
-namespace utils {
+namespace lamp_utils {
 
 // Pose graph msg to gtsam conversion
 // TODO remove this function, use PoseGraph functions instead.
@@ -206,5 +206,5 @@ inline Gaussian::shared_ptr ToGtsam(const Mat1212& covariance) {
     gtsam_covariance(i) = covariance(i, i);
   return gtsam::noiseModel::Diagonal::Covariance(gtsam_covariance);
 }
-} // namespace utils
+} // namespace lamp_utils
 #endif // COMMON_FUNCTIONS_H

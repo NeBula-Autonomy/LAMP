@@ -15,7 +15,7 @@
 #include <factor_handlers/StationaryHandler.h>
 
 #include <pcl_ros/point_cloud.h>
-#include <utils/LampPcldFilter.h>
+#include <lamp_utils/LampPcldFilter.h>
 // Services
 
 // Class Definition

@@ -17,8 +17,8 @@ Some utility functions for wokring with Point Clouds
 #include <rosbag/view.h>
 
 #include "loop_closure/TestUtils.h"
-#include <utils/CommonFunctions.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/PrefixHandling.h>
 
 namespace test_utils {
 
@@ -364,7 +364,7 @@ bool ReadOdometryBagFile(const std::string& bag_file,
     nav_msgs::Odometry::ConstPtr i = m.instantiate<nav_msgs::Odometry>();
     if (i != nullptr)
       pose_stamped->insert(std::pair<ros::Time, gtsam::Pose3>{
-          i->header.stamp, utils::ToGtsam(i->pose.pose)});
+          i->header.stamp, lamp_utils::ToGtsam(i->pose.pose)});
   }
   bag.close();
   if (pose_stamped->size() == 0) {
@@ -399,7 +399,7 @@ bool ReadKeyedScansAndPosesFromBagFile(
     if (p != nullptr)
       for (const auto& n : p->nodes) {
         keyed_poses->insert(
-            std::pair<gtsam::Key, gtsam::Pose3>{n.key, utils::ToGtsam(n.pose)});
+            std::pair<gtsam::Key, gtsam::Pose3>{n.key, lamp_utils::ToGtsam(n.pose)});
         keyed_stamps->insert(
             std::pair<gtsam::Key, ros::Time>{n.key, n.header.stamp});
       }
@@ -610,7 +610,7 @@ void OutputTestSummary(
     std::string label = data.labels_.at(edge.key_from);
     num_lc[label]++;
 
-    gtsam::Pose3 transform = utils::ToGtsam(edge.pose);
+    gtsam::Pose3 transform = lamp_utils::ToGtsam(edge.pose);
     gtsam::Pose3 gt_transform =
         data.gt_keyed_poses_.at(edge.key_from)
             .between(data.gt_keyed_poses_.at(edge.key_to));
@@ -646,7 +646,7 @@ void OutputTestSummary(
     std::string label = data.labels_.at(edge.key_from);
     num_false_lc[label]++;
 
-    gtsam::Pose3 transform = utils::ToGtsam(edge.pose);
+    gtsam::Pose3 transform = lamp_utils::ToGtsam(edge.pose);
     gtsam::Pose3 gt_transform =
         data.gt_keyed_poses_.at(edge.key_from)
             .between(data.gt_keyed_poses_.at(edge.key_to));

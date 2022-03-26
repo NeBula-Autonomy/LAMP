@@ -15,7 +15,7 @@ Some utility functions for offline testing
 #include <pose_graph_msgs/LoopCandidateArray.h>
 #include <pose_graph_msgs/PoseGraph.h>
 #include <pose_graph_msgs/PoseGraphEdge.h>
-#include <utils/CommonStructs.h>
+#include <lamp_utils/CommonStructs.h>
 
 namespace test_utils {
 

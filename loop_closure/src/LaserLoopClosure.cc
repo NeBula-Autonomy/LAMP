@@ -17,7 +17,7 @@ Lidar pointcloud based loop closure
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <parameter_utils/ParameterUtils.h>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 #include <pose_graph_msgs/LoopCandidateArray.h>
 
@@ -32,7 +32,7 @@ LaserLoopClosure::~LaserLoopClosure() {}
 
 bool LaserLoopClosure::Initialize(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
-  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+  param_ns_ = lamp_utils::GetParamNamespace(n.getNamespace());
 
   // If laser loop closures are off, exit without setting up publishers or
   // subscribers
@@ -202,27 +202,27 @@ void LaserLoopClosure::GetInitialAlignment(PointCloud::ConstPtr source,
       std::chrono::steady_clock::now();
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ExtractNormals(source, source_normals);
-  utils::ExtractNormals(target, target_normals);
+  lamp_utils::ExtractNormals(source, source_normals);
+  lamp_utils::ExtractNormals(target, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
 
-  utils::ComputeKeypoints(
+  lamp_utils::ComputeKeypoints(
       source, source_normals, harris_params_, icp_threads_, source_keypoints);
-  utils::ComputeKeypoints(
+  lamp_utils::ComputeKeypoints(
       target, target_normals, harris_params_, icp_threads_, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
-  utils::ComputeFeatures(source_keypoints,
+  lamp_utils::ComputeFeatures(source_keypoints,
                          source,
                          source_normals,
                          sac_features_radius_,
                          icp_threads_,
                          source_features);
-  utils::ComputeFeatures(target_keypoints,
+  lamp_utils::ComputeFeatures(target_keypoints,
                          target,
                          target_normals,
                          sac_features_radius_,
@@ -298,7 +298,7 @@ bool LaserLoopClosure::FindLoopClosures(
     }
 
     // Check for single robot loop closures
-    if (utils::IsKeyFromSameRobot(new_key, other_key)) {
+    if (lamp_utils::IsKeyFromSameRobot(new_key, other_key)) {
       closed_loop |=
           CheckForLoopClosure(new_key, other_key, false, loop_closure_edges);
     }
@@ -327,7 +327,7 @@ bool LaserLoopClosure::CheckForLoopClosure(
     gtsam::Symbol key2,
     bool b_inter_robot,
     std::vector<pose_graph_msgs::PoseGraphEdge>* loop_closure_edges) {
-  if (!b_inter_robot && !utils::IsKeyFromSameRobot(key1, key2)) {
+  if (!b_inter_robot && !lamp_utils::IsKeyFromSameRobot(key1, key2)) {
     ROS_ERROR_STREAM(
         "Checking for single robot loop closures on different robots");
     return false;
@@ -368,7 +368,7 @@ bool LaserLoopClosure::PerformLoopClosure(
   if (key1 == key2)
     return false; // Don't perform loop closure on same node
 
-  gu::Transform3 delta = utils::ToGu(prior); // (Using BetweenFactor)
+  gu::Transform3 delta = lamp_utils::ToGu(prior); // (Using BetweenFactor)
   gtsam::Matrix66 covariance = Eigen::MatrixXd::Zero(6, 6);
   double fitness_score; // retrieve ICP fitness score if matched
 
@@ -381,10 +381,10 @@ bool LaserLoopClosure::PerformLoopClosure(
     ROS_INFO_STREAM("Translation (x,y,z): "
                     << delta.translation.X() << ", " << delta.translation.Y()
                     << ", " << delta.translation.Z() << ", rotation (w,x,y,z): "
-                    << utils::ToGtsam(delta).rotation().quaternion().w() << ", "
-                    << utils::ToGtsam(delta).rotation().quaternion().x() << ", "
-                    << utils::ToGtsam(delta).rotation().quaternion().y() << ", "
-                    << utils::ToGtsam(delta).rotation().quaternion().z());
+                    << lamp_utils::ToGtsam(delta).rotation().quaternion().w() << ", "
+                    << lamp_utils::ToGtsam(delta).rotation().quaternion().x() << ", "
+                    << lamp_utils::ToGtsam(delta).rotation().quaternion().y() << ", "
+                    << lamp_utils::ToGtsam(delta).rotation().quaternion().z());
 
     // Add the edge
     pose_graph_msgs::PoseGraphEdge edge =
@@ -502,7 +502,7 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
                                       << guess.translation.Y() << ", "
                                       << guess.translation.Z());
     ROS_INFO_STREAM("DELTA INITIAL GUESS:");
-    utils::ToGtsam(guess).print();
+    lamp_utils::ToGtsam(guess).print();
 
     // Normalize the initial guess rotation
     Eigen::Quaternionf quat(guess.rotation.Eigen().cast<float>());
@@ -554,8 +554,8 @@ bool LaserLoopClosure::PerformAlignment(const gtsam::Symbol key1,
   }
 
   // reject if the rotation is too big
-  gu::Transform3 odom_delta = utils::ToGu(pose2.between(pose1));
-  gtsam::Pose3 correction = utils::ToGtsam(gu::PoseDelta(*delta, odom_delta));
+  gu::Transform3 odom_delta = lamp_utils::ToGu(pose2.between(pose1));
+  gtsam::Pose3 correction = lamp_utils::ToGtsam(gu::PoseDelta(*delta, odom_delta));
   if (fabs(2 * acos(correction.rotation().toQuaternion().w())) >
       max_rotation_rad_) {
     ROS_INFO_STREAM("Rejected loop closure - total rotation too large");
@@ -619,7 +619,7 @@ void LaserLoopClosure::SeedCallback(
     ROS_INFO_STREAM("Edge type: " << e.type);
     if (e.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
       b_use_prior = true;
-      prior = utils::ToGtsam(e.pose);
+      prior = lamp_utils::ToGtsam(e.pose);
     }
 
     if (!PerformLoopClosure(
@@ -829,10 +829,10 @@ bool LaserLoopClosure::ComputeICPCovariancePointPlane(
                                                     // been rearranged.
   Eigen::Matrix<double, 6, 6> Ap;
 
-  utils::ExtractNormals(reference_cloud, reference_normals);
-  utils::NormalizePCloud(query_cloud, query_normalized);
+  lamp_utils::ExtractNormals(reference_cloud, reference_normals);
+  lamp_utils::NormalizePCloud(query_cloud, query_normalized);
 
-  utils::ComputeAp_ForPoint2PlaneICP(
+  lamp_utils::ComputeAp_ForPoint2PlaneICP(
       query_normalized, reference_normals, correspondences, T, Ap);
   // If matrix not invertible, use fixed
   if (Ap.determinant() == 0) {

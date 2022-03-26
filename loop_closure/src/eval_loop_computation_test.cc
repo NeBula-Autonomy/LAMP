@@ -11,9 +11,9 @@
 #include <pcl/filters/random_sample.h>
 #include <pcl/filters/voxel_grid.h>
 #include <ros/ros.h>
-#include <utils/CommonFunctions.h>
-#include <utils/CommonStructs.h>
-#include <utils/PointCloudUtils.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/CommonStructs.h>
+#include <lamp_utils/PointCloudUtils.h>
 
 namespace tu = test_utils;
 namespace pu = parameter_utils;
@@ -105,7 +105,7 @@ public:
     for (size_t i = 0; i < keyed_poses.size(); i++) {
       pose_graph_msgs::PoseGraphNode node;
       node.key = i;
-      node.pose = utils::GtsamToRosMsg(keyed_poses.at(i));
+      node.pose = lamp_utils::GtsamToRosMsg(keyed_poses.at(i));
       pg->nodes.push_back(node);
     }
 
@@ -141,7 +141,7 @@ public:
     double prev_observability = 0.0;
     Eigen::Matrix<double, 3, 1> obs_eigenv;
     if (observability_check) {
-      utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+      lamp_utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
       prev_observability =
           obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
     }
@@ -155,7 +155,7 @@ public:
 
       double obs_factor = 0.0;
       if (observability_check) {
-        utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+        lamp_utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
         double observability =
             obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
         obs_factor = (prev_observability - observability) / prev_observability;
@@ -183,7 +183,7 @@ public:
     }
     *new_cloud = original_cloud;
     Eigen::Matrix<double, 3, 1> obs_eigenv;
-    utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+    lamp_utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
     double prev_observability =
         obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
     int count = 0;
@@ -196,7 +196,7 @@ public:
       random_filter.filter(*new_cloud);
 
       Eigen::Matrix<double, 3, 1> obs_eigenv;
-      utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+      lamp_utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
       double observability =
           obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
 
@@ -251,10 +251,10 @@ public:
 
     // Remove normals
     PointXyziCloud::Ptr no_normals_scan(new PointXyziCloud);
-    utils::ConvertPointCloud(new_scan, no_normals_scan);
+    lamp_utils::ConvertPointCloud(new_scan, no_normals_scan);
 
     // Recompute normals
-    utils::AddNormals(no_normals_scan, normals_compute_params_, new_scan);
+    lamp_utils::AddNormals(no_normals_scan, normals_compute_params_, new_scan);
 
     pcl::toROSMsg(*new_scan, new_ks->scan);
     new_ks->key = original_ks.key;
@@ -292,7 +292,7 @@ protected:
   size_t max_ks_size_;
   size_t min_ks_size_;
 
-  utils::NormalComputeParams normals_compute_params_;
+  lamp_utils::NormalComputeParams normals_compute_params_;
 };
 
 } // namespace lamp_loop_closure

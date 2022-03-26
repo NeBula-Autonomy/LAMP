@@ -14,7 +14,7 @@ Interface for ROS and KimeraRPGO
 #include <gtsam/geometry/Rot3.h>
 
 #include <parameter_utils/ParameterUtils.h>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 #include "pose_graph_msgs/PoseGraphNode.h"
 
@@ -55,7 +55,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   // Parse parameters
   // Optimizer backend
   ROS_INFO_STREAM("PGO NODE NAMESPACE: " << n.getNamespace());
-  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+  param_ns_ = lamp_utils::GetParamNamespace(n.getNamespace());
   ROS_INFO_STREAM("Parameter namespace: " << param_ns_);
 
   bool b_use_outlier_rejection;
@@ -85,7 +85,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
   }
 
   // Artifact or UWB keys (l, m, n, ... + u)
-  rpgo_params_.specialSymbols = utils::GetAllSpecialSymbols();
+  rpgo_params_.specialSymbols = lamp_utils::GetAllSpecialSymbols();
 
   // set solver
   int solver_num;
@@ -191,7 +191,7 @@ void LampPgo::InputCallback(
   ROS_DEBUG_STREAM("PGO received graph of size " << graph_msg->nodes.size());
 
   // Convert to gtsam type
-  utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
+  lamp_utils::PoseGraphMsgToGtsam(graph_msg, &all_factors, &all_values);
 
   // Track node IDs
   for (auto n : graph_msg->nodes) {
@@ -231,8 +231,8 @@ void LampPgo::InputCallback(
     if (!factor_exists) {
       // this factor does not exist before
       bool loop_closure =
-          (utils::IsRobotPrefix(gtsam::Symbol(all_factors[i]->back()).chr()) &&
-           utils::IsRobotPrefix(gtsam::Symbol(all_factors[i]->front()).chr()) &&
+          (lamp_utils::IsRobotPrefix(gtsam::Symbol(all_factors[i]->back()).chr()) &&
+           lamp_utils::IsRobotPrefix(gtsam::Symbol(all_factors[i]->front()).chr()) &&
            all_factors[i]->back() != all_factors[i]->front() + 1);
       if (!loop_closure) {
         new_factors.add(all_factors[i]);
@@ -365,7 +365,7 @@ void LampPgo::PublishValues() const {
       pose_graph_msgs::PoseGraphEdge edge;
       edge.key_from = factor->front();
       edge.key_to = factor->back();
-      utils::UpdateCovariance(
+      lamp_utils::UpdateCovariance(
           edge,
           boost::dynamic_pointer_cast<gtsam::BetweenFactor<gtsam::Pose3>>(
               factor)
@@ -396,7 +396,7 @@ void LampPgo::PublishValues() const {
 
 void LampPgo::IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
   // First convert string "huskyn" to char prefix
-  char prefix = utils::GetRobotPrefix(msg->data);
+  char prefix = lamp_utils::GetRobotPrefix(msg->data);
 
   pgo_solver_->ignorePrefix(prefix);
 
@@ -427,7 +427,7 @@ void LampPgo::IgnoreRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
 
 void LampPgo::ReviveRobotLoopClosures(const std_msgs::String::ConstPtr& msg) {
   // First convert string "huskyn" to char prefix
-  char prefix = utils::GetRobotPrefix(msg->data);
+  char prefix = lamp_utils::GetRobotPrefix(msg->data);
 
   pgo_solver_->revivePrefix(prefix);
 

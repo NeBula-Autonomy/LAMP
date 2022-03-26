@@ -14,7 +14,7 @@
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
-#include <utils/CommonStructs.h>
+#include <lamp_utils/CommonStructs.h>
 
 // Typedefs
 typedef nav_msgs::Odometry Odometry;

@@ -5,7 +5,7 @@
  * @author Yun Chang
  */
 
-#include "utils/PointCloudUtils.h"
+#include "lamp_utils/PointCloudUtils.h"
 #include <Eigen/Eigenvalues>
 #include <algorithm>
 #include <numeric>
@@ -183,7 +183,7 @@ void GenericLoopPrioritization::KeyedScanCallback(
   pcl::fromROSMsg(scan_msg->scan, *scan);
 
   Eigen::Matrix<double, 3, 1> obs_eigenv;
-  utils::ComputeIcpObservability(scan, &obs_eigenv);
+  lamp_utils::ComputeIcpObservability(scan, &obs_eigenv);
   double min_obs = obs_eigenv.minCoeff();
   // Add the key and observability
   keyed_observability_.insert(std::pair<gtsam::Key, double>(key, min_obs));

@@ -1,6 +1,6 @@
 <launch>
   <test test-name="test_pose_graph"
-        pkg="utils"
+        pkg="lamp_utils"
         type="test_pose_graph"
         time-limit="120.0"/>
 </launch>

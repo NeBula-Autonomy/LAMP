@@ -30,7 +30,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   pcl_ros
   pose_graph_msgs
-  utils
+  lamp_utils
 )
 
 catkin_package(
@@ -42,7 +42,7 @@ catkin_package(
     parameter_utils
     sensor_msgs
     pcl_ros
-    utils
+    lamp_utils
   DEPENDS
     PCL
     Boost

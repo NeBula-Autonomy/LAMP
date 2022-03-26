@@ -8,7 +8,7 @@
 #include <memory>
 #include <parameter_utils/ParameterUtils.h>
 #include <ros/ros.h>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 namespace pu = parameter_utils;
 namespace lc = lamp_loop_closure;
@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "loop_prioritization");
   ros::NodeHandle n("~");
   int prioritization_method = 0;
-  std::string param_ns = utils::GetParamNamespace(n.getNamespace());
+  std::string param_ns = lamp_utils::GetParamNamespace(n.getNamespace());
   if (!pu::Get(param_ns + "/prioritization_method", prioritization_method)) {
     return EXIT_FAILURE;
   }

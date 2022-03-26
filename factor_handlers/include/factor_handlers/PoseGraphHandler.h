@@ -11,7 +11,7 @@
 #include <factor_handlers/LampDataHandlerBase.h>
 #include <unordered_map>
 #include <unordered_set>
-#include <utils/PointCloudUtils.h>
+#include <lamp_utils/PointCloudUtils.h>
 
 namespace pu = parameter_utils;
 namespace gu = geometry_utils;
@@ -66,7 +66,7 @@ class PoseGraphHandler : public LampDataHandlerBase {
     std::unordered_map<unsigned char,uint64_t> last_odom_node_key_from_robot_;
 
     // Parameters when recomputing normals for republishing keyed scans on base
-    utils::NormalComputeParams normals_compute_params_;
+    lamp_utils::NormalComputeParams normals_compute_params_;
 
   private:
 

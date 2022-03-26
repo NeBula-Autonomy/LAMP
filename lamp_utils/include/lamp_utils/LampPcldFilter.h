@@ -6,9 +6,9 @@
 #ifndef LAMP_PCLD_FILTER_H
 #define LAMP_PCLD_FILTER_H
 
-#include <utils/CommonFunctions.h>
-#include <utils/CommonStructs.h>
-#include <utils/PointCloudUtils.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/CommonStructs.h>
+#include <lamp_utils/PointCloudUtils.h>
 
 struct LampPcldFilterParams {
   bool random_filter = true;

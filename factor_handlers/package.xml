@@ -13,7 +13,7 @@
 
   <build_depend>roscpp</build_depend>
   <build_depend>rosbag</build_depend>
-  <build_depend>utils</build_depend>
+  <build_depend>lamp_utils</build_depend>
   <build_depend>geometry_utils</build_depend>
   <build_depend>parameter_utils</build_depend>
   <build_depend>pcl_ros</build_depend>
@@ -29,7 +29,7 @@
   <run_depend>roscpp</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>rosbag</run_depend>
-  <run_depend>utils</run_depend>
+  <run_depend>lamp_utils</run_depend>
   <run_depend>geometry_utils</run_depend>
   <run_depend>parameter_utils</run_depend>
   <run_depend>pcl_ros</run_depend>

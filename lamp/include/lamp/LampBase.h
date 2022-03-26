@@ -40,10 +40,10 @@
 #include <point_cloud_mapper/PointCloudMapper.h>
 #include <pose_graph_merger/merger.h>
 
-#include <utils/CommonFunctions.h>
-#include <utils/CommonStructs.h>
-#include <utils/PoseGraph.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/CommonStructs.h>
+#include <lamp_utils/PoseGraph.h>
+#include <lamp_utils/PrefixHandling.h>
 
 #include <math.h>
 

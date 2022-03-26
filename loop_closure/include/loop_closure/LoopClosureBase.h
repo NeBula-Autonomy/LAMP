@@ -20,7 +20,7 @@ Loop closure base class
 #include <gtsam/inference/Symbol.h>
 
 #include <geometry_utils/Transform3.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/PrefixHandling.h>
 
 class LoopClosure {
 public:

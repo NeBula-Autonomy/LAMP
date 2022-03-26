@@ -9,7 +9,7 @@
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/PrefixHandling.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -228,7 +228,7 @@ void PoseGraphVisualizer::PoseGraphCallback(
     // ROS_INFO_STREAM("Symbol key (int) is " << msg_node.key);
 
     // Add UUID if an artifact or uwb node
-    if (utils::IsArtifactPrefix(sym_key.chr())) {
+    if (lamp_utils::IsArtifactPrefix(sym_key.chr())) {
       // ROS_INFO_STREAM("Have an artifact node with key "
       //                 << gtsam::DefaultKeyFormatter(sym_key));
 
@@ -513,7 +513,7 @@ void PoseGraphVisualizer::MakeMenuMarker(const gtsam::Pose3& pose,
   visualization_msgs::InteractiveMarker int_marker;
   int_marker.header.frame_id = PoseGraphVisualizer::pose_graph_.fixed_frame_id;
   int_marker.scale = 1.0;
-  int_marker.pose = utils::GtsamToRosMsg(pose);
+  int_marker.pose = lamp_utils::GtsamToRosMsg(pose);
   int_marker.name = id_number;
 
   visualization_msgs::Marker marker;
@@ -668,7 +668,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       continue;
     }
 
-    if (utils::IsArtifactPrefix(sym_key.chr())) {
+    if (lamp_utils::IsArtifactPrefix(sym_key.chr())) {
       // handle artifacts separately (below)
       continue;
     }
@@ -729,7 +729,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
     int id_base = 100;
     int counter = 0;
     for (const auto& key : pose_keys) {
-      m.pose = utils::GtsamToRosMsg(pose_graph_.GetPose(key));
+      m.pose = lamp_utils::GtsamToRosMsg(pose_graph_.GetPose(key));
       // Display text for the node
       m.text = std::to_string(key);
       m.id = id_base + key;
@@ -782,7 +782,7 @@ void PoseGraphVisualizer::VisualizePoseGraph() {
       // entry.second); ROS_INFO_STREAM("Artifact key is " << key);
       // ROS_INFO_STREAM("Artifact hash key is "
       //                 << gtsam::DefaultKeyFormatter(key));
-      if (!utils::IsArtifactPrefix(gtsam::Symbol(key).chr())) {
+      if (!lamp_utils::IsArtifactPrefix(gtsam::Symbol(key).chr())) {
         ROS_WARN("ERROR - have a non-landmark ID");
         ROS_INFO_STREAM("Bad ID is " << gtsam::DefaultKeyFormatter(key));
         continue;

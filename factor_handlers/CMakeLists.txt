@@ -26,7 +26,7 @@ FIND_PACKAGE(Boost REQUIRED
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rosbag
-  utils
+  lamp_utils
   geometry_utils
   parameter_utils
   pcl_ros
@@ -47,7 +47,7 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     rosbag
-    utils
+    lamp_utils
     geometry_utils
     parameter_utils
     pcl_ros

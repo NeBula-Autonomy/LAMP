@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
     eigen_conversions
     pose_graph_msgs
     geometry_utils
-    utils
+    lamp_utils
 )
 
 find_package(Eigen3 REQUIRED)
@@ -39,7 +39,7 @@ catkin_package(
     roscpp
     pose_graph_msgs
     geometry_utils
-    utils
+    lamp_utils
     eigen_conversions
 )
 

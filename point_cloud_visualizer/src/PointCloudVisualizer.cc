@@ -42,7 +42,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <point_cloud_visualizer/PointCloudVisualizer.h>
 #include <tf/transform_broadcaster.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/PrefixHandling.h>
 
 namespace pu = parameter_utils;
 
@@ -69,7 +69,7 @@ bool PointCloudVisualizer::Initialize(const ros::NodeHandle& n) {
   for (std::string robot : robot_names_) {
     ROS_INFO_STREAM("Creating point cloud for " << robot);
     robots_point_clouds_.insert(std::pair<unsigned char, PointCloud::Ptr>(
-        utils::ROBOT_PREFIXES.at(robot), new PointCloud));
+        lamp_utils::ROBOT_PREFIXES.at(robot), new PointCloud));
   }
 
   return true;
@@ -132,7 +132,7 @@ bool PointCloudVisualizer::RegisterCallbacks(const ros::NodeHandle& n) {
     ROS_INFO_STREAM("Creating publisher for " << robot);
     publishers_robots_point_clouds_.insert(
         std::pair<unsigned char, ros::Publisher>(
-            utils::ROBOT_PREFIXES.at(robot),
+            lamp_utils::ROBOT_PREFIXES.at(robot),
             nh_.advertise<sensor_msgs::PointCloud2>(
                 robot + "/lamp/octree_map", 10, false)));
   }
@@ -269,7 +269,7 @@ PointCloudVisualizer::GetPositionMsg(gtsam::Key key) const {
 
 void PointCloudVisualizer::VisualizePointCloud() {
   for (std::string robot : robot_names_) {
-    unsigned char robot_chr = utils::ROBOT_PREFIXES.at(robot);
+    unsigned char robot_chr = lamp_utils::ROBOT_PREFIXES.at(robot);
     if (publishers_robots_point_clouds_.at(robot_chr).getNumSubscribers() > 0) {
       sensor_msgs::PointCloud2 pcl_pc2;
       pcl::toROSMsg(*robots_point_clouds_.at(robot_chr), pcl_pc2);
@@ -311,7 +311,7 @@ bool PointCloudVisualizer::GetTransformedPointCloudWorld(
     return false;
   }
 
-  const gu::Transform3 pose = utils::ToGu(pose_graph_.GetPose(key));
+  const gu::Transform3 pose = lamp_utils::ToGu(pose_graph_.GetPose(key));
   Eigen::Matrix4d b2w;
   b2w.setZero();
   b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
@@ -505,7 +505,7 @@ bool PointCloudVisualizer::AllLevelsAreInitialized() const {
 size_t
 PointCloudVisualizer::SelectLevelForNode2(const gtsam::Symbol current_key) {
   const gu::Transform3 current_pose =
-      utils::ToGu(pose_graph_.GetPose(current_key));
+      lamp_utils::ToGu(pose_graph_.GetPose(current_key));
   std::vector<std::pair<double, size_t>> potential_levels;
   ROS_DEBUG_STREAM("<=====================================================>");
   ROS_DEBUG_STREAM("Levels to check: " << levels_.size());

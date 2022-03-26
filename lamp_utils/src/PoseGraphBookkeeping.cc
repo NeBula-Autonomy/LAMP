@@ -1,5 +1,5 @@
-#include "utils/CommonFunctions.h"
-#include "utils/PoseGraph.h"
+#include "lamp_utils/CommonFunctions.h"
+#include "lamp_utils/PoseGraph.h"
 
 #include <gtsam/sam/RangeFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
@@ -24,8 +24,8 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
   bool success = true;
 
   if (msg.type == pose_graph_msgs::PoseGraphEdge::ARTIFACT) {
-    gtsam::Pose3 transform = utils::MessageToPose(msg);
-    Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
+    gtsam::Pose3 transform = lamp_utils::MessageToPose(msg);
+    Gaussian::shared_ptr noise = lamp_utils::MessageToCovariance(msg);
     success = TrackArtifactFactor(gtsam::Symbol(msg.key_from),
                                   gtsam::Symbol(msg.key_to),
                                   transform,
@@ -58,8 +58,8 @@ bool PoseGraph::TrackFactor(const EdgeMessage& msg) {
                             msg.covariance[0],
                             false);
   } else {
-    gtsam::Pose3 delta = utils::MessageToPose(msg);
-    Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
+    gtsam::Pose3 delta = lamp_utils::MessageToPose(msg);
+    Gaussian::shared_ptr noise = lamp_utils::MessageToCovariance(msg);
 
     // Track factor without (re)creating an edge message
     success = TrackFactor(gtsam::Symbol(msg.key_from),
@@ -94,7 +94,7 @@ bool PoseGraph::TrackFactor(const gtsam::Symbol& key_from,
 
   if (create_msg) {
     auto msg =
-        utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
+        lamp_utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
     if (edges_.find(msg) != edges_.end()) {
       // gtg
       ROS_DEBUG_STREAM("Edge of type " << type << " from key "
@@ -164,7 +164,7 @@ bool PoseGraph::TrackUWBFactor(const gtsam::Symbol& key_from,
   gtsam::noiseModel::Base::shared_ptr noise =
       gtsam::noiseModel::Isotropic::Sigma(1, range_error);
   if (create_msg) {
-    auto msg = utils::GtsamToRosMsg(key_from,
+    auto msg = lamp_utils::GtsamToRosMsg(key_from,
                                     key_to,
                                     pose_graph_msgs::PoseGraphEdge::UWB_RANGE,
                                     gtsam::Pose3(),
@@ -203,7 +203,7 @@ bool PoseGraph::TrackIMUFactor(const gtsam::Symbol& key_to,
   gtsam::Pose3AttitudeFactor factor(key_to, meas_gt, noise, ref_unit);
 
   if (create_msg) {
-    auto msg = utils::GtsamToRosMsg(key_to,
+    auto msg = lamp_utils::GtsamToRosMsg(key_to,
                                     key_to,
                                     pose_graph_msgs::PoseGraphEdge::IMU,
                                     gtsam::Pose3(),
@@ -233,7 +233,7 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
                                     bool update_value) {
   int type = pose_graph_msgs::PoseGraphEdge::ARTIFACT;
   auto msg =
-      utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
+      lamp_utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
   auto msg_found = edges_.find(msg);
 
   if (msg_found != edges_.end()) {
@@ -265,7 +265,7 @@ bool PoseGraph::TrackArtifactFactor(const gtsam::Symbol& key_from,
 
     // Hack: Removing loop closure edge
     auto loopclose_msg =
-        utils::GtsamToRosMsg(key_from,
+        lamp_utils::GtsamToRosMsg(key_from,
                              key_to,
                              pose_graph_msgs::PoseGraphEdge::LOOPCLOSE,
                              transform,
@@ -329,8 +329,8 @@ bool PoseGraph::TrackNode(const Node& node) {
 }
 
 bool PoseGraph::TrackNode(const NodeMessage& msg) {
-  const auto pose = utils::MessageToPose(msg);
-  Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
+  const auto pose = lamp_utils::MessageToPose(msg);
+  Gaussian::shared_ptr noise = lamp_utils::MessageToCovariance(msg);
 
   // Track node without creating another node message
   if (!TrackNode(msg.header.stamp, gtsam::Symbol(msg.key), pose, noise, msg.ID, false))
@@ -373,7 +373,7 @@ bool PoseGraph::TrackNode(const ros::Time& stamp,
 
   if (create_msg) {
     NodeMessage msg =
-        utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
+        lamp_utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
     msg.ID = id;
     if (msg.ID.empty() && !symbol_id_map.empty())
       msg.ID = symbol_id_map(msg.key);
@@ -413,8 +413,8 @@ bool PoseGraph::TrackPrior(const EdgeMessage& msg) {
   // static const gtsam::SharedNoiseModel& prior_noise =
   //     gtsam::noiseModel::Diagonal::Precisions(prior_precisions);
 
-  gtsam::Pose3 delta = utils::MessageToPose(msg);
-  Gaussian::shared_ptr noise = utils::MessageToCovariance(msg);
+  gtsam::Pose3 delta = lamp_utils::MessageToPose(msg);
+  Gaussian::shared_ptr noise = lamp_utils::MessageToCovariance(msg);
 
   if (!TrackPrior(gtsam::Symbol(msg.key_from), delta, noise, false))
     return false;
@@ -437,7 +437,7 @@ bool PoseGraph::TrackPrior(const gtsam::Symbol& key,
                            const gtsam::SharedNoiseModel& covariance,
                            bool create_msg) {
   if (create_msg) {
-    auto msg = utils::GtsamToRosMsg(
+    auto msg = lamp_utils::GtsamToRosMsg(
         key, key, pose_graph_msgs::PoseGraphEdge::PRIOR, pose, covariance);
 
     if (priors_.find(msg) != priors_.end()) {
@@ -460,8 +460,8 @@ bool PoseGraph::TrackPrior(const gtsam::Symbol& key,
 void PoseGraph::RemoveRobotFromGraph(std::string robot_name){
 
   // Get Prefixes
-  unsigned char prefix = utils::GetRobotPrefix(robot_name);
-  unsigned char art_prefix = utils::GetArtifactPrefix(robot_name);
+  unsigned char prefix = lamp_utils::GetRobotPrefix(robot_name);
+  unsigned char art_prefix = lamp_utils::GetArtifactPrefix(robot_name);
 
   ROS_WARN_STREAM("Removing all edges and nodes in the graph for robot: " << robot_name << " with prefix " << prefix);
 
@@ -505,8 +505,8 @@ void PoseGraph::UpdateLoopClosures(const GraphMsgPtr& msg) {
       new_nfg.add(
           gtsam::BetweenFactor<gtsam::Pose3>(gtsam::Symbol(edge.key_from),
                                              gtsam::Symbol(edge.key_to),
-                                             utils::MessageToPose(edge),
-                                             utils::MessageToCovariance(edge)));
+                                             lamp_utils::MessageToPose(edge),
+                                             lamp_utils::MessageToCovariance(edge)));
     }
   }
 
@@ -654,7 +654,7 @@ void PoseGraph::InsertStampedOdomKey(double seconds, const gtsam::Symbol& key) {
 bool PoseGraph::CheckGraphValid() const {
   // Check that pose graph is valid (i.e. no missing odom edges)
   for (const gtsam::Symbol& k : values_.keys()) {
-    if (utils::IsRobotPrefix(k.chr())) {
+    if (lamp_utils::IsRobotPrefix(k.chr())) {
       if (k.index() > 0 && !values_.exists(k - 1)) {
         ROS_ERROR("Missing node %s in pose graph. ",
                   gtsam::DefaultKeyFormatter(k - 1));

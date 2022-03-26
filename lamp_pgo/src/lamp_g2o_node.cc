@@ -12,9 +12,9 @@
 #include <pcl/point_types.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <utils/CommonFunctions.h>
-#include <utils/PointCloudTypes.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/PointCloudTypes.h>
+#include <lamp_utils/PrefixHandling.h>
 #include <visualization_msgs/Marker.h>
 
 #include <gtsam/inference/Symbol.h>
@@ -94,7 +94,7 @@ PointCloud buildCloudMapByRobot(
     const gtsam::Values& values,
     const std::unordered_map<gtsam::Key, PointCloud>& keyed_scans,
     const double& grid_size) {
-  const char prefix = utils::ROBOT_PREFIXES.at(robot_name);
+  const char prefix = lamp_utils::ROBOT_PREFIXES.at(robot_name);
 
   PointCloud::Ptr map_cloud(new PointCloud);
   for (const auto& ks : keyed_scans) {
@@ -117,7 +117,7 @@ PointCloud buildCloudMapByRobot(
 }
 
 bool isRobotKey(gtsam::Key key) {
-  return utils::IsRobotPrefix(gtsam::Symbol(key).chr());
+  return lamp_utils::IsRobotPrefix(gtsam::Symbol(key).chr());
 }
 
 void publishOdomEdges(const gtsam::Values& values,
@@ -137,9 +137,9 @@ void publishOdomEdges(const gtsam::Values& values,
     if (f->back() == f->front() + 1 && isRobotKey(f->front()) &&
         isRobotKey(f->back())) {
       if (values.exists(f->back()) && values.exists(f->front())) {
-        odom_edges.points.push_back(utils::GtsamToRosMsg(
+        odom_edges.points.push_back(lamp_utils::GtsamToRosMsg(
             values.at<gtsam::Pose3>(f->front()).translation()));
-        odom_edges.points.push_back(utils::GtsamToRosMsg(
+        odom_edges.points.push_back(lamp_utils::GtsamToRosMsg(
             values.at<gtsam::Pose3>(f->back()).translation()));
       }
     }
@@ -165,9 +165,9 @@ void publishInlierEdges(const gtsam::Values& values,
     if (f->back() != f->front() + 1 && isRobotKey(f->front()) &&
         isRobotKey(f->back())) {
       if (gnc_weights.size() == 0 || gnc_weights[i] > 0.5) {
-        inlier_edges.points.push_back(utils::GtsamToRosMsg(
+        inlier_edges.points.push_back(lamp_utils::GtsamToRosMsg(
             values.at<gtsam::Pose3>(f->front()).translation()));
-        inlier_edges.points.push_back(utils::GtsamToRosMsg(
+        inlier_edges.points.push_back(lamp_utils::GtsamToRosMsg(
             values.at<gtsam::Pose3>(f->back()).translation()));
       }
     }
@@ -199,9 +199,9 @@ void publishOutlierEdges(const gtsam::Values& values,
     if (f->back() != f->front() + 1 && isRobotKey(f->front()) &&
         isRobotKey(f->back())) {
       if (gnc_weights[i] < 0.5) {
-        outlier_edges.points.push_back(utils::GtsamToRosMsg(
+        outlier_edges.points.push_back(lamp_utils::GtsamToRosMsg(
             values.at<gtsam::Pose3>(f->front()).translation()));
-        outlier_edges.points.push_back(utils::GtsamToRosMsg(
+        outlier_edges.points.push_back(lamp_utils::GtsamToRosMsg(
             values.at<gtsam::Pose3>(f->back()).translation()));
       }
     }
@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle n("~");
 
   //// Load parameters
-  std::string param_ns = utils::GetParamNamespace(n.getNamespace());
+  std::string param_ns = lamp_utils::GetParamNamespace(n.getNamespace());
   RobustSolverParams rpgo_params;
   bool b_use_outlier_rejection;
   if (!pu::Get(param_ns + "/b_use_outlier_rejection", b_use_outlier_rejection))
@@ -253,7 +253,7 @@ int main(int argc, char** argv) {
   }
 
   // Artifact or UWB keys (l, m, n, ... + u)
-  rpgo_params.specialSymbols = utils::GetAllSpecialSymbols();
+  rpgo_params.specialSymbols = lamp_utils::GetAllSpecialSymbols();
 
   // set solver
   int solver_num;

@@ -7,7 +7,7 @@ Loop closure base class
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <pose_graph_msgs/PoseGraph.h>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Rot3.h>
@@ -131,10 +131,10 @@ pose_graph_msgs::PoseGraphEdge LoopClosure::CreatePriorEdge(
   prior.pose.position.x = delta.translation.X();
   prior.pose.position.y = delta.translation.Y();
   prior.pose.position.z = delta.translation.Z();
-  prior.pose.orientation.w = utils::ToGtsam(delta).rotation().quaternion()[0];
-  prior.pose.orientation.x = utils::ToGtsam(delta).rotation().quaternion()[1];
-  prior.pose.orientation.y = utils::ToGtsam(delta).rotation().quaternion()[2];
-  prior.pose.orientation.z = utils::ToGtsam(delta).rotation().quaternion()[3];
+  prior.pose.orientation.w = lamp_utils::ToGtsam(delta).rotation().quaternion()[0];
+  prior.pose.orientation.x = lamp_utils::ToGtsam(delta).rotation().quaternion()[1];
+  prior.pose.orientation.y = lamp_utils::ToGtsam(delta).rotation().quaternion()[2];
+  prior.pose.orientation.z = lamp_utils::ToGtsam(delta).rotation().quaternion()[3];
 
   // Convert matrix covariance to vector
   for (size_t i = 0; i < 6; ++i) {

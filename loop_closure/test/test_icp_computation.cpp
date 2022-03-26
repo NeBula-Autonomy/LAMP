@@ -4,12 +4,12 @@
 
 #include "loop_closure/IcpLoopComputation.h"
 #include "test_artifacts.h"
-#include "utils/CommonFunctions.h"
+#include "lamp_utils/CommonFunctions.h"
 #include <chrono>
 #include <gtest/gtest.h>
 #include <limits>
 #include <thread>
-#include <utils/PointCloudTypes.h>
+#include <lamp_utils/PointCloudTypes.h>
 
 #include <geometry_utils/GeometryUtilsROS.h>
 #include <parameter_utils/ParameterUtils.h>

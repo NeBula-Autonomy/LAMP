@@ -9,7 +9,7 @@ Test artifacts for point cloud utils unittests
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
 
-#include <utils/CommonStructs.h>
+#include <lamp_utils/CommonStructs.h>
 
 PointCloud::Ptr GeneratePlane(size_t x_points = 10,
                               size_t y_points = 10,

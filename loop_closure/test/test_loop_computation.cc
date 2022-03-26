@@ -8,7 +8,7 @@
 
 #include "loop_closure/IcpLoopComputation.h"
 #include "loop_closure/LoopComputation.h"
-#include "utils/CommonFunctions.h"
+#include "lamp_utils/CommonFunctions.h"
 
 #include "test_artifacts.h"
 
@@ -156,8 +156,8 @@ TEST_F(TestLoopComputation, PerformAlignment) {
   kp->nodes.push_back(kp0);
   kp->nodes.push_back(kp100);
 
-  gtsam::Pose3 p0 = utils::ToGtsam(kp0.pose);
-  gtsam::Pose3 p100 = utils::ToGtsam(kp100.pose);
+  gtsam::Pose3 p0 = lamp_utils::ToGtsam(kp0.pose);
+  gtsam::Pose3 p100 = lamp_utils::ToGtsam(kp100.pose);
 
   keyedPoseCallback(kp);
 
@@ -178,7 +178,7 @@ TEST_F(TestLoopComputation, PerformAlignment) {
                                          T(2, 2));
 
   EXPECT_TRUE(
-      gtsam::assert_equal(utils::ToGtsam(tf_exp), utils::ToGtsam(tf), 1e-3));
+      gtsam::assert_equal(lamp_utils::ToGtsam(tf_exp), lamp_utils::ToGtsam(tf), 1e-3));
 }
 
 }  // namespace lamp_loop_closure

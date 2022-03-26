@@ -14,7 +14,7 @@
 
 #include <gtsam/inference/Symbol.h>
 
-namespace utils {
+namespace lamp_utils {
 
   // Base station
   const std::string LAMP_BASE_PREFIX = "base";
@@ -126,11 +126,11 @@ namespace utils {
 
   // Checks if two keys come from the same robot
   inline bool IsKeyFromSameRobot(gtsam::Symbol key1, gtsam::Symbol key2) {
-    if (!utils::IsRobotPrefix(key1.chr())) {
+    if (!lamp_utils::IsRobotPrefix(key1.chr())) {
       ROS_ERROR_STREAM(gtsam::DefaultKeyFormatter(key1)
                        << " is not a valid robot key.");
       return false;
-    } else if (!utils::IsRobotPrefix(key2.chr())) {
+    } else if (!lamp_utils::IsRobotPrefix(key2.chr())) {
       ROS_ERROR_STREAM(gtsam::DefaultKeyFormatter(key2)
                        << " is not a valid robot key.");
       return false;
@@ -168,6 +168,6 @@ namespace utils {
     return output;
   }
 
-} // namespace utils
+} // namespace lamp_utils
 
 #endif

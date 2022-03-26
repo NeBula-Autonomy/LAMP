@@ -11,10 +11,10 @@ Some utility functions for workng with Point Clouds
 #include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl_ros/point_cloud.h>
-#include <utils/CommonStructs.h>
-#include <utils/PointCloudTypes.h>
+#include <lamp_utils/CommonStructs.h>
+#include <lamp_utils/PointCloudTypes.h>
 
-namespace utils {
+namespace lamp_utils {
 
 typedef pcl::PointCloud<pcl::Normal> Normals;
 typedef pcl::PointCloud<pcl::FPFHSignature33> Features;
@@ -118,5 +118,5 @@ void AddNormals(const PointXyziCloud::ConstPtr& point_normal_cloud,
                 const NormalComputeParams& params,
                 PointCloud::Ptr point_cloud);
 
-} // namespace utils
+} // namespace lamp_utils
 #endif

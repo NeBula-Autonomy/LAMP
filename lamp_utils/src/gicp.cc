@@ -4,4 +4,4 @@
  * Authors: Yun Chang (yunchang@mit.edu)
  */
 #define GICP_IMPLEMENTATION
-#include <utils/gicp.h>
+#include <lamp_utils/gicp.h>

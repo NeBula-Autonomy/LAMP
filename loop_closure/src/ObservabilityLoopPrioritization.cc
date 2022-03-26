@@ -5,7 +5,7 @@
  * @author Yun Chang
  */
 
-#include "utils/PointCloudUtils.h"
+#include "lamp_utils/PointCloudUtils.h"
 #include <Eigen/Eigenvalues>
 #include <algorithm>
 #include <numeric>
@@ -234,7 +234,7 @@ void ObservabilityLoopPrioritization::KeyedScanCallback(
 
   char prefix = gtsam::Symbol(key).chr();
   Eigen::Matrix<double, 3, 1> obs_eigenv;
-  utils::ComputeIcpObservability(scan, &obs_eigenv);
+  lamp_utils::ComputeIcpObservability(scan, &obs_eigenv);
   double obs_normalized =
       obs_eigenv.minCoeff() / static_cast<double>(scan->size());
   if (max_observability_.count(prefix) == 0 ||

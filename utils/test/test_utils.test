@@ -1,6 +1,0 @@
-<launch>
-  <test test-name="test_utils"
-        pkg="utils"
-        type="test_utils"
-        time-limit="120.0"/>
-</launch>

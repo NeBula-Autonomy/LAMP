@@ -23,7 +23,7 @@ bool TwoPoseGraphMerge::Initialize(const ros::NodeHandle& n) {
 
   n.param<bool>("b_publish_on_slow_graph", this->b_publish_on_slow_graph_, true);
   
-  robot_prefix_ = utils::GetRobotPrefix(GetRobotName(n));
+  robot_prefix_ = lamp_utils::GetRobotPrefix(GetRobotName(n));
 
   return true;
 }
@@ -138,17 +138,17 @@ void TwoPoseGraphMerge::ProcessRobotGraph(const pose_graph_msgs::PoseGraphConstP
 }
 
 void TwoPoseGraphMerge::ProcessRobotPose(const geometry_msgs::PoseStampedConstPtr& msg) {
-  gtsam::Pose3 robot_pose = utils::ToGtsam(msg->pose);
+  gtsam::Pose3 robot_pose = lamp_utils::ToGtsam(msg->pose);
 
-  gtsam::Pose3 robot_node_pose = utils::ToGtsam(robot_pose_.pose);
-  gtsam::Pose3 merged_node_pose = utils::ToGtsam(merged_pose_.pose);
+  gtsam::Pose3 robot_node_pose = lamp_utils::ToGtsam(robot_pose_.pose);
+  gtsam::Pose3 merged_node_pose = lamp_utils::ToGtsam(merged_pose_.pose);
 
   gtsam::Pose3 delta = robot_node_pose.between(robot_pose);
   gtsam::Pose3 new_pose = merged_node_pose.compose(delta);
 
   // Convert to ROS to publish
   geometry_msgs::PoseStamped output;
-  output.pose = utils::GtsamToRosMsg(new_pose);
+  output.pose = lamp_utils::GtsamToRosMsg(new_pose);
   output.header.frame_id = this->world2_fid_;
   output.header.stamp = msg->header.stamp;
 

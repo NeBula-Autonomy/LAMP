@@ -146,7 +146,7 @@ bool LampBaseStation::CreatePublishers(const ros::NodeHandle& n) {
   for (auto robot : robot_names_) {
     pose_pub_ = nl.advertise<geometry_msgs::PoseStamped>(
         "/" + robot + "/lamp/pose_base", 10, false);
-    publishers_pose_[utils::GetRobotPrefix(robot)] = pose_pub_;
+    publishers_pose_[lamp_utils::GetRobotPrefix(robot)] = pose_pub_;
   }
 
   return true;
@@ -272,17 +272,17 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
     // Store the pose at the most recent node for each robot
     for (pose_graph_msgs::PoseGraphNode n : g->nodes) {
       char prefix = gtsam::Symbol(n.key).chr();
-      if (!utils::IsRobotPrefix(prefix))
+      if (!lamp_utils::IsRobotPrefix(prefix))
         continue;
 
       // First pose from this robot
       if (!latest_node_pose_.count(prefix)) {
         latest_node_pose_[prefix] =
-            std::make_pair(n.key, utils::ToGtsam(n.pose));
+            std::make_pair(n.key, lamp_utils::ToGtsam(n.pose));
       } else if (latest_node_pose_[prefix].first <= n.key) {
         ROS_DEBUG_STREAM("Updated pose for robot " << prefix);
         latest_node_pose_[prefix] =
-            std::make_pair(n.key, utils::ToGtsam(n.pose));
+            std::make_pair(n.key, lamp_utils::ToGtsam(n.pose));
       }
     }
 
@@ -352,7 +352,7 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
   }
 
   for (auto pair : pose_data->poses) {
-    char robot = utils::GetRobotPrefix(pair.first);
+    char robot = lamp_utils::GetRobotPrefix(pair.first);
     gtsam::Pose3 pose = pair.second.pose;
 
     if (latest_node_pose_.count(robot)) {
@@ -364,7 +364,7 @@ bool LampBaseStation::ProcessRobotPoseData(std::shared_ptr<FactorData> data) {
 
       // Convert to ROS to publish
       geometry_msgs::PoseStamped msg;
-      msg.pose = utils::GtsamToRosMsg(new_pose);
+      msg.pose = lamp_utils::GtsamToRosMsg(new_pose);
       msg.header.frame_id = pose_graph_.fixed_frame_id;
       msg.header.stamp = pair.second.stamp;
 
@@ -458,7 +458,7 @@ void LampBaseStation::RemoveRobotCallback(const std_msgs::String msg) {
   pose_graph_.RemoveRobotFromGraph(msg.data);
 
   // Erase latest_node_pose_
-  latest_node_pose_.erase(utils::GetRobotPrefix(msg.data));
+  latest_node_pose_.erase(lamp_utils::GetRobotPrefix(msg.data));
 
   // Send reset to lamp_pgo
   std_msgs::Bool signal;

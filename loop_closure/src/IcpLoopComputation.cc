@@ -11,9 +11,9 @@
 #include <teaser/matcher.h>
 #include <teaser/evaluation.h>
 #include <teaser/registration.h>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
-#include "utils/PointCloudUtils.h"
+#include "lamp_utils/PointCloudUtils.h"
 
 #include "loop_closure/IcpLoopComputation.h"
 
@@ -229,8 +229,8 @@ void IcpLoopComputation::ComputeTransforms() {
 
           gtsam::Key key_from = candidate.key_from;
           gtsam::Key key_to = candidate.key_to;
-          gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
-          gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
+          gtsam::Pose3 pose_from = lamp_utils::ToGtsam(candidate.pose_from);
+          gtsam::Pose3 pose_to = lamp_utils::ToGtsam(candidate.pose_to);
 
           gu::Transform3 transform;
           gtsam::Matrix66 covariance;
@@ -280,8 +280,8 @@ void IcpLoopComputation::ComputeTransforms() {
       futures.emplace_back(icp_computation_pool_.enqueue([&, candidate]() {
         gtsam::Key key_from = candidate.key_from;
         gtsam::Key key_to = candidate.key_to;
-        gtsam::Pose3 pose_from = utils::ToGtsam(candidate.pose_from);
-        gtsam::Pose3 pose_to = utils::ToGtsam(candidate.pose_to);
+        gtsam::Pose3 pose_from = lamp_utils::ToGtsam(candidate.pose_from);
+        gtsam::Pose3 pose_to = lamp_utils::ToGtsam(candidate.pose_to);
 
         gu::Transform3 transform;
         gtsam::Matrix66 covariance;
@@ -542,7 +542,7 @@ bool IcpLoopComputation::PerformAlignment(const gtsam::Symbol& key1,
   // Check if the rotation exceeds thresholds
   // Get difference between odom and icp estimation
   gtsam::Pose3 diff = (keyed_poses_[key2].between(keyed_poses_[key1]))
-                          .between(utils::ToGtsam(*delta));
+                          .between(lamp_utils::ToGtsam(*delta));
   gtsam::Vector diff_log = gtsam::Pose3::Logmap(diff);
   double trans_diff =
       std::sqrt(diff_log.tail(3).transpose() * diff_log.tail(3));
@@ -601,27 +601,27 @@ void IcpLoopComputation::GetSacInitialAlignment(PointCloudConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ExtractNormals(source, source_normals);
-  utils::ExtractNormals(target, target_normals);
+  lamp_utils::ExtractNormals(source, source_normals);
+  lamp_utils::ExtractNormals(target, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
 
-  utils::ComputeKeypoints(
+  lamp_utils::ComputeKeypoints(
       source, source_normals, harris_params_, icp_threads_, source_keypoints);
-  utils::ComputeKeypoints(
+  lamp_utils::ComputeKeypoints(
       target, target_normals, harris_params_, icp_threads_, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
-  utils::ComputeFeatures(source_keypoints,
+  lamp_utils::ComputeFeatures(source_keypoints,
                          source,
                          source_normals,
                          sac_features_radius_,
                          icp_threads_,
                          source_features);
-  utils::ComputeFeatures(target_keypoints,
+  lamp_utils::ComputeFeatures(target_keypoints,
                          target,
                          target_normals,
                          sac_features_radius_,
@@ -663,10 +663,10 @@ bool IcpLoopComputation::ComputeICPCovariancePointPlane(
                                                     // been rearranged.
   Eigen::Matrix<double, 6, 6> Ap;
 
-  utils::ExtractNormals(reference_cloud, reference_normals);
-  utils::NormalizePCloud(query_cloud, query_normalized);
+  lamp_utils::ExtractNormals(reference_cloud, reference_normals);
+  lamp_utils::NormalizePCloud(query_cloud, query_normalized);
 
-  utils::ComputeAp_ForPoint2PlaneICP(
+  lamp_utils::ComputeAp_ForPoint2PlaneICP(
       query_normalized, reference_normals, correspondences, T, Ap);
   // If matrix not invertible, use fixed
   if (Ap.determinant() == 0) {
@@ -899,27 +899,27 @@ void IcpLoopComputation::GetTeaserInitialAlignment(PointCloudConstPtr source,
   // Get Normals
   Normals::Ptr source_normals(new Normals);
   Normals::Ptr target_normals(new Normals);
-  utils::ExtractNormals(source, source_normals);
-  utils::ExtractNormals(target, target_normals);
+  lamp_utils::ExtractNormals(source, source_normals);
+  lamp_utils::ExtractNormals(target, target_normals);
 
   // Get Harris keypoints for source and target
   PointCloud::Ptr source_keypoints(new PointCloud);
   PointCloud::Ptr target_keypoints(new PointCloud);
 
-  utils::ComputeKeypoints(
+  lamp_utils::ComputeKeypoints(
       source, source_normals, harris_params_, icp_threads_, source_keypoints);
-  utils::ComputeKeypoints(
+  lamp_utils::ComputeKeypoints(
       target, target_normals, harris_params_, icp_threads_, target_keypoints);
 
   Features::Ptr source_features(new Features);
   Features::Ptr target_features(new Features);
-  utils::ComputeFeatures(source_keypoints,
+  lamp_utils::ComputeFeatures(source_keypoints,
                          source,
                          source_normals,
                          sac_features_radius_,
                          icp_threads_,
                          source_features);
-  utils::ComputeFeatures(target_keypoints,
+  lamp_utils::ComputeFeatures(target_keypoints,
                          target,
                          target_normals,
                          sac_features_radius_,

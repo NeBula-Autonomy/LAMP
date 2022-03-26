@@ -32,7 +32,7 @@ find_package(catkin REQUIRED COMPONENTS
   pose_graph_msgs
   parameter_utils
   geometry_utils
-  utils
+  lamp_utils
 )
 
 catkin_package(
@@ -44,7 +44,7 @@ catkin_package(
     pose_graph_msgs
     parameter_utils
     geometry_utils
-    utils
+    lamp_utils
 )
 
 include(CheckCXXCompilerFlag)

@@ -16,10 +16,10 @@
 
 #include "IPointCloudMapper.h"
 
-//#include <utils/CommonStructs.h>
+//#include <lamp_utils/CommonStructs.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/UInt64.h>
-#include <utils/PointCloudTypes.h>
+#include <lamp_utils/PointCloudTypes.h>
 
 class PointCloudMultiThreadedMapper : public IPointCloudMapper {
 public:

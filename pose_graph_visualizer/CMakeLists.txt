@@ -24,7 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   interactive_markers
   message_generation
-  utils
+  lamp_utils
   artifact_msgs
 )
 

@@ -7,7 +7,7 @@
 #include <pcl/filters/filter.h>
 #include <pcl/filters/random_sample.h>
 #include <pcl/filters/voxel_grid.h>
-#include <utils/LampPcldFilter.h>
+#include <lamp_utils/LampPcldFilter.h>
 
 LampPcldFilter::LampPcldFilter(const LampPcldFilterParams& params)
   : params_(params), processed_first_cloud_(false) {
@@ -54,7 +54,7 @@ void LampPcldFilter::AdaptiveGridFilter(const double& target_pt_size,
   double obs_factor = 0.0;
   if (params_.observability_check) {
     Eigen::Matrix<double, 3, 1> obs_eigenv;
-    utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
+    lamp_utils::ComputeIcpObservability(new_cloud, &obs_eigenv);
     double observability =
         obs_eigenv.minCoeff() / static_cast<double>(new_cloud->size());
     if (!processed_first_cloud_)

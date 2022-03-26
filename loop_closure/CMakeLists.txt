@@ -28,7 +28,7 @@ FIND_PACKAGE(Boost REQUIRED
 find_package(teaserpp REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  utils
+  lamp_utils
   geometry_utils
   parameter_utils
   point_cloud_mapper
@@ -52,7 +52,7 @@ catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS
     roscpp
-    utils
+    lamp_utils
     geometry_utils
     parameter_utils
     point_cloud_mapper

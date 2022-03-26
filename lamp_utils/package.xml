@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>utils</name>
+  <name>lamp_utils</name>
   <version>0.0.10</version>
-  <description>utils</description>
+  <description>lamp_utils</description>
 
   <author email="yunchang@mit.edu">Yun Chang</author>
   <maintainer email="yunchang@mit.edu">Yun Chang</maintainer>

@@ -6,10 +6,10 @@
 #include<bits/stdc++.h>
 
 // For common datastructures
-#include "utils/CommonStructs.h"
+#include "lamp_utils/CommonStructs.h"
 #include <artifact_msgs/Artifact.h>
 #include <tf2_ros/transform_listener.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/PrefixHandling.h>
 
 // Base class
 #include "LampDataHandlerBase.h"
@@ -36,7 +36,7 @@ struct ArtifactGroundTruth {
   gtsam::Point3 position;                 // Global pose of the artifact
 
   ArtifactGroundTruth()
-    : key(utils::GTSAM_ERROR_SYMBOL),
+    : key(lamp_utils::GTSAM_ERROR_SYMBOL),
       type(""),
       position(gtsam::Point3(0, 0, 0)) {}
 

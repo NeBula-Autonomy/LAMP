@@ -17,8 +17,8 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/NoiseModel.h>
 
-#include <utils/CommonFunctions.h>
-#include <utils/CommonStructs.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/CommonStructs.h>
 
 class TestUtils : public ::testing::Test {
   public:
@@ -46,7 +46,7 @@ TEST_F(TestUtils, UpdateEdgeCovariance) {
   const gtsam::SharedNoiseModel covariance = 
     gtsam::noiseModel::Diagonal::Precisions(prec);
 
-  utils::UpdateCovariance(edge, covariance);
+  lamp_utils::UpdateCovariance(edge, covariance);
 
   EXPECT_NEAR(edge.covariance.at(0), 1/(rot_prec), tolerance_);
   EXPECT_NEAR(edge.covariance.at(7), 1/(rot_prec), tolerance_);
@@ -118,7 +118,7 @@ TEST_F(TestUtils, PoseGraphMsgToGtsam) {
       new pose_graph_msgs::PoseGraph(g));
 
   // Convert to gtsam type
-  utils::PoseGraphMsgToGtsam(graph_msg, &nfg, &values);
+  lamp_utils::PoseGraphMsgToGtsam(graph_msg, &nfg, &values);
 
   // Check the size of the GTSAM data structures
   EXPECT_EQ(3, nfg.size());
@@ -135,7 +135,7 @@ TEST(TestCommonFunctions, TestGtsamToRosPose) {
   gtsam::Pose3 gtsam_pose = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(x, y, z));
 
   // Test the function
-  geometry_msgs::Pose ros_pose = utils::GtsamToRosMsg(gtsam_pose);
+  geometry_msgs::Pose ros_pose = lamp_utils::GtsamToRosMsg(gtsam_pose);
 
   // Test
   EXPECT_NEAR(ros_pose.position.x, x, 1e-7);
@@ -158,7 +158,7 @@ TEST(TestCommonFunctions, TestGtsamToRosPoseCovar) {
 
   // Test the function
   geometry_msgs::PoseWithCovariance ros_pose =
-      utils::GtsamToRosMsg(gtsam_pose, covariance);
+      lamp_utils::GtsamToRosMsg(gtsam_pose, covariance);
 
   // Test
   EXPECT_NEAR(ros_pose.pose.position.x, x, 1e-7);

@@ -771,7 +771,7 @@ bool OdometryHandler::GetTransformBetweenTimes(
     *transform = ToGtsam(pose_delta);
     // Initiate total covariance
     gtsam::Matrix66 covariance_matrix =
-        utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
+        lamp_utils::MessageToCovarianceMatrix<geometry_msgs::PoseWithCovariance>(
             second_pose.pose);
     *covariance = gtsam::noiseModel::Gaussian::Covariance(covariance_matrix);
     return true;

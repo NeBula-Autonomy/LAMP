@@ -12,7 +12,7 @@
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
 
-#include "utils/CommonFunctions.h"
+#include "lamp_utils/CommonFunctions.h"
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "load_and_save_as_g2o");
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   }
   gtsam::NonlinearFactorGraph nfg;
   gtsam::Values values;
-  utils::PoseGraphMsgToGtsam(last_posegraph, &nfg, &values);
+  lamp_utils::PoseGraphMsgToGtsam(last_posegraph, &nfg, &values);
   gtsam::writeG2o(nfg, values, argv[3]);
   std::cout << "wrote g2o to: " << argv[3] << std::endl;
 }

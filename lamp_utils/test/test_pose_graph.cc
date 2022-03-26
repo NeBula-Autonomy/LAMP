@@ -17,9 +17,9 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/NoiseModel.h>
 
-#include <utils/CommonFunctions.h>
-#include <utils/CommonStructs.h>
-#include <utils/PoseGraph.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/CommonStructs.h>
+#include <lamp_utils/PoseGraph.h>
 
 class TestPoseGraphClass : public ::testing::Test {
   public:

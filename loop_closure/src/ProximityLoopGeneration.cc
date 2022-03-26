@@ -6,7 +6,7 @@
 
 #include <parameter_utils/ParameterUtils.h>
 #include <string>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 #include "loop_closure/ProximityLoopGeneration.h"
 
@@ -117,13 +117,13 @@ void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
       continue;
 
     // Don't compare against poses that were recently collected.
-    if (utils::IsKeyFromSameRobot(key, other_key) &&
+    if (lamp_utils::IsKeyFromSameRobot(key, other_key) &&
         std::llabs(key.index() - other_key.index()) < skip_recent_poses_)
       continue;
 
     double distance = DistanceBetweenKeys(key, other_key);
     double radius;
-    if (utils::IsKeyFromSameRobot(key, other_key)) {
+    if (lamp_utils::IsKeyFromSameRobot(key, other_key)) {
       radius = std::max(
           0.0,
           std::min(proximity_threshold_max_,
@@ -143,8 +143,8 @@ void ProximityLoopGeneration::GenerateLoops(const gtsam::Key& new_key) {
     candidate.header.stamp = ros::Time::now();
     candidate.key_from = new_key;
     candidate.key_to = other_key;
-    candidate.pose_from = utils::GtsamToRosMsg(keyed_poses_[new_key]);
-    candidate.pose_to = utils::GtsamToRosMsg(keyed_poses_[other_key]);
+    candidate.pose_from = lamp_utils::GtsamToRosMsg(keyed_poses_[new_key]);
+    candidate.pose_to = lamp_utils::GtsamToRosMsg(keyed_poses_[other_key]);
     candidate.type = pose_graph_msgs::LoopCandidate::PROXIMITY;
     candidate.value = distance;
 
@@ -175,7 +175,7 @@ void ProximityLoopGeneration::KeyedPoseCallback(
     gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract new key
     ros::Time timestamp = node_msg.header.stamp; // extract new timestamp
 
-    if (!utils::IsRobotPrefix(new_key.chr()))
+    if (!lamp_utils::IsRobotPrefix(new_key.chr()))
       continue;
 
     // Check if the node is new

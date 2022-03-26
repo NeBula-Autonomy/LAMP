@@ -3,7 +3,7 @@
  * @brief  Base class for classes to find transform of loop closures
  * @author Yun Chang
  */
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 #include "loop_closure/LoopComputation.h"
 
@@ -14,7 +14,7 @@ LoopComputation::~LoopComputation() {}
 
 bool LoopComputation::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
-  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+  param_ns_ = lamp_utils::GetParamNamespace(n.getNamespace());
   return true;
 }
 

@@ -1,5 +1,5 @@
-#include "utils/CommonFunctions.h"
-#include "utils/PoseGraph.h"
+#include "lamp_utils/CommonFunctions.h"
+#include "lamp_utils/PoseGraph.h"
 
 #include <gtsam/sam/RangeFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
@@ -62,7 +62,7 @@ void PoseGraph::AddAllValuesToNew() {
 }
 
 EdgeMessage Factor::ToMsg() const {
-  return utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
+  return lamp_utils::GtsamToRosMsg(key_from, key_to, type, transform, covariance);
 }
 
 Factor Factor::FromMsg(const EdgeMessage& msg) {
@@ -70,14 +70,14 @@ Factor Factor::FromMsg(const EdgeMessage& msg) {
   factor.type = msg.type;
   factor.key_from = gtsam::Symbol(msg.key_from);
   factor.key_to = gtsam::Symbol(msg.key_to);
-  factor.transform = utils::MessageToPose(msg);
-  factor.covariance = utils::MessageToCovariance(msg);
+  factor.transform = lamp_utils::MessageToPose(msg);
+  factor.covariance = lamp_utils::MessageToCovariance(msg);
   return factor;
 }
 
 NodeMessage Node::ToMsg() const {
   NodeMessage msg =
-      utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
+      lamp_utils::GtsamToRosMsg(stamp, fixed_frame_id, key, pose, covariance);
   // Determine internal ID from pose graph
   if (graph && !graph->symbol_id_map.empty())
     msg.ID = graph->symbol_id_map(key);

@@ -42,9 +42,9 @@
 #include <gtsam/slam/InitializePose3.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <utils/CommonFunctions.h>
-#include <utils/CommonStructs.h>
-#include <utils/PoseGraph.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/CommonStructs.h>
+#include <lamp_utils/PoseGraph.h>
 
 namespace gu = geometry_utils;
 

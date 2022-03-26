@@ -6,7 +6,7 @@
  */
 #pragma once
 
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 #include "loop_closure/LoopCandidateQueue.h"
 
@@ -40,7 +40,7 @@ bool LoopCandidateQueue::Initialize(const ros::NodeHandle& n) {
 
 bool LoopCandidateQueue::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
-  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+  param_ns_ = lamp_utils::GetParamNamespace(n.getNamespace());
 
   return true;
 }

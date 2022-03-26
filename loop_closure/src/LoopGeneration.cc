@@ -5,7 +5,7 @@
  */
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/PoseGraphNode.h>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 #include "loop_closure/LoopGeneration.h"
 
@@ -18,7 +18,7 @@ LoopGeneration::~LoopGeneration() {}
 
 bool LoopGeneration::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n); // Nodehandle for subscription/publishing
-  param_ns_ = utils::GetParamNamespace(n.getNamespace());
+  param_ns_ = lamp_utils::GetParamNamespace(n.getNamespace());
   if (!pu::Get(param_ns_ + "/b_find_laser_loop_closures",
                b_check_for_loop_closures_))
     return false;

@@ -242,7 +242,7 @@ bool ArtifactHandler::RegisterOnlineCallbacks(const ros::NodeHandle& n) {
 gtsam::Symbol ArtifactHandler::GetKeyFromID(std::string id) {
   if (artifact_id2key_hash.find(id) != artifact_id2key_hash.end()) {
     ROS_ERROR_STREAM("Artifact ID does not exist in Artifact Handler");
-    return utils::GTSAM_ERROR_SYMBOL;
+    return lamp_utils::GTSAM_ERROR_SYMBOL;
   }
 
   return artifact_id2key_hash[id];

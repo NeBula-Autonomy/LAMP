@@ -108,7 +108,7 @@ std::set<char> Merger::GetNewRobots(const pose_graph_msgs::PoseGraphConstPtr& ms
 
   for (const GraphNode& node : msg->nodes) {
   auto prefix = gtsam::Symbol(node.key).chr();
-    if (!utils::IsRobotPrefix(prefix)) {
+    if (!lamp_utils::IsRobotPrefix(prefix)) {
       continue;
     }
 

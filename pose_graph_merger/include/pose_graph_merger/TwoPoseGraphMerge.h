@@ -13,7 +13,7 @@
 
 #include <pose_graph_merger/merger.h>
 
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 
 
 // Class definition

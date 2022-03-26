@@ -108,7 +108,7 @@ void RssiLoopClosure::KeyedPoseCallback(
   for (const auto& node_msg : graph_msg->nodes) {
     gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract
     // if node has a robot prefix
-    if (!utils::IsRobotPrefix(new_key.chr()))
+    if (!lamp_utils::IsRobotPrefix(new_key.chr()))
       continue;
     // append to the trajectory with time stamp
     robots_trajectory_[new_key.chr()].insert(
@@ -163,7 +163,7 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
       // Looking for the closest node in the trajectory of the robot that was
       // dropping the radio
       auto the_closest_pose =
-          GetPoseGraphNodeFromKey(robots_trajectory_[utils::GetRobotPrefix(
+          GetPoseGraphNodeFromKey(robots_trajectory_[lamp_utils::GetRobotPrefix(
                                       rssi_comm_dropped.robot_name)],
                                   rssi_comm_dropped.pose_graph_key);
 
@@ -172,7 +172,7 @@ void RssiLoopClosure::CommNodeAggregatedStatusCallback(
       if (the_closest_pose.key == 0) {
         ROS_WARN_STREAM("Key 0, pose for the dropped node couldn't be assigned "
                         "yet. Trajectory size: "
-                        << robots_trajectory_[utils::GetRobotPrefix(
+                        << robots_trajectory_[lamp_utils::GetRobotPrefix(
                                                   rssi_comm_dropped.robot_name)]
                                .size());
         continue;
@@ -207,7 +207,7 @@ void RssiLoopClosure::Update(const ros::Time& time_stamp) {
         // if (debug) //FOR DEBUGGING PURPOSES
         //  {
         //        auto pose_describe =
-        //            GetClosestPoseAtTime(robots_trajectory_[utils::GetRobotPrefix(
+        //            GetClosestPoseAtTime(robots_trajectory_[lamp_utils::GetRobotPrefix(
         //                                     scom_robot.second.robot_name)],
         //                                 time_stamp);
 
@@ -249,7 +249,7 @@ void RssiLoopClosure::Update(const ros::Time& time_stamp) {
           // get the pose from robot trajectory that was the closest at time
           // stamp
           auto scom_pose_associated_for_scom_robot =
-              GetClosestPoseAtTime(robots_trajectory_[utils::GetRobotPrefix(
+              GetClosestPoseAtTime(robots_trajectory_[lamp_utils::GetRobotPrefix(
                                        scom_robot.second.robot_name)],
                                    time_stamp);
           // to the dropped nodes append robot pose associated with the signal
@@ -546,7 +546,7 @@ void RssiLoopClosure::PrintDropStatus(
       "RSSI ID:"
       << node_info.uwb_id << " was dropped by " << node_info.robot_name
       << " label " << node_info.hostname << " key name: "
-      << utils::GetRobotPrefix(node_info.robot_name) << " pose: "
+      << lamp_utils::GetRobotPrefix(node_info.robot_name) << " pose: "
       << rssi_scom_dropped_list_.at(node_info.hostname).pose_graph_node.pose
       << " I D : "
       << rssi_scom_dropped_list_.at(node_info.hostname).pose_graph_node.ID

@@ -12,7 +12,7 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>roscpp</build_depend>
-  <build_depend>utils</build_depend>
+  <build_depend>lamp_utils</build_depend>
   <build_depend>geometry_utils</build_depend>
   <build_depend>parameter_utils</build_depend>
   <build_depend>point_cloud_mapper</build_depend>
@@ -26,7 +26,7 @@
 
 
   <run_depend>roscpp</run_depend>
-  <run_depend>utils</run_depend>
+  <run_depend>lamp_utils</run_depend>
   <run_depend>geometry_utils</run_depend>
   <run_depend>parameter_utils</run_depend>
   <run_depend>point_cloud_mapper</run_depend>

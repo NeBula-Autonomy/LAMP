@@ -105,7 +105,7 @@ std::shared_ptr<FactorData> RobotPoseHandler::GetData() {
 void RobotPoseHandler::PoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg, std::string robot) {
   PoseData new_data;
   new_data.stamp = msg->header.stamp;
-  new_data.pose = utils::ToGtsam(msg->pose);
+  new_data.pose = lamp_utils::ToGtsam(msg->pose);
 
   // Overwrite previous data from this robot with the newest entry
   data_.poses[robot] = new_data;

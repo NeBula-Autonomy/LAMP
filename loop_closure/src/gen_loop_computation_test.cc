@@ -7,7 +7,7 @@
 
 #include <loop_closure/TestUtils.h>
 #include <ros/ros.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/PrefixHandling.h>
 
 namespace tu = test_utils;
 
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
              gt_odom_bag.c_str(),
              gt_odom_topic.c_str());
 
-    char robot_prefix = utils::GetRobotPrefix(robot);
+    char robot_prefix = lamp_utils::GetRobotPrefix(robot);
     gt_pose_stamped.insert({robot_prefix, PoseStamped()});
 
     if (!tu::ReadOdometryBagFile(

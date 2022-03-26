@@ -10,8 +10,8 @@
 #ifndef POSE_GRAPH_H
 #define POSE_GRAPH_H
 
-#include <utils/CommonStructs.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/CommonStructs.h>
+#include <lamp_utils/PrefixHandling.h>
 
 // Pose graph structure storing values, factors and meta data.
 class PoseGraph {

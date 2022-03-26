@@ -70,12 +70,12 @@ double ObservabilityQueue::ComputeObservability(const pose_graph_msgs::LoopCandi
   }
 
   Eigen::Matrix<double, 3, 1> obs_eigenv_from;
-  utils::ComputeIcpObservability(keyed_scans_[candidate.key_from],
+  lamp_utils::ComputeIcpObservability(keyed_scans_[candidate.key_from],
                                  &obs_eigenv_from);
   double min_obs_from = obs_eigenv_from.minCoeff();
 
   Eigen::Matrix<double, 3, 1> obs_eigenv_to;
-  utils::ComputeIcpObservability(keyed_scans_[candidate.key_to],
+  lamp_utils::ComputeIcpObservability(keyed_scans_[candidate.key_to],
                                  &obs_eigenv_to);
   double min_obs_to = obs_eigenv_to.minCoeff();
 

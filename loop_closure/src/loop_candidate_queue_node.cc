@@ -9,7 +9,7 @@
 #include <loop_closure/ObservabilityQueue.h>
 #include <ros/ros.h>
 #include <parameter_utils/ParameterUtils.h>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonFunctions.h>
 #include <memory>
 
 namespace pu = parameter_utils;
@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "loop_candidate_queue");
   ros::NodeHandle n("~");
   int queue_method = 0;
-  std::string param_ns = utils::GetParamNamespace(n.getNamespace());
+  std::string param_ns = lamp_utils::GetParamNamespace(n.getNamespace());
   if (!pu::Get(param_ns + "/queue/method", queue_method)) {
     return EXIT_FAILURE;
   }

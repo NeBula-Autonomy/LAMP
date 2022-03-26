@@ -10,9 +10,9 @@
 #include <silvus_msgs/SilvusStreamscape.h>
 #include <std_msgs/Float64.h>
 #include <string>
-#include <utils/CommonFunctions.h>
-#include <utils/PoseGraph.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/PoseGraph.h>
+#include <lamp_utils/PrefixHandling.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 namespace lamp_loop_closure {

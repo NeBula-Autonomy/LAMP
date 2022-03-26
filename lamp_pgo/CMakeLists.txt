@@ -8,7 +8,7 @@ find_package(KimeraRPGO REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  utils
+  lamp_utils
   geometry_utils
   parameter_utils
   pose_graph_msgs
@@ -21,7 +21,7 @@ catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS
   	roscpp
-    utils
+    lamp_utils
   	geometry_utils
   	parameter_utils
     pose_graph_msgs

@@ -1,0 +1,6 @@
+<launch>
+  <test test-name="test_lamp_utils"
+        pkg="lamp_utils"
+        type="test_lamp_utils"
+        time-limit="120.0"/>
+</launch>

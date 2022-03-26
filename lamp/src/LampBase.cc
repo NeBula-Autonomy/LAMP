@@ -205,7 +205,7 @@ LampBase::ChangeCovarianceInMessage(pose_graph_msgs::PoseGraph msg,
   // Loop through each edge
   for (pose_graph_msgs::PoseGraphEdge& edge : msg.edges) {
     // Replace covariance with the noise model
-    utils::UpdateCovariance(edge, noise);
+    lamp_utils::UpdateCovariance(edge, noise);
   }
 
   return msg;
@@ -281,7 +281,7 @@ bool LampBase::GetTransformedPointCloudWorld(const gtsam::Symbol key,
     return false;
   }
 
-  const gu::Transform3 pose = utils::ToGu(pose_graph_.GetPose(key));
+  const gu::Transform3 pose = lamp_utils::ToGu(pose_graph_.GetPose(key));
   Eigen::Matrix4d b2w;
   b2w.setZero();
   b2w.block(0, 0, 3, 3) = pose.rotation.Eigen();
@@ -435,7 +435,7 @@ std::string LampBase::MapSymbolToId(gtsam::Symbol key) const {
     return "key_frame";
   }
 
-  else if (utils::IsRobotPrefix(key.chr())) {
+  else if (lamp_utils::IsRobotPrefix(key.chr())) {
     // Odom or key frame
     return "odom_node";
   }

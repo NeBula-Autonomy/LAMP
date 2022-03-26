@@ -5,8 +5,8 @@
  * Yun Chang       (yunchang@mit.edu)
  */
 
-#include "utils/CommonFunctions.h"
-#include "utils/CommonStructs.h"
+#include "lamp_utils/CommonFunctions.h"
+#include "lamp_utils/CommonStructs.h"
 
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -30,7 +30,7 @@ using gtsam::noiseModel::Gaussian;
 
 namespace gu = geometry_utils;
 
-namespace utils {
+namespace lamp_utils {
 
 pose_graph_msgs::PoseGraphEdge
 GtsamToRosMsg(gtsam::Symbol key_from,
@@ -128,9 +128,9 @@ void PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
     //                             msg_edge.pose.orientation.z);
     // gtsam::Pose3 delta = gtsam::Pose3(delta_orientation, delta_translation);
 
-    gtsam::Pose3 delta = utils::MessageToPose(msg_edge);
+    gtsam::Pose3 delta = lamp_utils::MessageToPose(msg_edge);
 
-    Gaussian::shared_ptr noise = utils::MessageToCovariance(msg_edge);
+    Gaussian::shared_ptr noise = lamp_utils::MessageToCovariance(msg_edge);
 
     // // TODO(Yun) fill in covariance
     // gtsam::Matrix66 covariance;
@@ -208,7 +208,7 @@ void PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
     }
 
     else if (msg_edge.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
-      Gaussian::shared_ptr prior_noise = utils::MessageToCovariance(msg_edge);
+      Gaussian::shared_ptr prior_noise = lamp_utils::MessageToCovariance(msg_edge);
 
       ROS_DEBUG_STREAM("Adding prior factor for key "
                        << gtsam::DefaultKeyFormatter(msg_edge.key_from));
@@ -281,4 +281,4 @@ void PoseGraphMsgToGtsam(const GraphMsgPtr& graph_msg,
   // }
 }
 
-}  // namespace utils
+}  // namespace lamp_utils

@@ -28,7 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
   rosbag
   factor_handlers
   loop_closure
-  utils
+  lamp_utils
   geometry_utils
   parameter_utils
   pcl_ros
@@ -52,7 +52,7 @@ catkin_package(
     rosbag
     factor_handlers
     loop_closure
-    utils
+    lamp_utils
     geometry_utils
     parameter_utils
     point_cloud_mapper

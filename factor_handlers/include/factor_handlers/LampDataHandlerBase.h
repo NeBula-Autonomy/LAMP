@@ -33,8 +33,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <utils/CommonStructs.h>
-#include <utils/CommonFunctions.h>
+#include <lamp_utils/CommonStructs.h>
+#include <lamp_utils/CommonFunctions.h>
 
 namespace gu = geometry_utils;
 namespace gr = geometry_utils::ros;

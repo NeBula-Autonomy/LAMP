@@ -927,11 +927,11 @@ TEST_F(TestLampRobot, GetKeyAtTime) {
   EXPECT_EQ(gtsam::Symbol('a', 4), GetKeyAtTime(ros::Time(2.0)));
 
   // Mismatches
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.0000001)));
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.4990001)));
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.9999999)));
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.5009999)));
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.9999000)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.0000001)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.4990001)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.9999999)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.5009999)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.9999000)));
 }
 
 TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
@@ -939,8 +939,8 @@ TEST_F(TestLampRobot, GetKeyAtTimeEmpty) {
   SetTimeThreshold(0.001);
 
   // Expect error keys from invalid inputs
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.0)));
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.0)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(0.0)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetKeyAtTime(ros::Time(1.0)));
 }
 
 TEST_F(TestLampRobot, GetClosestKeyAtTime) {
@@ -983,8 +983,8 @@ TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
 
   // Check single key
   AddStampToOdomKey(ros::Time(40.0), gtsam::Symbol('a', 0));
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(500.0)));
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(0.0)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(500.0)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(0.0)));
 
   // Add more keys
   AddStampToOdomKey(ros::Time(50.0), gtsam::Symbol('a', 1));
@@ -995,7 +995,7 @@ TEST_F(TestLampRobot, GetClosestKeyAtTimeException) {
   // Exact matches
   // EXPECT_EQ(gtsam::Symbol('a', 0), GetClosestKeyAtTime(ros::Time(0.0))); //
   // TODO - fix this
-  EXPECT_EQ(utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(55.0)));
+  EXPECT_EQ(lamp_utils::GTSAM_ERROR_SYMBOL, GetClosestKeyAtTime(ros::Time(55.0)));
   EXPECT_EQ(gtsam::Symbol('a', 2), GetClosestKeyAtTime(ros::Time(60.5)));
 }
 
@@ -1175,24 +1175,24 @@ TEST_F(TestLampRobot, ConvertPoseGraphToMsg) {
 
   // Odom edge
   const auto* edge0 = graph.FindEdge(key0, key1);
-  auto edge0_tf = utils::MessageToPose(*edge0);
-  auto edge0_noise = utils::MessageToCovariance(*edge0);
+  auto edge0_tf = lamp_utils::MessageToPose(*edge0);
+  auto edge0_noise = lamp_utils::MessageToCovariance(*edge0);
   EXPECT_EQ(edge0->type, pose_graph_msgs::PoseGraphEdge::ODOM);
   EXPECT_EQ(edge0_tf.equals(tf2, tolerance_), true);
   EXPECT_EQ(edge0_noise->equals(*noise, tolerance_), true);
 
   // Artifact edge
   const auto* edge1 = graph.FindEdge(key2, key0);
-  auto edge1_tf = utils::MessageToPose(*edge1);
-  auto edge1_noise = utils::MessageToCovariance(*edge1);
+  auto edge1_tf = lamp_utils::MessageToPose(*edge1);
+  auto edge1_noise = lamp_utils::MessageToCovariance(*edge1);
   EXPECT_EQ(edge1->type, pose_graph_msgs::PoseGraphEdge::ARTIFACT);
   EXPECT_EQ(edge1_tf.equals(tf1, tolerance_), true);
   EXPECT_EQ(edge1_noise->equals(*noise, tolerance_), true);
 
   // Prior factor
   const auto* prior = graph.FindPrior(key0);
-  auto prior_tf = utils::MessageToPose(*prior);
-  auto prior_noise = utils::MessageToCovariance(*prior);
+  auto prior_tf = lamp_utils::MessageToPose(*prior);
+  auto prior_noise = lamp_utils::MessageToCovariance(*prior);
   EXPECT_EQ(prior->type, pose_graph_msgs::PoseGraphEdge::PRIOR);
   EXPECT_EQ(prior_tf.equals(tf0, tolerance_), true);
   EXPECT_EQ(prior_noise->equals(*noise, tolerance_), true);
@@ -1309,24 +1309,24 @@ TEST_F(TestLampRobot, SaveLoadPoseGraph) {
 
   // Odom edge
   const auto* edge0 = graph.FindEdge(key0, key1);
-  auto edge0_tf = utils::MessageToPose(*edge0);
-  auto edge0_noise = utils::MessageToCovariance(*edge0);
+  auto edge0_tf = lamp_utils::MessageToPose(*edge0);
+  auto edge0_noise = lamp_utils::MessageToCovariance(*edge0);
   EXPECT_EQ(edge0->type, pose_graph_msgs::PoseGraphEdge::ODOM);
   EXPECT_EQ(edge0_tf.equals(tf2, tolerance_), true);
   EXPECT_EQ(edge0_noise->equals(*noise, tolerance_), true);
 
   // Artifact edge
   const auto* edge1 = graph.FindEdge(key2, key0);
-  auto edge1_tf = utils::MessageToPose(*edge1);
-  auto edge1_noise = utils::MessageToCovariance(*edge1);
+  auto edge1_tf = lamp_utils::MessageToPose(*edge1);
+  auto edge1_noise = lamp_utils::MessageToCovariance(*edge1);
   EXPECT_EQ(edge1->type, pose_graph_msgs::PoseGraphEdge::ARTIFACT);
   EXPECT_EQ(edge1_tf.equals(tf1, tolerance_), true);
   EXPECT_EQ(edge1_noise->equals(*noise, tolerance_), true);
 
   // Prior factor
   const auto* prior = graph.FindPrior(key0);
-  auto prior_tf = utils::MessageToPose(*prior);
-  auto prior_noise = utils::MessageToCovariance(*prior);
+  auto prior_tf = lamp_utils::MessageToPose(*prior);
+  auto prior_noise = lamp_utils::MessageToCovariance(*prior);
   EXPECT_EQ(prior->type, pose_graph_msgs::PoseGraphEdge::PRIOR);
   EXPECT_EQ(prior_tf.equals(tf0, tolerance_), true);
   EXPECT_EQ(prior_noise->equals(*noise, tolerance_), true);

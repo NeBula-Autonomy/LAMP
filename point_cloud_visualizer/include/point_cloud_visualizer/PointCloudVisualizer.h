@@ -39,7 +39,7 @@
 
 #include <pcl_ros/point_cloud.h>
 #include <ros/ros.h>
-#include <utils/PointCloudTypes.h>
+#include <lamp_utils/PointCloudTypes.h>
 
 #include <parameter_utils/ParameterUtils.h>
 #include <pose_graph_msgs/KeyedScan.h>
@@ -48,13 +48,13 @@
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
-#include <utils/PoseGraph.h>
+#include <lamp_utils/PoseGraph.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <utils/ColorHandling.h>
-#include <utils/CommonFunctions.h>
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/ColorHandling.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/PrefixHandling.h>
 
 #include <tf_conversions/tf_eigen.h>
 

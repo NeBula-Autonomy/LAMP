@@ -6,16 +6,16 @@
 #pragma once
 
 #include "ThreadPool.h"
-#include "utils/PointCloudUtils.h"
+#include "lamp_utils/PointCloudUtils.h"
 #include <geometry_utils/GeometryUtils.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>
-#include <utils/gicp.h>
+#include <lamp_utils/gicp.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <unordered_map>
-#include <utils/CommonStructs.h>
+#include <lamp_utils/CommonStructs.h>
 
 #include "loop_closure/LoopComputation.h"
 
@@ -121,7 +121,7 @@ protected:
   int teaser_count_ = 0;
   int odom_count_ = 0;
 
-  utils::HarrisParams harris_params_;
+  lamp_utils::HarrisParams harris_params_;
 
   double laser_lc_rot_sigma_;
   double laser_lc_trans_sigma_;

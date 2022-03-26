@@ -21,7 +21,7 @@
   <depend>pcl_ros</depend>
   <depend>tf_conversions</depend>
   <depend>interactive_markers</depend>
-  <depend>utils</depend>
+  <depend>lamp_utils</depend>
   <depend>message_runtime</depend>
   <depend>artifact_msgs</depend>
 

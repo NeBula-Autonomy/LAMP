@@ -5,14 +5,14 @@
  */
 #pragma once
 
-#include "utils/PointCloudUtils.h"
+#include "lamp_utils/PointCloudUtils.h"
 #include <gtsam/inference/Symbol.h>
 #include <map>
 #include <mutex>
 #include <pose_graph_msgs/KeyedScan.h>
 #include <ros/console.h>
 #include <ros/ros.h>
-#include <utils/CommonStructs.h>
+#include <lamp_utils/CommonStructs.h>
 
 #include "loop_closure/LoopPrioritization.h"
 

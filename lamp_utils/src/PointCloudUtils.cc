@@ -3,7 +3,7 @@ PointCloudUtils.cc
 Author: Yun Chang
 Some utility functions for wokring with Point Clouds
 */
-#include "utils/PointCloudUtils.h"
+#include "lamp_utils/PointCloudUtils.h"
 
 #include <geometry_utils/Transform3.h>
 #include <pcl/features/fpfh_omp.h>
@@ -12,7 +12,7 @@ Some utility functions for wokring with Point Clouds
 #include <pcl/registration/ia_ransac.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-namespace utils {
+namespace lamp_utils {
 
 void ExtractNormals(const PointCloud::ConstPtr& input,
                     Normals::Ptr normals,
@@ -169,8 +169,8 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
   Normals::Ptr normals(new Normals);          // pc with normals
   PointCloud::Ptr normalized(new PointCloud); // pc whose points have been
                                               // rearranged.
-  utils::ExtractNormals(cloud, normals, params);
-  utils::NormalizePCloud(cloud, normalized);
+  lamp_utils::ExtractNormals(cloud, normals, params);
+  lamp_utils::NormalizePCloud(cloud, normalized);
 
   for (size_t i = 0; i < cloud->size(); i++) {
     Point p = cloud->points[i];
@@ -185,7 +185,7 @@ void ComputeIcpObservability(PointCloud::ConstPtr cloud,
 
   Eigen::Matrix<double, 6, 6> Ap;
   // Compute Ap and its eigenvalues
-  utils::ComputeAp_ForPoint2PlaneICP(normalized, normals, c, T_unsued, Ap);
+  lamp_utils::ComputeAp_ForPoint2PlaneICP(normalized, normals, c, T_unsued, Ap);
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 3, 3>> eigensolver(
       Ap.block(3, 3, 3, 3));
   if (eigensolver.info() == Eigen::Success) {
@@ -241,4 +241,4 @@ void AddNormals(const PointXyziCloud::ConstPtr& point_cloud,
   return;
 }
 
-} // namespace utils
+} // namespace lamp_utils

@@ -13,13 +13,13 @@
 
 #include <gtsam/inference/Symbol.h>
 
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/PrefixHandling.h>
 
 #include <tf2/transform_datatypes.h>
 
 #include <gtsam/inference/Symbol.h>
 
-#include <utils/PrefixHandling.h>
+#include <lamp_utils/PrefixHandling.h>
 
 #include <string>
 
