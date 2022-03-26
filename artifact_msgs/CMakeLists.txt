@@ -10,7 +10,6 @@ find_package(catkin REQUIRED
     std_msgs
     geometry_msgs
     sensor_msgs
-    darknet_ros_msgs
     message_generation
 )
 
@@ -37,7 +36,6 @@ generate_messages(
     std_msgs
     geometry_msgs
     sensor_msgs
-    darknet_ros_msgs
 )
 
 ## Declare as a catkin package
@@ -48,5 +46,4 @@ catkin_package(
     std_msgs
     geometry_msgs
     sensor_msgs
-    darknet_ros_msgs
 )
