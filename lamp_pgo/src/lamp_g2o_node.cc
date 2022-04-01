@@ -245,7 +245,7 @@ int main(int argc, char** argv) {
     if (gnc_alpha > 0 && gnc_alpha < 1) {
       rpgo_params.setGncInlierCostThresholdsAtProbability(gnc_alpha);
       if (b_gnc_bias_odom)
-        rpgo_params.biasOdometryGnc();
+        rpgo_params.gncBiasOdom();
     }
   } else {
     rpgo_params.setNoRejection(

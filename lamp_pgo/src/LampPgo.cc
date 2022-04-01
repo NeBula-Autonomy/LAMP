@@ -77,7 +77,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
     if (gnc_alpha > 0 && gnc_alpha < 1) {
       rpgo_params_.setGncInlierCostThresholdsAtProbability(gnc_alpha);
       if (b_gnc_bias_odom)
-        rpgo_params_.biasOdometryGnc();
+        rpgo_params_.gncBiasOdom();
     }
   } else {
     rpgo_params_.setNoRejection(
