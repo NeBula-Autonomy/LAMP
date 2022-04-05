@@ -115,7 +115,7 @@ void ObservabilityLoopPrioritization::PopulatePriorityQueue() {
   }
   size_t n = candidate_queue_.size();
   if (n > 0) {
-    ROS_INFO("ObservabilityLoopPrioritization: Reveived %d loop candidates", n);
+    ROS_INFO("ObservabilityLoopPrioritization: Received %d loop candidates", n);
   }
   size_t added = 0;
   for (size_t i = 0; i < n; i++) {

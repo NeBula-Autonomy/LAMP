@@ -18,44 +18,28 @@ wstool up
 catkin build lamp
 ```
 The rosinstall file should take care of most of the dependencies such as [GTSAM](https://github.com/borglab/gtsam) and Eigen.
+For the loop closure prioritization module, we also need to install some Python dependencies.
+```
+TODO python installation.
+```
 
 ## Run Instructions
-***LAMP*** is written in C++ with some Python interface elements, wrapped by the Robot Operating System ([ROS](http://ros.org)). LAMP by itself is a backend that is flexible to a range of odometry inputs. For running with Lidar, the standard setup is outlined in the `src/lamp/scripts/launch_lamp.yaml` file, which is a [tmuxp]() load script. Run this with:
-
-```bash
-tmuxp load $(rospack find lamp)/scripts/launch_lamp.yaml
-```
-
-Note that this includes static transform publishers and bagfile playing (edit to point to the appropriate bagfile). 
-
-This will open a tmux terminal with all processes running (optionally start a roscore beforehand).
-
-Otherwise, run the following nodes in different terminals, replacing `husky` with the appropriate robot name (affects transforms and topic names).
-
-```bash
-roslaunch lo_frontend lo_frontend.launch robot_namespace:=$ROBOT_NAME
-```
-This launches the lidar odometry front-end
-
-```bash
-roslaunch lamp turn_on_lamp.launch robot_namespace:=$ROBOT_NAME
-```
-This starts the ***LAMP*** robot version
-
-For visualization on rviz, launch:
-```bash
-roslaunch lamp turn_on_robot_viz.launch robot_namespace:=$ROBOT_NAME
-```
-
-For running the base station (needed for visualization), launch
-```bash
-roslaunch lamp turn_on_lamp_base.launch
-```
+***LAMP*** TODO.
+### Single-robot testing
 
 ### Multi-robot testing 
-WIP: See script coming here:
-```bash
-tmuxp load $(rospack find lamp)/scripts/launch_lamp.yaml
+To run a multi-robot example with our released subterranean multi-robot [dataset](TODO), first download the dataset, 
+then start the LAMP base-station process: 
+```
+roslaunch lamp turn_on_lamp_base.launch robot_namespace:=base1
+```
+then play the rosbag:
+```
+rosbag play <path-to-data>/*.bag -r1 --clock clock:=/clock --wait-for-subscribers
+```
+and to visualize the map, launch rviz:
+```
+rviz -d $(rospack find lamp)/rviz/lamp_base.rviz
 ```
 
 ### Data Inputs
