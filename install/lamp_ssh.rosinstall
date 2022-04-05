@@ -1,11 +1,11 @@
 - git:
     local-name: gtsam
     uri: git@github.com:borglab/gtsam.git
-    version: d929c803836369256f91483e427a72957c321dea
+    version: develop
 - git:
     local-name: kimera_rpgo
     uri: git@github.com:MIT-SPARK/Kimera-RPGO.git
-    version: LAMP
+    version: feature/lamp_merge
 - git:
     local-name: teaser_plusplus
     uri: git@github.com:MIT-SPARK/TEASER-plusplus.git
@@ -13,3 +13,6 @@
 - git:
     local-name: eigen_catkin
     uri: git@github.com:ethz-asl/eigen_catkin.git
+- git:
+    local-name: catkin_simple
+    uri: git@github.com:catkin/catkin_simple.git
