@@ -5,6 +5,18 @@
 
 Install [ROS](http://wiki.ros.org/ROS/Installation)
 
+Install catkin tools
+```
+sudo apt-get install ros-kinetic-catkin python-catkin-tools python3-catkin-tools
+```
+
+Install PCL 
+```
+sudo apt-get install ros-melodic-pcl-ros # for the melodic distro - Ubuntu 18.04
+sudo apt-get install ros-noetic-pcl-ros # for the noetc distro - Ubuntu 20.04
+```
+
+
 Build this package in a catkin workspace 
 ```bash
 mkdir -p catkin_ws/src
@@ -13,12 +25,19 @@ catkin init
 catkin config -DCMAKE_BUILD_TYPE=Release -DGTSAM_TANGENT_PREINTEGRATION=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DOPENGV_BUILD_WITH_MARCH_NATIVE=OFF -DBUILD_TEASER_FPFH=ON
 cd src
 wstool init
-wstool merge localizer_lamp/install/lamp_ssh.rosinstall
+wstool merge LAMP/install/lamp_ssh.rosinstall
 wstool up
 catkin build lamp
 ```
 The rosinstall file should take care of most of the dependencies such as [GTSAM](https://github.com/borglab/gtsam) and Eigen.
+
+
 For the loop closure prioritization module, we also need to install some Python dependencies.
+```
+pip install -r LAMP/install/requirements.txt
+```
+
+The dependencies are:
 ```
 torch>=1.4.0
 torch-scatter==1.4.0
@@ -28,11 +47,8 @@ torch-spline-conv==1.1.1
 torch-geometric==1.3.2
 torchvision
 ```
-Alternatively, run
 
-```
-pip install -r requirements.txt
-```
+
 
 ## Run Instructions
 ***LAMP*** TODO.
