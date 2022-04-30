@@ -34,6 +34,9 @@ Alternatively, run
 pip install -r requirements.txt
 ```
 
+Note that we are using the develop branch of GTSAM, which is constantly being updated. 
+The last tested commit of GTSAM is `99c01c4dba6443d923a28b9617b12fee06394688` for your reference. 
+
 ## Run Instructions
 ***LAMP*** TODO.
 ### Single-robot testing

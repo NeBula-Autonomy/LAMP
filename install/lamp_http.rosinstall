@@ -5,7 +5,7 @@
 - git:
     local-name: kimera_rpgo
     uri: https://github.com/MIT-SPARK/Kimera-RPGO.git
-    version: feature/lamp_merge
+    version: master
 - git:
     local-name: teaser_plusplus
     uri: https://github.com/MIT-SPARK/TEASER-plusplus.git
