@@ -61,7 +61,7 @@ IPointCloudMapper::Ptr mapperFabric(const std::string& mapping_method) {
   //  }
   //  case MappingMethod::KFLANN: {
   //    ROS_INFO_STREAM("MappingMethod::KFLANN acticated.");
-  //    return std::make_shared<PointCloudFlannMapper>();
+  //    return std::make_shared<PointCloudlannMapper>();
   //  }
   default:
     throw std::runtime_error("No such mapping mode or not implemented yet " +

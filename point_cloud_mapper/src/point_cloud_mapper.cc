@@ -40,7 +40,7 @@
 #include <point_cloud_mapper/PointCloudMapper.h>
 #include <point_cloud_mapper/settings.h>
 //#include <point_cloud_mapper/PointCloudOctomapMapper.h>
-//#include <point_cloud_mapper/PointCloudFlannMapper.h>
+//#include <point_cloud_mapper/PointCloudlannMapper.h>
 //#include <point_cloud_mapper/PointCloudVDBMapper.h>
 #include <ros/ros.h>
 
