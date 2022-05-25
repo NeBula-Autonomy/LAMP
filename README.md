@@ -1,4 +1,4 @@
-![LAMP-logo](https://github.com/NeBula-Autonomy/LAMP/raw/master/LAMP-logo.png)
+![LAMP-logo](https://github.com/NeBula-Autonomy/LAMP/blob/main/LAMP-logo.png)
 
 
 ## Build Instructions
