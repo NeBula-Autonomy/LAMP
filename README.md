@@ -1,4 +1,4 @@
-![LAMP-logo](https://gitlab.robotics.caltech.edu/rollocopter/localizer/localizer_lamp/raw/master/LAMP-logo.png)
+![LAMP-logo](https://github.com/NeBula-Autonomy/LAMP/raw/master/LAMP-logo.png)
 
 
 ## Build Instructions
@@ -12,6 +12,7 @@ cd catkin_ws
 catkin init
 catkin config -DCMAKE_BUILD_TYPE=Release -DGTSAM_TANGENT_PREINTEGRATION=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DOPENGV_BUILD_WITH_MARCH_NATIVE=OFF -DBUILD_TEASER_FPFH=ON
 cd src
+git clone git@github.com:NeBula-Autonomy/LAMP.git localizer_lamp
 wstool init
 wstool merge localizer_lamp/install/lamp_ssh.rosinstall
 wstool up
@@ -38,11 +39,9 @@ Note that we are using the develop branch of GTSAM, which is constantly being up
 The last tested commit of GTSAM is `99c01c4dba6443d923a28b9617b12fee06394688` for your reference. 
 
 ## Run Instructions
-***LAMP*** TODO.
-### Single-robot testing
 
 ### Multi-robot testing 
-To run a multi-robot example with our released subterranean multi-robot [dataset](TODO), first download the dataset, 
+To run a multi-robot example with our released subterranean multi-robot [dataset](https://github.com/NeBula-Autonomy/nebula-multirobot-dataset), first download the dataset, 
 then start the LAMP base-station process: 
 ```
 roslaunch lamp turn_on_lamp_base.launch robot_namespace:=base1
@@ -70,7 +69,3 @@ To view the results of a package:
 catkin_test_results build/<package_name>
 ``` 
 Results for unit tests of packages are stored in the build/<package_name>/test_results folder.
-
-## Developer notes
-The reason why we need EXPMAP is for the correct calculation of Jacobians. 
-Enabling this and the `#define SLOW_BUT_CORRECT_BETWEENFACTOR` in LaserLoopCLosure.h are both important. Otherwise the default are some identity approximations for rotations, which works for some cases but fails for cases with manual loop closures, or artifacts. 
