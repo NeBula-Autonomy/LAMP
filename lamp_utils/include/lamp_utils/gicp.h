@@ -163,10 +163,10 @@ public:
   /** \brief Provide a pointer to the input dataset
    * \param cloud the const boost shared pointer to a PointCloud message
    */
-  PCL_DEPRECATED(
-      "[pcl::registration::MultithreadedGeneralizedIterativeClosestPoint::"
-      "setInputCloud] setInputCloud is deprecated. Please use setInputSource "
-      "instead.")
+//  PCL_DEPRECATED(
+  //    "[pcl::registration::MultithreadedGeneralizedIterativeClosestPoint::"
+    //  "setInputCloud] setInputCloud is deprecated. Please use setInputSource "
+      //"instead.")
   void setInputCloud(const PointCloudSourceConstPtr& cloud);
 
   /** \brief Provide a pointer to the input dataset

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(lamp_utils)
 
 SET(CMAKE_BUILD_TYPE Release)
-
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 find_package(catkin REQUIRED COMPONENTS

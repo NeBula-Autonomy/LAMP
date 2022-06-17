@@ -6,6 +6,7 @@ project(point_cloud_visualizer)
 #ENDIF()
 
 SET(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_STANDARD 14)
 
 find_package(PCL REQUIRED COMPONENTS common)
 if(NOT PCL_FOUND)

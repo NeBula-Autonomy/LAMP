@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(lamp_pgo)
 
 SET(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_STANDARD 14)
 
 find_package(GTSAM REQUIRED)
 find_package(KimeraRPGO REQUIRED)
