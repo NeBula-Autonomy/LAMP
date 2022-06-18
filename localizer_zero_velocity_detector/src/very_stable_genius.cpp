@@ -26,10 +26,10 @@ namespace very_stable_genius {
     imu_circular_buffer_.set_capacity(imu_rate_hz_ * observation_period_s_);
   }
   
-  int VeryStableGenius::parseConfig(const std::string &filename) {
+  bool VeryStableGenius::parseConfig(const std::string &filename) {
     YAML::Node config = YAML::LoadFile(filename);
     // Check version
-    int version = config["version"].as<int>();
+     int version = config["version"].as<int>();
     if (1 == version) {
       imu_max_rate_x_ = config["imu_max_rate_x"].as<double>();
       imu_max_rate_y_ = config["imu_max_rate_y"].as<double>();
@@ -43,6 +43,7 @@ namespace very_stable_genius {
       throw std::runtime_error("Unrecognized yaml version number in " +
                                filename + ": " + std::to_string(version));
     }
+   return true;
   }
 
   void VeryStableGenius::addImuMeasurement(const ImuMeasurement &measurement) {

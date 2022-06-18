@@ -33,7 +33,7 @@ namespace very_stable_genius {
   public:
     VeryStableGenius(const std::string &yaml_cfg_filename); /// Reads parameters from a yaml config file
     VeryStableGenius(); /// Uses default parameters if a yaml file is not provided. Generally only useful for testing.
-    int parseConfig(const std::string &filename); /// Parses configuration parameters from a yaml file
+    bool parseConfig(const std::string &filename); /// Parses configuration parameters from a yaml file
     void addImuMeasurement(const ImuMeasurement &measurement); /// Add an IMU measurement to the circular buffer
     void addImuMeasurement(const sensor_msgs::Imu::ConstPtr &msg); /// Add an IMU measurement to the circular buffer
     int getStatus(); /// Compute and return a Status code
