@@ -19,7 +19,7 @@ wstool up
 catkin build lamp
 ```
 The rosinstall file should take care of most of the dependencies such as [GTSAM](https://github.com/borglab/gtsam) and Eigen.
-For the loop closure prioritization module, we also need to install some Python dependencies.
+For the loop closure prioritization module, we also need to install some Python dependencies. This package uses python2.
 ```
 torch>=1.4.0
 torch-scatter==1.4.0
@@ -32,7 +32,7 @@ torchvision
 Alternatively, run
 
 ```
-pip install -r requirements.txt
+python2 -m pip install -r requirements.txt
 ```
 
 Note that we are using the develop branch of GTSAM, which is constantly being updated. 
