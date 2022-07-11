@@ -13,6 +13,7 @@ catkin init
 catkin config -DCMAKE_BUILD_TYPE=Release -DGTSAM_TANGENT_PREINTEGRATION=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DOPENGV_BUILD_WITH_MARCH_NATIVE=OFF -DBUILD_TEASER_FPFH=ON
 cd src
 git clone git@github.com:NeBula-Autonomy/LAMP.git localizer_lamp
+git clone git@github.com:NeBula-Autonomy/common_nebula_slam.git
 wstool init
 wstool merge localizer_lamp/install/lamp_ssh.rosinstall
 wstool up
