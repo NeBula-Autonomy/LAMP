@@ -11,10 +11,42 @@
   <!-- Select odometry source -->
   <arg if="$(eval b_use_hero)" name="odom_input" value="hero/odometry"/>
   <arg if="$(eval not b_use_hero and b_use_hovermap)" name="odom_input" value="hvm/odometry"/>
-  <arg if="$(eval not b_use_hero and not b_use_hovermap)" name="odom_input" value="lo_frontend/odometry"/>
+  <arg if="$(eval not b_use_hero and not b_use_hovermap)" name="odom_input" value="locus/odometry"/>
 
   <!-- optional filename of the zip archive of a pose graph to be loaded -->
   <arg name="load_pose_graph_file" default="" />
+
+
+  <!-- The robot prefix dependent of robot_namespace -->
+  <arg name="robot_prefix" default="a" if="$(eval robot_namespace == 'husky1')" />
+  <arg name="robot_prefix" default="b" if="$(eval robot_namespace == 'husky2')"/>
+  <arg name="robot_prefix" default="c" if="$(eval robot_namespace == 'husky3')"/>
+  <arg name="robot_prefix" default="d" if="$(eval robot_namespace == 'husky4')"/>
+  <arg name="robot_prefix" default="e" if="$(eval robot_namespace == 'spot1')"/>
+  <arg name="robot_prefix" default="f" if="$(eval robot_namespace == 'spot2')"/>
+  <arg name="robot_prefix" default="g" if="$(eval robot_namespace == 'spot3')"/>
+  <arg name="robot_prefix" default="h" if="$(eval robot_namespace == 'spot4')"/>
+  <arg name="robot_prefix" default="i" if="$(eval robot_namespace == 'aquila1')"/>
+  <arg name="robot_prefix" default="j" if="$(eval robot_namespace == 'aquila2')"/>
+  <arg name="robot_prefix" default="k" if="$(eval robot_namespace == 'kaist1')"/>
+  <arg name="robot_prefix" default="l" if="$(eval robot_namespace == 'zoe1')"/>
+  <arg name="robot_prefix" default="m" if="$(eval robot_namespace == 'zoe1')"/>
+  <arg name="robot_prefix" default="x" if="$(eval robot_namespace == 'xmaxx1')"/>
+
+  <!-- The artifact prefix dependent of robot_namespace -->
+  <arg name="artifact_prefix" default="A" if="$(eval robot_namespace == 'husky1')" />
+  <arg name="artifact_prefix" default="B" if="$(eval robot_namespace == 'husky2')"/>
+  <arg name="artifact_prefix" default="C" if="$(eval robot_namespace == 'husky3')"/>
+  <arg name="artifact_prefix" default="D" if="$(eval robot_namespace == 'husky4')"/>
+  <arg name="artifact_prefix" default="E" if="$(eval robot_namespace == 'spot1')"/>
+  <arg name="artifact_prefix" default="F" if="$(eval robot_namespace == 'spot2')"/>
+  <arg name="artifact_prefix" default="G" if="$(eval robot_namespace == 'spot3')"/>
+  <arg name="artifact_prefix" default="H" if="$(eval robot_namespace == 'spot4')"/>
+  <arg name="artifact_prefix" default="J" if="$(eval robot_namespace == 'aquila2')"/>
+  <arg name="artifact_prefix" default="K" if="$(eval robot_namespace == 'kaist1')"/>
+  <arg name="artifact_prefix" default="L" if="$(eval robot_namespace == 'zoe1')"/>
+  <arg name="artifact_prefix" default="M" if="$(eval robot_namespace == 'zoe1')"/>
+  <arg name="artifact_prefix" default="X" if="$(eval robot_namespace == 'xmaxx1')"/>
 
   <group ns="$(arg robot_namespace)">
 
@@ -76,36 +108,7 @@
       <!-- Point cloud mapper -->
       <rosparam file="$(find point_cloud_mapper)/config/parameters.yaml"/>
 
-      <!-- The robot prefix dependent of robot_namespace -->
-      <param name="robot_prefix" value="a" if="$(eval robot_namespace == 'husky1')" />
-      <param name="robot_prefix" value="b" if="$(eval robot_namespace == 'husky2')"/>
-      <param name="robot_prefix" value="c" if="$(eval robot_namespace == 'husky3')"/>
-      <param name="robot_prefix" value="d" if="$(eval robot_namespace == 'husky4')"/>
-      <param name="robot_prefix" value="e" if="$(eval robot_namespace == 'spot1')"/>
-      <param name="robot_prefix" value="f" if="$(eval robot_namespace == 'spot2')"/>
-      <param name="robot_prefix" value="g" if="$(eval robot_namespace == 'spot3')"/>
-      <param name="robot_prefix" value="h" if="$(eval robot_namespace == 'spot4')"/>
-      <param name="robot_prefix" value="i" if="$(eval robot_namespace == 'aquila1')"/>
-      <param name="robot_prefix" value="j" if="$(eval robot_namespace == 'aquila2')"/>
-      <param name="robot_prefix" value="k" if="$(eval robot_namespace == 'kaist1')"/>
-      <param name="robot_prefix" value="l" if="$(eval robot_namespace == 'zoe1')"/>
-      <param name="robot_prefix" value="m" if="$(eval robot_namespace == 'zoe1')"/>
-      <param name="robot_prefix" value="x" if="$(eval robot_namespace == 'xmaxx1')"/>
-
-      <!-- The artifact prefix dependent of robot_namespace -->
-      <param name="artifact_prefix" value="A" if="$(eval robot_namespace == 'husky1')" />
-      <param name="artifact_prefix" value="B" if="$(eval robot_namespace == 'husky2')"/>
-      <param name="artifact_prefix" value="C" if="$(eval robot_namespace == 'husky3')"/>
-      <param name="artifact_prefix" value="D" if="$(eval robot_namespace == 'husky4')"/>
-      <param name="artifact_prefix" value="E" if="$(eval robot_namespace == 'spot1')"/>
-      <param name="artifact_prefix" value="F" if="$(eval robot_namespace == 'spot2')"/>
-      <param name="artifact_prefix" value="G" if="$(eval robot_namespace == 'spot3')"/>
-      <param name="artifact_prefix" value="H" if="$(eval robot_namespace == 'spot4')"/>
-      <param name="artifact_prefix" value="J" if="$(eval robot_namespace == 'aquila2')"/>
-      <param name="artifact_prefix" value="K" if="$(eval robot_namespace == 'kaist1')"/>
-      <param name="artifact_prefix" value="L" if="$(eval robot_namespace == 'zoe1')"/>
-      <param name="artifact_prefix" value="M" if="$(eval robot_namespace == 'zoe1')"/>
-      <param name="artifact_prefix" value="X" if="$(eval robot_namespace == 'xmaxx1')"/>
+      <param name="robot_prefix" value="$(arg robot_prefix)" />
     </node>
 
 
