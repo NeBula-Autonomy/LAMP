@@ -65,6 +65,10 @@ bool IcpLoopComputation::LoadParameters(const ros::NodeHandle& n) {
   if (!pu::Get(param_ns_ + "/max_tolerable_fitness", max_tolerable_fitness_))
     return false;
 
+  if (!pu::Get(param_ns_ + "/distance_before_reclosing",
+               dist_before_reclosing_))
+    return false;
+
   // Load ICP parameters (from point_cloud localization)
   if (!pu::Get(param_ns_ + "/icp_lc/tf_epsilon", icp_tf_epsilon_))
     return false;
@@ -198,6 +202,43 @@ bool IcpLoopComputation::SetupICP(pcl::MultithreadedGeneralizedIterativeClosestP
   return true;
 }
 
+bool IcpLoopComputation::CheckReclosingDistance(gtsam::Key key_from,
+                                                gtsam::Key key_to) const {
+
+  if (closed_keyes_.size() == 0) {
+    return true;
+  }
+
+  // Keyed scans to close to other loop closures
+  gtsam::Key closest_from, closest_to;
+
+  const auto fmit = closed_keyes_.lower_bound(key_from);
+  if (fmit == closed_keyes_.begin())
+    closest_from = *fmit;
+  const auto prev_fmit = std::prev(fmit);
+  closest_from =
+      (fmit == closed_keyes_.end() || key_from - *prev_fmit <= *fmit - key_from)
+          ? *prev_fmit
+          : *fmit;
+
+  const auto toit = closed_keyes_.lower_bound(key_to);
+  if (toit == closed_keyes_.begin())
+    closest_to = *toit;
+  const auto prev_toit = std::prev(toit);
+  closest_to =
+      (toit == closed_keyes_.end() || key_to - *prev_toit <= *toit - key_to)
+          ? *prev_toit
+          : *toit;
+
+  if (abs(static_cast<int>(closest_from) - static_cast<int>(key_from)) <
+          dist_before_reclosing_ &&
+      abs(static_cast<int>(closest_to) - static_cast<int>(key_to)) <
+          dist_before_reclosing_) {
+    return false;
+  }
+  return true;
+}
+
 // Compute transform and populate output queue
 void IcpLoopComputation::ComputeTransforms() {
   // First make copy of input queue
@@ -229,6 +270,10 @@ void IcpLoopComputation::ComputeTransforms() {
 
           gtsam::Key key_from = candidate.key_from;
           gtsam::Key key_to = candidate.key_to;
+
+          if (!CheckReclosingDistance(key_from, key_to)) {
+            continue;
+          }
           gtsam::Pose3 pose_from = lamp_utils::ToGtsam(candidate.pose_from);
           gtsam::Pose3 pose_to = lamp_utils::ToGtsam(candidate.pose_to);
 
@@ -248,6 +293,8 @@ void IcpLoopComputation::ComputeTransforms() {
           // If aligned create PoseGraphEdge msg
           pose_graph_msgs::PoseGraphEdge loop_closure =
                   CreateLoopClosureEdge(key_from, key_to, transform, covariance);
+          closed_keyes_.insert(key_from);
+          closed_keyes_.insert(key_to);
           loop_closure.range_error = icp_fitness;
           output_queue_.push_back(loop_closure);
       }
@@ -283,6 +330,10 @@ void IcpLoopComputation::ComputeTransforms() {
         gtsam::Pose3 pose_from = lamp_utils::ToGtsam(candidate.pose_from);
         gtsam::Pose3 pose_to = lamp_utils::ToGtsam(candidate.pose_to);
 
+        if (!CheckReclosingDistance(key_from, key_to)) {
+          return std::make_pair(false, pose_graph_msgs::PoseGraphEdge());
+        }
+
         gu::Transform3 transform;
         gtsam::Matrix66 covariance;
         double icp_fitness;
@@ -298,6 +349,8 @@ void IcpLoopComputation::ComputeTransforms() {
         // If aligned create PoseGraphEdge msg
         pose_graph_msgs::PoseGraphEdge loop_closure =
             CreateLoopClosureEdge(key_from, key_to, transform, covariance);
+        closed_keyes_.insert(key_from);
+        closed_keyes_.insert(key_to);
         loop_closure.range_error = icp_fitness;
         return std::make_pair(true, loop_closure);
       }));
