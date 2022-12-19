@@ -86,7 +86,8 @@ class PoseGraph {
 
   void Initialize(const gtsam::Symbol& initial_key,
                   const gtsam::Pose3& pose,
-                  const Diagonal::shared_ptr& covariance);
+                  const Diagonal::shared_ptr& covariance,
+                  bool initialize_with_prior);
 
   // Tracks edge (factor) and updates nfg. Returns true if new edge is added.
   bool TrackFactor(const Factor& factor);

@@ -82,6 +82,19 @@ bool OdometryHandler::LoadParameters(const ros::NodeHandle& n) {
     return false;
   if (!pu::Get("subscriptions/b_register_wheel_sub", b_register_wheel_sub_))
     return false;
+  if (!pu::Get("b_load_gt_waypoints", b_load_gt_waypoints_)) {
+    return false;
+  }
+  if (b_load_gt_waypoints_) {
+    std::string gt_waypoints_stamps_csv, gt_waypoints_pos_csv;
+    if (!pu::Get("gt_waypoints_stamps_csv", gt_waypoints_stamps_csv)) {
+      return false;
+    }
+    if (!pu::Get("gt_waypoints_positions_csv", gt_waypoints_pos_csv)) {
+      return false;
+    }
+    ParseWaypointsCsv(gt_waypoints_stamps_csv, gt_waypoints_pos_csv);
+  }
 
   return true;
 }
@@ -325,16 +338,24 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
   PointCloud::Ptr new_scan(new PointCloud);
   OdometryFactor new_odom;
 
-  if (!check_threshold ||
-      CalculatePoseDelta(fused_odom_) > translation_threshold_) {
+  // Get the most recent lidar timestamp
+  ros::Time t_odom;
+  t_odom.fromSec(lidar_odometry_buffer_.rbegin()->first);
+  bool have_gt_waypt = false;
+  gtsam::Point3 gt_waypt;
+
+  if (!check_threshold || CalculatePoseDelta(fused_odom_) > translation_threshold_ ||
+      (stamps_to_place_nodes_.size() > 0 &&
+       stamps_to_place_nodes_.begin()->first < t_odom)) {
     // Adding a new factor
 
-    // Get the most recent lidar timestamp
     ros::Time t2;
-    ros::Time t_odom;
-
-    t_odom.fromSec(lidar_odometry_buffer_.rbegin()->first);
-
+    if (stamps_to_place_nodes_.size() > 0 &&
+        stamps_to_place_nodes_.begin()->first < t_odom) {
+      have_gt_waypt = true;
+      gt_waypt = stamps_to_place_nodes_.begin()->second;
+      stamps_to_place_nodes_.erase(stamps_to_place_nodes_.begin());
+    }
     // Get keyed scan from closest time to latest odom
     if (!GetKeyedScanAtTime(t_odom, new_scan)) {
       // Failed to get close enough point cloud
@@ -372,6 +393,18 @@ std::shared_ptr<FactorData> OdometryHandler::GetData(bool check_threshold) {
     new_odom.transform = fused_odom_for_factor.pose;
     new_odom.covariance = fused_odom_for_factor.covariance;
     new_odom.stamps = TimeStampedPair(query_timestamp_first_, t2);
+
+    if (have_gt_waypt) {
+      new_odom.b_has_gt_waypt = true;
+      new_odom.waypt_position = gt_waypt;
+    } else {
+      new_odom.b_has_gt_waypt = false;
+    }
+
+
+  bool b_has_gt_waypt;
+  gtsam::Point3 waypt_position;
+  gtsam::SharedNoiseModel gt_covariance;
     output_data->factors.push_back(new_odom);
 
     // Publish the two timestamps
@@ -893,6 +926,69 @@ gtsam::Pose3 OdometryHandler::ToGtsam(const gu::Transform3& pose) const {
                 pose.rotation(2, 2));
 
   return gtsam::Pose3(r, t);
+}
+
+void OdometryHandler::ParseWaypointsCsv(const std::string& csv_stamps_file,
+                                        const std::string& csv_pos_file) {
+  std::string line;
+  std::string token;
+  // First read the positions file
+  std::unordered_map<int, gtsam::Point3> gt_positions;
+  std::ifstream pos_file(csv_pos_file);
+  double x, y, z;
+  int id;
+
+  std::getline(pos_file, line);
+  while (std::getline(pos_file, line)) {
+    std::istringstream ss(line);
+
+    std::getline(ss, token, ' ');
+    id = std::stoi(token);
+    std::getline(ss, token, ' ');
+    x = std::stod(token);
+    std::getline(ss, token, ' ');
+    y = std::stod(token);
+    std::getline(ss, token, ' ');
+    z = std::stod(token);
+
+    gt_positions.insert({id, gtsam::Point3(x, y, z)});
+  }
+
+  std::ifstream infile(csv_stamps_file);
+
+  uint64_t stamp_ns;
+  int robot_id;
+  std::string label;
+
+  // Skip first line (headers)
+  std::getline(infile, line);
+
+  // Iterate over remaining lines
+  while (std::getline(infile, line)) {
+    std::istringstream ss(line);
+
+    std::getline(ss, token, ',');
+    stamp_ns = std::stoull(token);
+
+    std::getline(ss, token, ',');
+    robot_id = std::stoi(token);
+
+    std::getline(ss, token, ',');
+    label = token;
+    int id_start_idx = 0;
+    for (int i = 0; i < label.size(); i++) {
+      if (label[i] == 'p') {
+        id_start_idx = i + 1;
+        break;
+      }
+    }
+    int pos_id = std::stoi(label.substr(id_start_idx));
+    gtsam::Point3 gt_pos = gt_positions.at(pos_id);
+    stamps_to_place_nodes_.insert({ros::Time().fromNSec(stamp_ns), gt_pos});
+  }
+
+  ROS_INFO_STREAM("Loaded " << stamps_to_place_nodes_.size()
+                            << " ground-truth waypoints. ");
 }
 
 /*

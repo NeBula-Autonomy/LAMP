@@ -140,6 +140,10 @@ protected:
                                 gtsam::Pose3* transform,
                                 gtsam::SharedNoiseModel* covariance,
                                 const int odom_buffer_id) const;
+
+  void ParseWaypointsCsv(const std::string& csv_stamps_file,
+                         const std::string& csv_pos_file);
+
   gtsam::Pose3
   GetTransform(const PoseCovStampedPair pose_cov_stamped_pair) const;
   gtsam::SharedNoiseModel
@@ -158,6 +162,7 @@ protected:
   double pc_buffer_size_limit_;
   double translation_threshold_;
   bool b_debug_pointcloud_buffer_;
+  bool b_load_gt_waypoints_;
 
   // Fusion logic
   bool b_is_first_query_;
@@ -184,7 +189,9 @@ protected:
   PoseCovStamped visual_odom_value_at_key_;
   PoseCovStamped wheel_odom_value_at_key_;
 
-private:
+  std::map<ros::Time, gtsam::Point3> stamps_to_place_nodes_;
+
+ private:
 };
 
 #endif

@@ -113,6 +113,7 @@ protected:
   gtsam::SharedNoiseModel SetFixedNoiseModels(std::string type);
   gtsam::SharedNoiseModel laser_lc_noise_;
   gtsam::SharedNoiseModel odom_noise_;
+  gtsam::SharedNoiseModel point_estimate_noise_;
 
   // Zero noise param
   gtsam::noiseModel::Diagonal::shared_ptr zero_covariance_;

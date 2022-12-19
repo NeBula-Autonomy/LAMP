@@ -71,7 +71,8 @@ class LampRobot : public LampBase {
    bool ProcessStationaryData(std::shared_ptr<FactorData> data);
 
    bool InitializeGraph(gtsam::Pose3& pose,
-                        gtsam::noiseModel::Diagonal::shared_ptr& covariance);
+                        gtsam::noiseModel::Diagonal::shared_ptr& covariance,
+                        bool initialize_with_prior);
 
    void AddKeyedScanAndPublish(PointCloud::Ptr new_scan,
                                gtsam::Symbol current_key);

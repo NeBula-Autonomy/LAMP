@@ -262,6 +262,10 @@ bool LampBaseStation::ProcessPoseGraphData(std::shared_ptr<FactorData> data) {
       if (e.type == pose_graph_msgs::PoseGraphEdge::IMU) {
         b_run_optimization_ = true;
       }
+
+      if (e.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
+        b_run_optimization_ = true;
+      }
     }
 
     // Store the pose at the most recent node for each robot

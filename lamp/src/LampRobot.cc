@@ -298,14 +298,15 @@ bool LampRobot::SetInitialPosition() {
   ROS_DEBUG_STREAM(initial_noise_);
 
   // Initialize graph  with the initial position
-  InitializeGraph(pose, covariance);
+  InitializeGraph(pose, covariance, sigma_x > 0);
 
   return true;
 }
 
-bool LampRobot::InitializeGraph(
-    gtsam::Pose3& pose, gtsam::noiseModel::Diagonal::shared_ptr& covariance) {
-  pose_graph_.Initialize(GetInitialKey(), pose, covariance);
+bool LampRobot::InitializeGraph(gtsam::Pose3& pose,
+                                gtsam::noiseModel::Diagonal::shared_ptr& covariance,
+                                bool initialize_with_prior) {
+  pose_graph_.Initialize(GetInitialKey(), pose, covariance, initialize_with_prior);
 
   // // Publish the first pose
   // PublishPoseGraph(true);
@@ -531,6 +532,14 @@ bool LampRobot::ProcessOdomData(std::shared_ptr<FactorData> data) {
       } else {
         ROS_WARN("No valid point cloud with odom factor in Lamp");
       }
+    }
+
+    if (odom_factor.b_has_gt_waypt) {
+      ROS_ERROR_STREAM("Received gt waypt for key "
+                       << current_key << " for pt " << odom_factor.waypt_position.x()
+                       << " - " << odom_factor.waypt_position.y());
+      gtsam::Pose3 prior_pose(gtsam::Rot3(), odom_factor.waypt_position);
+      pose_graph_.TrackPrior(current_key, prior_pose, point_estimate_noise_);
     }
   }
 

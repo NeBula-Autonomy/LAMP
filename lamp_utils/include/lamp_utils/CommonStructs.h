@@ -158,6 +158,10 @@ struct OdometryFactor {
 
   gtsam::Pose3 transform;
   gtsam::SharedNoiseModel covariance;
+
+  bool b_has_gt_waypt;
+  gtsam::Point3 waypt_position;
+  gtsam::SharedNoiseModel gt_covariance;
 };
 
 struct LoopClosureFactor {

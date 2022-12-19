@@ -617,7 +617,8 @@ void PoseGraph::AddNewFactors(const gtsam::NonlinearFactorGraph& nfg) {
 
 void PoseGraph::Initialize(const gtsam::Symbol& initial_key,
                            const gtsam::Pose3& pose,
-                           const Diagonal::shared_ptr& covariance) {
+                           const Diagonal::shared_ptr& covariance,
+                           bool initialize_with_prior) {
   nfg_ = gtsam::NonlinearFactorGraph();
   values_ = gtsam::Values();
 
@@ -629,8 +630,9 @@ void PoseGraph::Initialize(const gtsam::Symbol& initial_key,
   prior.key = initial_key;
   prior.pose = pose;
   prior.covariance = covariance;
-
-  TrackPrior(prior);
+  if (initialize_with_prior) {
+    TrackPrior(prior);
+  }
   TrackNode(prior);
 }
 

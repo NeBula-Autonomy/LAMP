@@ -73,7 +73,7 @@ bool LampPgo::Initialize(const ros::NodeHandle& n) {
     if (!pu::Get(param_ns_ + "/b_gnc_bias_odom", b_gnc_bias_odom))
       return false;
     rpgo_params_.setPcmSimple3DParams(
-        trans_threshold, rot_threshold, KimeraRPGO::Verbosity::VERBOSE);
+        trans_threshold, rot_threshold, -1, -1, KimeraRPGO::Verbosity::VERBOSE);
     if (gnc_alpha > 0 && gnc_alpha < 1) {
       rpgo_params_.setGncInlierCostThresholdsAtProbability(gnc_alpha);
       if (b_gnc_bias_odom)
