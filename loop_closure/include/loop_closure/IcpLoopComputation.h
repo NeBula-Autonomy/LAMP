@@ -83,6 +83,8 @@ public:
 
   void AccumulateScans(const gtsam::Key& key, PointCloud::Ptr scan_out);
 
+  bool CheckReclosingDistance(gtsam::Key key_from, gtsam::Key key_to) const;
+
 protected:
   // Define subscriber
   ros::Subscriber keyed_scans_sub_;
@@ -118,6 +120,7 @@ protected:
   double noise_bound_;
   double TEASER_FPFH_features_radius_;
 
+  unsigned int dist_before_reclosing_;
   int teaser_count_ = 0;
   int odom_count_ = 0;
 
@@ -151,6 +154,8 @@ protected:
   ThreadPool icp_computation_pool_;
 
   size_t number_of_threads_in_icp_computation_pool_;
+
+  std::set<gtsam::Key> closed_keyes_;
 };
 
 } // namespace lamp_loop_closure
