@@ -28,6 +28,7 @@ namespace pu = parameter_utils;
 using KimeraRPGO::RobustSolver;
 using KimeraRPGO::RobustSolverParams;
 using pose_graph_msgs::KeyedScan;
+using pose_graph_msgs::PoseGraph;
 
 void inputKeyedScansBag(
     const std::string& filename,
@@ -45,6 +46,46 @@ void inputKeyedScansBag(
   }
   bag.close();
   ROS_INFO("Processed %d keyed scans from bag. ", keyed_scans->size());
+}
+
+void inputPoseGraphBag(const std::string& filename,
+                       gtsam::NonlinearFactorGraph* nfg,
+                       gtsam::Values* values) {
+  ROS_INFO("Reading pose graph msgs from %s", filename.c_str());
+  rosbag::Bag bag;
+  bag.open(filename);
+  for (rosbag::MessageInstance const m : rosbag::View(bag)) {
+    PoseGraph::ConstPtr pg = m.instantiate<PoseGraph>();
+    if (pg != nullptr) {
+      for (const auto& node : pg->nodes) {
+        gtsam::Key node_key = gtsam::Key(node.key);
+        if (values->exists(node_key)) {
+          continue;
+        }
+        gtsam::Pose3 node_pose = lamp_utils::MessageToPose(node);
+        values->insert(node_key, node_pose);
+      }
+      for (const auto& edge : pg->edges) {
+        if (edge.type == pose_graph_msgs::PoseGraphEdge::ODOM ||
+            edge.type == pose_graph_msgs::PoseGraphEdge::LOOPCLOSE) {
+          nfg->add(gtsam::BetweenFactor<gtsam::Pose3>(
+              gtsam::Symbol(edge.key_from),
+              gtsam::Symbol(edge.key_to),
+              lamp_utils::MessageToPose(edge),
+              lamp_utils::MessageToCovariance(edge)));
+        }
+        if (edge.type == pose_graph_msgs::PoseGraphEdge::PRIOR) {
+          nfg->add(
+              gtsam::PriorFactor<gtsam::Pose3>(gtsam::Symbol(edge.key_from),
+                                               lamp_utils::MessageToPose(edge),
+                                               lamp_utils::MessageToCovariance(edge)));
+        }
+      }
+    }
+  }
+  bag.close();
+  ROS_INFO(
+      "Processed %d factors and %d values from bag. ", nfg->size(), values->size());
 }
 
 void inputG2oFile(const std::string& filename,
@@ -241,11 +282,10 @@ int main(int argc, char** argv) {
     if (!pu::Get(param_ns + "/b_gnc_bias_odom", b_gnc_bias_odom))
       return 1;
     rpgo_params.setPcmSimple3DParams(
-        trans_threshold, rot_threshold, KimeraRPGO::Verbosity::UPDATE);
+        trans_threshold, rot_threshold, -1, -1, KimeraRPGO::Verbosity::UPDATE);
     if (gnc_alpha > 0 && gnc_alpha < 1) {
       rpgo_params.setGncInlierCostThresholdsAtProbability(gnc_alpha);
-      if (b_gnc_bias_odom)
-        rpgo_params.gncBiasOdom();
+      if (b_gnc_bias_odom) rpgo_params.gncBiasOdom();
     }
   } else {
     rpgo_params.setNoRejection(
@@ -281,9 +321,8 @@ int main(int argc, char** argv) {
     ROS_INFO("Enabled logging in Kimera-RPGO");
   }
 
-  std::string g2o_file;
-  if (!pu::Get("g2o_file", g2o_file)) {
-    ROS_ERROR("G2O file path not specified. ");
+  bool load_from_g2o;
+  if (!pu::Get("b_load_g2o", load_from_g2o)) {
     return 1;
   }
 
@@ -305,37 +344,87 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  int batch_size;
+  if (!pu::Get("batch_size", batch_size)) {
+    ROS_ERROR("Missing batch size parameter. ");
+    return 1;
+  }
+
   bool visualize;
   pu::Get("visualize", visualize);
 
   //// Load g2o file
   gtsam::NonlinearFactorGraph nfg, filtered_nfg;
   gtsam::Values values;
-  inputG2oFile(g2o_file, &nfg, &values);
+  if (load_from_g2o) {
+    std::string g2o_file;
+    if (!pu::Get("g2o_file", g2o_file)) {
+      ROS_ERROR("G2O file path not specified. ");
+      return 1;
+    }
+    inputG2oFile(g2o_file, &nfg, &values);
+  } else {
+    std::string pose_graph_bag;
+    if (!pu::Get("pose_graph_bag", pose_graph_bag)) {
+      ROS_ERROR("Pose graph bag path not specified. ");
+      return 1;
+    }
+    inputPoseGraphBag(pose_graph_bag, &nfg, &values);
+  }
 
   double max_lc_error;
   if (!pu::Get(param_ns + "/max_lc_error", max_lc_error))
     return 1;
 
-  // filter out bad loop closures
+  // sort factors and filter out bad loop closures
+  gtsam::NonlinearFactorGraph odom_factors, prior_factors, lc_factors;
   for (const auto& factor : nfg) {
-    if (factor->front() != factor->back() - 1) {
-      if (factor->error(values) > max_lc_error) {
-        continue;
-      }
+    if (factor->front() + 1 == factor->back()) {
+      odom_factors.add(factor);
+      continue;
     }
-    filtered_nfg.add(factor);
+    if (factor->front() == factor->back()) {
+      prior_factors.add(factor);
+      continue;
+    }
+    // if (factor->error(values) > max_lc_error) {
+    //   continue;
+    // }
+    lc_factors.add(factor);
   }
+  ROS_INFO("%d odom factors, %d prior factors, %d loop closure factors. ",
+           odom_factors.size(),
+           prior_factors.size(),
+           lc_factors.size());
 
   //// Load keyed scans
   std::unordered_map<gtsam::Key, PointCloud> keyed_scans;
   inputKeyedScansBag(ks_file, &keyed_scans);
 
-  //// Initialize solver
+  //// Reinitialize with new values
   KimeraRPGO::RobustSolver pgo(rpgo_params);
-
-  //// Input graphand values
-  pgo.update(filtered_nfg, values);
+  if (batch_size == -1) {
+    // Process all at once
+    //// Update with odom
+    pgo.forceUpdate(odom_factors, values);
+    values = pgo.calculateEstimate();
+    //// Update with priors
+    pgo.forceUpdate(prior_factors, gtsam::Values());
+    values = pgo.calculateEstimate();
+    // Update with loop closures
+    pgo.forceUpdate(lc_factors, gtsam::Values());
+  } else {
+    pgo.forceUpdate(gtsam::NonlinearFactorGraph(), values);
+    gtsam::NonlinearFactorGraph batch_nfg;
+    for (const auto& factor : nfg) {
+      if (batch_nfg.size() >= batch_size) {
+        pgo.forceUpdate(batch_nfg, gtsam::Values());
+        batch_nfg = gtsam::NonlinearFactorGraph();
+      }
+      batch_nfg.add(factor);
+    }
+  }
+  
 
   nfg = pgo.getFactorsUnsafe();
   values = pgo.calculateEstimate();

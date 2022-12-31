@@ -233,7 +233,8 @@ void LampPgo::InputCallback(
       bool loop_closure =
           (lamp_utils::IsRobotPrefix(gtsam::Symbol(all_factors[i]->back()).chr()) &&
            lamp_utils::IsRobotPrefix(gtsam::Symbol(all_factors[i]->front()).chr()) &&
-           all_factors[i]->back() != all_factors[i]->front() + 1);
+           all_factors[i]->back() != all_factors[i]->front() + 1 &&
+           all_factors[i]->back() != all_factors[i]->front());
       if (!loop_closure) {
         new_factors.add(all_factors[i]);
       } else {

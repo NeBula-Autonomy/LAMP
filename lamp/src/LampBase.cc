@@ -68,7 +68,7 @@ bool LampBase::SetFactorPrecisions() {
 
   // Set as noise models
   gtsam::Vector6 precisions;
-  precisions.head<3>().setConstant(1e-12);
+  precisions.head<3>().setConstant(1e-16);
   precisions.tail<3>().setConstant(point_estimate_precision_);
   point_estimate_noise_ = gtsam::noiseModel::Diagonal::Precisions(precisions);
 

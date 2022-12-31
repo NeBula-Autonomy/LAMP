@@ -1,13 +1,17 @@
 <launch>
   <arg name="robot_namespace" default="base1"/>
-  <arg name="input_path" defualt=""/>
+  <arg name="input_path" default=""/>
+  <arg name="b_load_g2o" default="false"/>
+  <arg name="pose_graph_bag" default="$(arg input_path)/pose_graph.bag"/>
   <arg name="g2o_file" default="$(arg input_path)/result.g2o"/>
   <arg name="keyed_scans_bag" default="$(arg input_path)/keyed_scans.bag"/>
+  <arg name="batch_size" default="-1"/>
   <arg name="map_resolution" default="0.5" />
   <arg name="marker_size" default="0.3" />
   <arg name="output_dir" default="$(find lamp_pgo)/log"/>
   <arg name="visualize" default="true"/>
   <arg name="log_path" default="$(find lamp_pgo)/log"/>
+  <arg name="config_path" default="$(find lamp_pgo)/config/pgo_parameters.yaml"/>
 
   <group ns="$(arg robot_namespace)">
 
@@ -16,8 +20,11 @@
           name="lamp_g2o"
           type="lamp_g2o"
           output="screen">
-      <rosparam file="$(find lamp_pgo)/config/pgo_parameters.yaml" subst_value="true"/>
-      <param name="g2o_file" value= "$(arg g2o_file)"/>
+      <rosparam file="$(arg config_path)" subst_value="true"/>
+      <param name="b_load_g2o" value="$(arg b_load_g2o)"/>
+      <param name="pose_graph_bag" value="$(arg pose_graph_bag)"/>
+      <param name="g2o_file" value="$(arg g2o_file)"/>
+      <param name="batch_size" value="$(arg batch_size)"/>
       <param name="keyed_scans_bag" value="$(arg keyed_scans_bag)"/>
       <param name="map_resolution" value="$(arg map_resolution)"/>
       <param name="marker_size" value="$(arg marker_size)"/>
