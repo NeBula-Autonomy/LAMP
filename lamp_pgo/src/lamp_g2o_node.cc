@@ -1,26 +1,26 @@
-#include <iostream>
-#include <ros/ros.h>
-#include <rosbag/bag.h>
-#include <rosbag/view.h>
-#include <string>
-#include <unordered_map>
-
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/slam/dataset.h>
+#include <lamp_utils/CommonFunctions.h>
+#include <lamp_utils/PointCloudTypes.h>
+#include <lamp_utils/PrefixHandling.h>
 #include <parameter_utils/ParameterUtils.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pose_graph_msgs/KeyedScan.h>
+#include <pose_graph_msgs/PoseGraph.h>
+#include <ros/ros.h>
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <lamp_utils/CommonFunctions.h>
-#include <lamp_utils/PointCloudTypes.h>
-#include <lamp_utils/PrefixHandling.h>
 #include <visualization_msgs/Marker.h>
 
-#include <gtsam/inference/Symbol.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
-#include <gtsam/slam/dataset.h>
+#include <iostream>
+#include <string>
+#include <unordered_map>
 
 #include "KimeraRPGO/RobustSolver.h"
 
@@ -28,7 +28,6 @@ namespace pu = parameter_utils;
 using KimeraRPGO::RobustSolver;
 using KimeraRPGO::RobustSolverParams;
 using pose_graph_msgs::KeyedScan;
-using pose_graph_msgs::PoseGraph;
 
 void inputKeyedScansBag(
     const std::string& filename,
@@ -55,7 +54,8 @@ void inputPoseGraphBag(const std::string& filename,
   rosbag::Bag bag;
   bag.open(filename);
   for (rosbag::MessageInstance const m : rosbag::View(bag)) {
-    PoseGraph::ConstPtr pg = m.instantiate<PoseGraph>();
+    pose_graph_msgs::PoseGraph::ConstPtr pg =
+        m.instantiate<pose_graph_msgs::PoseGraph>();
     if (pg != nullptr) {
       for (const auto& node : pg->nodes) {
         gtsam::Key node_key = gtsam::Key(node.key);
