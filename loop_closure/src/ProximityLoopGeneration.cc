@@ -85,10 +85,7 @@ bool ProximityLoopGeneration::CreatePublishers(const ros::NodeHandle& n) {
 bool ProximityLoopGeneration::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
   keyed_poses_sub_ = nl.subscribe<pose_graph_msgs::PoseGraph>(
-      "pose_graph_incremental",
-      100000,
-      &ProximityLoopGeneration::KeyedPoseCallback,
-      this);
+      "pose_graph", 100000, &ProximityLoopGeneration::KeyedPoseCallback, this);
   return true;
 }
 
@@ -172,19 +169,14 @@ void ProximityLoopGeneration::KeyedPoseCallback(
     const pose_graph_msgs::PoseGraph::ConstPtr& graph_msg) {
   pose_graph_msgs::PoseGraphNode node_msg;
   for (const auto& node_msg : graph_msg->nodes) {
-    gtsam::Symbol new_key = gtsam::Symbol(node_msg.key); // extract new key
+    gtsam::Symbol node_key = gtsam::Symbol(node_msg.key); // extract new key
     ros::Time timestamp = node_msg.header.stamp; // extract new timestamp
 
-    if (!lamp_utils::IsRobotPrefix(new_key.chr()))
+    if (!lamp_utils::IsRobotPrefix(node_key.chr())) {
       continue;
-
-    // Check if the node is new
-    if (keyed_poses_.count(new_key) > 0) {
-      continue; // Not a new node
     }
 
-    // also extract poses (NOTE(Yun) this pose will not be updated...)
-    gtsam::Pose3 new_pose;
+    gtsam::Pose3 node_pose;
     gtsam::Point3 pose_translation(node_msg.pose.position.x,
                                    node_msg.pose.position.y,
                                    node_msg.pose.position.z);
@@ -192,12 +184,17 @@ void ProximityLoopGeneration::KeyedPoseCallback(
                                  node_msg.pose.orientation.x,
                                  node_msg.pose.orientation.y,
                                  node_msg.pose.orientation.z);
-    new_pose = gtsam::Pose3(pose_orientation, pose_translation);
+    node_pose = gtsam::Pose3(pose_orientation, pose_translation);
 
-    // add new key and pose to keyed_poses_
-    keyed_poses_[new_key] = new_pose;
+    // Check if the node is new
+    if (keyed_poses_.count(node_key) > 0) {
+      // add new key and pose to keyed_poses_
+      keyed_poses_[node_key] = node_pose;
+      continue; // Not a new node
+    }
 
-    GenerateLoops(new_key);
+    keyed_poses_.insert({node_key, node_pose});
+    GenerateLoops(node_key);
   }
 
   if (loop_candidate_pub_.getNumSubscribers() > 0 && candidates_.size() > 0) {

@@ -184,6 +184,8 @@ class SimulatedAnnealing(GNNBasedLoopClosureBatchSelector):
             keys_to_nodes[node.key] = node
 
         for idx, edge in enumerate(self.loop_candidates):
+            if not edge.key_to in keys_to_nodes or not edge.key_from in keys_to_nodes:
+                continue
             to_node = keys_to_nodes[edge.key_to]
             from_node = keys_to_nodes[edge.key_from]
             average_x = (to_node.pose.position.x + from_node.pose.position.x) / 2
