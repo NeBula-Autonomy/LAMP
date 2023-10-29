@@ -5,6 +5,11 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
 
+add_compile_options(-Wall -Wextra)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 find_package(PCL 1.7 REQUIRED COMPONENTS common)
 if(NOT PCL_FOUND)
   message(FATAL_ERROR "This program requires the PCL library.")
@@ -45,17 +50,6 @@ if (NOT GTSAM_FOUND)
 endif(NOT GTSAM_FOUND)
 
 find_package(Boost 1.58 COMPONENTS filesystem program_options timer REQUIRED)
-
-include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
-check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if (COMPILER_SUPPORTS_CXX11)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-elseif(COMPILER_SUPPORTS_CXX0X)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-else()
-  message(FATAL_ERROR "${CMAKE_CXX_COMPILER} doesn't provide c++11 support.")
-endif()
 
 include_directories(
   include
